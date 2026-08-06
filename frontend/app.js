@@ -243,7 +243,10 @@
 
 const runtimeConfig = window.INTELLECTUAL_TWIN_CONFIG || {};
 const apiBaseUrl = normalizeBaseUrl(runtimeConfig.apiBaseUrl || "");
-const assetBaseUrl = normalizeBaseUrl(runtimeConfig.assetBaseUrl || "/static");
+const configuredAssetBase = Object.prototype.hasOwnProperty.call(runtimeConfig, "assetBaseUrl")
+  ? runtimeConfig.assetBaseUrl
+  : window.__MEIDS_ASSET_BASE__ || "/static";
+const assetBaseUrl = normalizeBaseUrl(configuredAssetBase);
 const FRONTEND_BUILD_TAG = "20260721-okf-health-sync";
 const N8N_CHAT_MODE = "__n8n_agent";
 const N8N_CHAT_CSS_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css";

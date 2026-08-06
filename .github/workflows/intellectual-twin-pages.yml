@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - "frontend/**"
+      - "scripts/pages-smoke-check.cjs"
       - ".github/workflows/intellectual-twin-pages.yml"
 
 permissions:
@@ -50,6 +51,9 @@ jobs:
             staticPagesMode: "$GH_PAGES_API_BASE_URL" === ""
           };
           EOF
+
+      - name: Smoke check static artifact
+        run: node scripts/pages-smoke-check.cjs dist-pages
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

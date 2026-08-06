@@ -6,8 +6,16 @@
     <title>MeIDs</title>
     <script>
       window.__MEIDS_FILE_PROTOCOL__ = window.location.protocol === "file:";
+      window.__MEIDS_LOCAL_SERVER__ = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+      window.__MEIDS_ASSET_BASE__ = window.__MEIDS_LOCAL_SERVER__
+        ? "/static/"
+        : new URL("./", window.location.href).pathname;
+      window.__MEIDS_ASSET_URL__ = function (path) {
+        var cleanPath = String(path || "").replace(/^\/static\//, "").replace(/^\/+/, "");
+        return window.__MEIDS_ASSET_BASE__ + cleanPath;
+      };
       if (!window.__MEIDS_FILE_PROTOCOL__) {
-        document.write('<link rel="stylesheet" href="/static/styles.css?v=20260721-knowledge-browser-redesign" />');
+        document.write('<link rel="stylesheet" href="' + window.__MEIDS_ASSET_URL__("styles.css?v=20260721-knowledge-browser-redesign") + '" />');
       }
     </script>
     <style>
@@ -71,7 +79,7 @@
       } else {
         document.addEventListener("DOMContentLoaded", function () {
           document.querySelectorAll("[data-static-src]").forEach(function (node) {
-            node.setAttribute("src", node.getAttribute("data-static-src"));
+            node.setAttribute("src", window.__MEIDS_ASSET_URL__(node.getAttribute("data-static-src")));
           });
         });
       }
@@ -1518,9 +1526,9 @@
 
     <script>
       if (!window.__MEIDS_FILE_PROTOCOL__) {
-        document.write('<script src="/static/runtime-config.js?v=20260715-meids"><\/script>');
-        document.write('<script src="/static/api.js?v=20260731-refactor"><\/script>');
-        document.write('<script src="/static/app.js?v=20260731-refactor"><\/script>');
+        document.write('<script src="' + window.__MEIDS_ASSET_URL__("runtime-config.js?v=20260715-meids") + '"><\/script>');
+        document.write('<script src="' + window.__MEIDS_ASSET_URL__("api.js?v=20260731-refactor") + '"><\/script>');
+        document.write('<script src="' + window.__MEIDS_ASSET_URL__("app.js?v=20260731-refactor") + '"><\/script>');
       }
     </script>
   </body>

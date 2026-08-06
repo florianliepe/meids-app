@@ -1,7 +1,10 @@
 (function initIntellectualTwinApi(global) {
   const runtimeConfig = global.INTELLECTUAL_TWIN_CONFIG || {};
   const apiBaseUrl = normalizeBaseUrl(runtimeConfig.apiBaseUrl || "");
-  const assetBaseUrl = normalizeBaseUrl(runtimeConfig.assetBaseUrl || "/static");
+  const configuredAssetBase = Object.prototype.hasOwnProperty.call(runtimeConfig, "assetBaseUrl")
+    ? runtimeConfig.assetBaseUrl
+    : global.__MEIDS_ASSET_BASE__ || "/static";
+  const assetBaseUrl = normalizeBaseUrl(configuredAssetBase);
 
   function normalizeBaseUrl(value) {
     return String(value || "").trim().replace(/\/+$/, "");
