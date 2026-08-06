@@ -1,0 +1,9 @@
+﻿# Public-safe app repository
+.env
+.env.*
+!.env.example
+frontend/generated_audio/
+frontend/user_uploads/
+.agents/
+__pycache__/
+*.pyc
