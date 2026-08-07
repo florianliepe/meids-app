@@ -6345,6 +6345,349 @@ audio {
   }
 }
 
+/* Ziel 2026-08-07: lean assistant workspace plus cockpit separation. */
+:root {
+  --meids-workspace-width: 980px;
+  --meids-cockpit-width: 1360px;
+  --meids-dark-surface: #151916;
+  --meids-dark-surface-raised: #1b201c;
+  --meids-dark-line: rgba(241, 235, 224, 0.16);
+}
+
+.shell {
+  grid-template-columns: 248px minmax(0, 1fr);
+}
+
+.sidebar {
+  border-right: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.nav-label {
+  color: color-mix(in srgb, var(--muted) 84%, var(--ink));
+  font-weight: 780;
+}
+
+.nav-item {
+  color: color-mix(in srgb, var(--ink) 88%, var(--muted));
+}
+
+.nav-item::before {
+  width: 7px;
+  height: 7px;
+  border-width: 1.5px;
+  background: transparent;
+}
+
+.nav-item.active {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.topbar {
+  padding: 18px clamp(28px, 4vw, 56px);
+}
+
+.topbar .eyebrow,
+.landing .eyebrow {
+  color: color-mix(in srgb, var(--muted) 82%, var(--accent));
+}
+
+#chat.view.active {
+  max-width: var(--meids-workspace-width);
+  padding-top: clamp(36px, 6vh, 78px);
+}
+
+.chat-workspace-hero {
+  justify-items: start;
+  max-width: 760px;
+  margin: 0 0 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+}
+
+.chat-workspace-hero h2 {
+  max-width: 780px;
+  font-size: clamp(34px, 5vw, 64px);
+  font-weight: 820;
+  line-height: 0.98;
+}
+
+.chat-workspace-hero p {
+  max-width: 650px;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.chat-quick-actions {
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+
+.chat-quick-actions button {
+  min-height: 38px;
+  border-radius: 999px;
+  padding-inline: 14px;
+}
+
+.chat-output-shell {
+  max-width: 100%;
+  margin: 0;
+}
+
+.chat-output-head {
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.messages {
+  min-height: min(36vh, 360px);
+}
+
+.message {
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.chat-workspace-drawer,
+.skill-routing-panel,
+.chat-skill-context,
+.n8n-agent-panel {
+  max-width: 100%;
+  margin-inline: 0;
+}
+
+.chat-workspace-drawer,
+.chat-skill-context {
+  border-style: dashed;
+}
+
+.composer {
+  border-radius: 14px;
+  padding: 8px;
+}
+
+.composer input {
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+}
+
+.composer input:focus {
+  box-shadow: none;
+}
+
+.composer button {
+  min-width: 92px;
+  min-height: 48px;
+  border-radius: 10px;
+}
+
+#concepts.view.active,
+#graph.view.active,
+#dashboard.view.active,
+#activity.view.active,
+#quality.view.active,
+#skills.view.active,
+#twins.view.active {
+  max-width: var(--meids-cockpit-width);
+}
+
+.knowledge-browser-panel,
+.graph-cockpit-panel,
+.dashboard-section,
+.production-command-surface,
+.review-command-surface,
+.skill-command-surface,
+.section-lead {
+  border-radius: 12px;
+}
+
+.knowledge-health-panel,
+.diagnostics-panel,
+.cockpit-disclosure {
+  border-style: dashed;
+}
+
+.knowledge-health-panel:not([open]) {
+  background: color-mix(in srgb, var(--surface) 48%, transparent);
+}
+
+.knowledge-health-list {
+  display: grid;
+  gap: 10px;
+}
+
+.knowledge-health-row,
+.graph-summary-strip div,
+.graph-canvas-wrap,
+.graph-detail-panel,
+.graph-insight-grid > section {
+  border-radius: 10px;
+}
+
+body.theme-dark {
+  --bg: #101310;
+  --panel: rgba(20, 24, 21, 0.88);
+  --ink: #f6f1e7;
+  --muted: #b8b0a3;
+  --line: #343a33;
+  --surface: rgba(22, 27, 23, 0.88);
+  --surface-quiet: rgba(27, 32, 28, 0.78);
+  --surface-strong: #1b201c;
+  --secondary-bg: #242922;
+  --secondary-hover: #2c332b;
+  background:
+    radial-gradient(circle at 52% -12%, rgba(120, 216, 191, 0.09), transparent 34%),
+    linear-gradient(180deg, #111411 0%, #0f120f 100%);
+}
+
+body.theme-dark .sidebar {
+  background: #171b17;
+  border-right-color: var(--meids-dark-line);
+}
+
+body.theme-dark .topbar {
+  background: rgba(15, 18, 16, 0.84);
+  border-bottom-color: var(--meids-dark-line);
+}
+
+body.theme-dark .nav-item {
+  color: #d8d1c5;
+}
+
+body.theme-dark .nav-item.active {
+  background: rgba(122, 216, 191, 0.08);
+  color: #fff8ea;
+}
+
+body.theme-dark .panel,
+body.theme-dark .message,
+body.theme-dark .composer,
+body.theme-dark .chat-workspace-drawer,
+body.theme-dark .chat-skill-context,
+body.theme-dark .skill-routing-panel,
+body.theme-dark .n8n-agent-panel,
+body.theme-dark .knowledge-browser-panel,
+body.theme-dark .graph-cockpit-panel,
+body.theme-dark .dashboard-section,
+body.theme-dark .section-lead,
+body.theme-dark .production-command-surface,
+body.theme-dark .review-command-surface,
+body.theme-dark .skill-command-surface {
+  border-color: var(--meids-dark-line);
+  background: rgba(21, 25, 22, 0.82);
+}
+
+body.theme-dark .chat-workspace-hero {
+  background: transparent;
+}
+
+body.theme-dark .chat-output-head,
+body.theme-dark .cockpit-view-rail,
+body.theme-dark .knowledge-increment-head {
+  border-color: var(--meids-dark-line);
+}
+
+body.theme-dark input,
+body.theme-dark select,
+body.theme-dark textarea {
+  border-color: var(--meids-dark-line);
+  background: #111511;
+  color: #f6f1e7;
+}
+
+body.theme-dark button.secondary,
+body.theme-dark .workspace-signal,
+body.theme-dark .mode-pill,
+body.theme-dark .filter-chip,
+body.theme-dark .profile-pill,
+body.theme-dark .knowledge-browser-summary span {
+  border-color: var(--meids-dark-line);
+  background: #20251f;
+  color: #eee6d8;
+}
+
+body.theme-dark .knowledge-health-row,
+body.theme-dark .knowledge-increment,
+body.theme-dark .graph-summary-strip div,
+body.theme-dark .graph-canvas-wrap,
+body.theme-dark .graph-detail-panel,
+body.theme-dark .graph-insight-grid > section,
+body.theme-dark .graph-preset-bar button,
+body.theme-dark .graph-demo-flow-panel,
+body.theme-dark .graph-recommendation,
+body.theme-dark .graph-recommendation-task,
+body.theme-dark .graph-list-node,
+body.theme-dark .graph-node,
+body.theme-dark .graph-node-rail,
+body.theme-dark .graph-reasoning-card {
+  border-color: var(--meids-dark-line);
+  background: var(--meids-dark-surface-raised);
+  color: #f6f1e7;
+}
+
+body.theme-dark .knowledge-health-row strong,
+body.theme-dark .knowledge-increment-title,
+body.theme-dark .graph-cockpit-head h2,
+body.theme-dark .graph-node strong,
+body.theme-dark .graph-list-node strong,
+body.theme-dark .graph-summary-strip strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-health-row span,
+body.theme-dark .knowledge-increment p,
+body.theme-dark .knowledge-increment-source code,
+body.theme-dark .graph-node small,
+body.theme-dark .graph-list-node-meta,
+body.theme-dark .graph-command-surface p,
+body.theme-dark .graph-command-surface small {
+  color: #c9c0b3;
+}
+
+body.theme-dark .graph-svg-node.approved circle {
+  fill: #7ad8bf;
+  stroke: #d7fff4;
+}
+
+body.theme-dark .graph-svg-node.pending-review circle {
+  fill: #d7b56d;
+  stroke: #ffe5a8;
+}
+
+body.theme-dark .graph-svg-node.needs-rework circle {
+  fill: #d9826b;
+  stroke: #ffd2c5;
+}
+
+body.theme-dark .graph-svg-label-wrap rect,
+body.theme-dark .graph-svg-edge-label rect {
+  fill: rgba(17, 21, 17, 0.94);
+  stroke: var(--meids-dark-line);
+}
+
+body.theme-dark .graph-svg-node text,
+body.theme-dark .graph-svg-edge-label text {
+  fill: #f6f1e7;
+}
+
+@media (max-width: 900px) {
+  #chat.view.active {
+    padding-top: 28px;
+  }
+
+  .chat-workspace-hero {
+    margin-top: 0;
+  }
+
+  .chat-workspace-hero h2 {
+    font-size: clamp(32px, 10vw, 48px);
+  }
+}
+
 .toast {
   display: flex;
   align-items: flex-start;
@@ -20923,4 +21266,226 @@ body.theme-dark .graph-command-surface {
   .composer button {
     width: 100%;
   }
+}
+
+/* Final MeIDs workspace/cockpit overrides. Keep last so older generated layers cannot re-expand the UI. */
+.shell {
+  grid-template-columns: 248px minmax(0, 1fr);
+}
+
+.sidebar {
+  border-right: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.nav-label {
+  color: color-mix(in srgb, var(--muted) 84%, var(--ink));
+  font-weight: 780;
+}
+
+.nav-item {
+  color: color-mix(in srgb, var(--ink) 88%, var(--muted));
+}
+
+.nav-item.active {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+#chat.view.active {
+  max-width: var(--meids-workspace-width);
+  padding-top: clamp(36px, 6vh, 78px);
+}
+
+.chat-workspace-hero {
+  justify-items: start;
+  max-width: 760px;
+  margin: 0 0 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+}
+
+.chat-workspace-hero h2 {
+  max-width: 780px;
+  font-size: clamp(34px, 5vw, 64px);
+  font-weight: 820;
+  line-height: 0.98;
+}
+
+.chat-workspace-hero p {
+  max-width: 650px;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.chat-quick-actions {
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+
+.chat-quick-actions button {
+  min-height: 38px;
+  border-radius: 999px;
+  padding-inline: 14px;
+}
+
+.chat-output-shell,
+.chat-workspace-drawer,
+.skill-routing-panel,
+.chat-skill-context,
+.n8n-agent-panel {
+  max-width: 100%;
+  margin-inline: 0;
+}
+
+.chat-output-head {
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.messages {
+  min-height: min(36vh, 360px);
+}
+
+.composer {
+  border-radius: 14px;
+  padding: 8px;
+}
+
+.composer input {
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+}
+
+.composer input:focus {
+  box-shadow: none;
+}
+
+.composer button {
+  min-width: 92px;
+  min-height: 48px;
+  border-radius: 10px;
+}
+
+#concepts.view.active,
+#graph.view.active,
+#dashboard.view.active,
+#activity.view.active,
+#quality.view.active,
+#skills.view.active,
+#twins.view.active {
+  max-width: var(--meids-cockpit-width);
+}
+
+.knowledge-health-panel,
+.diagnostics-panel,
+.cockpit-disclosure,
+.chat-workspace-drawer,
+.chat-skill-context {
+  border-style: dashed;
+}
+
+body.theme-dark {
+  --bg: #101310;
+  --panel: rgba(20, 24, 21, 0.88);
+  --ink: #f6f1e7;
+  --muted: #b8b0a3;
+  --line: #343a33;
+  --surface: rgba(22, 27, 23, 0.88);
+  --surface-quiet: rgba(27, 32, 28, 0.78);
+  --surface-strong: #1b201c;
+  --secondary-bg: #242922;
+  --secondary-hover: #2c332b;
+  background:
+    radial-gradient(circle at 52% -12%, rgba(120, 216, 191, 0.09), transparent 34%),
+    linear-gradient(180deg, #111411 0%, #0f120f 100%);
+}
+
+body.theme-dark .sidebar {
+  background: #171b17;
+  border-right-color: rgba(241, 235, 224, 0.16);
+}
+
+body.theme-dark .topbar {
+  background: rgba(15, 18, 16, 0.84);
+  border-bottom-color: rgba(241, 235, 224, 0.16);
+}
+
+body.theme-dark .nav-item.active {
+  background: rgba(122, 216, 191, 0.08);
+  color: #fff8ea;
+}
+
+body.theme-dark .panel,
+body.theme-dark .message,
+body.theme-dark .composer,
+body.theme-dark .chat-workspace-drawer,
+body.theme-dark .chat-skill-context,
+body.theme-dark .skill-routing-panel,
+body.theme-dark .n8n-agent-panel,
+body.theme-dark .knowledge-browser-panel,
+body.theme-dark .graph-cockpit-panel,
+body.theme-dark .dashboard-section,
+body.theme-dark .section-lead,
+body.theme-dark .production-command-surface,
+body.theme-dark .review-command-surface,
+body.theme-dark .skill-command-surface,
+body.theme-dark .knowledge-health-row,
+body.theme-dark .knowledge-increment,
+body.theme-dark .graph-summary-strip div,
+body.theme-dark .graph-canvas-wrap,
+body.theme-dark .graph-detail-panel,
+body.theme-dark .graph-insight-grid > section,
+body.theme-dark .graph-preset-bar button,
+body.theme-dark .graph-demo-flow-panel,
+body.theme-dark .graph-recommendation,
+body.theme-dark .graph-recommendation-task,
+body.theme-dark .graph-list-node,
+body.theme-dark .graph-node,
+body.theme-dark .graph-node-rail,
+body.theme-dark .graph-reasoning-card {
+  border-color: rgba(241, 235, 224, 0.16);
+  background: #1b201c;
+  color: #f6f1e7;
+}
+
+body.theme-dark input,
+body.theme-dark select,
+body.theme-dark textarea {
+  border-color: rgba(241, 235, 224, 0.16);
+  background: #111511;
+  color: #f6f1e7;
+}
+
+body.theme-dark button.secondary,
+body.theme-dark .workspace-signal,
+body.theme-dark .mode-pill,
+body.theme-dark .filter-chip,
+body.theme-dark .profile-pill,
+body.theme-dark .knowledge-browser-summary span {
+  border-color: rgba(241, 235, 224, 0.16);
+  background: #20251f;
+  color: #eee6d8;
+}
+
+body.theme-dark .knowledge-health-row strong,
+body.theme-dark .knowledge-increment-title,
+body.theme-dark .graph-cockpit-head h2,
+body.theme-dark .graph-node strong,
+body.theme-dark .graph-list-node strong,
+body.theme-dark .graph-summary-strip strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-health-row span,
+body.theme-dark .knowledge-increment p,
+body.theme-dark .knowledge-increment-source code,
+body.theme-dark .graph-node small,
+body.theme-dark .graph-list-node-meta,
+body.theme-dark .graph-command-surface p,
+body.theme-dark .graph-command-surface small {
+  color: #c9c0b3;
 }

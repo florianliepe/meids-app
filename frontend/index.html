@@ -129,15 +129,15 @@
         </div>
 
         <nav class="nav" aria-label="Main navigation">
-          <span class="nav-label">Workspace</span>
-          <button class="nav-item active" data-view="chat" data-nav-zone="workspace">Chat</button>
-          <button class="nav-item" data-view="voice" data-nav-zone="workspace">Voice</button>
-          <button class="nav-item" data-view="ingest" data-nav-zone="workspace">Upload</button>
-          <button class="nav-item" data-view="concepts" data-nav-zone="workspace">Knowledge</button>
+          <span class="nav-label">Assistant Workspace</span>
+          <button class="nav-item active" data-view="chat" data-nav-zone="workspace">Actor Twin</button>
+          <button class="nav-item" data-view="voice" data-nav-zone="workspace">Voice Capture</button>
+          <button class="nav-item" data-view="ingest" data-nav-zone="workspace">Source Upload</button>
           <span class="nav-label">Design Cockpit</span>
           <button class="nav-item" data-view="twins" data-nav-zone="cockpit">Twins</button>
           <button class="nav-item" data-view="skills" data-nav-zone="cockpit">Skills</button>
           <span class="nav-label">Review Cockpit</span>
+          <button class="nav-item" data-view="concepts" data-nav-zone="cockpit">Knowledge</button>
           <button class="nav-item" data-view="dashboard" data-nav-zone="cockpit">Review</button>
           <button class="nav-item" data-view="graph" data-nav-zone="cockpit">Graph</button>
           <button class="nav-item" data-view="activity" data-nav-zone="cockpit">Traces</button>
@@ -183,8 +183,8 @@
           <div id="chatWorkspaceIntro" class="workspace-intro"></div>
           <section class="chat-workspace-hero" aria-label="Agent interaction workspace">
             <span class="badge">Actor Twin</span>
-            <h2>Ask, activate, or capture work.</h2>
-            <p>The main workspace stays focused on interaction. Source context, retrieval controls, and governance details stay one level down.</p>
+            <h2>Ask the twin. Activate a skill when work needs execution.</h2>
+            <p>One focused surface for questions, skill activation, source context, and voice capture. Review, graph, trace, and governance work stays in the cockpit.</p>
             <div class="chat-quick-actions" aria-label="Workspace shortcuts">
               <button class="secondary small" type="button" data-chat-action="focus-query">Ask twin</button>
               <button class="secondary small" type="button" data-chat-action="open-interaction-setup">Activate skill</button>
@@ -240,8 +240,8 @@
             <div class="n8n-agent-head">
               <div>
                 <span class="badge">Connected agent</span>
-                <h2>External Twin Agent</h2>
-                <p>Use the connected agent endpoint from inside the intellectual twin workspace when it is enabled.</p>
+                <h2>Actor Twin via n8n</h2>
+                <p>Use the connected Actor Twin workflow when an answer should be routed through the external agent layer.</p>
               </div>
               <a id="n8nAgentLink" class="secondary small n8n-agent-link" href="#" target="_blank" rel="noreferrer">Open external chat</a>
             </div>
