@@ -1,0 +1,79 @@
+{
+  "agent_id": "knowledge_fabric_agent",
+  "agent_name": "Knowledge Fabric Agent",
+  "contract_version": "0.1.0",
+  "source": "contracts/n8n/fixtures/knowledge-fabric-agent.json",
+  "status_expectations": ["documented", "fixture_ready", "contract_tested"],
+  "request": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_knowledge_fabric_demo_001",
+    "timestamp": "2026-08-07T10:05:00Z",
+    "agent_id": "knowledge_fabric_agent",
+    "intent": "ingest_concept",
+    "principal": {
+      "twin_id": "florian",
+      "display_name": "Florian"
+    },
+    "input": {
+      "source_type": "transcript",
+      "title": "Example meeting reflection",
+      "content": "Public-safe example transcript text for a client alignment reflection.",
+      "target_state": "pending_review"
+    },
+    "context": {
+      "okf_namespace": "concepts/florian/examples",
+      "allowed_outputs": ["markdown", "yaml_frontmatter", "graph_candidate_edges"],
+      "vector_policy": "do_not_refresh_without_approved_storage"
+    },
+    "approval": {
+      "required": false,
+      "reason": "Creates pending-review knowledge only."
+    }
+  },
+  "response": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_knowledge_fabric_demo_001",
+    "agent_id": "knowledge_fabric_agent",
+    "status": "completed",
+    "output": {
+      "concept_path": "concepts/florian/examples/2026-08-07-example-meeting-reflection.md",
+      "review_state": "pending_review",
+      "candidate_edges": [
+        {
+          "source": "concept:example-meeting-reflection",
+          "target": "cluster:client-alignment",
+          "relation_type": "candidate_member_of_cluster",
+          "confidence": 0.64
+        }
+      ]
+    },
+    "trace": {
+      "trace_id": "trace_knowledge_fabric_demo_001",
+      "used_agents": ["graph_curator"],
+      "stored": true
+    }
+  },
+  "approval_required": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_knowledge_fabric_demo_approval_001",
+    "agent_id": "knowledge_fabric_agent",
+    "status": "approval_required",
+    "approval": {
+      "required": true,
+      "gate": "promote_to_approved",
+      "summary": "The concept can be stored as pending review, but approval is required before it becomes trusted retrieval context.",
+      "proposed_action": "Promote concept to approved and refresh selected retrieval indexes."
+    }
+  },
+  "failure": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_knowledge_fabric_demo_failure_001",
+    "agent_id": "knowledge_fabric_agent",
+    "status": "failed",
+    "error": {
+      "code": "INVALID_OKF_PAYLOAD",
+      "message": "The concept payload lacks required title or content fields.",
+      "recoverable": true
+    }
+  }
+}

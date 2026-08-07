@@ -37,6 +37,20 @@ This document defines the implementation direction for the public MeIDs app and 
 
 ## Webhook Contract Pattern
 
+Public-safe fixture files now exist for the three top-level agent boundaries:
+
+| Agent | Fixture |
+| --- | --- |
+| Actor Twin | `contracts/n8n/fixtures/actor-twin.json` |
+| Knowledge Fabric Agent | `contracts/n8n/fixtures/knowledge-fabric-agent.json` |
+| Agentic Butler | `contracts/n8n/fixtures/agentic-butler.json` |
+
+Validate fixture structure locally with:
+
+```powershell
+& "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-n8n-fixtures.cjs
+```
+
 Every n8n endpoint should accept the same envelope:
 
 ```json

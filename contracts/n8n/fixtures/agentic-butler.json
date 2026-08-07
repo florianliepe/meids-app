@@ -1,0 +1,81 @@
+{
+  "agent_id": "agentic_butler",
+  "agent_name": "Agentic Butler",
+  "contract_version": "0.1.0",
+  "source": "contracts/n8n/fixtures/agentic-butler.json",
+  "status_expectations": ["documented", "fixture_ready", "contract_tested"],
+  "request": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_agentic_butler_demo_001",
+    "timestamp": "2026-08-07T10:10:00Z",
+    "agent_id": "agentic_butler",
+    "intent": "activate_skill",
+    "principal": {
+      "twin_id": "florian",
+      "display_name": "Florian"
+    },
+    "input": {
+      "skill_id": "project-management-support-steering",
+      "manual_trigger": true,
+      "email_export": "Public-safe sample email thread.",
+      "calendar_export": "Public-safe sample calendar blocker.",
+      "teams_export": "Public-safe sample Teams notes."
+    },
+    "context": {
+      "actor_checkpoint_policy": "consult_actor_twin_before_prioritization_and_before_human_gates",
+      "skill_orchestrator": "internal_component",
+      "allowed_outputs": ["daily_plan", "todo_table", "approval_queue"]
+    },
+    "approval": {
+      "required": false,
+      "reason": "Planning output only; no mail send or meeting creation."
+    }
+  },
+  "response": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_agentic_butler_demo_001",
+    "agent_id": "agentic_butler",
+    "status": "completed",
+    "output": {
+      "summary": "Daily plan generated from exported source context.",
+      "todos": [
+        {
+          "what": "Prepare alignment meeting brief",
+          "how": "Summarize relevant source notes and list open decisions.",
+          "why": "Reduces meeting ambiguity and decision latency.",
+          "whom": "Client alignment group",
+          "priority": "high"
+        }
+      ],
+      "approval_queue": []
+    },
+    "trace": {
+      "trace_id": "trace_agentic_butler_demo_001",
+      "used_agents": ["skill_orchestrator", "actor_twin"],
+      "stored": true
+    }
+  },
+  "approval_required": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_agentic_butler_demo_approval_001",
+    "agent_id": "agentic_butler",
+    "status": "approval_required",
+    "approval": {
+      "required": true,
+      "gate": "requires_human_action",
+      "summary": "The skill run proposes creating a meeting with external participants.",
+      "proposed_action": "Create calendar invite after human approval."
+    }
+  },
+  "failure": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_agentic_butler_demo_failure_001",
+    "agent_id": "agentic_butler",
+    "status": "failed",
+    "error": {
+      "code": "SKILL_NOT_APPROVED",
+      "message": "The requested skill is not approved for runtime use.",
+      "recoverable": true
+    }
+  }
+}

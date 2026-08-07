@@ -6648,6 +6648,183 @@ body.theme-dark .graph-command-surface small {
   color: #c9c0b3;
 }
 
+.agent-contract-status-strip,
+.agent-contract-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.agent-contract-status-strip span,
+.agent-contract-links a {
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 999px;
+  background: var(--surface-quiet);
+  color: var(--muted);
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.agent-contract-status-strip .documented,
+.agent-contract-status-strip .fixture-ready,
+.agent-contract-status-strip .contract-tested,
+.agent-contract-links a {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--line));
+  color: var(--accent-strong);
+}
+
+.agent-contract-status-strip .n8n-connected {
+  border-color: color-mix(in srgb, var(--accent) 56%, var(--line));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: var(--accent-strong);
+}
+
+.agent-contract-status-strip .blocked {
+  border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
+  color: var(--warn);
+}
+
+body.theme-dark .agent-contract-status-strip span,
+body.theme-dark .agent-contract-links a {
+  background: #20251f;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: relative;
+    top: auto;
+    width: 100%;
+    max-height: none;
+    border-right: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  }
+
+  .main,
+  .topbar,
+  .view {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .topbar-actions {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    align-items: stretch;
+  }
+
+  .topbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .topbar-actions .workspace-signal,
+  .topbar-actions .mode-pill {
+    grid-column: 1 / -1;
+  }
+
+  .topbar-actions button,
+  .topbar-actions span {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .cockpit-view-rail,
+  .production-command-actions,
+  .graph-viewport-actions,
+  .graph-relation-strip,
+  .graph-lane-strip,
+  .graph-projection-chips,
+  .knowledge-browser-summary {
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cockpit-view-rail {
+    position: relative;
+    top: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: 14px;
+  }
+
+  .cockpit-view-rail button,
+  .graph-viewport-actions button,
+  .graph-relation-strip button,
+  .graph-preset-bar button {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .knowledge-browser-panel,
+  .knowledge-health-panel,
+  .knowledge-review-workspace,
+  .knowledge-review-main,
+  .concept-list,
+  .graph-cockpit-panel,
+  .graph-map,
+  .graph-topology-map {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .knowledge-health-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knowledge-health-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .graph-canvas-commandbar {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .graph-canvas-wrap {
+    min-height: 520px;
+    overflow: auto;
+  }
+
+  .graph-topology-shell {
+    min-width: 720px;
+  }
+}
+
+@media (max-width: 560px) {
+  .grid.two,
+  .grid.three,
+  .quality-panel-grid,
+  .knowledge-review-workspace,
+  .graph-insight-grid,
+  .compare-grid,
+  .source-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cockpit-view-rail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 body.theme-dark .graph-svg-node.approved circle {
   fill: #7ad8bf;
   stroke: #d7fff4;

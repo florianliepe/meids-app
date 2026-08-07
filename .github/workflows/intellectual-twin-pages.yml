@@ -7,7 +7,10 @@ on:
       - main
     paths:
       - "frontend/**"
+      - "contracts/n8n/**"
+      - "docs/**"
       - "scripts/pages-smoke-check.cjs"
+      - "scripts/validate-n8n-fixtures.cjs"
       - ".github/workflows/intellectual-twin-pages.yml"
 
 permissions:
@@ -33,6 +36,9 @@ jobs:
 
       - name: Validate frontend JavaScript
         run: node --check frontend/app.js
+
+      - name: Validate n8n contract fixtures
+        run: node scripts/validate-n8n-fixtures.cjs
 
       - name: Prepare static artifact
         env:

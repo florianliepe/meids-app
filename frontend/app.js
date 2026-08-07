@@ -243,6 +243,7 @@
 
 const runtimeConfig = window.INTELLECTUAL_TWIN_CONFIG || {};
 const apiBaseUrl = normalizeBaseUrl(runtimeConfig.apiBaseUrl || "");
+const staticPagesMode = Boolean(runtimeConfig.staticPagesMode) && !apiBaseUrl;
 const configuredAssetBase = Object.prototype.hasOwnProperty.call(runtimeConfig, "assetBaseUrl")
   ? runtimeConfig.assetBaseUrl
   : window.__MEIDS_ASSET_BASE__ || "/static";
@@ -9089,6 +9090,10 @@ function renderVoiceConversationTimeline(session) {
 }
 
 async function refreshAll() {
+  if (staticPagesMode) {
+    refreshStaticPagesWorkspace();
+    return;
+  }
   const status = await getJson("/api/status");
   state.backendStatus = status;
   state.activeTwin = status.active_twin;
@@ -9142,6 +9147,348 @@ async function refreshAll() {
   await safeRefreshSkillRuns();
   await safeRefreshSkillRefinements();
   await safeRefreshSkillTelemetry();
+}
+
+function refreshStaticPagesWorkspace() {
+  const status = buildStaticPagesStatus();
+  state.backendStatus = status;
+  state.activeTwin = status.active_twin;
+  state.selectedTwinId = state.selectedTwinId || state.activeTwin;
+  state.twins = buildStaticPagesTwins();
+  state.concepts = buildStaticPagesConcepts();
+  state.okfGraph = buildStaticPagesGraph();
+  state.agentOperatingModel = buildStaticPagesAgentOperatingModel();
+  state.n8nAgentContracts = buildStaticPagesN8nAgentContracts();
+  state.graphRecommendationTasks = [];
+  state.graphEdgeReviews = [];
+  state.graphPostgresRead = { status: "static-staging", blockers: ["Postgres is not connected in GitHub Pages staging."] };
+  state.okfGraphLoadedAt = new Date().toISOString();
+  state.openAIConfigured = Boolean(status.openai_configured);
+  renderTwinOptions();
+  $("#twinSelect").value = state.activeTwin;
+  $("#statusBackend").textContent = status.status;
+  $("#statusProvider").textContent = status.ai_provider;
+  $("#statusOpenAI").textContent = status.openai_configured ? "configured" : "not used";
+  $("#statusN8nChat").textContent = status.n8n_chat?.configured ? "webhook active" : "fixture mode";
+  $("#statusGuardrails").textContent = status.guardrail_policy || "-";
+  $("#statusVersion").textContent = status.app_version || "-";
+  $("#workspaceSignal").textContent = "Florian · GitHub Pages · n8n ready";
+  $("#voiceReadiness").textContent = "Static staging: voice recording UI is visible; transcription requires the local backend or a hosted API.";
+  $("#voiceReadiness").className = "readiness missing";
+  updateLandingStatus();
+  renderProductionRestartHint();
+  renderTwinContextNotices();
+  renderWorkspaceIntro();
+  renderConcepts();
+  renderGraphFilters();
+  syncGraphControlValues();
+  renderGraphCockpit();
+  renderAgentOperatingModelPanel();
+  const graphStatus = $("#graphStatus");
+  if (graphStatus) graphStatus.textContent = "Static staging graph loaded: 4 nodes, 4 relations.";
+  renderProductionProgressHeader();
+}
+
+function buildStaticPagesStatus() {
+  return {
+    status: "static",
+    active_twin: "florian",
+    ai_provider: "n8n",
+    openai_configured: false,
+    guardrail_policy: "approval-gated",
+    app_version: FRONTEND_BUILD_TAG,
+    n8n_chat: {
+      configured: Boolean(runtimeConfig.n8nChatEnabled && runtimeConfig.n8nChatWebhookUrl),
+      webhook_url: runtimeConfig.n8nChatWebhookUrl || "",
+    },
+  };
+}
+
+function buildStaticPagesTwins() {
+  return [
+    {
+      twin_id: "florian",
+      display_name: "Florian",
+      status: "active",
+      purpose: "Public staging twin for visual QA and n8n contract validation.",
+      role_context: "Actor Twin staging profile",
+      default_language: "en",
+    },
+  ];
+}
+
+function buildStaticPagesAgentOperatingModel() {
+  return {
+    status: "static-fixture",
+    top_level_agents: [
+      {
+        id: "actor_twin",
+        name: "Actor Twin",
+        group: "interface",
+        purpose: "Interprets user intent, answers with grounded OKF/vector/graph context, and acts as the decision instance before work execution.",
+        n8n_contract: "contracts/n8n/fixtures/actor-twin.json",
+        owns: ["intent interpretation", "persona steering", "answer synthesis", "human escalation"],
+        subagents: ["critic perspective", "persona context adapter"],
+      },
+      {
+        id: "knowledge_fabric_agent",
+        name: "Knowledge Fabric Agent",
+        group: "knowledge",
+        purpose: "Ingests, aggregates, reviews, and maintains OKF concepts, markdown/YAML storage, graph candidates, and retrieval refresh boundaries.",
+        n8n_contract: "contracts/n8n/fixtures/knowledge-fabric-agent.json",
+        owns: ["OKF authoring", "CRUD audit", "evidence storage", "graph curator trigger"],
+        subagents: ["concept curator", "graph curator", "retrieval index refresher"],
+      },
+      {
+        id: "agentic_butler",
+        name: "Agentic Butler",
+        group: "execution",
+        purpose: "Activates approved skills, runs the internal Skill Orchestrator, coordinates task agents, and pauses on human approval gates.",
+        n8n_contract: "contracts/n8n/fixtures/agentic-butler.json",
+        owns: ["skill activation", "task orchestration", "approval queue", "trace storage"],
+        internal_components: [
+          {
+            id: "skill_orchestrator",
+            name: "Skill Orchestrator",
+            purpose: "Internal Butler component that sequences task agents for one approved skill run.",
+          },
+        ],
+        subagents: ["skill elicitation", "task specialist agents", "run critic"],
+      },
+    ],
+  };
+}
+
+function buildStaticPagesN8nAgentContracts() {
+  const repoBase = "https://github.com/florianliepe/meids-app/blob/main";
+  const contracts = [
+    {
+      agent_id: "actor_twin",
+      agent_name: "Actor Twin",
+      source: "contracts/n8n/fixtures/actor-twin.json",
+      source_url: `${repoBase}/contracts/n8n/fixtures/actor-twin.json`,
+      backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
+      webhook_env_var: "N8N_ACTOR_TWIN_WEBHOOK_URL",
+      webhook_configured: false,
+      statuses: ["documented", "fixture ready", "contract tested", "blocked"],
+      blocker: "Live n8n webhook is intentionally not required for GitHub Pages fixture mode.",
+    },
+    {
+      agent_id: "knowledge_fabric_agent",
+      agent_name: "Knowledge Fabric Agent",
+      source: "contracts/n8n/fixtures/knowledge-fabric-agent.json",
+      source_url: `${repoBase}/contracts/n8n/fixtures/knowledge-fabric-agent.json`,
+      backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
+      webhook_env_var: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+      webhook_configured: false,
+      statuses: ["documented", "fixture ready", "contract tested", "blocked"],
+      blocker: "Vector DB and live ingestion workflow are pending provider credentials.",
+    },
+    {
+      agent_id: "agentic_butler",
+      agent_name: "Agentic Butler",
+      source: "contracts/n8n/fixtures/agentic-butler.json",
+      source_url: `${repoBase}/contracts/n8n/fixtures/agentic-butler.json`,
+      backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
+      webhook_env_var: "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+      webhook_configured: false,
+      statuses: ["documented", "fixture ready", "contract tested", "blocked"],
+      blocker: "Live skill execution remains approval-gated and requires n8n workflow rollout.",
+    },
+  ];
+  return {
+    status: "fixture-ready",
+    contract_count: contracts.length,
+    configured_count: contracts.filter((contract) => contract.webhook_configured).length,
+    contracts,
+  };
+}
+
+function buildStaticPagesConcepts() {
+  return [
+    {
+      path: "okf/static/actor-twin.md",
+      title: "Actor Twin",
+      type: "Agent",
+      cluster: "agent-architecture",
+      tags: ["actor-agent", "decision-interface"],
+      description: "User-facing answer and decision layer. Uses persona, OKF, vector, and graph context before routing execution.",
+      review_state: "approved",
+      source_anchor: "docs/agent-architecture-and-n8n-contracts.md",
+      source_deep_link: "docs/agent-architecture-and-n8n-contracts.md#top-level-agents",
+      fabric: {
+        okf_layer: "agent",
+        okf_maturity: "approved",
+        retrieval_profiles: ["actor-steering", "decisions", "facts"],
+        actor_signal: "decision-interface",
+        evidence_strength: "documented-contract",
+      },
+    },
+    {
+      path: "okf/static/knowledge-fabric-agent.md",
+      title: "Knowledge Fabric Agent",
+      type: "Agent",
+      cluster: "agent-architecture",
+      tags: ["okf", "graph", "retrieval"],
+      description: "Maintains OKF concepts, source evidence, vector refresh, and graph curation through public-safe contracts.",
+      review_state: "approved",
+      source_anchor: "docs/agent-architecture-and-n8n-contracts.md",
+      source_deep_link: "docs/agent-architecture-and-n8n-contracts.md#top-level-agents",
+      fabric: {
+        okf_layer: "agent",
+        okf_maturity: "approved",
+        retrieval_profiles: ["facts", "risks", "skills"],
+        actor_signal: "knowledge-governance",
+        evidence_strength: "documented-contract",
+      },
+    },
+    {
+      path: "okf/static/agentic-butler.md",
+      title: "Agentic Butler",
+      type: "Agent",
+      cluster: "agent-architecture",
+      tags: ["skill-execution", "orchestration", "approval"],
+      description: "Executes approved skills and owns the internal Skill Orchestrator, task agents, traces, and refinement proposals.",
+      review_state: "approved",
+      source_anchor: "docs/agent-architecture-and-n8n-contracts.md",
+      source_deep_link: "docs/agent-architecture-and-n8n-contracts.md#top-level-agents",
+      fabric: {
+        okf_layer: "agent",
+        okf_maturity: "approved",
+        retrieval_profiles: ["skills", "actor-steering", "risks"],
+        actor_signal: "work-execution",
+        evidence_strength: "documented-contract",
+      },
+    },
+    {
+      path: "okf/static/n8n-contract-fixtures.md",
+      title: "n8n Contract Fixtures",
+      type: "Contract",
+      cluster: "agent-integration",
+      tags: ["n8n", "fixtures", "approval-gates"],
+      description: "Request and response envelopes for public-safe validation of Actor Twin, Knowledge Fabric Agent, and Agentic Butler workflows.",
+      review_state: "pending-review",
+      source_anchor: "docs/agent-architecture-and-n8n-contracts.md",
+      source_deep_link: "docs/agent-architecture-and-n8n-contracts.md#webhook-contract-pattern",
+      fabric: {
+        okf_layer: "contract",
+        okf_maturity: "linked",
+        retrieval_profiles: ["facts", "risks"],
+        actor_signal: "integration-readiness",
+        evidence_strength: "fixture-ready",
+      },
+    },
+  ];
+}
+
+function buildStaticPagesGraph() {
+  const nodes = [
+    {
+      node_key: "agent:actor-twin",
+      node_type: "agent",
+      title: "Actor Twin",
+      summary: "User-facing answer, decision, and routing interface.",
+      review_state: "approved",
+      confidence: 0.94,
+      cluster: "agent-architecture",
+      tags: ["actor", "decision"],
+      okf_path: "okf/static/actor-twin.md",
+      actor_readiness: "ready",
+      actor_readiness_score: 92,
+    },
+    {
+      node_key: "agent:knowledge-fabric",
+      node_type: "agent",
+      title: "Knowledge Fabric Agent",
+      summary: "Maintains OKF, evidence, graph relations, and retrieval refresh.",
+      review_state: "approved",
+      confidence: 0.9,
+      cluster: "agent-architecture",
+      tags: ["okf", "graph"],
+      okf_path: "okf/static/knowledge-fabric-agent.md",
+      actor_readiness: "ready",
+      actor_readiness_score: 88,
+    },
+    {
+      node_key: "agent:agentic-butler",
+      node_type: "agent",
+      title: "Agentic Butler",
+      summary: "Executes skills through internal orchestration and approval gates.",
+      review_state: "approved",
+      confidence: 0.9,
+      cluster: "agent-architecture",
+      tags: ["skills", "orchestration"],
+      okf_path: "okf/static/agentic-butler.md",
+      actor_readiness: "ready",
+      actor_readiness_score: 87,
+    },
+    {
+      node_key: "contract:n8n-fixtures",
+      node_type: "contract",
+      title: "n8n Contract Fixtures",
+      summary: "Public-safe request and response examples for validating agent workflow boundaries.",
+      review_state: "pending-review",
+      confidence: 0.76,
+      cluster: "agent-integration",
+      tags: ["n8n", "fixtures"],
+      okf_path: "okf/static/n8n-contract-fixtures.md",
+      actor_readiness: "needs-review",
+      actor_readiness_score: 64,
+    },
+  ];
+  const edges = [
+    {
+      edge_key: "edge:actor-to-knowledge",
+      source: "agent:actor-twin",
+      target: "agent:knowledge-fabric",
+      relation_type: "uses_context",
+      edge_type: "explicit",
+      review_state: "approved",
+      confidence: 0.91,
+      actor_use: "retrieve grounded context",
+    },
+    {
+      edge_key: "edge:actor-to-butler",
+      source: "agent:actor-twin",
+      target: "agent:agentic-butler",
+      relation_type: "delegates_execution",
+      edge_type: "explicit",
+      review_state: "approved",
+      confidence: 0.9,
+      actor_use: "activate approved skill",
+    },
+    {
+      edge_key: "edge:butler-to-contract",
+      source: "agent:agentic-butler",
+      target: "contract:n8n-fixtures",
+      relation_type: "requires_contract",
+      edge_type: "candidate",
+      review_state: "unreviewed",
+      confidence: 0.74,
+      actor_use: "validate skill workflow payload",
+    },
+    {
+      edge_key: "edge:knowledge-to-contract",
+      source: "agent:knowledge-fabric",
+      target: "contract:n8n-fixtures",
+      relation_type: "updates_contract_evidence",
+      edge_type: "inferred",
+      review_state: "unreviewed",
+      confidence: 0.68,
+      actor_use: "refresh OKF and graph evidence",
+    },
+  ];
+  return {
+    summary: {
+      node_count: nodes.length,
+      edge_count: edges.length,
+      approved_concepts: nodes.filter((node) => node.review_state === "approved").length,
+      pending_review: nodes.filter((node) => node.review_state !== "approved").length,
+      payload_hash: "static-pages-fixture",
+    },
+    nodes,
+    edges,
+  };
 }
 
 async function refreshWorkspace() {
@@ -11053,6 +11400,9 @@ function renderN8nContractReadiness(agent = {}, readiness = null) {
   const contractSource = readiness?.source || agent.n8n_contract || "";
   const configured = Boolean(readiness?.webhook_configured);
   const status = readiness ? (configured ? "configured" : "contract ready") : "missing contract";
+  const statusItems = Array.isArray(readiness?.statuses)
+    ? readiness.statuses
+    : ["documented", contractSource ? "fixture ready" : "blocked", configured ? "n8n connected" : "blocked"];
   const envVar = {
     actor_twin: "N8N_ACTOR_TWIN_WEBHOOK_URL",
     knowledge_fabric_agent: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
@@ -11063,7 +11413,17 @@ function renderN8nContractReadiness(agent = {}, readiness = null) {
       <span class="queue-kind">${escapeHtml(status)}</span>
       <strong>${escapeHtml(readiness?.webhook_env_var || envVar)}</strong>
       <p>${escapeHtml(contractSource)}</p>
+      <div class="agent-contract-status-strip" aria-label="Contract statuses">
+        ${statusItems.map((item) => `<span class="${safeGraphClass(item)}">${escapeHtml(item)}</span>`).join("")}
+      </div>
+      ${readiness?.source_url || readiness?.backlog_url ? `
+        <div class="agent-contract-links">
+          ${readiness?.source_url ? `<a href="${escapeHtml(readiness.source_url)}" target="_blank" rel="noreferrer">Fixture</a>` : ""}
+          ${readiness?.backlog_url ? `<a href="${escapeHtml(readiness.backlog_url)}" target="_blank" rel="noreferrer">Backlog</a>` : ""}
+        </div>
+      ` : ""}
       <small>${escapeHtml(configured ? "Webhook env var is configured. Run UAT before production use." : "Contract is present. Add webhook env var to activate runtime forwarding.")}</small>
+      ${readiness?.blocker ? `<small>${escapeHtml(readiness.blocker)}</small>` : ""}
       <div class="button-row tight">
         <button class="secondary small" type="button" data-agent-contract-test="${escapeHtml(agent.id || "")}">Test contract</button>
         ${agent.id === "knowledge_fabric_agent" ? `

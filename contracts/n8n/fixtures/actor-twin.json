@@ -1,0 +1,75 @@
+{
+  "agent_id": "actor_twin",
+  "agent_name": "Actor Twin",
+  "contract_version": "0.1.0",
+  "source": "contracts/n8n/fixtures/actor-twin.json",
+  "status_expectations": ["documented", "fixture_ready", "contract_tested"],
+  "request": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_actor_twin_demo_001",
+    "timestamp": "2026-08-07T10:00:00Z",
+    "agent_id": "actor_twin",
+    "intent": "answer_question",
+    "principal": {
+      "twin_id": "florian",
+      "display_name": "Florian"
+    },
+    "input": {
+      "query": "Which approved context is relevant for preparing a client alignment meeting?",
+      "mode": "grounded_answer"
+    },
+    "context": {
+      "okf_refs": ["concepts/florian/example/approved-client-context.md"],
+      "graph_refs": ["node:client-alignment", "edge:requires-decision-context"],
+      "retrieval_policy": "approved_first_include_pending_as_draft"
+    },
+    "approval": {
+      "required": false,
+      "reason": "Answer-only request with no external action."
+    }
+  },
+  "response": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_actor_twin_demo_001",
+    "agent_id": "actor_twin",
+    "status": "completed",
+    "output": {
+      "answer": "Use the approved client-alignment context first, then cite draft concepts only as unvalidated hypotheses.",
+      "confidence": 0.82,
+      "citations": [
+        {
+          "ref": "concepts/florian/example/approved-client-context.md",
+          "state": "approved"
+        }
+      ]
+    },
+    "trace": {
+      "trace_id": "trace_actor_twin_demo_001",
+      "used_agents": ["knowledge_fabric_agent"],
+      "stored": true
+    }
+  },
+  "approval_required": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_actor_twin_demo_approval_001",
+    "agent_id": "actor_twin",
+    "status": "approval_required",
+    "approval": {
+      "required": true,
+      "gate": "external_action",
+      "summary": "The requested answer includes a proposed email send action.",
+      "proposed_action": "Ask Agentic Butler to draft an external email but pause before sending."
+    }
+  },
+  "failure": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_actor_twin_demo_failure_001",
+    "agent_id": "actor_twin",
+    "status": "failed",
+    "error": {
+      "code": "INSUFFICIENT_GROUNDED_CONTEXT",
+      "message": "No approved or cited context was available for this question.",
+      "recoverable": true
+    }
+  }
+}

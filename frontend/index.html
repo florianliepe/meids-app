@@ -6,7 +6,9 @@
     <title>MeIDs</title>
     <script>
       window.__MEIDS_FILE_PROTOCOL__ = window.location.protocol === "file:";
-      window.__MEIDS_LOCAL_SERVER__ = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+      window.__MEIDS_LOCAL_SERVER__ =
+        ["localhost", "127.0.0.1"].includes(window.location.hostname) &&
+        ["8501", "8601"].includes(window.location.port);
       window.__MEIDS_ASSET_BASE__ = window.__MEIDS_LOCAL_SERVER__
         ? "/static/"
         : new URL("./", window.location.href).pathname;
