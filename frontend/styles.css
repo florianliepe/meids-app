@@ -6692,6 +6692,51 @@ body.theme-dark .agent-contract-links a {
   background: #20251f;
 }
 
+.agent-contract-message {
+  padding: 0;
+}
+
+.agent-response-card {
+  width: 100%;
+  border-color: color-mix(in srgb, var(--accent) 20%, var(--line));
+}
+
+.agent-response-card.approval_required {
+  border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
+}
+
+.agent-approval-gate {
+  margin: 12px 0;
+}
+
+.agent-approval-gate.acknowledged {
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.agent-response-card .todo-table {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.agent-response-card .todo-table article {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 74%, transparent);
+  padding: 10px;
+}
+
+.agent-response-card .todo-table p {
+  margin: 4px 0;
+  color: var(--muted);
+}
+
+body.theme-dark .agent-response-card .todo-table article {
+  background: #171d18;
+  border-color: var(--meids-dark-line);
+}
+
 @media (max-width: 900px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
@@ -6716,6 +6761,49 @@ body.theme-dark .agent-contract-links a {
 
   .topbar-actions {
     min-width: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .chat-workspace-hero {
+    padding: 18px;
+    text-align: left;
+    justify-items: stretch;
+  }
+
+  .chat-workspace-hero h2 {
+    font-size: 30px;
+  }
+
+  .chat-quick-actions,
+  .button-row.tight {
+    justify-content: stretch;
+  }
+
+  .chat-quick-actions button,
+  .button-row.tight button {
+    flex: 1 1 140px;
+  }
+
+  .chat-skillbar,
+  .chat-workspace-settings .chat-skillbar {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .chat-skillbar label,
+  .chat-skillbar .muted-inline {
+    width: 100%;
+  }
+
+  .chat-skillbar select,
+  .chat-skillbar details,
+  .chat-skillbar .compact-select {
+    width: 100%;
+  }
+
+  .agent-response-card .skill-run-head {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -208,6 +208,7 @@
   agentOperatingModel: null,
   n8nAgentContracts: null,
   n8nContractTestResult: null,
+  n8nLiveProbeResults: {},
   knowledgeFabricDryRunResult: null,
   skillInputPresets: [],
   selectedSkillId: null,
@@ -6788,6 +6789,14 @@ function bindChat() {
     }
     if (action.dataset.chatAction === "propose-run-refinement") {
       proposeRunRefinementFromCard(action.dataset.runId || "", action);
+      return;
+    }
+    if (action.dataset.chatAction === "ack-agent-approval") {
+      acknowledgeAgentApproval(action);
+      return;
+    }
+    if (action.dataset.chatAction === "copy-agent-approval") {
+      copyAgentApproval(action);
     }
   });
   $("#riskPostureSelect").addEventListener("change", (event) => {
@@ -11513,6 +11522,7 @@ function renderN8nContractReadinessPanel(agents = []) {
 function renderN8nContractReadiness(agent = {}, readiness = null) {
   const contractSource = readiness?.source || agent.n8n_contract || "";
   const configured = Boolean(readiness?.webhook_configured);
+  const probe = state.n8nLiveProbeResults?.[agent.id || readiness?.agent_id || ""];
   const replayPassed = readiness?.replay_status === "passed";
   const status = readiness ? (configured ? "configured" : (replayPassed ? "fixture replay passed" : "contract ready")) : "missing contract";
   const statusItems = Array.isArray(readiness?.statuses)
@@ -11540,9 +11550,12 @@ function renderN8nContractReadiness(agent = {}, readiness = null) {
       ` : ""}
       <small>${escapeHtml(configured ? "Webhook env var is configured. Run UAT before production use." : "Fixture replay is local/static. Add webhook env var to activate runtime forwarding.")}</small>
       ${readiness?.replay_case_count ? `<small>${escapeHtml(`${readiness.replay_case_count} contract cases replayed locally`)}</small>` : ""}
+      ${probe ? `<small class="${escapeHtml(probe.status === "connected" ? "ready" : probe.status === "blocked" ? "warning-copy" : "muted-inline")}">${escapeHtml(`Live probe: ${probe.status} · ${probe.detail || ""}`)}</small>` : ""}
       ${readiness?.blocker ? `<small>${escapeHtml(readiness.blocker)}</small>` : ""}
       <div class="button-row tight">
         <button class="secondary small" type="button" data-agent-contract-test="${escapeHtml(agent.id || "")}">Test contract</button>
+        <button class="secondary small" type="button" data-agent-live-probe="${escapeHtml(agent.id || "")}">Probe live</button>
+        <button class="secondary small" type="button" data-agent-uat-payload="${escapeHtml(agent.id || "")}">Show UAT payload</button>
         ${agent.id === "knowledge_fabric_agent" ? `
           <button class="secondary small" type="button" data-knowledge-fabric-dry-run="ingest">Ingest payload</button>
           <button class="secondary small" type="button" data-knowledge-fabric-dry-run="graph">Graph payload</button>
@@ -11585,6 +11598,16 @@ async function handleAgentOperatingModelClick(event) {
     await testAgentContract(testButton.dataset.agentContractTest || "");
     return;
   }
+  const probeButton = event.target.closest("[data-agent-live-probe]");
+  if (probeButton) {
+    await probeAgentContract(probeButton.dataset.agentLiveProbe || "");
+    return;
+  }
+  const uatButton = event.target.closest("[data-agent-uat-payload]");
+  if (uatButton) {
+    showAgentUatPayload(uatButton.dataset.agentUatPayload || "");
+    return;
+  }
   const dryRunButton = event.target.closest("[data-knowledge-fabric-dry-run]");
   if (dryRunButton) {
     await prepareKnowledgeFabricDryRun(dryRunButton.dataset.knowledgeFabricDryRun || "ingest");
@@ -11607,6 +11630,128 @@ async function testAgentContract(agentId) {
   } catch (error) {
     showToast("n8n contract test failed", compactError(error.message), "error");
   }
+}
+
+async function probeAgentContract(agentId) {
+  if (!agentId) return;
+  const webhookUrl = getAgentWebhook(agentId);
+  if (!webhookUrl) {
+    state.n8nLiveProbeResults = {
+      ...state.n8nLiveProbeResults,
+      [agentId]: { status: "blocked", detail: "No runtime webhook configured." },
+    };
+    renderAgentOperatingModelPanel();
+    showToast("Live probe blocked", `${agentDisplayName(agentId)} webhook is not configured.`, "warning");
+    return;
+  }
+  if (staticPagesMode && !isN8nChatWebhook(webhookUrl)) {
+    state.n8nLiveProbeResults = {
+      ...state.n8nLiveProbeResults,
+      [agentId]: { status: "configured", detail: "Webhook URL exists; live POST is disabled in static probe mode." },
+    };
+    renderAgentOperatingModelPanel();
+    showToast("Live probe configured", `${agentDisplayName(agentId)} has a webhook URL.`, "success");
+    return;
+  }
+  const envelope = buildAgentContractEnvelope(
+    agentId,
+    "contract_probe",
+    "Contract readiness probe from MeIDs cockpit.",
+    { execute: false },
+    { probe: true, source_context: {} },
+    { required: false, reason: "Readiness probe only." },
+  );
+  try {
+    const result = await postAgentContractEnvelope(agentId, envelope, (fallbackEnvelope) => normalizeAgentContractResponse(agentId, {
+      status: "completed",
+      output: { answer: "Fixture probe completed." },
+      trace: { trace_id: `trace_${fallbackEnvelope.request_id}`, stored: false },
+    }, fallbackEnvelope, "fixture fallback"));
+    state.n8nLiveProbeResults = {
+      ...state.n8nLiveProbeResults,
+      [agentId]: { status: result.runtime === "n8n connected" ? "connected" : "fixture", detail: result.trace_id || result.response?.request_id || "" },
+    };
+    renderAgentOperatingModelPanel();
+    showToast("Live probe completed", `${agentDisplayName(agentId)}: ${state.n8nLiveProbeResults[agentId].status}`, "success");
+  } catch (error) {
+    state.n8nLiveProbeResults = {
+      ...state.n8nLiveProbeResults,
+      [agentId]: { status: "failed", detail: compactError(error.message) },
+    };
+    renderAgentOperatingModelPanel();
+    showToast("Live probe failed", `${agentDisplayName(agentId)}: ${compactError(error.message)}`, "error");
+  }
+}
+
+function showAgentUatPayload(agentId) {
+  if (!agentId) return;
+  const envelope = buildUatEnvelope(agentId);
+  state.n8nContractTestResult = {
+    agent_id: agentId,
+    agent_name: agentDisplayName(agentId),
+    status: hasAgentWebhook(agentId) ? "webhook configured" : "fixture ready",
+    webhook_env_var: {
+      actor_twin: "N8N_ACTOR_TWIN_WEBHOOK_URL",
+      knowledge_fabric_agent: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+      agentic_butler: "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+    }[agentId] || "N8N_WEBHOOK_URL",
+    payload: envelope,
+  };
+  renderAgentOperatingModelPanel();
+  showToast("UAT payload ready", agentDisplayName(agentId), "success");
+}
+
+function buildUatEnvelope(agentId) {
+  if (agentId === "agentic_butler") {
+    return buildAgentContractEnvelope(
+      "agentic_butler",
+      "activate_skill",
+      "Prepare my day plan and pause before sending any email or meeting invite.",
+      {
+        skill_id: "project-management-support-steering",
+        skill_name: "Project Management Support & Steering",
+        manual_trigger: true,
+        email_export: "Public-safe sample email export.",
+        calendar_export: "Public-safe sample calendar export.",
+        teams_export: "Public-safe sample Teams export.",
+        knowledge_context: "Public-safe KPI and decision context.",
+      },
+      {
+        actor_checkpoint_policy: "consult_actor_twin_before_prioritization_and_before_human_gates",
+        skill_orchestrator: "internal_component",
+        allowed_outputs: ["daily_plan", "todo_table", "approval_queue"],
+      },
+    );
+  }
+  if (agentId === "knowledge_fabric_agent") {
+    return buildAgentContractEnvelope(
+      "knowledge_fabric_agent",
+      "ingest_concept",
+      "Create a pending OKF concept from this public-safe source context.",
+      {
+        source_type: "transcript",
+        title: "Public-safe UAT source note",
+        content: "Public-safe source context for OKF ingest UAT.",
+        target_state: "pending_review",
+      },
+      {
+        okf_namespace: "concepts/florian/uat",
+        allowed_outputs: ["markdown", "yaml_frontmatter", "graph_candidate_edges"],
+        vector_policy: "do_not_refresh_without_approved_storage",
+      },
+    );
+  }
+  return buildAgentContractEnvelope(
+    "actor_twin",
+    "answer_question",
+    "Which approved context should I use for a client alignment meeting?",
+    { mode: "grounded_answer" },
+    {
+      okf_refs: ["concepts/florian/example/approved-client-context.md"],
+      graph_refs: ["node:client-alignment"],
+      retrieval_policy: "approved_first_include_pending_as_draft",
+    },
+  );
 }
 
 async function prepareKnowledgeFabricDryRun(operation) {
@@ -23071,10 +23216,14 @@ function renderAgentContractChatCard(result = {}) {
         </div>
       </div>
       ${isApproval ? `
-        <div class="approval-card">
+        <div class="approval-card agent-approval-gate" data-approval-summary="${escapeHtml(approval.summary || "")}" data-approval-action="${escapeHtml(approval.proposed_action || "")}">
           <strong>${escapeHtml(approval.gate || "human_gate")}</strong>
           <p>${escapeHtml(approval.summary || "Human approval is required before this action can continue.")}</p>
           <small>${escapeHtml(approval.proposed_action || "No proposed action supplied.")}</small>
+          <div class="button-row tight">
+            <button class="secondary small" type="button" data-chat-action="ack-agent-approval">Acknowledge gate</button>
+            <button class="secondary small" type="button" data-chat-action="copy-agent-approval">Copy approval note</button>
+          </div>
         </div>
       ` : ""}
       ${renderAgentContractOutput(output)}
@@ -23086,6 +23235,32 @@ function renderAgentContractChatCard(result = {}) {
       <div class="message-actions"><button class="secondary small speak-message-btn" type="button">Play voice</button></div>
     </div>
   `;
+}
+
+function acknowledgeAgentApproval(button) {
+  const card = button.closest(".agent-approval-gate");
+  if (!card) return;
+  card.classList.add("acknowledged");
+  button.disabled = true;
+  button.textContent = "Acknowledged";
+  showToast("Approval gate acknowledged", "No external action was executed.", "success");
+}
+
+async function copyAgentApproval(button) {
+  const card = button.closest(".agent-approval-gate");
+  if (!card) return;
+  const note = [
+    "Approval required",
+    `Summary: ${card.dataset.approvalSummary || "-"}`,
+    `Proposed action: ${card.dataset.approvalAction || "-"}`,
+    "Boundary: Human approval required before external writes, sends, or meetings.",
+  ].join("\n");
+  try {
+    await navigator.clipboard.writeText(note);
+    showToast("Approval note copied", "Paste it into the review or n8n UAT record.", "success");
+  } catch {
+    showToast("Approval note", note, "warning");
+  }
 }
 
 function renderAgentContractOutput(output = {}) {
