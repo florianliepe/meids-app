@@ -206,6 +206,12 @@
             <summary>Interaction setup</summary>
             <section class="chat-workspace-settings" aria-label="Interaction setup">
               <div class="chat-skillbar" aria-label="Ask twin controls">
+                <label for="chatInteractionModeSelect">Mode</label>
+                <select id="chatInteractionModeSelect" class="compact-select">
+                  <option value="actor_twin">Ask Actor Twin</option>
+                  <option value="skill_activation">Activate approved skill</option>
+                  <option value="source_context">Add source context</option>
+                </select>
                 <label for="riskPostureSelect">Posture</label>
                 <select id="riskPostureSelect" class="compact-select">
                   <option value="careful">Careful</option>

@@ -212,6 +212,7 @@
   skillInputPresets: [],
   selectedSkillId: null,
   activeChatSkillId: "__n8n_agent",
+  activeChatInteractionMode: "actor_twin",
   appliedChatSkillIds: [],
   riskPosture: "balanced",
   webSearchEnabled: false,
@@ -6793,10 +6794,22 @@ function bindChat() {
     state.riskPosture = event.target.value || "balanced";
     renderChatSkillMode();
   });
+  $("#chatInteractionModeSelect")?.addEventListener("change", (event) => {
+    state.activeChatInteractionMode = event.target.value || "actor_twin";
+    if (state.activeChatInteractionMode === "source_context") {
+      $("#chatSkillContext").open = true;
+    }
+    if (state.activeChatInteractionMode === "skill_activation") {
+      $("#chatInteractionSetup").open = true;
+      $("#appliedSkillsMenu").open = true;
+    }
+    renderChatSkillMode();
+  });
   $("#appliedSkillsList").addEventListener("change", (event) => {
     if (!event.target.matches(".applied-skill-filter")) return;
     state.appliedChatSkillIds = $$(".applied-skill-filter:checked").map((input) => input.value);
     state.activeChatSkillId = state.appliedChatSkillIds[0] || N8N_CHAT_MODE;
+    state.activeChatInteractionMode = state.appliedChatSkillIds.length ? "skill_activation" : "actor_twin";
     renderChatSkillMode();
     safeRefreshSkillInputPresets();
   });
@@ -6820,6 +6833,20 @@ function bindChat() {
     const input = $("#queryInput");
     const query = input.value.trim();
     if (!query) return;
+    if (state.activeChatInteractionMode === "source_context") {
+      input.value = "";
+      addMessage("user", query);
+      addMessage("assistant", "Preparing Knowledge Fabric handoff...");
+      try {
+        const result = await routeKnowledgeFabricFromChat(query);
+        removeLastAssistantPlaceholder();
+        addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
+      } catch (error) {
+        removeLastAssistantPlaceholder();
+        addMessage("assistant", `Knowledge Fabric handoff failed: ${error.message}`);
+      }
+      return;
+    }
     if (state.appliedChatSkillIds.length === 1 && event.submitter?.dataset?.runLocalSkill === "true") {
       const sourceInput = {
         email_input: $("#chatSkillEmail").value,
@@ -6855,18 +6882,39 @@ function bindChat() {
       }
       return;
     }
-    if (runtimeConfig.n8nChatEnabled && runtimeConfig.n8nChatWebhookUrl) {
+    if (state.activeChatInteractionMode === "skill_activation" || state.appliedChatSkillIds.length) {
+      const sourceInput = {
+        email_input: $("#chatSkillEmail").value,
+        calendar_input: $("#chatSkillCalendar").value,
+        teams_input: $("#chatSkillTeams").value,
+        knowledge_context: $("#chatSkillKnowledge").value,
+      };
+      if (!(await confirmSkillFollowUpGate(sourceInput, "chat"))) return;
       input.value = "";
       addMessage("user", query);
-      addMessage("assistant", "Asking the twin...");
+      addMessage("assistant", "Activating approved skill through Agentic Butler...");
       try {
-        const result = await askTwinViaN8n(query);
+        const result = await routeAgenticButlerFromChat(query);
         removeLastAssistantPlaceholder();
-        const node = addMessage("assistant", result.answer, result.metadata);
+        addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
+      } catch (error) {
+        removeLastAssistantPlaceholder();
+        addMessage("assistant", `Agentic Butler failed: ${error.message}`);
+      }
+      return;
+    }
+    if (hasAgentWebhook("actor_twin") || (runtimeConfig.n8nChatEnabled && runtimeConfig.n8nChatWebhookUrl)) {
+      input.value = "";
+      addMessage("user", query);
+      addMessage("assistant", "Asking Actor Twin...");
+      try {
+        const result = await routeActorTwinFromChat(query);
+        removeLastAssistantPlaceholder();
+        const node = addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
         if (state.voiceAnswerEnabled) speakMessage(node, result.answer);
       } catch (error) {
         removeLastAssistantPlaceholder();
-        addMessage("assistant", `Ask twin failed: ${error.message}`);
+        addMessage("assistant", `Actor Twin failed: ${error.message}`);
       }
       return;
     }
@@ -9156,6 +9204,7 @@ function refreshStaticPagesWorkspace() {
   state.activeTwin = status.active_twin;
   state.selectedTwinId = state.selectedTwinId || state.activeTwin;
   state.twins = buildStaticPagesTwins();
+  state.skills = buildStaticPagesSkills();
   state.concepts = buildStaticPagesConcepts();
   state.okfGraph = buildStaticPagesGraph();
   state.agentOperatingModel = buildStaticPagesAgentOperatingModel();
@@ -9180,6 +9229,7 @@ function refreshStaticPagesWorkspace() {
   renderProductionRestartHint();
   renderTwinContextNotices();
   renderWorkspaceIntro();
+  renderAppliedSkillsSelector();
   renderConcepts();
   renderGraphFilters();
   syncGraphControlValues();
@@ -9215,6 +9265,19 @@ function buildStaticPagesTwins() {
       purpose: "Public staging twin for visual QA and n8n contract validation.",
       role_context: "Actor Twin staging profile",
       default_language: "en",
+    },
+  ];
+}
+
+function buildStaticPagesSkills() {
+  return [
+    {
+      skill_id: "project-management-support-steering",
+      name: "Project Management Support & Steering",
+      description: "Create a prioritized day plan from exported email, calendar, Teams, and knowledge context. Use for manual planning and meeting preparation.",
+      status: "approved",
+      risk_class: "medium",
+      version: "0.1.0",
     },
   ];
 }
@@ -9271,8 +9334,8 @@ function buildStaticPagesN8nAgentContracts() {
       source_url: `${repoBase}/contracts/n8n/fixtures/actor-twin.json`,
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
       webhook_env_var: "N8N_ACTOR_TWIN_WEBHOOK_URL",
-      webhook_configured: false,
-      statuses: ["documented", "fixture ready", "contract tested", "blocked"],
+      webhook_configured: hasAgentWebhook("actor_twin"),
+      statuses: ["documented", "fixture ready", "contract tested", hasAgentWebhook("actor_twin") ? "n8n connected" : "blocked"],
       blocker: "Live n8n webhook is intentionally not required for GitHub Pages fixture mode.",
     },
     {
@@ -9282,8 +9345,8 @@ function buildStaticPagesN8nAgentContracts() {
       source_url: `${repoBase}/contracts/n8n/fixtures/knowledge-fabric-agent.json`,
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
       webhook_env_var: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
-      webhook_configured: false,
-      statuses: ["documented", "fixture ready", "contract tested", "blocked"],
+      webhook_configured: hasAgentWebhook("knowledge_fabric_agent"),
+      statuses: ["documented", "fixture ready", "contract tested", hasAgentWebhook("knowledge_fabric_agent") ? "n8n connected" : "blocked"],
       blocker: "Vector DB and live ingestion workflow are pending provider credentials.",
     },
     {
@@ -9293,8 +9356,8 @@ function buildStaticPagesN8nAgentContracts() {
       source_url: `${repoBase}/contracts/n8n/fixtures/agentic-butler.json`,
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
       webhook_env_var: "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
-      webhook_configured: false,
-      statuses: ["documented", "fixture ready", "contract tested", "blocked"],
+      webhook_configured: hasAgentWebhook("agentic_butler"),
+      statuses: ["documented", "fixture ready", "contract tested", hasAgentWebhook("agentic_butler") ? "n8n connected" : "blocked"],
       blocker: "Live skill execution remains approval-gated and requires n8n workflow rollout.",
     },
   ];
@@ -11816,20 +11879,22 @@ function renderAppliedSkillsSelector() {
 function renderChatSkillMode() {
   const applied = state.skills.filter((skill) => state.appliedChatSkillIds.includes(skill.skill_id));
   const isSkillMode = Boolean(applied.length);
-  $("#chatSkillContext").open = false;
+  if (state.activeChatInteractionMode !== "source_context") $("#chatSkillContext").open = false;
   $("#chatSkillContext").hidden = false;
   $("#chatSkillContext").classList.toggle("hidden", false);
   $("#n8nAgentPanel").hidden = true;
+  const modeSelect = $("#chatInteractionModeSelect");
+  if (modeSelect) modeSelect.value = state.activeChatInteractionMode || "actor_twin";
   const n8nLink = $("#n8nAgentLink");
   if (n8nLink) {
     n8nLink.href = runtimeConfig.n8nChatWebhookUrl || "#";
     n8nLink.hidden = !runtimeConfig.n8nChatWebhookUrl;
   }
   setChatSkillStatus(
-    `Actor interface · governed pipeline · ${state.riskPosture} posture${applied.length ? ` · ${applied.length} applied skill${applied.length === 1 ? "" : "s"}` : ""}${state.webSearchEnabled ? " · websearch on" : ""}${state.voiceAnswerEnabled ? " · voice on" : ""}`,
+    `${chatInteractionModeLabel()} · governed pipeline · ${state.riskPosture} posture${applied.length ? ` · ${applied.length} applied skill${applied.length === 1 ? "" : "s"}` : ""}${state.webSearchEnabled ? " · websearch on" : ""}${state.voiceAnswerEnabled ? " · voice on" : ""}`,
   );
-  $("#queryInput").placeholder = "Ask the twin...";
-  $("#chatForm button").textContent = "Ask";
+  $("#queryInput").placeholder = chatInteractionPlaceholder();
+  $("#chatForm button").textContent = chatInteractionSubmitLabel();
   $("#saveChatPresetBtn").disabled = !isSkillMode;
   $("#loadChatPresetBtn").disabled = !isSkillMode || !state.skillInputPresets.length;
   $("#updateChatPresetBtn").disabled = !isSkillMode || !state.skillInputPresets.length;
@@ -11841,14 +11906,38 @@ function renderChatSkillMode() {
   renderSkillPreflight();
 }
 
+function chatInteractionModeLabel() {
+  if (state.activeChatInteractionMode === "skill_activation") return "Agentic Butler skill activation";
+  if (state.activeChatInteractionMode === "source_context") return "Knowledge Fabric source intake";
+  return "Actor Twin answer mode";
+}
+
+function chatInteractionPlaceholder() {
+  if (state.activeChatInteractionMode === "skill_activation") return "Tell the Butler what approved skill outcome you need...";
+  if (state.activeChatInteractionMode === "source_context") return "Describe what this source context should become...";
+  return "Ask the Actor Twin...";
+}
+
+function chatInteractionSubmitLabel() {
+  if (state.activeChatInteractionMode === "skill_activation") return "Activate";
+  if (state.activeChatInteractionMode === "source_context") return "Add";
+  return "Ask";
+}
+
 function renderSkillRoutingPanel() {
   const applied = state.skills.filter((skill) => state.appliedChatSkillIds.includes(skill.skill_id));
   const active = state.twins.find((twin) => twin.twin_id === state.activeTwin);
   const switchWarning = recentTwinSwitchWarning();
+  const agentId = state.activeChatInteractionMode === "skill_activation"
+    ? "agentic_butler"
+    : state.activeChatInteractionMode === "source_context"
+      ? "knowledge_fabric_agent"
+      : "actor_twin";
+  const configured = hasAgentWebhook(agentId);
   const content = `
       <strong>Actor pipeline</strong>
-      <span>${escapeHtml(active?.display_name || state.activeTwin)} · ${escapeHtml(state.riskPosture)} posture · ${escapeHtml(applied.length ? `${applied.length} skill layer${applied.length === 1 ? "" : "s"}` : "no skill layer")}</span>
-      <p>${escapeHtml(state.webSearchEnabled ? "Websearch requested." : "Websearch off.")} ${escapeHtml(state.voiceAnswerEnabled ? "Voice playback on." : "Voice playback off.")} User-facing answer stays with the Actor.</p>
+      <span>${escapeHtml(active?.display_name || state.activeTwin)} · ${escapeHtml(state.riskPosture)} posture · ${escapeHtml(chatInteractionModeLabel())} · ${escapeHtml(configured ? "n8n configured" : "fixture fallback")}</span>
+      <p>${escapeHtml(state.webSearchEnabled ? "Websearch requested." : "Websearch off.")} ${escapeHtml(state.voiceAnswerEnabled ? "Voice playback on." : "Voice playback off.")} ${escapeHtml(applied.length ? `${applied.length} approved skill layer${applied.length === 1 ? "" : "s"} selected.` : "No approved skill layer selected.")}</p>
       ${switchWarning ? `<p class="warning-copy">${escapeHtml(switchWarning)}</p>` : ""}
     `;
   const chatPanel = $("#chatSkillRouting");
@@ -12142,6 +12231,303 @@ function bindPreflightFollowUps(root = document) {
       target.focus();
     });
   });
+}
+
+function n8nAgentWebhooks() {
+  return runtimeConfig.n8nAgentWebhooks || runtimeConfig.n8n_agent_webhooks || {};
+}
+
+function getAgentWebhook(agentId) {
+  const webhooks = n8nAgentWebhooks();
+  const direct = webhooks[agentId] || webhooks[agentId?.replaceAll("_", "-")];
+  if (direct) return direct;
+  if (agentId === "actor_twin") return runtimeConfig.n8nActorTwinWebhookUrl || runtimeConfig.n8nChatWebhookUrl || "";
+  if (agentId === "agentic_butler") return runtimeConfig.n8nAgenticButlerWebhookUrl || "";
+  if (agentId === "knowledge_fabric_agent") return runtimeConfig.n8nKnowledgeFabricWebhookUrl || "";
+  return "";
+}
+
+function hasAgentWebhook(agentId) {
+  return Boolean(getAgentWebhook(agentId));
+}
+
+function chatSourceContext() {
+  return {
+    email_input: $("#chatSkillEmail")?.value || "",
+    calendar_input: $("#chatSkillCalendar")?.value || "",
+    teams_input: $("#chatSkillTeams")?.value || "",
+    knowledge_context: $("#chatSkillKnowledge")?.value || "",
+  };
+}
+
+function activePrincipal() {
+  const twin = state.twins.find((item) => item.twin_id === state.activeTwin);
+  return {
+    twin_id: state.activeTwin || "florian",
+    display_name: twin?.display_name || state.activeTwin || "Florian",
+  };
+}
+
+function buildAgentContractEnvelope(agentId, intent, query, input = {}, context = {}, approval = null) {
+  return {
+    envelope_version: "0.1.0",
+    request_id: `req_${agentId}_${Date.now().toString(36)}`,
+    timestamp: new Date().toISOString(),
+    agent_id: agentId,
+    intent,
+    principal: activePrincipal(),
+    input: {
+      query,
+      ...input,
+    },
+    context: {
+      source: "meids-chat",
+      session_id: state.n8nSessionId,
+      risk_posture: state.riskPosture,
+      retrieval_mode: $("#retrievalModeSelect")?.value || "keyword",
+      concept_types: selectedConceptTypes(),
+      websearch: state.webSearchEnabled,
+      ...context,
+    },
+    approval: approval || {
+      required: false,
+      reason: "No external write action requested at submission time.",
+    },
+  };
+}
+
+async function routeActorTwinFromChat(query) {
+  const envelope = buildAgentContractEnvelope(
+    "actor_twin",
+    "answer_question",
+    query,
+    { mode: "grounded_answer" },
+    {
+      okf_refs: [],
+      graph_refs: [],
+      source_context: chatSourceContext(),
+      retrieval_policy: "approved_first_include_pending_as_draft",
+    },
+  );
+  return postAgentContractEnvelope("actor_twin", envelope, fallbackActorTwinResponse);
+}
+
+async function routeAgenticButlerFromChat(query) {
+  const selected = state.skills.find((skill) => skill.skill_id === state.activeChatSkillId)
+    || state.skills.find((skill) => state.appliedChatSkillIds.includes(skill.skill_id));
+  if (!selected) throw new Error("Select one approved skill before activating Agentic Butler.");
+  if (selected.status !== "approved") throw new Error("Agentic Butler can only activate approved skills.");
+  const sourceContext = chatSourceContext();
+  const envelope = buildAgentContractEnvelope(
+    "agentic_butler",
+    "activate_skill",
+    query,
+    {
+      skill_id: selected.skill_id,
+      skill_name: selected.name,
+      manual_trigger: true,
+      email_export: sourceContext.email_input,
+      calendar_export: sourceContext.calendar_input,
+      teams_export: sourceContext.teams_input,
+      knowledge_context: sourceContext.knowledge_context,
+    },
+    {
+      actor_checkpoint_policy: "consult_actor_twin_before_prioritization_and_before_human_gates",
+      skill_orchestrator: "internal_component",
+      allowed_outputs: ["daily_plan", "todo_table", "approval_queue"],
+    },
+  );
+  return postAgentContractEnvelope("agentic_butler", envelope, fallbackAgenticButlerResponse);
+}
+
+async function routeKnowledgeFabricFromChat(query) {
+  const sourceContext = chatSourceContext();
+  const title = query.slice(0, 80) || "Chat source context";
+  const envelope = buildAgentContractEnvelope(
+    "knowledge_fabric_agent",
+    "ingest_concept",
+    query,
+    {
+      source_type: "chat_source_context",
+      title,
+      content: [sourceContext.email_input, sourceContext.calendar_input, sourceContext.teams_input, sourceContext.knowledge_context]
+        .filter(Boolean)
+        .join("\n\n")
+        .slice(0, 12000),
+      target_state: "pending_review",
+    },
+    {
+      okf_namespace: `concepts/${state.activeTwin || "florian"}/inbox`,
+      allowed_outputs: ["markdown", "yaml_frontmatter", "graph_candidate_edges"],
+      vector_policy: "do_not_refresh_without_approved_storage",
+    },
+  );
+  return postAgentContractEnvelope("knowledge_fabric_agent", envelope, fallbackKnowledgeFabricResponse);
+}
+
+async function postAgentContractEnvelope(agentId, envelope, fallbackFactory) {
+  const webhookUrl = getAgentWebhook(agentId);
+  if (!webhookUrl) return fallbackFactory(envelope, "fixture fallback");
+  const body = isN8nChatWebhook(webhookUrl)
+    ? {
+        action: "sendMessage",
+        sessionId: state.n8nSessionId,
+        chatInput: envelope.input?.query || "",
+        metadata: {
+          source: "meids-contract-bridge",
+          agent_id: agentId,
+          contract_envelope: envelope,
+        },
+      }
+    : envelope;
+  const response = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const raw = await response.text();
+  if (!response.ok) throw new Error(raw || `${agentId} returned ${response.status}`);
+  const data = parseMaybeJson(raw);
+  return normalizeAgentContractResponse(agentId, data, envelope, "n8n connected");
+}
+
+function isN8nChatWebhook(url) {
+  return /\/chat(?:$|[?#/])/i.test(String(url || ""));
+}
+
+function parseMaybeJson(raw) {
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return { output: { answer: raw } };
+  }
+}
+
+function normalizeAgentContractResponse(agentId, data, envelope, runtime) {
+  const response = data?.response || data?.data || data || {};
+  const status = response.status || data?.status || "completed";
+  return {
+    agent_id: agentId,
+    agent_name: agentDisplayName(agentId),
+    runtime,
+    trace_id: response.trace?.trace_id || response.trace_id || data?.trace_id || envelope.request_id,
+    request: envelope,
+    response: {
+      envelope_version: response.envelope_version || envelope.envelope_version,
+      request_id: response.request_id || envelope.request_id,
+      agent_id: response.agent_id || agentId,
+      status,
+      output: response.output || data?.output || outputFromN8nData(data),
+      approval: response.approval || data?.approval || null,
+      trace: response.trace || data?.trace || { trace_id: response.trace_id || data?.trace_id || envelope.request_id, stored: false },
+      error: response.error || data?.error || null,
+    },
+    answer: extractAgentAnswer(response.output || data?.output || data, status),
+  };
+}
+
+function outputFromN8nData(data) {
+  if (typeof data === "string") return { answer: data };
+  if (data?.answer || data?.text || data?.message) return { answer: data.answer || data.text || data.message };
+  return data && typeof data === "object" ? data : {};
+}
+
+function extractAgentAnswer(output, status = "completed") {
+  if (status === "approval_required") return "Human approval is required before this action can continue.";
+  if (typeof output === "string") return output;
+  if (!output || typeof output !== "object") return "Agent completed.";
+  return output.answer || output.summary || output.concept_path || "Agent completed.";
+}
+
+function agentDisplayName(agentId) {
+  return {
+    actor_twin: "Actor Twin",
+    knowledge_fabric_agent: "Knowledge Fabric Agent",
+    agentic_butler: "Agentic Butler",
+  }[agentId] || agentId || "Agent";
+}
+
+function fallbackActorTwinResponse(envelope, runtime) {
+  const query = envelope.input?.query || "";
+  return normalizeAgentContractResponse("actor_twin", {
+    status: "completed",
+    output: {
+      answer: `Actor Twin fixture response: ${query || "Ask received"}. Use approved OKF context first; include drafts only as unvalidated hypotheses.`,
+      confidence: 0.78,
+      citations: [],
+    },
+    trace: { trace_id: `trace_${envelope.request_id}`, used_agents: ["knowledge_fabric_agent"], stored: false },
+  }, envelope, runtime);
+}
+
+function fallbackAgenticButlerResponse(envelope, runtime) {
+  const proposesExternalAction = /send|mail|email|invite|meeting|schedule/i.test(envelope.input?.query || "");
+  if (proposesExternalAction) {
+    return normalizeAgentContractResponse("agentic_butler", {
+      status: "approval_required",
+      approval: {
+        required: true,
+        gate: "requires_human_action",
+        summary: "The skill request may create or send an external action.",
+        proposed_action: "Prepare the output, then pause before sending email or creating meetings.",
+      },
+      trace: { trace_id: `trace_${envelope.request_id}`, used_agents: ["skill_orchestrator", "actor_twin"], stored: false },
+    }, envelope, runtime);
+  }
+  return normalizeAgentContractResponse("agentic_butler", {
+    status: "completed",
+    output: {
+      summary: "Daily plan generated from exported source context.",
+      todos: [
+        {
+          what: "Prepare alignment brief",
+          how: "Summarize source context, open decisions, and stakeholder urgency.",
+          why: "Reduce decision latency and improve meeting quality.",
+          whom: "Client delivery / internal workstream",
+          priority: "high",
+        },
+      ],
+      approval_queue: [],
+    },
+    trace: { trace_id: `trace_${envelope.request_id}`, used_agents: ["skill_orchestrator", "actor_twin"], stored: false },
+  }, envelope, runtime);
+}
+
+function fallbackKnowledgeFabricResponse(envelope, runtime) {
+  const slug = slugify(envelope.input?.title || "chat-source-context");
+  return normalizeAgentContractResponse("knowledge_fabric_agent", {
+    status: "completed",
+    output: {
+      concept_path: `concepts/${state.activeTwin || "florian"}/inbox/${new Date().toISOString().slice(0, 10)}-${slug}.md`,
+      review_state: "pending_review",
+      candidate_edges: [
+        {
+          source: `concept:${slug}`,
+          target: "cluster:inbox",
+          relation_type: "candidate_member_of_cluster",
+          confidence: 0.58,
+        },
+      ],
+    },
+    trace: { trace_id: `trace_${envelope.request_id}`, used_agents: ["graph_curator"], stored: false },
+  }, envelope, runtime);
+}
+
+function slugify(value) {
+  return String(value || "item")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "item";
+}
+
+function agentContractResponseText(result = {}) {
+  const response = result.response || {};
+  const output = response.output || {};
+  if (response.status === "approval_required") {
+    return response.approval?.summary || "Human approval is required before this action can continue.";
+  }
+  return result.answer || output.answer || output.summary || output.concept_path || `${result.agent_name || "Agent"} completed.`;
 }
 
 async function saveChatInputPreset() {
@@ -22539,6 +22925,14 @@ function addMessage(role, text, metadata = null) {
     node.scrollIntoView({ block: "end" });
     return node;
   }
+  if (role === "assistant" && metadata?.agent_contract_response) {
+    node.classList.add("agent-contract-message");
+    node.innerHTML = renderAgentContractChatCard(metadata.agent_contract_response);
+    $("#messages").appendChild(node);
+    node.querySelector(".speak-message-btn")?.addEventListener("click", () => speakMessage(node, agentContractResponseText(metadata.agent_contract_response)));
+    node.scrollIntoView({ block: "end" });
+    return node;
+  }
   const sources = metadata?.sources?.length
     ? `<div class="sources">${metadata.sources
         .map((source) => renderSourceChip(source))
@@ -22643,10 +23037,80 @@ function removeLastAssistantPlaceholder() {
   const last = messages[messages.length - 1];
   if (
     last &&
-    (last.textContent.includes("Thinking with local OKF sources") || last.textContent.includes("Running approved skill"))
+    (
+      last.textContent.includes("Thinking with local OKF sources") ||
+      last.textContent.includes("Running approved skill") ||
+      last.textContent.includes("Asking Actor Twin") ||
+      last.textContent.includes("Activating approved skill") ||
+      last.textContent.includes("Preparing Knowledge Fabric handoff")
+    )
   ) {
     last.remove();
   }
+}
+
+function renderAgentContractChatCard(result = {}) {
+  const response = result.response || {};
+  const output = response.output || {};
+  const approval = response.approval || {};
+  const trace = response.trace || {};
+  const status = response.status || result.status || "completed";
+  const isApproval = status === "approval_required";
+  const title = result.agent_name || response.agent_id || "Agent";
+  return `
+    <div class="skill-run-card agent-response-card ${escapeHtml(status)}">
+      <div class="skill-run-head">
+        <div>
+          <span class="badge">${escapeHtml(isApproval ? "Approval required" : "Agent response")}</span>
+          <h3>${escapeHtml(title)}</h3>
+          <p>${escapeHtml(agentContractResponseText(result))}</p>
+        </div>
+        <div class="run-id-block">
+          <span>Trace</span>
+          <code>${escapeHtml(trace.trace_id || result.trace_id || response.request_id || "-")}</code>
+        </div>
+      </div>
+      ${isApproval ? `
+        <div class="approval-card">
+          <strong>${escapeHtml(approval.gate || "human_gate")}</strong>
+          <p>${escapeHtml(approval.summary || "Human approval is required before this action can continue.")}</p>
+          <small>${escapeHtml(approval.proposed_action || "No proposed action supplied.")}</small>
+        </div>
+      ` : ""}
+      ${renderAgentContractOutput(output)}
+      <div class="agent-contract-status-strip" aria-label="Agent runtime statuses">
+        <span>${escapeHtml(result.runtime || "fixture fallback")}</span>
+        <span>${escapeHtml(status)}</span>
+        <span>${escapeHtml(response.agent_id || result.agent_id || "")}</span>
+      </div>
+      <div class="message-actions"><button class="secondary small speak-message-btn" type="button">Play voice</button></div>
+    </div>
+  `;
+}
+
+function renderAgentContractOutput(output = {}) {
+  if (!output || typeof output !== "object" || !Object.keys(output).length) return "";
+  if (Array.isArray(output.todos)) {
+    return `
+      <div class="todo-table compact">
+        ${output.todos.slice(0, 5).map((todo) => `
+          <article>
+            <strong>${escapeHtml(todo.what || "Todo")}</strong>
+            <p>${escapeHtml(todo.how || todo.why || "")}</p>
+            <small>${escapeHtml(`${todo.priority || "priority n/a"} · ${todo.whom || "owner n/a"}`)}</small>
+          </article>
+        `).join("")}
+      </div>
+    `;
+  }
+  if (Array.isArray(output.candidate_edges)) {
+    return `
+      <div class="agent-consumer-list">
+        ${output.candidate_edges.slice(0, 6).map((edge) => `<span>${escapeHtml(`${edge.relation_type || "edge"} · ${edge.confidence ?? "-"} confidence`)}</span>`).join("")}
+      </div>
+    `;
+  }
+  return `<pre class="output compact-output">${escapeHtml(JSON.stringify(output, null, 2))}</pre>`;
 }
 
 function renderSkillRunCard(metadata) {
