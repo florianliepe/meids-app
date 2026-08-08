@@ -259,6 +259,7 @@ const storageKeys = {
   theme: "intellectualTwin.theme",
   landingDismissed: "intellectualTwin.landing.dismissed",
   approvalPrefix: "intellectualTwin.approval",
+  agentTraceLog: "intellectualTwin.agentTraceLog",
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -6811,6 +6812,7 @@ function bindChat() {
     if (state.activeChatInteractionMode === "skill_activation") {
       $("#chatInteractionSetup").open = true;
       $("#appliedSkillsMenu").open = true;
+      $("#chatSkillContext").open = true;
     }
     renderChatSkillMode();
   });
@@ -6848,6 +6850,7 @@ function bindChat() {
       addMessage("assistant", "Preparing Knowledge Fabric handoff...");
       try {
         const result = await routeKnowledgeFabricFromChat(query);
+        persistAgentTrace(result);
         removeLastAssistantPlaceholder();
         addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
       } catch (error) {
@@ -6904,6 +6907,7 @@ function bindChat() {
       addMessage("assistant", "Activating approved skill through Agentic Butler...");
       try {
         const result = await routeAgenticButlerFromChat(query);
+        persistAgentTrace(result);
         removeLastAssistantPlaceholder();
         addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
       } catch (error) {
@@ -6912,12 +6916,13 @@ function bindChat() {
       }
       return;
     }
-    if (hasAgentWebhook("actor_twin") || (runtimeConfig.n8nChatEnabled && runtimeConfig.n8nChatWebhookUrl)) {
+    if (state.activeChatInteractionMode === "actor_twin" || hasAgentWebhook("actor_twin") || (runtimeConfig.n8nChatEnabled && runtimeConfig.n8nChatWebhookUrl)) {
       input.value = "";
       addMessage("user", query);
       addMessage("assistant", "Asking Actor Twin...");
       try {
         const result = await routeActorTwinFromChat(query);
+        persistAgentTrace(result);
         removeLastAssistantPlaceholder();
         const node = addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
         if (state.voiceAnswerEnabled) speakMessage(node, result.answer);
@@ -11290,6 +11295,11 @@ async function refreshSkillInputPresets() {
 }
 
 async function safeRefreshSkillInputPresets() {
+  if (staticPagesMode) {
+    state.skillInputPresets = [];
+    renderChatInputPresets();
+    return;
+  }
   try {
     await refreshSkillInputPresets();
   } catch (error) {
@@ -12024,7 +12034,7 @@ function renderAppliedSkillsSelector() {
 function renderChatSkillMode() {
   const applied = state.skills.filter((skill) => state.appliedChatSkillIds.includes(skill.skill_id));
   const isSkillMode = Boolean(applied.length);
-  if (state.activeChatInteractionMode !== "source_context") $("#chatSkillContext").open = false;
+  if (!["source_context", "skill_activation"].includes(state.activeChatInteractionMode)) $("#chatSkillContext").open = false;
   $("#chatSkillContext").hidden = false;
   $("#chatSkillContext").classList.toggle("hidden", false);
   $("#n8nAgentPanel").hidden = true;
@@ -12569,6 +12579,38 @@ function normalizeAgentContractResponse(agentId, data, envelope, runtime) {
     },
     answer: extractAgentAnswer(response.output || data?.output || data, status),
   };
+}
+
+function persistAgentTrace(result = {}) {
+  const response = result.response || {};
+  const trace = response.trace || {};
+  const entry = {
+    timestamp: new Date().toISOString(),
+    twin: state.activeTwin || "",
+    agent_id: result.agent_id || response.agent_id || "",
+    agent_name: result.agent_name || agentDisplayName(result.agent_id || response.agent_id || ""),
+    status: response.status || result.status || "",
+    runtime: result.runtime || "",
+    request_id: response.request_id || result.request?.request_id || "",
+    trace_id: trace.trace_id || result.trace_id || "",
+    approval_required: response.status === "approval_required" || Boolean(response.approval?.required),
+  };
+  try {
+    const current = JSON.parse(window.localStorage.getItem(storageKeys.agentTraceLog) || "[]");
+    const next = [entry, ...(Array.isArray(current) ? current : [])].slice(0, 50);
+    window.localStorage.setItem(storageKeys.agentTraceLog, JSON.stringify(next));
+  } catch (error) {
+    console.warn("Agent trace persistence failed", error);
+  }
+}
+
+function readAgentTraceLog() {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(storageKeys.agentTraceLog) || "[]");
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
 }
 
 function outputFromN8nData(data) {
