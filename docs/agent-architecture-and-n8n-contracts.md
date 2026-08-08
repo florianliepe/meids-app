@@ -51,6 +51,14 @@ Validate fixture structure locally with:
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-n8n-fixtures.cjs
 ```
 
+Replay the fixture cases and refresh the cockpit readiness artifact with:
+
+```powershell
+& "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\replay-n8n-fixtures.cjs --write
+```
+
+The generated public artifact is `frontend/assets/n8n-contract-replay-status.json`. It contains pass/fail readiness, case counts, and fixture references only; no webhook URLs or secrets.
+
 Every n8n endpoint should accept the same envelope:
 
 ```json

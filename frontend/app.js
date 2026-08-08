@@ -252,6 +252,7 @@ const FRONTEND_BUILD_TAG = "20260721-okf-health-sync";
 const N8N_CHAT_MODE = "__n8n_agent";
 const N8N_CHAT_CSS_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css";
 const N8N_CHAT_MODULE_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js";
+const N8N_CONTRACT_REPLAY_STATUS_PATH = "assets/n8n-contract-replay-status.json";
 const storageKeys = {
   theme: "intellectualTwin.theme",
   landingDismissed: "intellectualTwin.landing.dismissed",
@@ -9184,6 +9185,7 @@ function refreshStaticPagesWorkspace() {
   syncGraphControlValues();
   renderGraphCockpit();
   renderAgentOperatingModelPanel();
+  safeRefreshStaticN8nReplayStatus();
   const graphStatus = $("#graphStatus");
   if (graphStatus) graphStatus.textContent = "Static staging graph loaded: 4 nodes, 4 relations.";
   renderProductionProgressHeader();
@@ -9300,6 +9302,7 @@ function buildStaticPagesN8nAgentContracts() {
     status: "fixture-ready",
     contract_count: contracts.length,
     configured_count: contracts.filter((contract) => contract.webhook_configured).length,
+    replay_status_url: frontendAssetUrl(N8N_CONTRACT_REPLAY_STATUS_PATH),
     contracts,
   };
 }
@@ -11335,6 +11338,51 @@ async function safeRefreshN8nAgentContracts() {
   }
 }
 
+async function safeRefreshStaticN8nReplayStatus() {
+  if (!staticPagesMode) return;
+  try {
+    const response = await fetch(frontendAssetUrl(N8N_CONTRACT_REPLAY_STATUS_PATH), { cache: "no-store" });
+    if (!response.ok) throw new Error(`Replay status unavailable: ${response.status}`);
+    const replayStatus = await response.json();
+    mergeStaticN8nReplayStatus(replayStatus);
+    renderAgentOperatingModelPanel();
+  } catch (error) {
+    console.warn("Static n8n fixture replay status refresh failed", error);
+  }
+}
+
+function mergeStaticN8nReplayStatus(replayStatus = {}) {
+  if (!state.n8nAgentContracts || !Array.isArray(state.n8nAgentContracts.contracts)) return;
+  const replayByAgent = new Map((replayStatus.agents || []).map((agent) => [agent.agent_id, agent]));
+  state.n8nAgentContracts = {
+    ...state.n8nAgentContracts,
+    replay_status: replayStatus.status || "unknown",
+    replay_case_count: Number(replayStatus.case_count || 0),
+    replay_fixture_count: Number(replayStatus.fixture_count || 0),
+    replay_generated_at: replayStatus.generated_at || "",
+    contracts: state.n8nAgentContracts.contracts.map((contract) => {
+      const replay = replayByAgent.get(contract.agent_id);
+      if (!replay) return contract;
+      const configured = Boolean(contract.webhook_configured);
+      return {
+        ...contract,
+        contract_version: replay.contract_version || contract.contract_version,
+        replay_status: replay.status || "unknown",
+        replay_case_count: Number(replay.case_count || 0),
+        tested_cases: replay.tested_cases || [],
+        live_status: configured ? "configured" : (replay.live_status || "not_configured"),
+        statuses: [
+          "documented",
+          replay.status === "passed" ? "fixture ready" : "blocked",
+          replay.status === "passed" ? "contract tested" : "blocked",
+          configured ? "n8n connected" : "blocked",
+        ],
+        blocker: configured ? "" : replay.blocker || contract.blocker,
+      };
+    }),
+  };
+}
+
 function renderAgentOperatingModelPanel() {
   const target = $("#agentOperatingModelPanel");
   if (!target) return;
@@ -11384,10 +11432,13 @@ function renderInternalAgentComponents(agent = {}) {
 function renderN8nContractReadinessPanel(agents = []) {
   const contracts = state.n8nAgentContracts?.contracts || [];
   const contractByAgent = new Map(contracts.map((contract) => [contract.agent_id, contract]));
+  const replaySummary = state.n8nAgentContracts?.replay_status
+    ? ` · replay ${state.n8nAgentContracts.replay_status}: ${state.n8nAgentContracts.replay_case_count || 0} cases`
+    : "";
   return `
     <div class="agent-contract-readiness-head">
       <span class="badge">n8n runtime boundary</span>
-      <small>${escapeHtml(`${state.n8nAgentContracts?.configured_count ?? 0}/${state.n8nAgentContracts?.contract_count ?? agents.length} webhooks configured`)}</small>
+      <small>${escapeHtml(`${state.n8nAgentContracts?.configured_count ?? 0}/${state.n8nAgentContracts?.contract_count ?? agents.length} webhooks configured${replaySummary}`)}</small>
     </div>
     <div class="agent-contract-readiness">
       ${agents.map((agent) => renderN8nContractReadiness(agent, contractByAgent.get(agent.id))).join("")}
@@ -11399,7 +11450,8 @@ function renderN8nContractReadinessPanel(agents = []) {
 function renderN8nContractReadiness(agent = {}, readiness = null) {
   const contractSource = readiness?.source || agent.n8n_contract || "";
   const configured = Boolean(readiness?.webhook_configured);
-  const status = readiness ? (configured ? "configured" : "contract ready") : "missing contract";
+  const replayPassed = readiness?.replay_status === "passed";
+  const status = readiness ? (configured ? "configured" : (replayPassed ? "fixture replay passed" : "contract ready")) : "missing contract";
   const statusItems = Array.isArray(readiness?.statuses)
     ? readiness.statuses
     : ["documented", contractSource ? "fixture ready" : "blocked", configured ? "n8n connected" : "blocked"];
@@ -11420,9 +11472,11 @@ function renderN8nContractReadiness(agent = {}, readiness = null) {
         <div class="agent-contract-links">
           ${readiness?.source_url ? `<a href="${escapeHtml(readiness.source_url)}" target="_blank" rel="noreferrer">Fixture</a>` : ""}
           ${readiness?.backlog_url ? `<a href="${escapeHtml(readiness.backlog_url)}" target="_blank" rel="noreferrer">Backlog</a>` : ""}
+          ${state.n8nAgentContracts?.replay_status_url ? `<a href="${escapeHtml(state.n8nAgentContracts.replay_status_url)}" target="_blank" rel="noreferrer">Replay</a>` : ""}
         </div>
       ` : ""}
-      <small>${escapeHtml(configured ? "Webhook env var is configured. Run UAT before production use." : "Contract is present. Add webhook env var to activate runtime forwarding.")}</small>
+      <small>${escapeHtml(configured ? "Webhook env var is configured. Run UAT before production use." : "Fixture replay is local/static. Add webhook env var to activate runtime forwarding.")}</small>
+      ${readiness?.replay_case_count ? `<small>${escapeHtml(`${readiness.replay_case_count} contract cases replayed locally`)}</small>` : ""}
       ${readiness?.blocker ? `<small>${escapeHtml(readiness.blocker)}</small>` : ""}
       <div class="button-row tight">
         <button class="secondary small" type="button" data-agent-contract-test="${escapeHtml(agent.id || "")}">Test contract</button>

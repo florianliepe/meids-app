@@ -19,4 +19,12 @@ Run the local structural check:
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-n8n-fixtures.cjs
 ```
 
+Replay all fixture cases and refresh the public cockpit status artifact:
+
+```powershell
+& "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\replay-n8n-fixtures.cjs --write
+```
+
+The replay artifact is written to `frontend/assets/n8n-contract-replay-status.json` and is safe for GitHub Pages because it contains only readiness metadata, case counts, and public fixture references.
+
 No secrets, private knowledge, webhook URLs, or credentials belong in these fixtures.
