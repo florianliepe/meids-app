@@ -1,0 +1,19 @@
+{
+  "schema": "okf.graph_promotion.v1",
+  "promotion_id": "gprom_approve_example_001",
+  "edge_key": "edge_ing_example_001",
+  "twin_id": "florian",
+  "from_state": "candidate",
+  "decision": "approve",
+  "to_review_state": "approved",
+  "to_edge_class": "explicit",
+  "reviewer": "human",
+  "reviewed_at": "2026-08-09T12:05:00Z",
+  "rationale": "Evidence is sufficient and the relation is useful for delivery steering.",
+  "required_updates": [],
+  "effects": {
+    "retrieval_use": "trusted",
+    "vector_policy": "approved_only",
+    "audit_operation": "approve_edge"
+  }
+}

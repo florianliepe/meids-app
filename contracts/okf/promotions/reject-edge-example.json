@@ -1,0 +1,19 @@
+{
+  "schema": "okf.graph_promotion.v1",
+  "promotion_id": "gprom_reject_example_001",
+  "edge_key": "edge_ing_example_001",
+  "twin_id": "florian",
+  "from_state": "candidate",
+  "decision": "reject",
+  "to_review_state": "rejected",
+  "to_edge_class": "candidate",
+  "reviewer": "human",
+  "reviewed_at": "2026-08-09T12:06:00Z",
+  "rationale": "The proposed relation overstates the source evidence.",
+  "required_updates": [],
+  "effects": {
+    "retrieval_use": "excluded",
+    "vector_policy": "delete",
+    "audit_operation": "reject_edge"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schema": "okf.graph_promotion.v1",
+  "promotion_id": "gprom_rework_example_001",
+  "edge_key": "edge_ing_example_001",
+  "twin_id": "florian",
+  "from_state": "candidate",
+  "decision": "needs-rework",
+  "to_review_state": "needs-rework",
+  "to_edge_class": "candidate",
+  "reviewer": "human",
+  "reviewed_at": "2026-08-09T12:07:00Z",
+  "rationale": "The relation is plausible but needs stronger source anchoring.",
+  "required_updates": [
+    "Add a second evidence anchor.",
+    "Clarify whether the relation is a hard requirement or a recurring heuristic."
+  ],
+  "effects": {
+    "retrieval_use": "cockpit_only",
+    "vector_policy": "hold",
+    "audit_operation": "request_edge_rework"
+  }
+}

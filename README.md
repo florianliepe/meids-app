@@ -18,6 +18,8 @@ The portable knowledge contract is documented in
 [`docs/knowledge-fabric-okf-schema.md`](docs/knowledge-fabric-okf-schema.md).
 Public-safe OKF examples live in [`contracts/okf`](contracts/okf) and can be
 checked with `node scripts\validate-okf-fixtures.cjs`.
+Graph relation promotion fixtures are checked with
+`node scripts\validate-graph-promotions.cjs`.
 
 Top-level agents:
 

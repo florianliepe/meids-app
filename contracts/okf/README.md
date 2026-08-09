@@ -24,4 +24,10 @@ Regenerate the synthetic Knowledge Fabric ingest output with:
 node scripts\mock-okf-ingest.cjs
 ```
 
+Validate graph relation promotion decisions with:
+
+```powershell
+node scripts\validate-graph-promotions.cjs
+```
+
 The durable schema contract is documented in `docs/knowledge-fabric-okf-schema.md`.

@@ -212,6 +212,10 @@ Promotion rules:
 - `candidate` edges are never trusted retrieval facts until approved.
 - `contradiction-candidate` edges should create a review task before answer use.
 
+Human promotion decisions are represented as `okf.graph_promotion.v1` JSON files
+in `contracts/okf/promotions`. Validate candidate-to-approved/rejected/rework
+transitions with `node scripts\validate-graph-promotions.cjs`.
+
 ## Vector DB Adapter Boundary
 
 No Azure/vector credentials are required for this repo. The adapter boundary should accept:
