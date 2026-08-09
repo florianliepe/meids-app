@@ -23483,3 +23483,106 @@ body.theme-dark .graph-command-surface small {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+/* Knowledge Browser source affordance polish. Keep this late so it overrides generated legacy layers. */
+.knowledge-increment-source {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 70%, transparent);
+  display: grid;
+  gap: 7px;
+  grid-template-columns: minmax(112px, 0.42fr) minmax(0, 1fr) auto;
+  min-width: 0;
+  padding: 8px;
+}
+
+.knowledge-increment-source.linked {
+  border-left: 3px solid color-mix(in srgb, var(--accent) 64%, var(--line));
+}
+
+.knowledge-increment-source.gap {
+  border-left: 3px solid color-mix(in srgb, var(--warn) 64%, var(--line));
+}
+
+.knowledge-source-label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.knowledge-source-label strong {
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.knowledge-source-label span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-increment-source code {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--ink);
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 6px 8px;
+}
+
+.knowledge-source-affordances {
+  justify-content: flex-end;
+}
+
+body.theme-dark .knowledge-increment-source {
+  background: rgba(15, 19, 16, 0.76);
+  border-color: rgba(241, 235, 224, 0.14);
+}
+
+body.theme-dark .knowledge-increment-source.linked {
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .knowledge-increment-source.gap {
+  border-left-color: #d9826b;
+}
+
+body.theme-dark .knowledge-source-label strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-source-label span {
+  color: #cfc6b8;
+}
+
+body.theme-dark .knowledge-increment-source code {
+  background: #101410;
+  border-color: rgba(241, 235, 224, 0.16);
+  color: #f1ebdf;
+}
+
+body.theme-dark .knowledge-source-affordances button {
+  background: #232820;
+  border-color: rgba(241, 235, 224, 0.18);
+  color: #f1ebdf;
+}
+
+@media (max-width: 900px) {
+  .knowledge-increment-source {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knowledge-source-affordances {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+}

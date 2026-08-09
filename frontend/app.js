@@ -15171,10 +15171,16 @@ function renderKnowledgeSource(concept, sourceLabel) {
   const fullPath = concept.path || "";
   const shortPath = compactPath(fullPath).replace(/^concepts\/[^/]+\//, "");
   const sourceRef = concept.source_deep_link || concept.source_anchor || concept.evidence_path || concept.source_path || fullPath;
+  const sourceState = sourceRef && !["source pending", "unlinked", "missing"].includes(String(sourceLabel || "").toLowerCase())
+    ? "linked"
+    : "gap";
   return `
-    <div class="knowledge-increment-source">
+    <div class="knowledge-increment-source ${sourceState}">
+      <div class="knowledge-source-label">
+        <strong>${sourceState === "linked" ? "Source" : "Source gap"}</strong>
+        <span>${escapeHtml(sourceLabel)}</span>
+      </div>
       <code title="${escapeHtml(fullPath)}">${escapeHtml(shortPath || fullPath || "source pending")}</code>
-      <span>${escapeHtml(sourceLabel)}</span>
       <div class="knowledge-source-affordances">
         ${fullPath ? `<button class="small secondary" type="button" data-concept-open="${escapeHtml(fullPath)}">Open</button>` : ""}
         ${sourceRef ? `<button class="small secondary source-copy-btn" type="button" data-copy-value="${escapeHtml(sourceRef)}">Copy ref</button>` : ""}
