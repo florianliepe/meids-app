@@ -14812,6 +14812,7 @@ function renderConcepts() {
   renderConceptAtlasSummary(state.concepts, concepts);
   renderConceptHealthClusters(state.concepts);
   renderConceptOverview(concepts);
+  renderKnowledgeSourceReadiness(state.concepts, concepts);
   if (!concepts.length) {
     list.innerHTML = renderEmptyState("No concepts match the current filters.");
     return;
@@ -14872,6 +14873,51 @@ function renderKnowledgeFabric(fabric) {
       <span>${escapeHtml(fabric.actor_signal || "domain-memory")}</span>
       <small>${escapeHtml(fabric.okf_maturity || "extracted")} · ${escapeHtml(fabric.evidence_strength || "unlinked")}</small>
     </div>
+  `;
+}
+
+function renderKnowledgeSourceReadiness(allConcepts = [], visibleConcepts = []) {
+  const target = $("#knowledgeSourceReadiness");
+  if (!target) return;
+  const totals = knowledgeSourceReadinessSummary(allConcepts);
+  const visible = knowledgeSourceReadinessSummary(visibleConcepts);
+  const readiness = totals.total ? Math.round((totals.approved / totals.total) * 100) : 0;
+  target.innerHTML = `
+    <div class="knowledge-source-readiness-main">
+      <span class="badge">Source readiness</span>
+      <strong>${escapeHtml(`${readiness}% trusted`)}</strong>
+      <small>${escapeHtml(`${visible.total}/${totals.total} visible · ${totals.linked} linked source refs`)}</small>
+    </div>
+    <div class="knowledge-source-readiness-grid">
+      ${renderKnowledgeSourceReadinessItem("approved", totals.approved, "trusted retrieval")}
+      ${renderKnowledgeSourceReadinessItem("pending", totals.pending, "review before trust")}
+      ${renderKnowledgeSourceReadinessItem("attention", totals.attention, "needs rework")}
+      ${renderKnowledgeSourceReadinessItem("unlinked", totals.unlinked, "source gap")}
+    </div>
+  `;
+}
+
+function knowledgeSourceReadinessSummary(concepts = []) {
+  return concepts.reduce((summary, concept) => {
+    const reviewState = concept.review_state || "pending-review";
+    const fabric = conceptFabric(concept);
+    const sourceRef = concept.source_deep_link || concept.source_anchor || concept.evidence_path || concept.source_path || "";
+    summary.total += 1;
+    if (reviewState === "approved") summary.approved += 1;
+    if (["pending-review", "candidate", "draft"].includes(reviewState)) summary.pending += 1;
+    if (["needs-rework", "rejected"].includes(reviewState)) summary.attention += 1;
+    if (sourceRef) summary.linked += 1;
+    if (!sourceRef || ["", "unlinked", "missing"].includes(String(fabric.evidence_strength || "").toLowerCase())) summary.unlinked += 1;
+    return summary;
+  }, { total: 0, approved: 0, pending: 0, attention: 0, linked: 0, unlinked: 0 });
+}
+
+function renderKnowledgeSourceReadinessItem(kind, value, label) {
+  return `
+    <span class="${safeGraphClass(kind)}">
+      <strong>${escapeHtml(value)}</strong>
+      <small>${escapeHtml(label)}</small>
+    </span>
   `;
 }
 
