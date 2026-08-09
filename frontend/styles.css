@@ -20940,6 +20940,57 @@ body.cockpit-mode .workspace-signal {
   margin-top: 0;
 }
 
+.knowledge-fabric-ingest-contract {
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(260px, 0.6fr) minmax(0, 1fr);
+  margin: 14px 0;
+}
+
+.knowledge-fabric-ingest-contract h2 {
+  font-size: clamp(22px, 2.2vw, 30px);
+  margin: 8px 0;
+}
+
+.knowledge-fabric-ingest-contract p {
+  color: var(--muted);
+  line-height: 1.48;
+  margin: 0;
+}
+
+.ingest-contract-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.ingest-contract-grid span {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 82%, transparent);
+  min-width: 0;
+  padding: 10px;
+}
+
+.ingest-contract-grid strong,
+.ingest-contract-grid small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.ingest-contract-grid strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.ingest-contract-grid small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
 .messages {
   min-height: 42vh;
   background: transparent;
@@ -21060,7 +21111,8 @@ body.theme-dark .chat-workspace-drawer {
 }
 
 body.theme-dark .source-capture-hero,
-body.theme-dark .source-capture-card {
+body.theme-dark .source-capture-card,
+body.theme-dark .knowledge-fabric-ingest-contract {
   border-color: rgba(232, 226, 214, 0.13);
   background: rgba(23, 27, 24, 0.74);
 }
@@ -21082,6 +21134,19 @@ body.theme-dark .source-capture-lanes span {
 body.theme-dark .source-capture-lanes strong {
   background: #7ad8bf;
   color: #0b100d;
+}
+
+body.theme-dark .ingest-contract-grid span {
+  border-color: rgba(232, 226, 214, 0.12);
+  background: rgba(21, 25, 22, 0.84);
+}
+
+body.theme-dark .ingest-contract-grid strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .ingest-contract-grid small {
+  color: #c9c0b3;
 }
 
 body.theme-dark .chat-workspace-drawer > summary::before {
@@ -22230,7 +22295,9 @@ body.theme-dark .graph-command-surface {
   }
 
   .source-capture-hero,
-  .source-capture-grid {
+  .source-capture-grid,
+  .knowledge-fabric-ingest-contract,
+  .ingest-contract-grid {
     grid-template-columns: 1fr;
   }
 

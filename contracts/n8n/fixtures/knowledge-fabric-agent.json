@@ -18,12 +18,19 @@
       "source_type": "transcript",
       "title": "Example meeting reflection",
       "content": "Public-safe example transcript text for a client alignment reflection.",
-      "target_state": "pending_review"
+      "target_state": "pending_review",
+      "source_origin": {
+        "surface": "voice_capture",
+        "format": "transcript",
+        "evidence_required": true
+      }
     },
     "context": {
       "okf_namespace": "concepts/florian/examples",
       "allowed_outputs": ["markdown", "yaml_frontmatter", "graph_candidate_edges"],
-      "vector_policy": "do_not_refresh_without_approved_storage"
+      "vector_policy": "do_not_refresh_without_approved_storage",
+      "crud_policy": "append_only_audit_log",
+      "graph_policy": "create_candidate_edges_only"
     },
     "approval": {
       "required": false,
@@ -37,6 +44,9 @@
     "status": "completed",
     "output": {
       "concept_path": "concepts/florian/examples/2026-08-07-example-meeting-reflection.md",
+      "evidence_path": "evidence/florian/transcripts/2026-08-07-example-meeting-reflection.yaml",
+      "transcript_path": "transcripts/florian/2026-08-07-example-meeting-reflection.md",
+      "crud_log_path": "audit/crud/florian/2026-08-07.jsonl",
       "review_state": "pending_review",
       "candidate_edges": [
         {
@@ -45,7 +55,16 @@
           "relation_type": "candidate_member_of_cluster",
           "confidence": 0.64
         }
-      ]
+      ],
+      "graph_curator_trigger": {
+        "status": "queued",
+        "operation": "derive_candidate_edges",
+        "target_state": "candidate"
+      },
+      "vector_refresh": {
+        "status": "deferred",
+        "reason": "Pending-review concepts are not pushed to trusted vector indexes without review policy approval."
+      }
     },
     "trace": {
       "trace_id": "trace_knowledge_fabric_demo_001",
@@ -75,5 +94,44 @@
       "message": "The concept payload lacks required title or content fields.",
       "recoverable": true
     }
-  }
+  },
+  "source_path_examples": [
+    {
+      "name": "upload_to_pending_okf",
+      "request_delta": {
+        "input": {
+          "source_type": "upload",
+          "title": "Uploaded project note",
+          "content_ref": "uploads/florian/2026-08-07-project-note.pdf",
+          "target_state": "pending_review"
+        },
+        "context": {
+          "okf_namespace": "concepts/florian/uploads",
+          "evidence_namespace": "evidence/florian/uploads",
+          "graph_policy": "create_candidate_edges_only",
+          "vector_policy": "defer_until_reviewed"
+        }
+      },
+      "expected_outputs": ["concept_path", "evidence_path", "crud_log_path", "candidate_edges"]
+    },
+    {
+      "name": "transcript_to_pending_okf",
+      "request_delta": {
+        "input": {
+          "source_type": "transcript",
+          "title": "Voice reflection",
+          "content": "Transcript text supplied by direct voice capture, n8n voice interface, or manual paste.",
+          "target_state": "pending_review"
+        },
+        "context": {
+          "okf_namespace": "concepts/florian/transcripts",
+          "transcript_namespace": "transcripts/florian",
+          "evidence_namespace": "evidence/florian/transcripts",
+          "graph_policy": "create_candidate_edges_only",
+          "vector_policy": "defer_until_reviewed"
+        }
+      },
+      "expected_outputs": ["concept_path", "transcript_path", "evidence_path", "crud_log_path", "graph_curator_trigger"]
+    }
+  ]
 }

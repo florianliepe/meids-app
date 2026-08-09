@@ -425,6 +425,20 @@
               <button id="textIngestBtn">Auto-create concept</button>
             </article>
           </div>
+          <article class="panel knowledge-fabric-ingest-contract">
+            <div>
+              <span class="badge">Knowledge Fabric contract</span>
+              <h2>Every source enters as pending OKF.</h2>
+              <p>Uploads and transcripts create reviewable knowledge first. Trusted retrieval, graph promotion, and vector refresh stay gated.</p>
+            </div>
+            <div class="ingest-contract-grid" aria-label="Knowledge Fabric ingest lifecycle">
+              <span><strong>Pending concept</strong><small>Markdown + YAML frontmatter</small></span>
+              <span><strong>Evidence record</strong><small>Source anchor and provenance hash</small></span>
+              <span><strong>CRUD audit</strong><small>Append-only learning trail</small></span>
+              <span><strong>Graph candidates</strong><small>Draft edges for curator review</small></span>
+              <span><strong>Vector boundary</strong><small>Deferred until approved policy</small></span>
+            </div>
+          </article>
           <pre id="ingestResult" class="output">No ingest yet.</pre>
         </section>
 

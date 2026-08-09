@@ -53,7 +53,31 @@ function validateFixture(file) {
   if (typeof fixture.failure.error?.recoverable !== "boolean") {
     fail(`${fixture.agent_id}: failure.error.recoverable boolean missing`);
   }
+  if (fixture.agent_id === "knowledge_fabric_agent") validateKnowledgeFabricFixture(fixture);
   return fixture.agent_id;
+}
+
+function validateKnowledgeFabricFixture(fixture) {
+  const output = fixture.response.output || {};
+  for (const field of ["concept_path", "evidence_path", "crud_log_path", "review_state", "graph_curator_trigger", "vector_refresh"]) {
+    if (!output[field]) fail(`${fixture.agent_id}: response.output.${field} missing`);
+  }
+  if (output.review_state !== "pending_review") fail(`${fixture.agent_id}: response.output.review_state must be pending_review`);
+  if (!Array.isArray(output.candidate_edges)) fail(`${fixture.agent_id}: response.output.candidate_edges must be an array`);
+  if (output.graph_curator_trigger?.target_state !== "candidate") {
+    fail(`${fixture.agent_id}: graph_curator_trigger.target_state must be candidate`);
+  }
+  if (!["deferred", "blocked"].includes(output.vector_refresh?.status)) {
+    fail(`${fixture.agent_id}: vector_refresh.status must be deferred or blocked before approval`);
+  }
+  const examples = fixture.source_path_examples;
+  if (!Array.isArray(examples) || examples.length < 2) {
+    fail(`${fixture.agent_id}: source_path_examples must cover upload and transcript paths`);
+  }
+  const names = new Set(examples.map((example) => example.name));
+  for (const required of ["upload_to_pending_okf", "transcript_to_pending_okf"]) {
+    if (!names.has(required)) fail(`${fixture.agent_id}: source_path_examples missing ${required}`);
+  }
 }
 
 const files = fs.readdirSync(fixtureDir).filter((file) => file.endsWith(".json"));
