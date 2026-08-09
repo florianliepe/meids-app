@@ -15946,6 +15946,11 @@ function renderSyncDetailPanel() {
   const localAppPath = 'C:\\Users\\e729958\\Downloads\\INtellectual twin\\03. Local MVP\\intellectual-twin-web';
   const localBundlePath = 'C:\\Users\\e729958\\Downloads\\INtellectual twin\\03. Local MVP\\florian-twin';
   const knowledgeRepoPath = 'C:\\Users\\e729958\\Documents\\MeIDs-Knowledge-Base-';
+  const okfStatus = state.okfValidationStatus || {};
+  const okfSummary = okfStatus.summary || {};
+  const okfPaths = okfStatus.paths || {};
+  const promotionCount = Number(okfSummary.promotion_fixture_count || 0);
+  const promotionPath = okfPaths.promotion_root || "contracts/okf/promotions";
   const payloadPath = lastExport?.path ? `${localBundlePath}\\${String(lastExport.path).replaceAll("/", "\\")}` : `${localBundlePath}\\exports\\sync\\<payload>.json`;
   const exportCommand = [
     'Invoke-RestMethod `',
@@ -16004,6 +16009,13 @@ function renderSyncDetailPanel() {
         <strong>Branch and PR before merge</strong>
         <p>Inspect payload contents before pushing; smoke cleanup events can also appear in the recent CRUD window. External writes should move to MCP connector approval later.</p>
         <code>scripts/github_sync_pr.ps1</code>
+      </article>
+      <article>
+        <span>Graph promotion boundary</span>
+        <strong>${escapeHtml(`${promotionCount} promotion decision${promotionCount === 1 ? "" : "s"} validated`)}</strong>
+        <p>Promotion artifacts stay in the knowledge fabric contract and should be synced with OKF concepts, evidence, audit logs, and graph edge files.</p>
+        <code>${escapeHtml(promotionPath)}</code>
+        <a href="${escapeHtml(githubBlobUrl(promotionPath))}" target="_blank" rel="noreferrer">Open promotion contract</a>
       </article>
     </div>
     <div class="sync-action-counts">${actionRows || '<span><strong>0</strong>actions</span>'}${actorRows}</div>
