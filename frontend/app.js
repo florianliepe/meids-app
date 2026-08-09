@@ -21528,6 +21528,7 @@ function renderProductionHandoff(readiness = {}, storage = {}, migration = {}, g
         </div>
         <button id="exportRepoSplitArtifactBtn" class="secondary small" type="button">Export repo split</button>
       </div>
+      ${renderRepoResponsibilityMap(repoSplitRepos)}
       <div class="repo-split-grid">
         ${repoSplitRepos.length ? repoSplitRepos.map(renderRepoSplitCard).join("") : renderEmptyState("Repo split guidance unavailable.")}
       </div>
@@ -22028,6 +22029,85 @@ function renderGitHubPagesArtifactRow(item) {
         <code>${path}</code>
       </div>
       <button class="secondary small github-pages-open" type="button" data-path="${path}">Open</button>
+    </article>
+  `;
+}
+
+function renderRepoResponsibilityMap(repositories = []) {
+  const repoIndex = new Map(
+    repositories.map((repo) => [
+      String(repo.id || repo.name || "").toLowerCase(),
+      repo,
+    ]),
+  );
+  const resolveRepo = (aliases) => aliases.map((alias) => repoIndex.get(alias)).find(Boolean) || {};
+  const lanes = [
+    {
+      key: "app",
+      label: "App repo",
+      repo: resolveRepo(["app", "meids-app", "frontend"]),
+      owns: ["static UI", "public-safe fixtures", "contract docs", "Pages workflow"],
+      syncs: ["reads runtime config", "links knowledge PRs", "shows agent status"],
+      excludes: ["private OKF content", "secrets", "live n8n credentials"],
+    },
+    {
+      key: "knowledge",
+      label: "Knowledge fabric repo",
+      repo: resolveRepo(["knowledge", "meids-knowledge-fabric", "knowledge-fabric"]),
+      owns: ["approved OKF concepts", "evidence manifests", "transcripts", "graph edges", "CRUD audit"],
+      syncs: ["receives reviewed payloads", "feeds vector refresh", "stores promotion decisions"],
+      excludes: ["frontend build files", "agent secrets", "unreviewed public data"],
+    },
+    {
+      key: "agent",
+      label: "Agent-config repo",
+      repo: resolveRepo(["agent-config", "agent", "meids-agent-configs", "agents"]),
+      owns: ["n8n workflows", "agent prompts", "skill specs", "tool manifests"],
+      syncs: ["publishes contract versions", "tracks approval gates", "records workflow readiness"],
+      excludes: ["private source files unless referenced", "runtime API keys", "raw user exports"],
+    },
+  ];
+  return `
+    <section class="repo-responsibility-map" aria-label="Repository responsibility map">
+      <div class="repo-responsibility-head">
+        <span class="badge">Sync responsibility map</span>
+        <strong>App, knowledge, and agent configs stay separate by default</strong>
+        <p>Each lane has one owner, one sync direction, and explicit exclusions so hosted deployment can move without mixing private knowledge, public UI, and credentials.</p>
+      </div>
+      <div class="repo-responsibility-lanes">
+        ${lanes.map((lane) => renderRepoResponsibilityLane(lane)).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderRepoResponsibilityLane(lane = {}) {
+  const repo = lane.repo || {};
+  const readiness = repo.readiness || "planned";
+  const sourcePaths = Array.isArray(repo.source_paths) ? repo.source_paths : [];
+  const deploymentTarget = repo.deployment_target || "";
+  return `
+    <article class="repo-responsibility-lane ${safeGraphClass(lane.key)}">
+      <div>
+        <span>${escapeHtml(lane.label || "Repository")}</span>
+        <strong>${escapeHtml(repo.name || lane.label || "Repository")}</strong>
+        <small>${escapeHtml([readiness, deploymentTarget].filter(Boolean).join(" · "))}</small>
+      </div>
+      <dl>
+        <div>
+          <dt>Owns</dt>
+          <dd>${escapeHtml((lane.owns || []).join(" · "))}</dd>
+        </div>
+        <div>
+          <dt>Syncs</dt>
+          <dd>${escapeHtml((lane.syncs || []).join(" · "))}</dd>
+        </div>
+        <div>
+          <dt>Excludes</dt>
+          <dd>${escapeHtml((lane.excludes || []).join(" · "))}</dd>
+        </div>
+      </dl>
+      <code>${escapeHtml(sourcePaths.slice(0, 4).join(" · ") || "target repo pending")}</code>
     </article>
   `;
 }

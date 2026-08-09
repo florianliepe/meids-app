@@ -12,6 +12,16 @@ This document defines the durable knowledge contract for MeIDs. The app can run 
 
 The app repo must not store private knowledge or secrets. It may store schemas, public-safe examples, and sync tooling.
 
+Operational sync boundaries:
+
+| Boundary | Source | Target | Review Gate |
+| --- | --- | --- | --- |
+| Public app release | `meids-app` static frontend and public fixtures | GitHub Pages, later hosted frontend/CDN | Branch review, Pages smoke check, no browser secrets |
+| Knowledge fabric sync | Local MVP exports, approved OKF concepts, evidence manifests, transcripts, graph files, CRUD audit | `meids-knowledge-fabric` | Human-reviewed branch/PR before merge |
+| Graph promotion sync | Human promotion decisions in `contracts/okf/promotions` or private equivalent | Knowledge fabric graph edge state | Candidate edges must be approved/rejected/reworked before trusted retrieval |
+| Agent contract sync | n8n fixtures, prompts, skill specs, tool manifests | `meids-agent-configs` | Contract test, approval gate, no runtime secrets in repo |
+| Retrieval refresh | Approved or selected pending OKF documents | Vector DB / graph projection via adapter or n8n | Adapter request review; credentials stay in hosted secret store |
+
 Public-safe fixtures for this contract are stored in `contracts/okf/examples`.
 Run `node scripts\validate-okf-fixtures.cjs` before changing the contract shape.
 The deterministic local ingest mock is `node scripts\mock-okf-ingest.cjs`; it

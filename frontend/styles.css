@@ -3063,6 +3063,93 @@ body.cockpit-mode .main {
   gap: 8px;
 }
 
+.repo-responsibility-map {
+  display: grid;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 72%, var(--accent-soft));
+  padding: 10px;
+}
+
+.repo-responsibility-head {
+  display: grid;
+  gap: 4px;
+}
+
+.repo-responsibility-head strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.repo-responsibility-head p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.repo-responsibility-lanes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.repo-responsibility-lane {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px;
+}
+
+.repo-responsibility-lane > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.repo-responsibility-lane span,
+.repo-responsibility-lane dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.repo-responsibility-lane strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.repo-responsibility-lane small {
+  color: var(--muted);
+}
+
+.repo-responsibility-lane dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.repo-responsibility-lane dl div {
+  display: grid;
+  gap: 2px;
+}
+
+.repo-responsibility-lane dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.repo-responsibility-lane code {
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
 .repo-split-card,
 .repo-split-artifact {
   border: 1px solid var(--line);
@@ -3130,6 +3217,15 @@ body.cockpit-mode .main {
   color: var(--muted);
 }
 
+body.theme-dark .repo-responsibility-map {
+  background: color-mix(in srgb, var(--surface-quiet) 82%, var(--accent-soft));
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+}
+
+body.theme-dark .repo-responsibility-lane {
+  background: color-mix(in srgb, var(--surface) 90%, #ffffff 2%);
+}
+
 .github-pages-panel {
   display: grid;
   gap: 10px;
@@ -3143,6 +3239,12 @@ body.cockpit-mode .main {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 8px;
+}
+
+@media (max-width: 980px) {
+  .repo-responsibility-lanes {
+    grid-template-columns: 1fr;
+  }
 }
 
 .github-pages-check,
