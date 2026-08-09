@@ -10513,7 +10513,7 @@ async function safeRefreshReviewDashboard() {
     await refreshReviewDashboard();
   } catch (error) {
     $("#dashConceptStates").textContent = "Dashboard endpoint unavailable. Restart the local MVP server.";
-    ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
+    ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
       const node = $(selector);
       if (node) node.innerHTML = renderErrorState("Dashboard unavailable");
     });
@@ -10523,7 +10523,7 @@ async function safeRefreshReviewDashboard() {
 
 function setDashboardLoading() {
   $("#cockpitOverview").innerHTML = '<div class="skeleton-block"></div><div class="skeleton-block"></div>';
-  ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
+  ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
     const node = $(selector);
     if (node) node.innerHTML = renderLoadingState("Loading cockpit data");
   });
@@ -10574,6 +10574,7 @@ function renderReviewDashboard(result) {
   renderDashboardConcepts("#dashReworkConcepts", concept.needs_rework || [], "No concepts need rework.");
   renderDashboardConcepts("#dashRejectedConcepts", concept.rejected || [], "No rejected concepts.");
   renderDashboardTraces(trace.latest || []);
+  renderDashboardAgentTraceHistory();
   renderDashboardSkillQueue(result.skills?.pending_approval || []);
   renderDashboardRefinementQueue(result.skills?.refinements || {}, result.skills?.runs || {});
   renderDashboardVoiceProofChain(result.mcp_tool_calls?.voice_proof_chain || {});
@@ -12564,7 +12565,7 @@ function renderChatContractBadges() {
   if (!target) return;
   target.innerHTML = chatAgentContractStatuses()
     .map((item) => `
-      <span class="${item.active ? "active" : ""} ${item.configured ? "configured" : "fixture"}">
+      <span class="${item.active ? "active" : ""} ${item.configured ? "configured" : "fixture"} ${safeGraphClass(item.state)}" title="${escapeHtml(item.detail)}">
         <strong>${escapeHtml(item.label)}</strong>
         <small>${escapeHtml(item.state)}</small>
         <em>${escapeHtml(item.detail)}</em>
@@ -12956,6 +12957,7 @@ function persistAgentTrace(result = {}) {
     const next = [entry, ...(Array.isArray(current) ? current : [])].slice(0, 50);
     window.localStorage.setItem(storageKeys.agentTraceLog, JSON.stringify(next));
     renderAgentTraceHistoryPanel();
+    renderDashboardAgentTraceHistory();
   } catch (error) {
     console.warn("Agent trace persistence failed", error);
   }
@@ -12977,6 +12979,7 @@ function clearAgentTraceHistory() {
     console.warn("Agent trace clear failed", error);
   }
   renderAgentTraceHistoryPanel();
+  renderDashboardAgentTraceHistory();
 }
 
 function renderAgentTraceHistoryPanel() {
@@ -12987,7 +12990,22 @@ function renderAgentTraceHistoryPanel() {
     target.innerHTML = '<p class="empty">No local agent handoffs yet.</p>';
     return;
   }
-  target.innerHTML = traces.slice(0, 12).map((trace) => `
+  target.innerHTML = renderAgentTraceHistoryRows(traces, 12);
+}
+
+function renderDashboardAgentTraceHistory() {
+  const target = $("#dashAgentTraceHistory");
+  if (!target) return;
+  const traces = readAgentTraceLog();
+  if (!traces.length) {
+    target.innerHTML = renderEmptyState("No local n8n handoffs yet.", "Open agent contracts", "openProductionCockpit");
+    return;
+  }
+  target.innerHTML = renderAgentTraceHistoryRows(traces, 8);
+}
+
+function renderAgentTraceHistoryRows(traces = [], limit = 12) {
+  return traces.slice(0, limit).map((trace) => `
     <article class="agent-trace-row ${trace.approval_required ? "approval" : "completed"}">
       <div>
         <span class="badge">${escapeHtml(trace.approval_required ? "approval gate" : trace.status || "trace")}</span>
