@@ -5705,6 +5705,35 @@ body.cockpit-mode .main {
   margin: 6px 0;
 }
 
+.agent-runtime-readiness {
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-quiet) 82%, transparent);
+  display: grid;
+  gap: 3px;
+  padding: 8px 9px;
+}
+
+.agent-runtime-readiness strong {
+  margin: 0;
+  font-size: 12px;
+}
+
+.agent-runtime-readiness small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.agent-runtime-readiness.configured,
+.agent-runtime-readiness.n8n-connected {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--line));
+}
+
+.agent-runtime-readiness.missing-url {
+  border-color: color-mix(in srgb, var(--warn) 36%, var(--line));
+}
+
 .agent-contract-result {
   display: grid;
   gap: 12px;
@@ -6895,6 +6924,14 @@ body.theme-dark .knowledge-source-affordances button:hover {
   font-size: 11px;
 }
 
+.chat-contract-badges em {
+  color: var(--muted);
+  display: block;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.25;
+}
+
 .agent-trace-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(180px, 0.46fr);
@@ -7157,7 +7194,13 @@ body.theme-dark .okf-validation-summary.warning {
   color: var(--accent-strong);
 }
 
-.agent-contract-status-strip .blocked {
+.agent-contract-status-strip .configured {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  color: var(--accent-strong);
+}
+
+.agent-contract-status-strip .blocked,
+.agent-contract-status-strip .missing-url {
   border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
   color: var(--warn);
 }
@@ -7165,6 +7208,20 @@ body.theme-dark .okf-validation-summary.warning {
 body.theme-dark .agent-contract-status-strip span,
 body.theme-dark .agent-contract-links a {
   background: #20251f;
+}
+
+body.theme-dark .agent-runtime-readiness {
+  background: rgba(17, 21, 17, 0.72);
+  border-color: rgba(241, 235, 224, 0.14);
+}
+
+body.theme-dark .agent-runtime-readiness.configured,
+body.theme-dark .agent-runtime-readiness.n8n-connected {
+  border-color: rgba(122, 216, 191, 0.34);
+}
+
+body.theme-dark .agent-runtime-readiness.missing-url {
+  border-color: rgba(240, 163, 154, 0.36);
 }
 
 .agent-contract-message {

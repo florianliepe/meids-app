@@ -9276,7 +9276,7 @@ function refreshStaticPagesWorkspace() {
   $("#statusN8nChat").textContent = status.n8n_chat?.configured ? "webhook active" : "fixture mode";
   $("#statusGuardrails").textContent = status.guardrail_policy || "-";
   $("#statusVersion").textContent = status.app_version || "-";
-  $("#workspaceSignal").textContent = "Florian · GitHub Pages · n8n ready";
+  $("#workspaceSignal").textContent = `Florian · GitHub Pages · ${state.n8nAgentContracts.configured_count}/${state.n8nAgentContracts.contract_count} n8n URLs`;
   $("#voiceReadiness").textContent = "Static staging: voice recording UI is visible; transcription requires the local backend or a hosted API.";
   $("#voiceReadiness").className = "readiness missing";
   updateLandingStatus();
@@ -9391,7 +9391,9 @@ function buildStaticPagesN8nAgentContracts() {
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
       webhook_env_var: "N8N_ACTOR_TWIN_WEBHOOK_URL",
       webhook_configured: hasAgentWebhook("actor_twin"),
-      statuses: ["documented", "fixture ready", "contract tested", hasAgentWebhook("actor_twin") ? "n8n connected" : "blocked"],
+      runtime_status: agentRuntimeReadiness("actor_twin").status,
+      webhook_url_configured: hasAgentWebhook("actor_twin"),
+      statuses: agentContractStatusesFor("actor_twin"),
       blocker: "Live n8n webhook is intentionally not required for GitHub Pages fixture mode.",
     },
     {
@@ -9402,8 +9404,10 @@ function buildStaticPagesN8nAgentContracts() {
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
       webhook_env_var: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
       webhook_configured: hasAgentWebhook("knowledge_fabric_agent"),
-      statuses: ["documented", "fixture ready", "contract tested", hasAgentWebhook("knowledge_fabric_agent") ? "n8n connected" : "blocked"],
-      blocker: "Vector DB and live ingestion workflow are pending provider credentials.",
+      runtime_status: agentRuntimeReadiness("knowledge_fabric_agent").status,
+      webhook_url_configured: hasAgentWebhook("knowledge_fabric_agent"),
+      statuses: agentContractStatusesFor("knowledge_fabric_agent"),
+      blocker: "Live Knowledge Fabric Agent workflow URL is missing; vector DB credentials remain pending.",
     },
     {
       agent_id: "agentic_butler",
@@ -9413,8 +9417,10 @@ function buildStaticPagesN8nAgentContracts() {
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
       webhook_env_var: "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
       webhook_configured: hasAgentWebhook("agentic_butler"),
-      statuses: ["documented", "fixture ready", "contract tested", hasAgentWebhook("agentic_butler") ? "n8n connected" : "blocked"],
-      blocker: "Live skill execution remains approval-gated and requires n8n workflow rollout.",
+      runtime_status: agentRuntimeReadiness("agentic_butler").status,
+      webhook_url_configured: hasAgentWebhook("agentic_butler"),
+      statuses: agentContractStatusesFor("agentic_butler"),
+      blocker: "Live Agentic Butler workflow URL is missing; skill execution remains approval-gated.",
     },
   ];
   return {
@@ -11600,13 +11606,18 @@ function renderN8nContractReadinessPanel(agents = []) {
 
 function renderN8nContractReadiness(agent = {}, readiness = null) {
   const contractSource = readiness?.source || agent.n8n_contract || "";
-  const configured = Boolean(readiness?.webhook_configured);
+  const runtimeReadiness = agentRuntimeReadiness(agent.id || readiness?.agent_id || "");
+  const configured = Boolean(readiness?.webhook_configured) || runtimeReadiness.configured;
   const probe = state.n8nLiveProbeResults?.[agent.id || readiness?.agent_id || ""];
   const replayPassed = readiness?.replay_status === "passed";
-  const status = readiness ? (configured ? "configured" : (replayPassed ? "fixture replay passed" : "contract ready")) : "missing contract";
+  const status = probe?.status === "connected"
+    ? "live connected"
+    : readiness
+      ? runtimeReadiness.status
+      : "missing contract";
   const statusItems = Array.isArray(readiness?.statuses)
     ? readiness.statuses
-    : ["documented", contractSource ? "fixture ready" : "blocked", configured ? "n8n connected" : "blocked"];
+    : agentContractStatusesFor(agent.id || readiness?.agent_id || "");
   const envVar = {
     actor_twin: "N8N_ACTOR_TWIN_WEBHOOK_URL",
     knowledge_fabric_agent: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
@@ -11617,6 +11628,10 @@ function renderN8nContractReadiness(agent = {}, readiness = null) {
       <span class="queue-kind">${escapeHtml(status)}</span>
       <strong>${escapeHtml(readiness?.webhook_env_var || envVar)}</strong>
       <p>${escapeHtml(contractSource)}</p>
+      <div class="agent-runtime-readiness ${safeGraphClass(runtimeReadiness.status)}">
+        <strong>${escapeHtml(runtimeReadiness.label)}</strong>
+        <small>${escapeHtml(runtimeReadiness.detail)}</small>
+      </div>
       <div class="agent-contract-status-strip" aria-label="Contract statuses">
         ${statusItems.map((item) => `<span class="${safeGraphClass(item)}">${escapeHtml(item)}</span>`).join("")}
       </div>
@@ -12514,7 +12529,8 @@ function chatAgentContractStatuses() {
   const byAgent = new Map(contracts.map((contract) => [contract.agent_id, contract]));
   return ["actor_twin", "knowledge_fabric_agent", "agentic_butler"].map((agentId) => {
     const contract = byAgent.get(agentId) || {};
-    const configured = hasAgentWebhook(agentId) || Boolean(contract.webhook_configured);
+    const runtimeReadiness = agentRuntimeReadiness(agentId);
+    const configured = runtimeReadiness.configured || Boolean(contract.webhook_configured);
     const replayPassed = state.n8nAgentContracts?.replay_status === "passed" || contract.replay_status === "passed";
     const probe = state.n8nLiveProbeResults?.[agentId];
     return {
@@ -12523,10 +12539,11 @@ function chatAgentContractStatuses() {
       state: probe?.status === "connected"
         ? "n8n connected"
         : configured
-          ? "configured"
+          ? runtimeReadiness.status
           : replayPassed
             ? "fixture ready"
             : "documented",
+      detail: runtimeReadiness.detail,
       configured,
       replayPassed,
       active: chatModeAgentId() === agentId,
@@ -12548,9 +12565,58 @@ function renderChatContractBadges() {
       <span class="${item.active ? "active" : ""} ${item.configured ? "configured" : "fixture"}">
         <strong>${escapeHtml(item.label)}</strong>
         <small>${escapeHtml(item.state)}</small>
+        <em>${escapeHtml(item.detail)}</em>
       </span>
     `)
     .join("");
+}
+
+function agentRuntimeReadiness(agentId) {
+  const webhookUrl = getAgentWebhook(agentId);
+  const hasUrl = Boolean(webhookUrl);
+  const probe = state.n8nLiveProbeResults?.[agentId];
+  const envVar = {
+    actor_twin: "N8N_ACTOR_TWIN_WEBHOOK_URL",
+    knowledge_fabric_agent: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+    agentic_butler: "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+  }[agentId] || "N8N_WEBHOOK_URL";
+  if (probe?.status === "connected") {
+    return {
+      status: "n8n connected",
+      label: "Live workflow connected",
+      detail: probe.detail || "Last probe reached the n8n workflow.",
+      configured: true,
+      envVar,
+    };
+  }
+  if (hasUrl) {
+    return {
+      status: "configured",
+      label: "Webhook URL configured",
+      detail: staticPagesMode
+        ? "Static Pages can hold the URL; production UAT still needs workflow confirmation."
+        : "Ready for backend/live probe.",
+      configured: true,
+      envVar,
+    };
+  }
+  return {
+    status: "missing URL",
+    label: "Live URL missing",
+    detail: `${envVar} is empty in runtime config; fixture replay remains available.`,
+    configured: false,
+    envVar,
+  };
+}
+
+function agentContractStatusesFor(agentId) {
+  const runtimeReadiness = agentRuntimeReadiness(agentId);
+  return [
+    "documented",
+    "fixture ready",
+    "contract tested",
+    runtimeReadiness.configured ? runtimeReadiness.status : "missing URL",
+  ];
 }
 
 function n8nAgentWebhooks() {
