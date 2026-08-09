@@ -95,6 +95,10 @@ async function run() {
       await page.goto(`http://${host}:${port}/?view=${qaCase.view}`, { waitUntil: "networkidle" });
       await page.waitForSelector(qaCase.main, { timeout: 10000 });
       await page.waitForTimeout(350);
+      let interactionMetrics = {};
+      if (qaCase.view === "graph") {
+        interactionMetrics = await exerciseGraphRelationLayerFilter(page);
+      }
       const metrics = await page.evaluate((selector) => {
         const main = document.querySelector(selector.main);
         const cards = Array.from(document.querySelectorAll(selector.cards));
@@ -149,6 +153,14 @@ async function run() {
       if (contrast < 4.5) failures.push(`header contrast below 4.5: ${contrast.toFixed(2)}`);
       if (metrics.documentScrollWidth > metrics.viewportWidth + 2) failures.push(`document overflow: ${metrics.documentScrollWidth}px > ${metrics.viewportWidth}px`);
       if (metrics.overflowing.length) failures.push(`horizontal overflow: ${JSON.stringify(metrics.overflowing)}`);
+      if (qaCase.view === "graph") {
+        if (!interactionMetrics.nodeClicked) failures.push("graph QA could not click a visible node");
+        if (!interactionMetrics.relationLayerSummaryFound) failures.push("graph relation layer summary did not render after node selection");
+        if (!interactionMetrics.layerButtonCount) failures.push("graph relation layer buttons missing");
+        if (interactionMetrics.candidateClicked && interactionMetrics.edgeClassFilter !== "candidate") {
+          failures.push(`candidate layer click did not apply edge-class filter: ${interactionMetrics.edgeClassFilter || "unset"}`);
+        }
+      }
       results.push({ ...qaCase, metrics, contrast: Number(contrast.toFixed(2)), screenshot, status: failures.length ? "failed" : "passed", failures });
     }
   } finally {
@@ -169,6 +181,26 @@ async function run() {
     for (const failure of result.failures) console.log(`  - ${failure}`);
   }
   if (failed.length) process.exit(1);
+}
+
+async function exerciseGraphRelationLayerFilter(page) {
+  const node = page.locator("[data-graph-node]").first();
+  const nodeClicked = await node.count().then((count) => count > 0);
+  if (!nodeClicked) return { nodeClicked: false };
+  await node.click({ force: true });
+  await page.waitForSelector(".graph-relation-layer-summary", { timeout: 10000 }).catch(() => {});
+  const relationLayerSummaryFound = await page.locator(".graph-relation-layer-summary").count().then((count) => count > 0);
+  const layerButtonCount = await page.locator(".graph-relation-layer-summary button").count();
+  const candidate = page.locator('.graph-relation-layer-summary button[data-graph-edge-class-filter="candidate"]').first();
+  const candidateClicked = await candidate.count().then((count) => count > 0);
+  if (candidateClicked) {
+    await candidate.click({ force: true });
+    await page.waitForTimeout(200);
+  }
+  const edgeClassFilter = await page.evaluate(() =>
+    document.querySelector(".graph-relation-layer-summary button.active")?.dataset?.graphEdgeClassFilter || "",
+  );
+  return { nodeClicked, relationLayerSummaryFound, layerButtonCount, candidateClicked, edgeClassFilter };
 }
 
 run().catch((error) => {

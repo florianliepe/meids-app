@@ -4451,6 +4451,11 @@ function graphPositions(nodes, width, height) {
 async function openGraphNode(nodeKey) {
   state.selectedGraphNodeKey = nodeKey;
   renderGraphCockpit();
+  if (staticPagesMode) {
+    state.okfGraphNodeDetail = buildStaticGraphNodeDetail(nodeKey);
+    renderGraphNodeDetail();
+    return;
+  }
   try {
     const [detail] = await Promise.all([
       getJson(`/api/okf/graph/node?node_key=${encodeURIComponent(nodeKey)}&twin=${encodeURIComponent(state.activeTwin)}&include_drafts=true`),
@@ -4461,6 +4466,26 @@ async function openGraphNode(nodeKey) {
   } catch (error) {
     $("#graphNodeDetail").innerHTML = `<p class="warning-copy">Node detail failed: ${escapeHtml(compactError(error.message))}</p>`;
   }
+}
+
+function buildStaticGraphNodeDetail(nodeKey) {
+  const graph = state.okfGraph || {};
+  const nodes = graph.nodes || [];
+  const edges = graph.edges || [];
+  const node = nodes.find((item) => item.node_key === nodeKey);
+  if (!node) return { node: null, edges: [], neighbors: [], evidence: [] };
+  const directEdges = edges.filter((edge) => edge.source === nodeKey || edge.target === nodeKey);
+  const neighborKeys = new Set(directEdges.map((edge) => (edge.source === nodeKey ? edge.target : edge.source)));
+  const neighbors = nodes.filter((item) => neighborKeys.has(item.node_key));
+  const evidence = [
+    {
+      title: node.source_anchor || node.title || "Static OKF source",
+      path: node.okf_path || node.path || "",
+      evidence_path: node.okf_path || node.path || "",
+      excerpt: node.summary || "",
+    },
+  ].filter((item) => item.path || item.title);
+  return { node, edges: directEdges, neighbors, evidence };
 }
 
 async function refreshGraphEdgeReviews(force = false) {
