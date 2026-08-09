@@ -22635,7 +22635,7 @@ body.theme-dark.cockpit-mode .mode-pill {
   border-radius: 12px;
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(260px, 1fr) minmax(150px, 220px) auto;
+  grid-template-columns: minmax(240px, 1fr) minmax(140px, 190px) minmax(150px, 210px) auto;
   padding: 10px;
 }
 
@@ -23497,6 +23497,50 @@ body.theme-dark .graph-command-surface small {
   padding: 8px;
 }
 
+.knowledge-source-readiness-grid button {
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.knowledge-source-readiness-grid button:hover,
+.knowledge-source-readiness-grid button.active {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--ink);
+}
+
+.knowledge-source-readiness-grid button.approved {
+  border-left-color: #34c795;
+}
+
+.knowledge-source-readiness-grid button.pending {
+  border-left-color: #d7a84f;
+}
+
+.knowledge-source-readiness-grid button.attention,
+.knowledge-source-readiness-grid button.unlinked {
+  border-left-color: #d9826b;
+}
+
+.knowledge-source-readiness-grid button strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.knowledge-source-readiness-grid button small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
 .knowledge-increment-source.linked {
   border-left: 3px solid color-mix(in srgb, var(--accent) 64%, var(--line));
 }
@@ -23573,6 +23617,26 @@ body.theme-dark .knowledge-source-affordances button {
   background: #232820;
   border-color: rgba(241, 235, 224, 0.18);
   color: #f1ebdf;
+}
+
+body.theme-dark .knowledge-source-readiness-grid button {
+  background: #1d241f;
+  border-color: rgba(241, 235, 224, 0.13);
+  color: #f6f1e7;
+}
+
+body.theme-dark .knowledge-source-readiness-grid button:hover,
+body.theme-dark .knowledge-source-readiness-grid button.active {
+  background: rgba(122, 216, 191, 0.08);
+  border-color: rgba(122, 216, 191, 0.34);
+}
+
+body.theme-dark .knowledge-source-readiness-grid button strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-source-readiness-grid button small {
+  color: #c9c0b3;
 }
 
 @media (max-width: 900px) {

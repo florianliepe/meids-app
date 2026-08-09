@@ -237,6 +237,7 @@
   conceptReviewFilter: "all",
   conceptTypeFilter: "all",
   conceptProfileFilter: "all",
+  conceptSourceFilter: "all",
   conceptClusterFilter: "all",
   conceptDensity: "comfortable",
   skillStatusFilter: "all",
@@ -305,6 +306,10 @@ function bindViewFilters() {
     state.conceptTypeFilter = event.target.value || "all";
     renderConcepts();
   });
+  $("#conceptSourceFilter")?.addEventListener("change", (event) => {
+    state.conceptSourceFilter = event.target.value || "all";
+    renderConcepts();
+  });
   $("#conceptProfileFacets")?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-concept-profile]");
     if (!button) return;
@@ -316,6 +321,14 @@ function bindViewFilters() {
     if (!button) return;
     const cluster = button.dataset.knowledgeCluster || "all";
     state.conceptClusterFilter = state.conceptClusterFilter === cluster ? "all" : cluster;
+    renderConcepts();
+  });
+  $("#knowledgeSourceReadiness")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-concept-source-filter]");
+    if (!button) return;
+    state.conceptSourceFilter = button.dataset.conceptSourceFilter || "all";
+    const select = $("#conceptSourceFilter");
+    if (select) select.value = state.conceptSourceFilter;
     renderConcepts();
   });
   $("#conceptDensityBtn")?.addEventListener("click", () => {
@@ -15046,6 +15059,7 @@ function renderConcepts() {
       && matchesConceptReviewFilter(concept)
       && matchesConceptTypeFilter(concept)
       && matchesConceptProfileFilter(concept)
+      && matchesConceptSourceFilter(concept)
       && matchesConceptClusterFilter(concept),
   );
   $("#conceptCount").textContent = `${concepts.length}/${state.concepts.length} concepts`;
@@ -15159,11 +15173,13 @@ function knowledgeSourceReadinessSummary(concepts = []) {
 }
 
 function renderKnowledgeSourceReadinessItem(kind, value, label) {
+  const filterValue = kind === "unlinked" ? "gap" : kind === "approved" ? "approved" : kind === "pending" ? "pending" : kind;
+  const active = state.conceptSourceFilter === filterValue;
   return `
-    <span class="${safeGraphClass(kind)}">
+    <button class="${safeGraphClass(kind)} ${active ? "active" : ""}" type="button" data-concept-source-filter="${escapeHtml(filterValue)}" aria-pressed="${escapeHtml(String(active))}">
       <strong>${escapeHtml(value)}</strong>
       <small>${escapeHtml(label)}</small>
-    </span>
+    </button>
   `;
 }
 
@@ -15171,9 +15187,7 @@ function renderKnowledgeSource(concept, sourceLabel) {
   const fullPath = concept.path || "";
   const shortPath = compactPath(fullPath).replace(/^concepts\/[^/]+\//, "");
   const sourceRef = concept.source_deep_link || concept.source_anchor || concept.evidence_path || concept.source_path || fullPath;
-  const sourceState = sourceRef && !["source pending", "unlinked", "missing"].includes(String(sourceLabel || "").toLowerCase())
-    ? "linked"
-    : "gap";
+  const sourceState = conceptSourceState(concept);
   return `
     <div class="knowledge-increment-source ${sourceState}">
       <div class="knowledge-source-label">
@@ -15223,6 +15237,25 @@ function matchesConceptReviewFilter(concept) {
 function matchesConceptTypeFilter(concept) {
   const filter = state.conceptTypeFilter || "all";
   return filter === "all" || concept.type === filter;
+}
+
+function conceptSourceState(concept) {
+  const fabric = conceptFabric(concept);
+  const sourceRef = concept.source_deep_link || concept.source_anchor || concept.evidence_path || concept.source_path || "";
+  const evidenceStrength = String(fabric.evidence_strength || "").toLowerCase();
+  if (!sourceRef || ["", "unlinked", "missing"].includes(evidenceStrength)) return "gap";
+  return "linked";
+}
+
+function matchesConceptSourceFilter(concept) {
+  const filter = state.conceptSourceFilter || "all";
+  if (filter === "all") return true;
+  const reviewState = concept.review_state || "pending-review";
+  if (filter === "linked" || filter === "gap") return conceptSourceState(concept) === filter;
+  if (filter === "approved") return reviewState === "approved";
+  if (filter === "pending") return ["pending-review", "candidate", "draft"].includes(reviewState);
+  if (filter === "attention") return ["needs-rework", "rejected"].includes(reviewState);
+  return true;
 }
 
 function matchesConceptProfileFilter(concept) {
