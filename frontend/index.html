@@ -224,6 +224,7 @@
                 </details>
                 <span id="chatSkillStatus" class="muted-inline">Ask twin through external agent</span>
               </div>
+              <div id="chatContractBadges" class="chat-contract-badges" aria-label="Agent contract readiness"></div>
             </section>
             <div id="chatSkillRouting" class="skill-routing-panel"></div>
             <details class="chat-retrieval-settings">
@@ -1240,6 +1241,22 @@
                 <div id="agentOperatingModelPanel" class="agent-operating-model-panel">
                   <p class="empty">Checking agent operating model...</p>
                 </div>
+              </div>
+            </article>
+            <article class="panel agent-trace-history-panel" data-quality-group="production">
+              <div class="toolbar">
+                <div>
+                  <span class="badge">Agent trace history</span>
+                  <h2>Recent agent handoffs</h2>
+                </div>
+                <div class="button-row tight">
+                  <button id="refreshAgentTraceHistoryBtn" class="secondary small" type="button">Refresh traces</button>
+                  <button id="clearAgentTraceHistoryBtn" class="secondary small" type="button">Clear local traces</button>
+                </div>
+              </div>
+              <p class="muted-inline">Local browser trace metadata only. Prompt text and source exports are not stored here.</p>
+              <div id="agentTraceHistoryPanel" class="agent-trace-history-list">
+                <p class="empty">No local agent handoffs yet.</p>
               </div>
             </article>
             <article class="panel quality-agent-panel" data-quality-group="persona">

@@ -14,6 +14,8 @@ The app uses a lean assistant workspace and keeps operational complexity in desi
 review, graph, trace, skill, and production cockpits. The current implementation
 direction is documented in
 [`docs/agent-architecture-and-n8n-contracts.md`](docs/agent-architecture-and-n8n-contracts.md).
+The portable knowledge contract is documented in
+[`docs/knowledge-fabric-okf-schema.md`](docs/knowledge-fabric-okf-schema.md).
 
 Top-level agents:
 

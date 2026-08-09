@@ -6648,6 +6648,204 @@ body.theme-dark .graph-command-surface small {
   color: #c9c0b3;
 }
 
+/* Zielmodus 4: contract status, trace cockpit, and dark-mode knowledge/graph polish */
+.chat-contract-badges,
+.agent-trace-history-list {
+  display: grid;
+  gap: 8px;
+}
+
+.chat-contract-badges {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 10px;
+}
+
+.chat-contract-badges span {
+  display: grid;
+  gap: 2px;
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 84%, transparent);
+  padding: 9px 10px;
+}
+
+.chat-contract-badges span.active {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-quiet));
+}
+
+.chat-contract-badges strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.chat-contract-badges small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.agent-trace-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.46fr);
+  gap: 12px;
+  align-items: start;
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--accent) 56%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-strong) 78%, transparent);
+  padding: 12px;
+}
+
+.agent-trace-row.approval {
+  border-left-color: #d7a84f;
+}
+
+.agent-trace-row strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink);
+}
+
+.agent-trace-row p,
+.agent-trace-row small {
+  margin: 3px 0 0;
+  color: var(--muted);
+}
+
+.agent-trace-meta {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  min-width: 0;
+}
+
+.agent-trace-meta code {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+body.theme-dark .chat-contract-badges span,
+body.theme-dark .agent-trace-row {
+  border-color: rgba(241, 235, 224, 0.18);
+  background: #171d18;
+}
+
+body.theme-dark .chat-contract-badges span.active {
+  border-color: rgba(122, 216, 191, 0.64);
+  background: rgba(122, 216, 191, 0.1);
+}
+
+body.theme-dark .agent-trace-row.approval {
+  border-left-color: #f1d08c;
+}
+
+body.theme-dark .knowledge-increment {
+  border-color: rgba(241, 235, 224, 0.18);
+  background: #171d18;
+}
+
+body.theme-dark .knowledge-increment[data-review-state="approved"] {
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .knowledge-increment[data-review-state="pending-review"],
+body.theme-dark .knowledge-increment[data-review-state="candidate"],
+body.theme-dark .knowledge-increment[data-review-state="draft"] {
+  border-left-color: #d7b56d;
+}
+
+body.theme-dark .knowledge-increment[data-review-state="needs-rework"],
+body.theme-dark .knowledge-increment[data-review-state="rejected"] {
+  border-left-color: #d9826b;
+}
+
+body.theme-dark .knowledge-review-token {
+  border-color: rgba(241, 235, 224, 0.2);
+  background: #20261f;
+  color: #f6f1e7;
+}
+
+body.theme-dark .knowledge-review-token.approved {
+  background: rgba(122, 216, 191, 0.14);
+  color: #bff7e8;
+}
+
+body.theme-dark .knowledge-review-token.pending-review,
+body.theme-dark .knowledge-review-token.candidate,
+body.theme-dark .knowledge-review-token.draft {
+  background: rgba(215, 181, 109, 0.15);
+  color: #ffe2a3;
+}
+
+body.theme-dark .knowledge-review-token.needs-rework,
+body.theme-dark .knowledge-review-token.rejected {
+  background: rgba(217, 130, 107, 0.14);
+  color: #ffc8bc;
+}
+
+body.theme-dark .knowledge-increment-source code {
+  border: 1px solid rgba(241, 235, 224, 0.14);
+  border-radius: 7px;
+  background: #111511;
+  color: #e8dfd1;
+  padding: 4px 6px;
+}
+
+body.theme-dark .graph-canvas-wrap,
+body.theme-dark .graph-detail-panel,
+body.theme-dark .graph-legend,
+body.theme-dark .graph-inference-legend,
+body.theme-dark .graph-confidence-legend {
+  border-color: rgba(241, 235, 224, 0.18);
+  background: #171d18;
+}
+
+body.theme-dark .graph-svg-edge.explicit {
+  stroke: #94e8d0;
+}
+
+body.theme-dark .graph-svg-edge.inferred {
+  stroke: #b8c2ff;
+  stroke-dasharray: 7 6;
+}
+
+body.theme-dark .graph-svg-edge.candidate,
+body.theme-dark .graph-svg-edge.duplicate-candidate {
+  stroke: #f1d08c;
+  stroke-dasharray: 3 5;
+}
+
+body.theme-dark .graph-svg-edge.contradiction-candidate {
+  stroke: #f3a08e;
+}
+
+body.theme-dark .graph-svg-edge-label rect,
+body.theme-dark .graph-svg-label-wrap rect {
+  fill: rgba(17, 21, 17, 0.97);
+  stroke: rgba(241, 235, 224, 0.22);
+}
+
+body.theme-dark .graph-svg-node text,
+body.theme-dark .graph-svg-edge-label text {
+  fill: #fff8ea;
+  paint-order: stroke;
+  stroke: rgba(17, 21, 17, 0.78);
+  stroke-width: 2px;
+}
+
+@media (max-width: 760px) {
+  .chat-contract-badges,
+  .agent-trace-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agent-trace-meta {
+    justify-items: start;
+  }
+}
+
 .agent-contract-status-strip,
 .agent-contract-links {
   display: flex;

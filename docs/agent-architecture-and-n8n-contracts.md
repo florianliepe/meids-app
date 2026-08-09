@@ -116,3 +116,7 @@ Human approval is required for:
 - Knowledge, Review, Graph, Traces, Skills, and Production are cockpit views.
 - Skill Orchestrator is not shown as a top-level agent. It is described as an internal Agentic Butler component.
 - n8n configuration remains runtime-config driven; secrets must never be committed.
+
+## Knowledge Fabric Contract
+
+The durable OKF markdown/YAML contract, repo split target, Knowledge Fabric Agent ingest path, graph relation promotion lifecycle, and vector DB adapter boundary are defined in [`docs/knowledge-fabric-okf-schema.md`](./knowledge-fabric-okf-schema.md).

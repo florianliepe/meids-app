@@ -7127,6 +7127,8 @@ function bindQuality() {
     await refreshN8nAgentContracts();
   });
   $("#agentOperatingModelPanel")?.addEventListener("click", handleAgentOperatingModelClick);
+  $("#refreshAgentTraceHistoryBtn")?.addEventListener("click", renderAgentTraceHistoryPanel);
+  $("#clearAgentTraceHistoryBtn")?.addEventListener("click", clearAgentTraceHistory);
   $("#rebuildVectorIndexBtn").addEventListener("click", rebuildVectorIndex);
   $("#refreshDeepHealthBtn")?.addEventListener("click", safeRefreshDeepHealth);
   $("#exportOkfArchitectureBtn")?.addEventListener("click", exportOkfArchitectureRoadmap);
@@ -7172,6 +7174,7 @@ function setQualityGroup(group) {
   $$("[data-quality-group]").forEach((panel) => {
     panel.hidden = panel.dataset.qualityGroup !== active;
   });
+  if (active === "production") renderAgentTraceHistoryPanel();
 }
 
 function bindDrawer() {
@@ -9244,6 +9247,7 @@ function refreshStaticPagesWorkspace() {
   renderTwinContextNotices();
   renderWorkspaceIntro();
   renderAppliedSkillsSelector();
+  renderChatContractBadges();
   renderConcepts();
   renderGraphFilters();
   syncGraphControlValues();
@@ -11408,6 +11412,7 @@ async function refreshN8nAgentContracts() {
   const result = await getJson("/api/agents/n8n-contracts");
   state.n8nAgentContracts = result;
   renderAgentOperatingModelPanel();
+  renderChatContractBadges();
 }
 
 async function safeRefreshN8nAgentContracts() {
@@ -11428,6 +11433,7 @@ async function safeRefreshStaticN8nReplayStatus() {
     const replayStatus = await response.json();
     mergeStaticN8nReplayStatus(replayStatus);
     renderAgentOperatingModelPanel();
+    renderChatContractBadges();
   } catch (error) {
     console.warn("Static n8n fixture replay status refresh failed", error);
   }
@@ -11682,6 +11688,7 @@ async function probeAgentContract(agentId) {
       [agentId]: { status: result.runtime === "n8n connected" ? "connected" : "fixture", detail: result.trace_id || result.response?.request_id || "" },
     };
     renderAgentOperatingModelPanel();
+    renderChatContractBadges();
     showToast("Live probe completed", `${agentDisplayName(agentId)}: ${state.n8nLiveProbeResults[agentId].status}`, "success");
   } catch (error) {
     state.n8nLiveProbeResults = {
@@ -11689,6 +11696,7 @@ async function probeAgentContract(agentId) {
       [agentId]: { status: "failed", detail: compactError(error.message) },
     };
     renderAgentOperatingModelPanel();
+    renderChatContractBadges();
     showToast("Live probe failed", `${agentDisplayName(agentId)}: ${compactError(error.message)}`, "error");
   }
 }
@@ -12058,6 +12066,7 @@ function renderChatSkillMode() {
   $("#chatPresetSelect").disabled = !isSkillMode || !state.skillInputPresets.length;
   renderChatInputPresets();
   renderSkillRoutingPanel();
+  renderChatContractBadges();
   renderSkillPreflight();
 }
 
@@ -12388,6 +12397,50 @@ function bindPreflightFollowUps(root = document) {
   });
 }
 
+function chatAgentContractStatuses() {
+  const contracts = state.n8nAgentContracts?.contracts || [];
+  const byAgent = new Map(contracts.map((contract) => [contract.agent_id, contract]));
+  return ["actor_twin", "knowledge_fabric_agent", "agentic_butler"].map((agentId) => {
+    const contract = byAgent.get(agentId) || {};
+    const configured = hasAgentWebhook(agentId) || Boolean(contract.webhook_configured);
+    const replayPassed = state.n8nAgentContracts?.replay_status === "passed" || contract.replay_status === "passed";
+    const probe = state.n8nLiveProbeResults?.[agentId];
+    return {
+      agentId,
+      label: agentDisplayName(agentId),
+      state: probe?.status === "connected"
+        ? "n8n connected"
+        : configured
+          ? "configured"
+          : replayPassed
+            ? "fixture ready"
+            : "documented",
+      configured,
+      replayPassed,
+      active: chatModeAgentId() === agentId,
+    };
+  });
+}
+
+function chatModeAgentId() {
+  if (state.activeChatInteractionMode === "skill_activation") return "agentic_butler";
+  if (state.activeChatInteractionMode === "source_context") return "knowledge_fabric_agent";
+  return "actor_twin";
+}
+
+function renderChatContractBadges() {
+  const target = $("#chatContractBadges");
+  if (!target) return;
+  target.innerHTML = chatAgentContractStatuses()
+    .map((item) => `
+      <span class="${item.active ? "active" : ""} ${item.configured ? "configured" : "fixture"}">
+        <strong>${escapeHtml(item.label)}</strong>
+        <small>${escapeHtml(item.state)}</small>
+      </span>
+    `)
+    .join("");
+}
+
 function n8nAgentWebhooks() {
   return runtimeConfig.n8nAgentWebhooks || runtimeConfig.n8n_agent_webhooks || {};
 }
@@ -12599,6 +12652,7 @@ function persistAgentTrace(result = {}) {
     const current = JSON.parse(window.localStorage.getItem(storageKeys.agentTraceLog) || "[]");
     const next = [entry, ...(Array.isArray(current) ? current : [])].slice(0, 50);
     window.localStorage.setItem(storageKeys.agentTraceLog, JSON.stringify(next));
+    renderAgentTraceHistoryPanel();
   } catch (error) {
     console.warn("Agent trace persistence failed", error);
   }
@@ -12611,6 +12665,38 @@ function readAgentTraceLog() {
   } catch {
     return [];
   }
+}
+
+function clearAgentTraceHistory() {
+  try {
+    window.localStorage.removeItem(storageKeys.agentTraceLog);
+  } catch (error) {
+    console.warn("Agent trace clear failed", error);
+  }
+  renderAgentTraceHistoryPanel();
+}
+
+function renderAgentTraceHistoryPanel() {
+  const target = $("#agentTraceHistoryPanel");
+  if (!target) return;
+  const traces = readAgentTraceLog();
+  if (!traces.length) {
+    target.innerHTML = '<p class="empty">No local agent handoffs yet.</p>';
+    return;
+  }
+  target.innerHTML = traces.slice(0, 12).map((trace) => `
+    <article class="agent-trace-row ${trace.approval_required ? "approval" : "completed"}">
+      <div>
+        <span class="badge">${escapeHtml(trace.approval_required ? "approval gate" : trace.status || "trace")}</span>
+        <strong>${escapeHtml(trace.agent_name || agentDisplayName(trace.agent_id || ""))}</strong>
+        <p>${escapeHtml(`${trace.runtime || "fixture/local"} · ${trace.twin || "active twin"} · ${formatShortDate(trace.timestamp)}`)}</p>
+      </div>
+      <div class="agent-trace-meta">
+        <code>${escapeHtml(trace.trace_id || "trace pending")}</code>
+        <small>${escapeHtml(trace.request_id || "")}</small>
+      </div>
+    </article>
+  `).join("");
 }
 
 function outputFromN8nData(data) {
@@ -23277,6 +23363,7 @@ function renderAgentContractChatCard(result = {}) {
       <div class="message-actions"><button class="secondary small speak-message-btn" type="button">Play voice</button></div>
     </div>
   `;
+  renderAgentTraceHistoryPanel();
 }
 
 function acknowledgeAgentApproval(button) {
