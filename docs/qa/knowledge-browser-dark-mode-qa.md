@@ -13,6 +13,7 @@ Targeted QA for the Knowledge Browser dark-mode readability work in the MeIDs st
 - `node scripts/validate-graph-promotions.cjs`
 - `node scripts/validate-n8n-fixtures.cjs`
 - `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260809-browser`
 
 ## UI Areas Covered By This Pass
 
@@ -28,19 +29,32 @@ Targeted QA for the Knowledge Browser dark-mode readability work in the MeIDs st
   - open concept
   - copy source reference
 - Mobile containment for source action buttons.
+- Knowledge Graph dark-mode readability:
+  - desktop graph cockpit
+  - mobile graph cockpit
+  - page-level containment
+  - graph demo flow step wrapping
+  - graph canvas command bars allowed to scroll internally without creating page overflow
 
 ## Result
 
-Static validation passed. The Knowledge Browser now has final dark-theme overrides that preserve review-state color coding after broad theme rules are applied.
+Static validation passed. Browser-level QA now also passes for:
 
-## Remaining QA Gap
+- Knowledge Browser desktop dark mode
+- Knowledge Browser mobile dark mode
+- Knowledge Graph desktop dark mode
+- Knowledge Graph mobile dark mode
 
-Automated browser screenshot QA is not available in the current repo/runtime because Playwright is not installed. A future pass should add a lightweight browser visual QA runner for:
+Screenshots and machine-readable QA output are stored in `docs/visual-qa/screenshots-20260809-browser/`.
 
-- Knowledge Browser desktop
-- Knowledge Browser mobile
-- Knowledge Graph desktop
-- Knowledge Graph mobile
+## Browser QA Notes
+
+The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:
+
+```powershell
+$env:NODE_PATH='C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\node_modules'
+& "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260809-browser
+```
 
 ## Open Integration Dependency
 

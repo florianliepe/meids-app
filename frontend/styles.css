@@ -22539,15 +22539,16 @@ body.theme-dark .graph-command-surface small {
   body .nav-group {
     display: flex !important;
     flex-direction: row !important;
+    flex-wrap: wrap !important;
     gap: 8px !important;
     max-width: 100% !important;
-    overflow-x: auto !important;
+    overflow-x: hidden !important;
   }
 
   body .nav-item {
-    flex: 0 0 auto !important;
+    flex: 1 1 min(150px, 42vw) !important;
     width: auto !important;
-    min-width: 104px !important;
+    min-width: 0 !important;
     justify-content: center !important;
     border-radius: 999px !important;
     white-space: nowrap !important;
@@ -22628,5 +22629,32 @@ body.theme-dark .graph-command-surface small {
     max-width: 100% !important;
     min-width: 0 !important;
     overflow-wrap: anywhere !important;
+  }
+
+  body .graph-demo-flow-panel,
+  body .graph-demo-flow-head,
+  body .graph-demo-flow-steps,
+  body .graph-demo-flow-steps button {
+    box-sizing: border-box !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  body .graph-demo-flow-steps button > span,
+  body .graph-demo-flow-steps button > strong,
+  body .graph-demo-flow-steps button > small {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-wrap: anywhere !important;
+    white-space: normal !important;
+  }
+
+  body .graph-demo-flow-steps {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }
