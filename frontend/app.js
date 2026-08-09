@@ -11767,12 +11767,10 @@ async function safeRefreshN8nAgentContracts() {
 async function safeRefreshStaticN8nReplayStatus() {
   if (!staticPagesMode) return;
   try {
-    const response = await fetch(frontendAssetUrl(N8N_CONTRACT_REPLAY_STATUS_PATH), { cache: "no-store" });
-    if (!response.ok) throw new Error(`Replay status unavailable: ${response.status}`);
-    const replayStatus = await response.json();
+    const replayStatus = await fetchFrontendAssetJson(N8N_CONTRACT_REPLAY_STATUS_PATH);
     mergeStaticN8nReplayStatus(replayStatus);
     renderAgentOperatingModelPanel();
-    renderChatContractBadges();
+    renderChatContractSurfaces();
   } catch (error) {
     console.warn("Static n8n fixture replay status refresh failed", error);
   }
@@ -11784,9 +11782,7 @@ async function safeRefreshStaticOkfValidationStatus() {
     return;
   }
   try {
-    const response = await fetch(frontendAssetUrl(OKF_VALIDATION_STATUS_PATH), { cache: "no-store" });
-    if (!response.ok) throw new Error(`OKF status unavailable: ${response.status}`);
-    state.okfValidationStatus = await response.json();
+    state.okfValidationStatus = await fetchFrontendAssetJson(OKF_VALIDATION_STATUS_PATH);
     renderOkfValidationStatusPanel();
   } catch (error) {
     state.okfValidationStatus = {
@@ -11816,20 +11812,21 @@ function mergeStaticN8nReplayStatus(replayStatus = {}) {
       const replay = replayByAgent.get(contract.agent_id);
       if (!replay) return contract;
       const configured = Boolean(contract.webhook_configured);
+      const runtimeReadiness = agentRuntimeReadiness(contract.agent_id);
       return {
         ...contract,
         contract_version: replay.contract_version || contract.contract_version,
         replay_status: replay.status || "unknown",
         replay_case_count: Number(replay.case_count || 0),
         tested_cases: replay.tested_cases || [],
-        live_status: configured ? "configured" : (replay.live_status || "not_configured"),
+        live_status: configured ? runtimeReadiness.status : (replay.live_status || "not_configured"),
         statuses: [
           "documented",
           replay.status === "passed" ? "fixture ready" : "blocked",
           replay.status === "passed" ? "contract tested" : "blocked",
-          configured ? "n8n connected" : "blocked",
+          configured ? runtimeReadiness.status : "missing URL",
         ],
-        blocker: configured ? "" : replay.blocker || contract.blocker,
+        blocker: configured ? "Webhook URL configured; run live probe before production approval." : replay.blocker || contract.blocker,
       };
     }),
   };
@@ -12235,6 +12232,7 @@ async function probeAgentContract(agentId) {
       [agentId]: { status: "blocked", detail: "No runtime webhook configured." },
     };
     renderAgentOperatingModelPanel();
+    renderChatContractSurfaces();
     showToast("Live probe blocked", `${agentDisplayName(agentId)} webhook is not configured.`, "warning");
     return;
   }
@@ -12244,6 +12242,7 @@ async function probeAgentContract(agentId) {
       [agentId]: { status: "configured", detail: "Webhook URL exists; live POST is disabled in static probe mode." },
     };
     renderAgentOperatingModelPanel();
+    renderChatContractSurfaces();
     showToast("Live probe configured", `${agentDisplayName(agentId)} has a webhook URL.`, "success");
     return;
   }
@@ -12266,7 +12265,7 @@ async function probeAgentContract(agentId) {
       [agentId]: { status: result.runtime === "n8n connected" ? "connected" : "fixture", detail: result.trace_id || result.response?.request_id || "" },
     };
     renderAgentOperatingModelPanel();
-    renderChatContractBadges();
+    renderChatContractSurfaces();
     showToast("Live probe completed", `${agentDisplayName(agentId)}: ${state.n8nLiveProbeResults[agentId].status}`, "success");
   } catch (error) {
     state.n8nLiveProbeResults = {
@@ -12274,7 +12273,7 @@ async function probeAgentContract(agentId) {
       [agentId]: { status: "failed", detail: compactError(error.message) },
     };
     renderAgentOperatingModelPanel();
-    renderChatContractBadges();
+    renderChatContractSurfaces();
     showToast("Live probe failed", `${agentDisplayName(agentId)}: ${compactError(error.message)}`, "error");
   }
 }
@@ -12644,10 +12643,14 @@ function renderChatSkillMode() {
   $("#chatPresetSelect").disabled = !isSkillMode || !state.skillInputPresets.length;
   renderChatInputPresets();
   renderSkillRoutingPanel();
+  renderChatContractSurfaces();
+  renderSkillPreflight();
+}
+
+function renderChatContractSurfaces() {
   renderActiveChatContractBadge();
   renderChatContractBadges();
   renderChatModeReadinessRail();
-  renderSkillPreflight();
 }
 
 function chatInteractionModeLabel() {
@@ -13086,7 +13089,13 @@ function renderActiveChatContractBadge() {
   const active = chatAgentContractStatuses().find((item) => item.agentId === activeAgentId) || {};
   const stateLabel = active.state || "documented";
   const detail = active.detail || "Contract status not loaded yet.";
-  const configuredLabel = active.configured ? "live-ready" : active.replayPassed ? "fixture" : "planned";
+  const configuredLabel = stateLabel === "n8n connected"
+    ? "live"
+    : active.configured
+      ? "configured"
+      : active.replayPassed
+        ? "fixture"
+        : "planned";
   target.className = `chat-active-contract-badge ${safeGraphClass(stateLabel)} ${active.configured ? "configured" : "fixture"}`;
   target.title = detail;
   target.innerHTML = `
@@ -13147,9 +13156,8 @@ function agentContractStatusesFor(agentId) {
 async function loadAgentRuntimeConfig() {
   if (!staticPagesMode) return;
   try {
-    const response = await fetch(frontendAssetUrl(N8N_AGENT_RUNTIME_CONFIG_PATH), { cache: "no-store" });
-    if (!response.ok) return;
-    const config = await response.json();
+    const config = await fetchFrontendAssetJson(N8N_AGENT_RUNTIME_CONFIG_PATH, { optional: true });
+    if (!config) return;
     mergeAgentRuntimeConfig(config);
   } catch (error) {
     console.info("Optional agent runtime config unavailable", error);
@@ -25656,6 +25664,30 @@ function frontendAssetUrl(path) {
   const cleanPath = String(path || "").replace(/^\/+/, "");
   if (!assetBaseUrl || assetBaseUrl === ".") return `./${cleanPath}`;
   return `${assetBaseUrl}/${cleanPath}`;
+}
+
+async function fetchFrontendAssetJson(path, options = {}) {
+  const cleanPath = String(path || "").replace(/^\/+/, "");
+  const candidates = Array.from(new Set([
+    frontendAssetUrl(cleanPath),
+    `./${cleanPath}`,
+    cleanPath,
+  ]));
+  let lastError = null;
+  for (const url of candidates) {
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        lastError = new Error(`${url} returned ${response.status}`);
+        continue;
+      }
+      return response.json();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (options.optional) return null;
+  throw lastError || new Error(`Asset unavailable: ${cleanPath}`);
 }
 
 function storedValue(primaryKey, legacyKey = "") {
