@@ -3516,7 +3516,7 @@ function renderGraphEdgeWorkbench(nodes, edges) {
   const source = nodeMap.get(edge.source) || {};
   const target = nodeMap.get(edge.target) || {};
   const relation = edge.relation_type || edge.edge_type || "related";
-  const candidate = String(relation).includes("candidate");
+  const candidate = String(graphEdgeClass(edge)).includes("candidate");
   const reviewState = edge.review_state || "unreviewed";
   const pending = candidate && reviewState === "unreviewed";
   return `
@@ -4408,11 +4408,18 @@ function knowledgeGraphMiniSvg(mode, approvedNodes, draftNodes, explicitEdges, i
 }
 
 function graphEdgeClass(edge) {
-  const relation = edge.relation_type || edge.edge_type || "";
-  if (relation === "contradiction_candidate") return "contradiction-candidate";
-  if (relation === "duplicate_candidate") return "duplicate-candidate";
-  if (relation.includes("candidate")) return "candidate";
-  if (["derived_from", "member_of_cluster", "validated_by", "supported_by", "uses_context"].includes(relation)) return "explicit";
+  const edgeClass = String(edge.edge_class || "").toLowerCase();
+  const edgeType = String(edge.edge_type || "").toLowerCase();
+  const relation = String(edge.relation_type || "").toLowerCase();
+  const reviewState = String(edge.review_state || "").toLowerCase();
+  const signals = [edgeClass, edgeType, relation, reviewState];
+  if (signals.some((value) => value === "contradiction_candidate" || value.includes("contradiction"))) return "contradiction-candidate";
+  if (signals.some((value) => value === "duplicate_candidate" || value.includes("duplicate"))) return "duplicate-candidate";
+  if (signals.some((value) => value.includes("candidate"))) return "candidate";
+  if (edgeClass.includes("explicit") || edgeType.includes("explicit")) return "explicit";
+  if (edgeClass.includes("inferred") || edgeType.includes("inferred") || relation.includes("inferred")) return "inferred";
+  if (["derived_from", "member_of_cluster", "validated_by", "supported_by", "uses_context"].includes(relation || edgeType)) return "explicit";
+  if (reviewState === "approved" || reviewState === "accepted") return "explicit";
   return "inferred";
 }
 
@@ -5537,6 +5544,10 @@ function graphCandidateRiskScore(edge) {
 
 async function reviewGraphEdge(edgeKey, decision) {
   if (!edgeKey || !decision) return;
+  if (staticPagesMode) {
+    applyStaticGraphEdgeReview(edgeKey, decision);
+    return;
+  }
   const note = window.prompt(`Optional note for graph edge decision "${decision}"`, "") || "";
   const status = $("#graphStatus");
   if (status) status.textContent = `Saving edge review: ${decision}...`;
@@ -5579,6 +5590,72 @@ async function reviewGraphEdge(edgeKey, decision) {
     if (status) status.textContent = `Graph edge review failed: ${compactError(error.message)}`;
     showToast("Graph edge review failed", compactError(error.message), "error");
   }
+}
+
+function applyStaticGraphEdgeReview(edgeKey, decision) {
+  const graph = state.okfGraph || {};
+  const edge = (graph.edges || []).find((item) => item.edge_key === edgeKey);
+  if (!edge) {
+    showToast("Graph edge unavailable", edgeKey, "warning");
+    return;
+  }
+  const reviewedAt = new Date().toISOString();
+  const normalizedDecision = decision === "accepted" ? "approved" : decision === "reject" ? "rejected" : decision;
+  const toReviewState = normalizedDecision === "approved" ? "approved" : normalizedDecision;
+  const note = normalizedDecision === "approved"
+    ? "Static staging promotion: candidate relation accepted for trusted graph use."
+    : normalizedDecision === "needs-rework"
+      ? "Static staging promotion: relation requires stronger evidence before trusted use."
+      : "Static staging promotion: relation rejected from trusted graph use.";
+  edge.review_state = toReviewState;
+  edge.review_note = note;
+  edge.reviewed_at = reviewedAt;
+  if (toReviewState === "approved") {
+    edge.edge_type = "explicit";
+    edge.promotion = {
+      decision: "approve",
+      to_review_state: "approved",
+      to_edge_class: "explicit",
+      reviewer: "human",
+      reviewed_at: reviewedAt,
+    };
+  }
+  state.graphEdgeReviews = [
+    {
+      edge_key: edgeKey,
+      decision: normalizedDecision,
+      review_state: toReviewState,
+      note,
+      reviewer: "static-human-review",
+      reviewed_at: reviewedAt,
+      confidence: edge.confidence,
+      source: edge.source,
+      target: edge.target,
+      relation_type: edge.relation_type || edge.edge_type,
+    },
+    ...(state.graphEdgeReviews || []),
+  ];
+  state.lastGraphEdgeReview = {
+    edgeKey,
+    decision: normalizedDecision,
+    note,
+    reviewedAt,
+    nodeKey: state.selectedGraphNodeKey,
+    source: edge.source,
+    target: edge.target,
+    relationType: edge.relation_type || edge.edge_type,
+    confidence: edge.confidence,
+  };
+  state.selectedGraphEdgeKey = edgeKey;
+  state.graphEdgeSelectionSource = "review";
+  renderGraphCockpit();
+  if (state.selectedGraphNodeKey) {
+    state.okfGraphNodeDetail = buildStaticGraphNodeDetail(state.selectedGraphNodeKey);
+    renderGraphNodeDetail();
+  }
+  const status = $("#graphStatus");
+  if (status) status.textContent = `Static graph edge reviewed: ${normalizedDecision}`;
+  showToast("Graph edge reviewed", `${normalizedDecision} · static staging`, "success");
 }
 
 async function proposeGraphResolution(edgeKey, proposalType) {

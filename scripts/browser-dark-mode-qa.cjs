@@ -165,6 +165,11 @@ async function run() {
         if (interactionMetrics.candidateClicked && interactionMetrics.edgeClassFilter !== "candidate") {
           failures.push(`candidate layer click did not apply edge-class filter: ${interactionMetrics.edgeClassFilter || "unset"}`);
         }
+        if (!interactionMetrics.candidateEdgeFound) failures.push("graph QA could not find the static candidate edge");
+        if (!interactionMetrics.acceptButtonFound) failures.push("graph candidate edge accept action missing");
+        if (interactionMetrics.acceptButtonFound && !String(interactionMetrics.reviewedStatus || "").includes("reviewed")) {
+          failures.push(`graph candidate accept did not update review status: ${interactionMetrics.reviewedStatus || "empty"}`);
+        }
       }
       if (qaCase.view === "dashboard") {
         if (!interactionMetrics.traceRows) failures.push("trace dashboard has no visible agent trace rows");
@@ -209,7 +214,24 @@ async function exerciseGraphRelationLayerFilter(page) {
   const edgeClassFilter = await page.evaluate(() =>
     document.querySelector(".graph-relation-layer-summary button.active")?.dataset?.graphEdgeClassFilter || "",
   );
-  return { nodeClicked, relationLayerSummaryFound, layerButtonCount, candidateClicked, edgeClassFilter };
+  const promotionMetrics = await exerciseGraphPromotionAction(page);
+  return { nodeClicked, relationLayerSummaryFound, layerButtonCount, candidateClicked, edgeClassFilter, ...promotionMetrics };
+}
+
+async function exerciseGraphPromotionAction(page) {
+  const candidateEdge = page.locator('[data-graph-edge="edge:butler-to-contract"]').first();
+  const candidateEdgeFound = await candidateEdge.count().then((count) => count > 0);
+  if (!candidateEdgeFound) return { candidateEdgeFound: false };
+  await candidateEdge.click({ force: true });
+  await page.waitForSelector('.graph-edge-workbench [data-graph-edge-action="accepted"]', { timeout: 10000 }).catch(() => {});
+  const acceptButton = page.locator('.graph-edge-workbench [data-graph-edge-action="accepted"]').first();
+  const acceptButtonFound = await acceptButton.count().then((count) => count > 0);
+  if (!acceptButtonFound) return { candidateEdgeFound, acceptButtonFound: false };
+  await acceptButton.click({ force: true });
+  await page.waitForTimeout(250);
+  const reviewedStatus = await page.evaluate(() => document.querySelector("#graphStatus")?.textContent || "");
+  const recentlyReviewed = await page.locator(".graph-svg-edge.recently-reviewed, .graph-edge-line.selected").count();
+  return { candidateEdgeFound, acceptButtonFound, reviewedStatus, recentlyReviewed };
 }
 
 async function inspectTraceDashboard(page) {
