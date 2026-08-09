@@ -7496,9 +7496,101 @@ body.theme-dark .graph-svg-edge-label text {
   fill: #f6f1e7;
 }
 
+.graph-promotion-gate-panel {
+  align-items: start;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-muted);
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(240px, 0.5fr) minmax(0, 1fr);
+  margin: 14px 0;
+  padding: 16px;
+}
+
+.graph-promotion-gate-panel h3 {
+  font-size: 20px;
+  margin: 8px 0 6px;
+}
+
+.graph-promotion-gate-panel p {
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.graph-promotion-flow {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.graph-promotion-flow span {
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-left: 4px solid #d7a84f;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  min-width: 0;
+  padding: 10px;
+}
+
+.graph-promotion-flow span.approved {
+  border-left-color: #34c795;
+}
+
+.graph-promotion-flow span.needs-rework {
+  border-left-color: #d7a84f;
+}
+
+.graph-promotion-flow span.rejected {
+  border-left-color: #d9826b;
+}
+
+.graph-promotion-flow strong,
+.graph-promotion-flow small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.graph-promotion-flow strong {
+  color: var(--ink);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.graph-promotion-flow small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
+body.theme-dark .graph-promotion-gate-panel {
+  border-color: rgba(241, 235, 224, 0.16);
+  background: #171d18;
+}
+
+body.theme-dark .graph-promotion-flow span {
+  border-color: rgba(241, 235, 224, 0.14);
+  background: #1d241f;
+}
+
+body.theme-dark .graph-promotion-flow strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .graph-promotion-flow small {
+  color: #c9c0b3;
+}
+
 @media (max-width: 900px) {
   #chat.view.active {
     padding-top: 28px;
+  }
+
+  .graph-promotion-gate-panel,
+  .graph-promotion-flow {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .chat-workspace-hero {

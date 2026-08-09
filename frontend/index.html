@@ -540,6 +540,8 @@
                   <label for="graphReviewFilter">State</label>
                   <select id="graphReviewFilter" class="compact-select">
                     <option value="all">All states</option>
+                    <option value="draft">Draft</option>
+                    <option value="candidate">Candidate</option>
                     <option value="approved">Approved</option>
                     <option value="pending-review">Pending</option>
                     <option value="needs-rework">Needs rework</option>
@@ -572,6 +574,20 @@
               </details>
             </div>
             <div id="graphPresetSignal" class="graph-preset-signal-wrap" aria-live="polite"></div>
+            <section class="graph-promotion-gate-panel" aria-label="Graph relation promotion workflow">
+              <div>
+                <span class="badge">Promotion gate</span>
+                <h3>Candidate relations stay untrusted until reviewed.</h3>
+                <p>Graph Curator may propose edges, but Actor Twin and retrieval treat them as hypotheses until a human promotion decision is stored.</p>
+              </div>
+              <div class="graph-promotion-flow">
+                <span><strong>draft</strong><small>Raw relation hint</small></span>
+                <span><strong>candidate</strong><small>Curator proposal</small></span>
+                <span class="approved"><strong>accepted</strong><small>Trusted relation</small></span>
+                <span class="needs-rework"><strong>needs rework</strong><small>Clarify evidence</small></span>
+                <span class="rejected"><strong>rejected</strong><small>Excluded from use</small></span>
+              </div>
+            </section>
             <div id="graphDemoFlow" class="graph-demo-flow" aria-label="Graph demo sequence"></div>
             <div id="graphSummary" class="graph-summary-strip"></div>
             <details class="graph-secondary-section" open>
