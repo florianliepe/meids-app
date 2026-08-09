@@ -18,4 +18,10 @@ Validate them with:
 node scripts\validate-okf-fixtures.cjs
 ```
 
+Regenerate the synthetic Knowledge Fabric ingest output with:
+
+```powershell
+node scripts\mock-okf-ingest.cjs
+```
+
 The durable schema contract is documented in `docs/knowledge-fabric-okf-schema.md`.

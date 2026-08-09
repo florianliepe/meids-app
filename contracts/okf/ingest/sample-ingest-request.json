@@ -1,0 +1,31 @@
+{
+  "schema": "okf.ingest_request.v1",
+  "request_id": "ing_example_001",
+  "twin_id": "florian",
+  "source_type": "transcript",
+  "source_label": "Client alignment preparation note",
+  "cluster": "client-delivery",
+  "concept_type": "Decision Principle",
+  "title": "Prepare client alignment before status update",
+  "claim": "When a client alignment meeting has unresolved decisions, prepare decision options and risks before drafting status communication.",
+  "context": "Use for daily planning, client delivery steering, and meeting preparation.",
+  "boundaries": [
+    "Do not send external communication without human approval.",
+    "Do not invent delivery commitments, owners, or deadlines."
+  ],
+  "application_cues": [
+    "client alignment",
+    "decision options",
+    "status update"
+  ],
+  "raw_text": "Tomorrow's client alignment should not start from a generic status update. Prepare the former context, open decisions, options, risks, and desired outcome first.",
+  "review_state": "pending-review",
+  "risk_class": "medium",
+  "graph": {
+    "from": "concept/client-delivery",
+    "to": "concept/decision-preparation",
+    "relation": "requires",
+    "edge_class": "candidate",
+    "confidence": 0.76
+  }
+}

@@ -14,6 +14,9 @@ The app repo must not store private knowledge or secrets. It may store schemas, 
 
 Public-safe fixtures for this contract are stored in `contracts/okf/examples`.
 Run `node scripts\validate-okf-fixtures.cjs` before changing the contract shape.
+The deterministic local ingest mock is `node scripts\mock-okf-ingest.cjs`; it
+converts `contracts/okf/ingest/sample-ingest-request.json` into generated OKF
+concept, evidence, transcript, graph, audit, and vector-adapter payloads.
 
 ## Review States
 

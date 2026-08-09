@@ -1,0 +1,20 @@
+{
+  "operation": "upsert",
+  "twin_id": "florian",
+  "source_policy": "selected_pending",
+  "documents": [
+    {
+      "concept_id": "cpt_ing_example_001",
+      "repo_path": "concepts/florian/client-delivery/2026-08-09-prepare-client-alignment-before-status-update.md",
+      "review_state": "pending-review",
+      "text": "When a client alignment meeting has unresolved decisions, prepare decision options and risks before drafting status communication.",
+      "metadata": {
+        "cluster": "client-delivery",
+        "type": "Decision Principle",
+        "evidence_refs": [
+          "evidence/florian/transcripts/2026-08-09-prepare-client-alignment-before-status-update.yaml#source-claim"
+        ]
+      }
+    }
+  ]
+}

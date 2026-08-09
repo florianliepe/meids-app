@@ -1,0 +1,8 @@
+schema: okf.graph_node.v1
+node_key: concept/client-delivery
+twin_id: florian
+label: client delivery
+node_type: concept
+review_state: candidate
+concept_refs:
+  - concepts/florian/client-delivery/2026-08-09-prepare-client-alignment-before-status-update.md

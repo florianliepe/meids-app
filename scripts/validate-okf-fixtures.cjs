@@ -2,7 +2,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const fixtureRoot = path.join(root, "contracts", "okf", "examples");
+const contractRoot = path.join(root, "contracts", "okf");
+const fixtureRoots = ["examples", "generated"].map((name) => path.join(contractRoot, name));
 const reviewStates = new Set(["draft", "candidate", "pending-review", "approved", "needs-rework", "rejected", "retired"]);
 const sourceTypes = new Set(["upload", "transcript", "email_export", "calendar_export", "teams_export", "agent_output", "voice_capture"]);
 const graphEdgeClasses = new Set(["explicit", "inferred", "candidate", "duplicate-candidate", "contradiction-candidate"]);
@@ -132,21 +133,26 @@ function validateVectorRequest(file) {
   }
 }
 
-const checks = [
-  ["concept", listFiles(path.join(fixtureRoot, "concepts"), (file) => file.endsWith(".md")), validateConcept],
-  ["evidence", listFiles(path.join(fixtureRoot, "evidence"), (file) => file.endsWith(".yaml")), validateEvidence],
-  ["transcript", listFiles(path.join(fixtureRoot, "transcripts"), (file) => file.endsWith(".md")), validateTranscript],
-  ["graph node", listFiles(path.join(fixtureRoot, "graph", "nodes"), (file) => file.endsWith(".yaml")), validateGraphNode],
-  ["graph edge", listFiles(path.join(fixtureRoot, "graph", "edges"), (file) => file.endsWith(".yaml")), validateGraphEdge],
-  ["audit", listFiles(path.join(fixtureRoot, "audit"), (file) => file.endsWith(".jsonl")), validateAudit],
-  ["vector request", listFiles(path.join(fixtureRoot, "vector"), (file) => file.endsWith(".json")), validateVectorRequest],
-];
-
 let total = 0;
-for (const [label, files, validate] of checks) {
-  if (!files.length) fail(`Missing OKF ${label} fixture`);
-  for (const file of files) validate(file);
-  total += files.length;
+let groupCount = 0;
+for (const fixtureRoot of fixtureRoots) {
+  if (!fs.existsSync(fixtureRoot)) continue;
+  const checks = [
+    ["concept", listFiles(path.join(fixtureRoot, "concepts"), (file) => file.endsWith(".md")), validateConcept],
+    ["evidence", listFiles(path.join(fixtureRoot, "evidence"), (file) => file.endsWith(".yaml")), validateEvidence],
+    ["transcript", listFiles(path.join(fixtureRoot, "transcripts"), (file) => file.endsWith(".md")), validateTranscript],
+    ["graph node", listFiles(path.join(fixtureRoot, "graph", "nodes"), (file) => file.endsWith(".yaml")), validateGraphNode],
+    ["graph edge", listFiles(path.join(fixtureRoot, "graph", "edges"), (file) => file.endsWith(".yaml")), validateGraphEdge],
+    ["audit", listFiles(path.join(fixtureRoot, "audit"), (file) => file.endsWith(".jsonl")), validateAudit],
+    ["vector request", listFiles(path.join(fixtureRoot, "vector"), (file) => file.endsWith(".json")), validateVectorRequest],
+  ];
+
+  for (const [label, files, validate] of checks) {
+    if (!files.length) fail(`Missing OKF ${label} fixture in ${path.relative(root, fixtureRoot)}`);
+    for (const file of files) validate(file);
+    total += files.length;
+    groupCount += 1;
+  }
 }
 
-console.log(`OKF fixture validation passed: ${total} files across ${checks.length} fixture groups`);
+console.log(`OKF fixture validation passed: ${total} files across ${groupCount} fixture groups`);
