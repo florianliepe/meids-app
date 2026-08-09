@@ -11610,8 +11610,84 @@ function renderN8nContractReadinessPanel(agents = []) {
     <div class="agent-contract-readiness">
       ${agents.map((agent) => renderN8nContractReadiness(agent, contractByAgent.get(agent.id))).join("")}
     </div>
+    ${renderN8nRuntimeSetupActions(agents, contractByAgent)}
     ${renderAgentContractActionResult()}
   `;
+}
+
+function renderN8nRuntimeSetupActions(agents = [], contractByAgent = new Map()) {
+  const missingAgents = agents.filter((agent) => !agentRuntimeReadiness(agent.id || "").configured);
+  const configuredAgents = agents.filter((agent) => agentRuntimeReadiness(agent.id || "").configured);
+  const missingSnippet = buildN8nRuntimeConfigSnippet(missingAgents);
+  const secretRows = agents.map((agent) => {
+    const readiness = agentRuntimeReadiness(agent.id || "");
+    const contract = contractByAgent.get(agent.id) || {};
+    return {
+      id: agent.id || "",
+      name: agent.name || agentDisplayName(agent.id || ""),
+      envVar: readiness.envVar || contract.webhook_env_var || "N8N_WEBHOOK_URL",
+      status: readiness.configured ? "configured" : "missing URL",
+      detail: readiness.configured
+        ? "Probe the live workflow before production use."
+        : "Create/publish the n8n workflow, then add its webhook URL to runtime config.",
+    };
+  });
+  return `
+    <section class="n8n-runtime-setup-actions">
+      <div class="n8n-runtime-setup-head">
+        <div>
+          <span class="badge">Runtime setup actions</span>
+          <strong>${escapeHtml(`${configuredAgents.length}/${agents.length} live agent URLs configured`)}</strong>
+          <p>${escapeHtml(missingAgents.length
+            ? "Fixture replay is passing, but missing live URLs still block end-to-end Knowledge Fabric and Agentic Butler UAT."
+            : "All top-level agent URLs are configured. Run live probes and UAT before production approval.")}</p>
+        </div>
+        <div class="button-row tight">
+          <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/n8n-live-url-configuration.md"))}" target="_blank" rel="noreferrer">Open guide</a>
+          <a class="secondary small" href="${escapeHtml(githubBlobUrl("frontend/assets/agent-runtime-config.json"))}" target="_blank" rel="noreferrer">Open runtime asset</a>
+          ${missingSnippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(missingSnippet)}">Copy missing config</button>` : ""}
+        </div>
+      </div>
+      <div class="n8n-runtime-secret-grid">
+        ${secretRows.map((row) => `
+          <article class="${row.status === "configured" ? "ready" : "pending"}">
+            <span class="queue-kind">${escapeHtml(row.status)}</span>
+            <strong>${escapeHtml(row.name)}</strong>
+            <code>${escapeHtml(row.envVar)}</code>
+            <small>${escapeHtml(row.detail)}</small>
+          </article>
+        `).join("")}
+      </div>
+      <details class="n8n-runtime-setup-details">
+        <summary>Fixture-to-live rollout sequence</summary>
+        <ol>
+          <li>Keep fixture replay green for the agent contract.</li>
+          <li>Create or publish the matching n8n webhook workflow.</li>
+          <li>Add the webhook URL to GitHub Pages runtime config or the hosted backend secret store.</li>
+          <li>Run the cockpit live probe and capture the trace.</li>
+          <li>Approve production use only after UAT confirms approval gates and trace storage.</li>
+        </ol>
+      </details>
+    </section>
+  `;
+}
+
+function buildN8nRuntimeConfigSnippet(agents = []) {
+  const missing = agents.filter((agent) => agent?.id);
+  if (!missing.length) return "";
+  const webhookEntries = missing.reduce((acc, agent) => {
+    acc[agent.id] = "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE";
+    return acc;
+  }, {});
+  const config = {
+    n8nAgentWebhooks: webhookEntries,
+  };
+  missing.forEach((agent) => {
+    if (agent.id === "knowledge_fabric_agent") config.n8nKnowledgeFabricWebhookUrl = "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE";
+    if (agent.id === "agentic_butler") config.n8nAgenticButlerWebhookUrl = "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE";
+    if (agent.id === "actor_twin") config.n8nActorTwinWebhookUrl = "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE";
+  });
+  return JSON.stringify(config, null, 2);
 }
 
 function renderN8nContractReadiness(agent = {}, readiness = null) {

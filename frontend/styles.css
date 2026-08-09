@@ -5849,6 +5849,95 @@ body.theme-dark .repo-responsibility-lane {
   padding: 12px;
 }
 
+.n8n-runtime-setup-actions {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-quiet) 84%, transparent);
+  padding: 12px;
+}
+
+.n8n-runtime-setup-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.n8n-runtime-setup-head strong {
+  display: block;
+  margin: 6px 0 4px;
+  color: var(--ink);
+}
+
+.n8n-runtime-setup-head p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.n8n-runtime-secret-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.n8n-runtime-secret-grid article {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px;
+}
+
+.n8n-runtime-secret-grid article.ready {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+}
+
+.n8n-runtime-secret-grid article.pending {
+  border-color: color-mix(in srgb, var(--warn) 38%, var(--line));
+}
+
+.n8n-runtime-secret-grid strong {
+  color: var(--ink);
+}
+
+.n8n-runtime-secret-grid code {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+
+.n8n-runtime-secret-grid small,
+.n8n-runtime-setup-details {
+  color: var(--muted);
+}
+
+.n8n-runtime-setup-details {
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  padding-top: 10px;
+}
+
+.n8n-runtime-setup-details summary {
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.n8n-runtime-setup-details ol {
+  margin: 10px 0 0 20px;
+  padding: 0;
+}
+
+.n8n-runtime-setup-details li + li {
+  margin-top: 6px;
+}
+
 .internal-component-list {
   display: grid;
   gap: 6px;
@@ -7640,6 +7729,32 @@ body.theme-dark .agent-runtime-readiness.missing-url {
   border-color: rgba(240, 163, 154, 0.36);
 }
 
+body.theme-dark .n8n-runtime-setup-actions {
+  border-color: rgba(241, 235, 224, 0.16);
+  background: rgba(23, 29, 24, 0.86);
+}
+
+body.theme-dark .n8n-runtime-secret-grid article {
+  border-color: rgba(241, 235, 224, 0.14);
+  background: rgba(17, 21, 17, 0.72);
+}
+
+body.theme-dark .n8n-runtime-secret-grid article.ready {
+  border-color: rgba(122, 216, 191, 0.34);
+}
+
+body.theme-dark .n8n-runtime-secret-grid article.pending {
+  border-color: rgba(240, 163, 154, 0.36);
+}
+
+body.theme-dark .n8n-runtime-secret-grid code {
+  color: #d8d0c1;
+}
+
+body.theme-dark .n8n-runtime-setup-details {
+  border-top-color: rgba(241, 235, 224, 0.12);
+}
+
 .agent-contract-message {
   padding: 0;
 }
@@ -7713,6 +7828,14 @@ body.theme-dark .agent-response-card .todo-table article {
 }
 
 @media (max-width: 760px) {
+  .n8n-runtime-setup-head {
+    display: grid;
+  }
+
+  .n8n-runtime-secret-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .chat-workspace-hero {
     padding: 18px;
     text-align: left;

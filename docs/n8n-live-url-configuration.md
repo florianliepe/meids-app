@@ -49,6 +49,8 @@ When a URL is missing, the frontend must stay usable:
 
 - Chat uses fixture fallback for agent contract responses.
 - Production/Review Cockpit shows `missing URL`.
+- Production/Review Cockpit shows runtime setup actions with the exact missing
+  config keys and a copyable public UAT config snippet.
 - Contract fixtures remain available and testable.
 - No secrets are required for GitHub Pages.
 
