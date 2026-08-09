@@ -12196,6 +12196,7 @@ function renderChatSkillMode() {
   $("#chatPresetSelect").disabled = !isSkillMode || !state.skillInputPresets.length;
   renderChatInputPresets();
   renderSkillRoutingPanel();
+  renderActiveChatContractBadge();
   renderChatContractBadges();
   renderSkillPreflight();
 }
@@ -12572,6 +12573,23 @@ function renderChatContractBadges() {
       </span>
     `)
     .join("");
+}
+
+function renderActiveChatContractBadge() {
+  const target = $("#activeChatContractBadge");
+  if (!target) return;
+  const activeAgentId = chatModeAgentId();
+  const active = chatAgentContractStatuses().find((item) => item.agentId === activeAgentId) || {};
+  const stateLabel = active.state || "documented";
+  const detail = active.detail || "Contract status not loaded yet.";
+  const configuredLabel = active.configured ? "live-ready" : active.replayPassed ? "fixture" : "planned";
+  target.className = `chat-active-contract-badge ${safeGraphClass(stateLabel)} ${active.configured ? "configured" : "fixture"}`;
+  target.title = detail;
+  target.innerHTML = `
+    <strong>${escapeHtml(active.label || agentDisplayName(activeAgentId))}</strong>
+    <small>${escapeHtml(stateLabel)}</small>
+    <em>${escapeHtml(configuredLabel)}</em>
+  `;
 }
 
 function agentRuntimeReadiness(agentId) {

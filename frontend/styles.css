@@ -7100,6 +7100,59 @@ body.theme-dark .knowledge-source-readiness-grid span {
   margin-top: 10px;
 }
 
+.chat-active-contract-badge {
+  display: inline-grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-quiet) 88%, transparent);
+  color: var(--muted);
+  padding: 5px 9px;
+  white-space: nowrap;
+}
+
+.chat-active-contract-badge strong,
+.chat-active-contract-badge small,
+.chat-active-contract-badge em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-active-contract-badge strong {
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.chat-active-contract-badge small,
+.chat-active-contract-badge em {
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 760;
+}
+
+.chat-active-contract-badge.configured,
+.chat-active-contract-badge.n8n-connected {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.chat-active-contract-badge.fixture-ready,
+.chat-active-contract-badge.contract-tested {
+  border-color: color-mix(in srgb, #d7b56d 44%, var(--line));
+  background: color-mix(in srgb, #d7b56d 10%, var(--surface));
+}
+
+.chat-active-contract-badge.missing-url,
+.chat-active-contract-badge.blocked {
+  border-color: color-mix(in srgb, var(--warn) 48%, var(--line));
+  color: var(--warn);
+}
+
 .chat-contract-badges span {
   display: grid;
   gap: 2px;
@@ -7189,9 +7242,28 @@ body.theme-dark .knowledge-source-readiness-grid span {
 }
 
 body.theme-dark .chat-contract-badges span,
+body.theme-dark .chat-active-contract-badge,
 body.theme-dark .agent-trace-row {
   border-color: rgba(241, 235, 224, 0.18);
   background: #171d18;
+}
+
+body.theme-dark .chat-active-contract-badge.configured,
+body.theme-dark .chat-active-contract-badge.n8n-connected {
+  border-color: rgba(122, 216, 191, 0.64);
+  background: rgba(122, 216, 191, 0.12);
+}
+
+body.theme-dark .chat-active-contract-badge.fixture-ready,
+body.theme-dark .chat-active-contract-badge.contract-tested {
+  border-color: rgba(215, 181, 109, 0.52);
+  background: rgba(215, 181, 109, 0.12);
+}
+
+body.theme-dark .chat-active-contract-badge.missing-url,
+body.theme-dark .chat-active-contract-badge.blocked {
+  border-color: rgba(240, 163, 154, 0.56);
+  background: rgba(240, 163, 154, 0.1);
 }
 
 body.theme-dark .chat-contract-badges span.active {
