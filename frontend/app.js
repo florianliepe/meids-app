@@ -223,6 +223,7 @@
   n8nChatLoaded: false,
   n8nChatLoading: false,
   n8nSessionId: `meids-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+  knowledgeFabricIngestQueue: [],
   twins: [],
   selectedTwinId: "florian",
   twinActivity: [],
@@ -265,6 +266,7 @@ const storageKeys = {
   landingDismissed: "intellectualTwin.landing.dismissed",
   approvalPrefix: "intellectualTwin.approval",
   agentTraceLog: "intellectualTwin.agentTraceLog",
+  knowledgeFabricIngestQueue: "intellectualTwin.knowledgeFabricIngestQueue",
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -284,12 +286,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindGraph();
   bindDrawer();
   bindThemeToggle();
+  bindKnowledgeFabricQueueActions();
   $("#backToMainBtn").addEventListener("click", showLanding);
   $("#refreshBtn").addEventListener("click", refreshWorkspace);
   $("#refreshActivityBtn").addEventListener("click", safeRefreshActivity);
   $("#conceptSearch").addEventListener("input", renderConcepts);
   bindViewFilters();
   await loadAgentRuntimeConfig();
+  state.knowledgeFabricIngestQueue = readKnowledgeFabricIngestQueue();
   await refreshAll();
   applyInitialRoute();
 });
@@ -7053,6 +7057,7 @@ function bindChat() {
       try {
         const result = await routeKnowledgeFabricFromChat(query);
         persistAgentTrace(result);
+        persistKnowledgeFabricIngest(result);
         removeLastAssistantPlaceholder();
         addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
       } catch (error) {
@@ -9438,6 +9443,7 @@ function refreshStaticPagesWorkspace() {
   state.okfGraph = buildStaticPagesGraph();
   state.agentOperatingModel = buildStaticPagesAgentOperatingModel();
   state.n8nAgentContracts = buildStaticPagesN8nAgentContracts();
+  state.knowledgeFabricIngestQueue = readKnowledgeFabricIngestQueue();
   state.graphRecommendationTasks = [];
   state.graphEdgeReviews = [];
   state.graphPostgresRead = { status: "static-staging", blockers: ["Postgres is not connected in GitHub Pages staging."] };
@@ -9465,6 +9471,7 @@ function refreshStaticPagesWorkspace() {
   syncGraphControlValues();
   renderGraphCockpit();
   renderAgentOperatingModelPanel();
+  renderKnowledgeFabricQueuePanels();
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticOkfValidationStatus();
   renderAgentTraceHistoryPanel();
@@ -12223,6 +12230,32 @@ function githubBlobUrl(repoPath = "") {
   return `https://github.com/florianliepe/meids-app/blob/main/${encodeURI(clean).replaceAll("%2F", "/")}`;
 }
 
+function isRepoArtifactPath(repoPath = "") {
+  const clean = String(repoPath || "").replace(/^\/+/, "");
+  return /^(contracts|docs|frontend|scripts|\.github)\//.test(clean);
+}
+
+function renderKnowledgeFabricArtifactLink(label, value) {
+  if (!value) return "";
+  const clean = String(value || "").replace(/^\/+/, "");
+  const labelHtml = escapeHtml(label);
+  const valueHtml = escapeHtml(clean);
+  if (isRepoArtifactPath(clean)) {
+    return `
+      <a href="${escapeHtml(githubBlobUrl(clean))}" target="_blank" rel="noreferrer">
+        <strong>${labelHtml}</strong>
+        <span>${valueHtml}</span>
+      </a>
+    `;
+  }
+  return `
+    <span class="knowledge-fabric-target-path">
+      <strong>${labelHtml}</strong>
+      <span>${valueHtml}</span>
+    </span>
+  `;
+}
+
 async function probeAgentContract(agentId) {
   if (!agentId) return;
   const webhookUrl = getAgentWebhook(agentId);
@@ -13493,6 +13526,195 @@ function persistAgentTrace(result = {}) {
   }
 }
 
+function persistKnowledgeFabricIngest(result = {}) {
+  const agentId = result.agent_id || result.response?.agent_id || "";
+  if (agentId !== "knowledge_fabric_agent") return;
+  const item = knowledgeFabricQueueItemFromResult(result);
+  if (!item.concept_path && !item.evidence_path && !item.trace_id) return;
+  const next = [item, ...state.knowledgeFabricIngestQueue.filter((existing) => existing.queue_id !== item.queue_id)].slice(0, 12);
+  state.knowledgeFabricIngestQueue = next;
+  try {
+    window.localStorage.setItem(storageKeys.knowledgeFabricIngestQueue, JSON.stringify(next));
+  } catch (error) {
+    console.warn("Knowledge Fabric queue persistence failed", error);
+  }
+  renderKnowledgeFabricQueuePanels();
+}
+
+function knowledgeFabricQueueItemFromResult(result = {}) {
+  const response = result.response || {};
+  const output = response.output || {};
+  const request = result.request || {};
+  const input = request.input || {};
+  const context = request.context || {};
+  const trace = response.trace || {};
+  const requestId = response.request_id || request.request_id || `req_kf_${Date.now().toString(36)}`;
+  const title = input.title || input.query || output.title || "Source context handoff";
+  const candidateEdges = Array.isArray(output.candidate_edges) ? output.candidate_edges : [];
+  return {
+    queue_id: `${requestId}:${output.concept_path || trace.trace_id || "pending"}`,
+    request_id: requestId,
+    trace_id: trace.trace_id || result.trace_id || "",
+    created_at: request.timestamp || new Date().toISOString(),
+    runtime: result.runtime || "fixture fallback",
+    title,
+    twin_id: request.principal?.twin_id || state.activeTwin || "florian",
+    intent: request.intent || "ingest_concept",
+    review_state: output.review_state || "pending_review",
+    concept_path: output.concept_path || "",
+    evidence_path: output.evidence_path || "",
+    transcript_path: output.transcript_path || "",
+    crud_log_path: output.crud_log_path || "",
+    graph_curator_trigger: output.graph_curator_trigger || (candidateEdges.length ? "queued" : "not_requested"),
+    vector_refresh: output.vector_refresh || output.vector_policy || "deferred_until_approved",
+    candidate_edges: candidateEdges,
+    source_type: input.source_type || context.source || "chat_source_context",
+  };
+}
+
+function readKnowledgeFabricIngestQueue() {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(storageKeys.knowledgeFabricIngestQueue) || "[]");
+    if (Array.isArray(value) && value.length) return value;
+  } catch (error) {
+    console.warn("Knowledge Fabric queue read failed", error);
+  }
+  return staticPagesMode ? buildStaticKnowledgeFabricQueue() : [];
+}
+
+function buildStaticKnowledgeFabricQueue() {
+  return [
+    {
+      queue_id: "static-ing-example-001",
+      request_id: "ing_example_001",
+      trace_id: "trace_ing_example_001",
+      created_at: "2026-08-09T12:00:00Z",
+      runtime: "static generated OKF fixture",
+      title: "Prepare client alignment before status update",
+      twin_id: "florian",
+      intent: "ingest_concept",
+      review_state: "pending-review",
+      concept_path: "contracts/okf/generated/concepts/florian/client-delivery/2026-08-09-prepare-client-alignment-before-status-update.md",
+      evidence_path: "contracts/okf/generated/evidence/florian/transcripts/2026-08-09-prepare-client-alignment-before-status-update.yaml",
+      transcript_path: "contracts/okf/generated/transcripts/florian/2026-08-09-prepare-client-alignment-before-status-update.md",
+      crud_log_path: "contracts/okf/generated/audit/florian/crud-log.jsonl",
+      graph_curator_trigger: "candidate_edge_created",
+      vector_refresh: "queued_for_selected_pending",
+      source_type: "transcript",
+      candidate_edges: [
+        {
+          source: "concept:client-delivery",
+          target: "concept:decision-preparation",
+          relation_type: "supports_decision_preparation",
+          confidence: 0.72,
+        },
+      ],
+    },
+  ];
+}
+
+function bindKnowledgeFabricQueueActions() {
+  document.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-kf-queue-action]");
+    if (!button) return;
+    const action = button.dataset.kfQueueAction || "";
+    const queueId = button.dataset.queueId || "";
+    if (action === "open-ingest") {
+      showView("ingest");
+      $("#ingest")?.scrollIntoView({ block: "start", behavior: "smooth" });
+      return;
+    }
+    if (action === "review") {
+      state.dashboardFilter = "concepts";
+      showView("dashboard");
+      renderDashboardFilter();
+      $("#dashPendingConcepts")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
+    if (action === "graph") {
+      showView("graph");
+      renderGraphCockpit();
+      $("#graphStatus")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
+    if (action === "copy") {
+      const item = state.knowledgeFabricIngestQueue.find((entry) => entry.queue_id === queueId);
+      if (!item) return;
+      const copied = await copyTextToClipboard(JSON.stringify(item, null, 2));
+      showToast("Knowledge Fabric manifest", copied ? "Copied to clipboard." : "Copy failed.", copied ? "success" : "warning");
+      return;
+    }
+    if (action === "clear") {
+      state.knowledgeFabricIngestQueue = [];
+      try {
+        window.localStorage.removeItem(storageKeys.knowledgeFabricIngestQueue);
+      } catch (error) {
+        console.warn("Knowledge Fabric queue clear failed", error);
+      }
+      renderKnowledgeFabricQueuePanels();
+    }
+  });
+}
+
+function renderKnowledgeFabricQueuePanels() {
+  ["#chatKnowledgeFabricQueue", "#ingestKnowledgeFabricQueue"].forEach((selector) => {
+    const target = $(selector);
+    if (!target) return;
+    target.innerHTML = renderKnowledgeFabricQueue(state.knowledgeFabricIngestQueue || [], selector.includes("chat") ? 3 : 8);
+  });
+}
+
+function renderKnowledgeFabricQueue(items = [], limit = 6) {
+  if (!items.length) {
+    return renderEmptyState("No pending OKF source handoffs yet. Use Add source context in Chat or upload a source.");
+  }
+  return items.slice(0, limit).map(renderKnowledgeFabricQueueCard).join("");
+}
+
+function renderKnowledgeFabricQueueCard(item = {}) {
+  const edges = Array.isArray(item.candidate_edges) ? item.candidate_edges : [];
+  const artifactRows = [
+    ["Concept", item.concept_path],
+    ["Evidence", item.evidence_path],
+    ["Transcript", item.transcript_path],
+    ["CRUD log", item.crud_log_path],
+  ].filter(([, value]) => value);
+  return `
+    <article class="knowledge-fabric-queue-card ${safeGraphClass(item.review_state)}">
+      <div class="knowledge-fabric-queue-card-head">
+        <div>
+          <span class="queue-kind">${escapeHtml(labelizeGraph(item.review_state || "pending review"))}</span>
+          <h3>${escapeHtml(item.title || "Pending OKF concept")}</h3>
+          <p>${escapeHtml(`${item.runtime || "fixture/local"} · ${item.source_type || "source"} · ${formatShortDate(item.created_at)}`)}</p>
+        </div>
+        <code>${escapeHtml(item.trace_id || item.request_id || "trace pending")}</code>
+      </div>
+      <div class="ingest-contract-grid compact" aria-label="Ingest lifecycle state">
+        <span><strong>${escapeHtml(item.concept_path ? "ready" : "pending")}</strong><small>pending concept</small></span>
+        <span><strong>${escapeHtml(item.evidence_path ? "linked" : "pending")}</strong><small>evidence</small></span>
+        <span><strong>${escapeHtml(item.crud_log_path ? "logged" : "pending")}</strong><small>CRUD audit</small></span>
+        <span><strong>${escapeHtml(item.graph_curator_trigger || "not queued")}</strong><small>graph curator</small></span>
+        <span><strong>${escapeHtml(item.vector_refresh || "deferred")}</strong><small>vector boundary</small></span>
+      </div>
+      ${artifactRows.length ? `
+        <div class="knowledge-fabric-artifact-list">
+          ${artifactRows.map(([label, value]) => renderKnowledgeFabricArtifactLink(label, value)).join("")}
+        </div>
+      ` : ""}
+      ${edges.length ? `
+        <div class="agent-consumer-list">
+          ${edges.slice(0, 4).map((edge) => `<span>${escapeHtml(`${edge.relation_type || "candidate edge"} · ${edge.confidence ?? "-"} confidence`)}</span>`).join("")}
+        </div>
+      ` : ""}
+      <div class="button-row tight">
+        <button class="secondary small" type="button" data-kf-queue-action="review" data-queue-id="${escapeHtml(item.queue_id || "")}">Review concept</button>
+        <button class="secondary small" type="button" data-kf-queue-action="graph" data-queue-id="${escapeHtml(item.queue_id || "")}">Open graph</button>
+        <button class="secondary small" type="button" data-kf-queue-action="copy" data-queue-id="${escapeHtml(item.queue_id || "")}">Copy manifest</button>
+      </div>
+    </article>
+  `;
+}
+
 function readAgentTraceLog() {
   try {
     const value = JSON.parse(window.localStorage.getItem(storageKeys.agentTraceLog) || "[]");
@@ -13752,11 +13974,20 @@ function fallbackAgenticButlerResponse(envelope, runtime) {
 
 function fallbackKnowledgeFabricResponse(envelope, runtime) {
   const slug = slugify(envelope.input?.title || "chat-source-context");
+  const date = new Date().toISOString().slice(0, 10);
+  const twin = state.activeTwin || "florian";
   return normalizeAgentContractResponse("knowledge_fabric_agent", {
     status: "completed",
     output: {
-      concept_path: `concepts/${state.activeTwin || "florian"}/inbox/${new Date().toISOString().slice(0, 10)}-${slug}.md`,
+      summary: "Pending OKF source handoff prepared for human review.",
+      title: envelope.input?.title || "Chat source context",
+      concept_path: `concepts/${twin}/inbox/${date}-${slug}.md`,
+      evidence_path: `evidence/${twin}/chat/${date}-${slug}.yaml`,
+      transcript_path: envelope.input?.source_type === "transcript" ? `transcripts/${twin}/${date}-${slug}.md` : "",
+      crud_log_path: `audit/${twin}/crud-log.jsonl`,
       review_state: "pending_review",
+      graph_curator_trigger: "candidate_edge_created",
+      vector_refresh: "deferred_until_approved",
       candidate_edges: [
         {
           source: `concept:${slug}`,
@@ -24639,6 +24870,33 @@ async function copyAgentApproval(button) {
 
 function renderAgentContractOutput(output = {}) {
   if (!output || typeof output !== "object" || !Object.keys(output).length) return "";
+  if (output.concept_path || output.evidence_path || output.crud_log_path || output.graph_curator_trigger) {
+    const artifacts = [
+      ["Concept", output.concept_path],
+      ["Evidence", output.evidence_path],
+      ["Transcript", output.transcript_path],
+      ["CRUD log", output.crud_log_path],
+    ].filter(([, value]) => value);
+    return `
+      <section class="knowledge-fabric-output">
+        <div class="ingest-contract-grid compact">
+          <span><strong>${escapeHtml(labelizeGraph(output.review_state || "pending review"))}</strong><small>review state</small></span>
+          <span><strong>${escapeHtml(output.graph_curator_trigger || "not queued")}</strong><small>graph curator</small></span>
+          <span><strong>${escapeHtml(output.vector_refresh || "deferred")}</strong><small>vector boundary</small></span>
+        </div>
+        ${artifacts.length ? `
+          <div class="knowledge-fabric-artifact-list">
+            ${artifacts.map(([label, value]) => renderKnowledgeFabricArtifactLink(label, value)).join("")}
+          </div>
+        ` : ""}
+        ${Array.isArray(output.candidate_edges) && output.candidate_edges.length ? `
+          <div class="agent-consumer-list">
+            ${output.candidate_edges.slice(0, 6).map((edge) => `<span>${escapeHtml(`${edge.relation_type || "edge"} · ${edge.confidence ?? "-"} confidence`)}</span>`).join("")}
+          </div>
+        ` : ""}
+      </section>
+    `;
+  }
   if (Array.isArray(output.todos)) {
     return `
       <div class="todo-table compact">

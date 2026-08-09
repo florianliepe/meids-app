@@ -202,6 +202,17 @@
             </div>
             <div id="messages" class="messages"></div>
           </section>
+          <section class="panel knowledge-fabric-queue-panel" aria-label="Pending Knowledge Fabric ingest queue">
+            <div class="knowledge-fabric-queue-head">
+              <div>
+                <span class="badge">Knowledge Fabric queue</span>
+                <h2>Pending OKF source handoffs</h2>
+                <p>Source-context runs stay visible until they are reviewed, synced, or promoted into durable knowledge.</p>
+              </div>
+              <button class="secondary small" type="button" data-kf-queue-action="open-ingest">Open source upload</button>
+            </div>
+            <div id="chatKnowledgeFabricQueue" class="knowledge-fabric-queue"></div>
+          </section>
           <details id="chatInteractionSetup" class="chat-workspace-drawer">
             <summary>Interaction setup</summary>
             <section class="chat-workspace-settings" aria-label="Interaction setup">
@@ -440,6 +451,17 @@
               <span><strong>Graph candidates</strong><small>Draft edges for curator review</small></span>
               <span><strong>Vector boundary</strong><small>Deferred until approved policy</small></span>
             </div>
+          </article>
+          <article class="panel knowledge-fabric-queue-panel">
+            <div class="knowledge-fabric-queue-head">
+              <div>
+                <span class="badge">Pending ingest queue</span>
+                <h2>Review source handoffs before trusted use.</h2>
+                <p>Each entry carries concept, evidence, CRUD, graph-curator, and vector-boundary signals.</p>
+              </div>
+              <button class="secondary small" type="button" data-kf-queue-action="clear">Clear local queue</button>
+            </div>
+            <div id="ingestKnowledgeFabricQueue" class="knowledge-fabric-queue"></div>
           </article>
           <pre id="ingestResult" class="output">No ingest yet.</pre>
         </section>
