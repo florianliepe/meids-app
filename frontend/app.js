@@ -12528,6 +12528,7 @@ function renderChatSkillMode() {
   renderSkillRoutingPanel();
   renderActiveChatContractBadge();
   renderChatContractBadges();
+  renderChatModeReadinessRail();
   renderSkillPreflight();
 }
 
@@ -12903,6 +12904,61 @@ function renderChatContractBadges() {
       </span>
     `)
     .join("");
+}
+
+function renderChatModeReadinessRail() {
+  const target = $("#chatModeReadinessRail");
+  if (!target) return;
+  const statuses = new Map(chatAgentContractStatuses().map((item) => [item.agentId, item]));
+  const modes = [
+    {
+      mode: "actor_twin",
+      agentId: "actor_twin",
+      label: "Ask Actor Twin",
+      purpose: "answer-only",
+    },
+    {
+      mode: "skill_activation",
+      agentId: "agentic_butler",
+      label: "Activate skill",
+      purpose: "work execution",
+    },
+    {
+      mode: "source_context",
+      agentId: "knowledge_fabric_agent",
+      label: "Add source context",
+      purpose: "OKF ingest",
+    },
+  ];
+  target.innerHTML = modes.map((mode) => {
+    const status = statuses.get(mode.agentId) || {};
+    const stateLabel = status.state || "documented";
+    const configuredLabel = status.configured ? "live URL" : "fixture";
+    const active = state.activeChatInteractionMode === mode.mode;
+    return `
+      <button class="chat-mode-readiness ${active ? "active" : ""} ${status.configured ? "configured" : "fixture"} ${safeGraphClass(stateLabel)}" type="button" data-chat-mode="${escapeHtml(mode.mode)}" title="${escapeHtml(status.detail || "")}">
+        <span>
+          <strong>${escapeHtml(mode.label)}</strong>
+          <small>${escapeHtml(mode.purpose)}</small>
+        </span>
+        <em>${escapeHtml(`${stateLabel} · ${configuredLabel}`)}</em>
+      </button>
+    `;
+  }).join("");
+  target.querySelectorAll("[data-chat-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activeChatInteractionMode = button.dataset.chatMode || "actor_twin";
+      const select = $("#chatInteractionModeSelect");
+      if (select) select.value = state.activeChatInteractionMode;
+      if (state.activeChatInteractionMode === "source_context") {
+        $("#chatSkillContext").open = true;
+      }
+      if (state.activeChatInteractionMode === "skill_activation") {
+        $("#chatInteractionSetup").open = true;
+      }
+      renderChatSkillMode();
+    });
+  });
 }
 
 function renderActiveChatContractBadge() {

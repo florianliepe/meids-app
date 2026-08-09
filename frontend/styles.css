@@ -7303,6 +7303,75 @@ body.theme-dark .knowledge-source-readiness-grid span {
   margin-top: 10px;
 }
 
+.chat-mode-readiness-rail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chat-mode-readiness {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 86%, transparent);
+  color: var(--muted);
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.chat-mode-readiness:hover,
+.chat-mode-readiness.active {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-quiet));
+  color: var(--ink);
+}
+
+.chat-mode-readiness span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chat-mode-readiness strong,
+.chat-mode-readiness small,
+.chat-mode-readiness em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-mode-readiness strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.chat-mode-readiness small,
+.chat-mode-readiness em {
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 760;
+}
+
+.chat-mode-readiness.configured,
+.chat-mode-readiness.n8n-connected {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+}
+
+.chat-mode-readiness.fixture-ready,
+.chat-mode-readiness.contract-tested {
+  border-color: color-mix(in srgb, #d7b56d 38%, var(--line));
+}
+
+.chat-mode-readiness.missing-url,
+.chat-mode-readiness.blocked {
+  border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
+}
+
 .agent-trace-summary {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -7584,6 +7653,7 @@ body.theme-dark .knowledge-source-readiness-grid span {
 }
 
 body.theme-dark .chat-contract-badges span,
+body.theme-dark .chat-mode-readiness,
 body.theme-dark .chat-active-contract-badge,
 body.theme-dark .agent-trace-summary span,
 body.theme-dark .agent-trace-row {
@@ -7651,13 +7721,31 @@ body.theme-dark .chat-contract-badges span.active {
   background: rgba(122, 216, 191, 0.1);
 }
 
+body.theme-dark .chat-mode-readiness:hover,
+body.theme-dark .chat-mode-readiness.active {
+  border-color: rgba(122, 216, 191, 0.64);
+  background: rgba(122, 216, 191, 0.1);
+}
+
 body.theme-dark .chat-contract-badges span.fixture-ready {
+  border-color: rgba(215, 181, 109, 0.48);
+  background: rgba(215, 181, 109, 0.08);
+}
+
+body.theme-dark .chat-mode-readiness.fixture-ready,
+body.theme-dark .chat-mode-readiness.contract-tested {
   border-color: rgba(215, 181, 109, 0.48);
   background: rgba(215, 181, 109, 0.08);
 }
 
 body.theme-dark .chat-contract-badges span.missing-url,
 body.theme-dark .chat-contract-badges span.blocked {
+  border-color: rgba(240, 163, 154, 0.5);
+  background: rgba(240, 163, 154, 0.08);
+}
+
+body.theme-dark .chat-mode-readiness.missing-url,
+body.theme-dark .chat-mode-readiness.blocked {
   border-color: rgba(240, 163, 154, 0.5);
   background: rgba(240, 163, 154, 0.08);
 }
@@ -7762,8 +7850,13 @@ body.theme-dark .graph-svg-edge-label text {
 
 @media (max-width: 760px) {
   .chat-contract-badges,
+  .chat-mode-readiness-rail,
   .agent-trace-summary,
   .agent-trace-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat-mode-readiness {
     grid-template-columns: minmax(0, 1fr);
   }
 
