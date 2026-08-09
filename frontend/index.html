@@ -1259,6 +1259,19 @@
                 <p class="empty">No local agent handoffs yet.</p>
               </div>
             </article>
+            <article class="panel okf-validation-panel" data-quality-group="production">
+              <div class="toolbar">
+                <div>
+                  <span class="badge">Knowledge Fabric contract</span>
+                  <h2>OKF validation status</h2>
+                </div>
+                <button id="refreshOkfValidationStatusBtn" class="secondary small" type="button">Refresh OKF</button>
+              </div>
+              <p class="muted-inline">Static contract health for schema fixtures, ingest output, graph promotion, and vector adapter boundary.</p>
+              <div id="okfValidationStatusPanel" class="okf-validation-status">
+                <p class="empty">Checking OKF contract status...</p>
+              </div>
+            </article>
             <article class="panel quality-agent-panel" data-quality-group="persona">
               <h2>Persona Modeler</h2>
               <p>Extract communication style, decision tempo, risk posture, and recurring heuristics.</p>

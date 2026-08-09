@@ -208,6 +208,7 @@
   agentOperatingModel: null,
   n8nAgentContracts: null,
   n8nContractTestResult: null,
+  okfValidationStatus: null,
   n8nLiveProbeResults: {},
   knowledgeFabricDryRunResult: null,
   skillInputPresets: [],
@@ -255,6 +256,7 @@ const N8N_CHAT_MODE = "__n8n_agent";
 const N8N_CHAT_CSS_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css";
 const N8N_CHAT_MODULE_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js";
 const N8N_CONTRACT_REPLAY_STATUS_PATH = "assets/n8n-contract-replay-status.json";
+const OKF_VALIDATION_STATUS_PATH = "assets/okf-validation-status.json";
 const storageKeys = {
   theme: "intellectualTwin.theme",
   landingDismissed: "intellectualTwin.landing.dismissed",
@@ -7129,6 +7131,7 @@ function bindQuality() {
   $("#agentOperatingModelPanel")?.addEventListener("click", handleAgentOperatingModelClick);
   $("#refreshAgentTraceHistoryBtn")?.addEventListener("click", renderAgentTraceHistoryPanel);
   $("#clearAgentTraceHistoryBtn")?.addEventListener("click", clearAgentTraceHistory);
+  $("#refreshOkfValidationStatusBtn")?.addEventListener("click", safeRefreshStaticOkfValidationStatus);
   $("#rebuildVectorIndexBtn").addEventListener("click", rebuildVectorIndex);
   $("#refreshDeepHealthBtn")?.addEventListener("click", safeRefreshDeepHealth);
   $("#exportOkfArchitectureBtn")?.addEventListener("click", exportOkfArchitectureRoadmap);
@@ -7174,7 +7177,10 @@ function setQualityGroup(group) {
   $$("[data-quality-group]").forEach((panel) => {
     panel.hidden = panel.dataset.qualityGroup !== active;
   });
-  if (active === "production") renderAgentTraceHistoryPanel();
+  if (active === "production") {
+    renderAgentTraceHistoryPanel();
+    renderOkfValidationStatusPanel();
+  }
 }
 
 function bindDrawer() {
@@ -9254,6 +9260,7 @@ function refreshStaticPagesWorkspace() {
   renderGraphCockpit();
   renderAgentOperatingModelPanel();
   safeRefreshStaticN8nReplayStatus();
+  safeRefreshStaticOkfValidationStatus();
   const graphStatus = $("#graphStatus");
   if (graphStatus) graphStatus.textContent = "Static staging graph loaded: 4 nodes, 4 relations.";
   renderProductionProgressHeader();
@@ -11439,6 +11446,31 @@ async function safeRefreshStaticN8nReplayStatus() {
   }
 }
 
+async function safeRefreshStaticOkfValidationStatus() {
+  if (!staticPagesMode) {
+    renderOkfValidationStatusPanel();
+    return;
+  }
+  try {
+    const response = await fetch(frontendAssetUrl(OKF_VALIDATION_STATUS_PATH), { cache: "no-store" });
+    if (!response.ok) throw new Error(`OKF status unavailable: ${response.status}`);
+    state.okfValidationStatus = await response.json();
+    renderOkfValidationStatusPanel();
+  } catch (error) {
+    state.okfValidationStatus = {
+      status: "blocked",
+      generated_at: "",
+      statuses: ["documented", "blocked"],
+      summary: {},
+      checks: [],
+      paths: {},
+      error: compactError(error.message),
+    };
+    renderOkfValidationStatusPanel();
+    console.warn("Static OKF validation status refresh failed", error);
+  }
+}
+
 function mergeStaticN8nReplayStatus(replayStatus = {}) {
   if (!state.n8nAgentContracts || !Array.isArray(state.n8nAgentContracts.contracts)) return;
   const replayByAgent = new Map((replayStatus.agents || []).map((agent) => [agent.agent_id, agent]));
@@ -11646,6 +11678,55 @@ async function testAgentContract(agentId) {
   } catch (error) {
     showToast("n8n contract test failed", compactError(error.message), "error");
   }
+}
+
+function renderOkfValidationStatusPanel() {
+  const target = $("#okfValidationStatusPanel");
+  if (!target) return;
+  const status = state.okfValidationStatus;
+  if (!status) {
+    target.innerHTML = renderEmptyState("OKF validation status has not been loaded yet.");
+    return;
+  }
+  const summary = status.summary || {};
+  const paths = status.paths || {};
+  const checks = Array.isArray(status.checks) ? status.checks : [];
+  const statusClass = status.status === "passed" ? "ready" : status.status === "blocked" ? "pending" : "warning";
+  target.innerHTML = `
+    <div class="okf-validation-summary ${statusClass}">
+      <div>
+        <span class="queue-kind">${escapeHtml(status.status || "unknown")}</span>
+        <strong>${escapeHtml(`${summary.passed_check_count ?? 0}/${summary.check_count ?? 0} checks passed`)}</strong>
+        <p>${escapeHtml(`${summary.example_fixture_count ?? 0} examples · ${summary.generated_ingest_file_count ?? 0} generated ingest files · ${summary.promotion_fixture_count ?? 0} promotion decisions`)}</p>
+        ${status.generated_at ? `<small>${escapeHtml(`Generated ${formatShortDate(status.generated_at)}`)}</small>` : ""}
+        ${status.error ? `<small class="warning-copy">${escapeHtml(status.error)}</small>` : ""}
+      </div>
+      <div class="agent-contract-status-strip">
+        ${(status.statuses || []).map((item) => `<span class="${safeGraphClass(item)}">${escapeHtml(item)}</span>`).join("")}
+      </div>
+    </div>
+    <div class="okf-validation-checks">
+      ${checks.map((check) => `
+        <article class="${check.status === "passed" ? "ready" : "pending"}">
+          <strong>${escapeHtml(check.command || "OKF check")}</strong>
+          <span>${escapeHtml(check.status || "unknown")}</span>
+          <small>${escapeHtml(check.stdout || check.stderr || "")}</small>
+        </article>
+      `).join("") || renderEmptyState("No OKF validation checks are available.")}
+    </div>
+    <div class="agent-contract-links">
+      ${paths.schema_doc ? `<a href="${escapeHtml(githubBlobUrl(paths.schema_doc))}" target="_blank" rel="noreferrer">Schema</a>` : ""}
+      ${paths.fixture_root ? `<a href="${escapeHtml(githubBlobUrl(paths.fixture_root))}" target="_blank" rel="noreferrer">Fixtures</a>` : ""}
+      ${paths.generated_root ? `<a href="${escapeHtml(githubBlobUrl(paths.generated_root))}" target="_blank" rel="noreferrer">Generated ingest</a>` : ""}
+      ${paths.promotion_root ? `<a href="${escapeHtml(githubBlobUrl(paths.promotion_root))}" target="_blank" rel="noreferrer">Promotions</a>` : ""}
+      ${paths.vector_adapter_example ? `<a href="${escapeHtml(githubBlobUrl(paths.vector_adapter_example))}" target="_blank" rel="noreferrer">Vector adapter</a>` : ""}
+    </div>
+  `;
+}
+
+function githubBlobUrl(repoPath = "") {
+  const clean = String(repoPath || "").replace(/^\/+/, "");
+  return `https://github.com/florianliepe/meids-app/blob/main/${encodeURI(clean).replaceAll("%2F", "/")}`;
 }
 
 async function probeAgentContract(agentId) {

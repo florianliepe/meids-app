@@ -6846,6 +6846,72 @@ body.theme-dark .graph-svg-edge-label text {
   }
 }
 
+.okf-validation-status,
+.okf-validation-checks {
+  display: grid;
+  gap: 10px;
+}
+
+.okf-validation-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.okf-validation-summary.pending,
+.okf-validation-summary.warning {
+  border-left-color: #d7a84f;
+}
+
+.okf-validation-summary p,
+.okf-validation-summary small {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.okf-validation-checks article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.okf-validation-checks small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+
+body.theme-dark .okf-validation-summary,
+body.theme-dark .okf-validation-checks article {
+  border-color: rgba(241, 235, 224, 0.18);
+  background: #171d18;
+}
+
+body.theme-dark .okf-validation-summary.ready {
+  border-left-color: #94e8d0;
+}
+
+body.theme-dark .okf-validation-summary.pending,
+body.theme-dark .okf-validation-summary.warning {
+  border-left-color: #f1d08c;
+}
+
+@media (max-width: 760px) {
+  .okf-validation-summary,
+  .okf-validation-checks article {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .agent-contract-status-strip,
 .agent-contract-links {
   display: flex;
