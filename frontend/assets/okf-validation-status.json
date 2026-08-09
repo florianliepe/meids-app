@@ -1,19 +1,21 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-09T20:47:40.060Z",
+  "generated_at": "2026-08-09T21:56:12.513Z",
   "status": "passed",
   "statuses": [
     "documented",
     "fixture ready",
     "contract tested",
-    "promotion tested"
+    "promotion tested",
+    "vector boundary tested"
   ],
   "summary": {
     "example_fixture_count": 7,
     "generated_ingest_file_count": 9,
     "promotion_fixture_count": 3,
-    "check_count": 2,
-    "passed_check_count": 2
+    "vector_request_fixture_count": 2,
+    "check_count": 3,
+    "passed_check_count": 3
   },
   "paths": {
     "schema_doc": "docs/knowledge-fabric-okf-schema.md",
@@ -37,6 +39,13 @@
       "exit_code": 0,
       "stdout": "Graph promotion validation passed: 3 promotion fixtures against 2 edge fixtures",
       "stderr": ""
+    },
+    {
+      "command": "node scripts/validate-vector-adapter.cjs",
+      "status": "passed",
+      "exit_code": 0,
+      "stdout": "Vector adapter validation passed: 2 request fixtures",
+      "stderr": ""
     }
   ],
   "sample_files": {
@@ -58,6 +67,10 @@
       "contracts/okf/promotions/approve-edge-example.json",
       "contracts/okf/promotions/needs-rework-edge-example.json",
       "contracts/okf/promotions/reject-edge-example.json"
+    ],
+    "vector_requests": [
+      "contracts/okf/examples/vector/upsert-request.json",
+      "contracts/okf/generated/vector/ing_example_001-upsert-request.json"
     ]
   }
 }

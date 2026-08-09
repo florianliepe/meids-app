@@ -218,7 +218,16 @@ transitions with `node scripts\validate-graph-promotions.cjs`.
 
 ## Vector DB Adapter Boundary
 
-No Azure/vector credentials are required for this repo. The adapter boundary should accept:
+No Azure/vector credentials are required for this repo. The adapter boundary is a
+portable request contract that can be sent later to Azure AI Search, pgvector,
+Qdrant, Pinecone, or an n8n-mediated vector workflow without changing OKF files.
+
+The public app repo stores only synthetic vector request fixtures. It must not
+store embeddings, private chunk text, provider API keys, or live index names.
+Private deployments may replace `text` with `text_ref` when source text should
+remain inside the knowledge fabric repo or hosted storage.
+
+Adapter requests accept:
 
 ```json
 {
@@ -242,6 +251,20 @@ No Azure/vector credentials are required for this repo. The adapter boundary sho
 ```
 
 Adapter responses must include `status`, `indexed_count`, `rejected_count`, `trace_id`, and `errors`.
+
+Validation rules:
+
+- `approved_only` requests may include only `approved` documents.
+- `selected_pending` requests may include `approved`, `pending-review`, or `candidate` documents, but the caller must label them as untrusted context.
+- `upsert` documents require either inline `text` or a `text_ref`.
+- Every document requires `concept_id`, `repo_path`, `review_state`, `cluster`, `type`, and `evidence_refs`.
+- Vector refresh is an adapter concern. It must not change OKF review states.
+
+Validate the boundary with:
+
+```powershell
+node scripts\validate-vector-adapter.cjs
+```
 
 ## Human Approval Boundary
 

@@ -11746,7 +11746,7 @@ function renderOkfValidationStatusPanel() {
       <div>
         <span class="queue-kind">${escapeHtml(status.status || "unknown")}</span>
         <strong>${escapeHtml(`${summary.passed_check_count ?? 0}/${summary.check_count ?? 0} checks passed`)}</strong>
-        <p>${escapeHtml(`${summary.example_fixture_count ?? 0} examples · ${summary.generated_ingest_file_count ?? 0} generated ingest files · ${summary.promotion_fixture_count ?? 0} promotion decisions`)}</p>
+        <p>${escapeHtml(`${summary.example_fixture_count ?? 0} examples · ${summary.generated_ingest_file_count ?? 0} generated ingest files · ${summary.promotion_fixture_count ?? 0} promotion decisions · ${summary.vector_request_fixture_count ?? 0} vector requests`)}</p>
         ${status.generated_at ? `<small>${escapeHtml(`Generated ${formatShortDate(status.generated_at)}`)}</small>` : ""}
         ${status.error ? `<small class="warning-copy">${escapeHtml(status.error)}</small>` : ""}
       </div>

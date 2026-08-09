@@ -30,4 +30,10 @@ Validate graph relation promotion decisions with:
 node scripts\validate-graph-promotions.cjs
 ```
 
+Validate vector adapter request fixtures with:
+
+```powershell
+node scripts\validate-vector-adapter.cjs
+```
+
 The durable schema contract is documented in `docs/knowledge-fabric-okf-schema.md`.
