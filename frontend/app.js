@@ -11611,8 +11611,88 @@ function renderN8nContractReadinessPanel(agents = []) {
       ${agents.map((agent) => renderN8nContractReadiness(agent, contractByAgent.get(agent.id))).join("")}
     </div>
     ${renderN8nRuntimeSetupActions(agents, contractByAgent)}
+    ${renderN8nFixtureLiveComparison(agents, contractByAgent)}
     ${renderAgentContractActionResult()}
   `;
+}
+
+function renderN8nFixtureLiveComparison(agents = [], contractByAgent = new Map()) {
+  const rows = agents.map((agent) => n8nFixtureLiveComparisonRow(agent, contractByAgent.get(agent.id)));
+  const readyForLive = rows.filter((row) => row.fixtureReady && row.configured).length;
+  const connected = rows.filter((row) => row.liveStatus === "connected").length;
+  return `
+    <section class="n8n-fixture-live-comparison">
+      <div class="n8n-fixture-live-head">
+        <div>
+          <span class="badge">Fixture-to-live comparison</span>
+          <strong>${escapeHtml(`${readyForLive}/${rows.length} ready for live UAT · ${connected}/${rows.length} probed connected`)}</strong>
+          <p>Use this matrix to separate contract quality from runtime connectivity. A fixture pass is necessary, but not sufficient for production approval.</p>
+        </div>
+      </div>
+      <div class="n8n-comparison-table" role="table" aria-label="n8n fixture and live comparison">
+        <div class="n8n-comparison-row header" role="row">
+          <span role="columnheader">Agent</span>
+          <span role="columnheader">Fixture</span>
+          <span role="columnheader">Cases</span>
+          <span role="columnheader">Runtime URL</span>
+          <span role="columnheader">Live probe</span>
+          <span role="columnheader">Next action</span>
+        </div>
+        ${rows.map((row) => `
+          <div class="n8n-comparison-row ${safeGraphClass(row.liveStatus)}" role="row">
+            <span role="cell"><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.source)}</small></span>
+            <span role="cell"><i class="${row.fixtureReady ? "ready" : "blocked"}">${escapeHtml(row.fixtureStatus)}</i></span>
+            <span role="cell"><strong>${escapeHtml(String(row.caseCount))}</strong><small>${escapeHtml(row.caseCoverage)}</small></span>
+            <span role="cell"><i class="${row.configured ? "ready" : "blocked"}">${escapeHtml(row.runtimeStatus)}</i><small>${escapeHtml(row.envVar)}</small></span>
+            <span role="cell"><i class="${row.liveStatus === "connected" ? "ready" : row.liveStatus === "blocked" ? "blocked" : "pending"}">${escapeHtml(row.liveLabel)}</i><small>${escapeHtml(row.liveDetail)}</small></span>
+            <span role="cell"><small>${escapeHtml(row.nextAction)}</small></span>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function n8nFixtureLiveComparisonRow(agent = {}, readiness = null) {
+  const agentId = agent.id || readiness?.agent_id || "";
+  const runtimeReadiness = agentRuntimeReadiness(agentId);
+  const probe = state.n8nLiveProbeResults?.[agentId] || {};
+  const testedCases = Array.isArray(readiness?.tested_cases) ? readiness.tested_cases : [];
+  const fixtureReady = readiness?.replay_status === "passed" || readiness?.status === "passed";
+  const caseCount = Number(readiness?.replay_case_count || readiness?.case_count || testedCases.length || 0);
+  const requiredCases = ["request", "response", "approval_required", "failure"];
+  const missingCases = requiredCases.filter((item) => !testedCases.includes(item));
+  const liveStatus = probe.status || (runtimeReadiness.configured ? "configured" : "blocked");
+  const liveLabel = probe.status === "connected"
+    ? "connected"
+    : probe.status === "failed"
+      ? "failed"
+      : runtimeReadiness.configured
+        ? "not probed"
+        : "blocked";
+  const nextAction = !fixtureReady
+    ? "Fix fixture replay before wiring live workflow."
+    : !runtimeReadiness.configured
+      ? "Add public UAT webhook URL or hosted secret, then probe live."
+      : probe.status !== "connected"
+        ? "Run live probe and capture trace evidence."
+        : "Run UAT with approval gate and trace review.";
+  return {
+    id: agentId,
+    name: agent.name || readiness?.agent_name || agentDisplayName(agentId),
+    source: readiness?.source || agent.n8n_contract || "contract fixture",
+    fixtureReady,
+    fixtureStatus: fixtureReady ? "passed" : readiness?.replay_status || readiness?.status || "unknown",
+    caseCount,
+    caseCoverage: missingCases.length ? `missing ${missingCases.join(", ")}` : "request, response, approval, failure",
+    configured: runtimeReadiness.configured,
+    runtimeStatus: runtimeReadiness.configured ? runtimeReadiness.status : "missing URL",
+    envVar: runtimeReadiness.envVar || "N8N_WEBHOOK_URL",
+    liveStatus,
+    liveLabel,
+    liveDetail: probe.detail || runtimeReadiness.detail,
+    nextAction,
+  };
 }
 
 function renderN8nRuntimeSetupActions(agents = [], contractByAgent = new Map()) {

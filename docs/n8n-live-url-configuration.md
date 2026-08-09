@@ -51,6 +51,8 @@ When a URL is missing, the frontend must stay usable:
 - Production/Review Cockpit shows `missing URL`.
 - Production/Review Cockpit shows runtime setup actions with the exact missing
   config keys and a copyable public UAT config snippet.
+- Production/Review Cockpit shows a fixture-to-live comparison matrix so UAT can
+  distinguish contract fixture coverage from live webhook connectivity.
 - Contract fixtures remain available and testable.
 - No secrets are required for GitHub Pages.
 
