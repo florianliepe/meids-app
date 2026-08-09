@@ -16,7 +16,7 @@ MeIDs can run in GitHub Pages fixture mode without live n8n workflows. For produ
 
 ## GitHub Pages Secrets
 
-The Pages workflow generates `runtime-config.js` during deployment. Configure these repository secrets when live workflow URLs are available:
+The Pages workflow currently generates `runtime-config.js` during deployment. Configure these repository secrets when live workflow URLs are available and the GitHub credential has `workflow` scope:
 
 | Secret | Purpose |
 |---|---|
@@ -26,6 +26,8 @@ The Pages workflow generates `runtime-config.js` during deployment. Configure th
 | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` | Agentic Butler approved skill activation webhook |
 
 Changing the Pages workflow requires a GitHub credential with `workflow` scope. If that scope is unavailable, use the public staging asset below.
+
+Current access note: the available GitHub credential can push application, docs, and fixture changes, but GitHub rejects workflow edits without `workflow` scope. Until a workflow-scope credential is available, use `frontend/assets/agent-runtime-config.json` for intentionally public staging URLs.
 
 ## Public Staging Asset
 
