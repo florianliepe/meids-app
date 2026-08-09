@@ -6648,6 +6648,217 @@ body.theme-dark .graph-command-surface small {
   color: #c9c0b3;
 }
 
+/* Final cascade guard for Knowledge Browser dark-mode QA. */
+body.theme-dark .knowledge-browser-panel {
+  background:
+    linear-gradient(180deg, rgba(18, 22, 19, 0.92), rgba(15, 18, 16, 0.92));
+  border-color: rgba(241, 235, 224, 0.16);
+}
+
+body.theme-dark .knowledge-increment {
+  background:
+    linear-gradient(90deg, rgba(24, 30, 26, 0.96), rgba(19, 23, 20, 0.96));
+  border-color: rgba(241, 235, 224, 0.15);
+  border-left-width: 4px;
+  box-shadow: none;
+}
+
+body.theme-dark .knowledge-increment:hover {
+  background:
+    linear-gradient(90deg, rgba(28, 36, 31, 0.98), rgba(21, 26, 23, 0.98));
+  border-color: rgba(122, 216, 191, 0.38);
+}
+
+body.theme-dark .knowledge-increment[data-review-state="approved"] {
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .knowledge-increment[data-review-state="pending-review"],
+body.theme-dark .knowledge-increment[data-review-state="candidate"],
+body.theme-dark .knowledge-increment[data-review-state="draft"] {
+  border-left-color: #e0c28d;
+}
+
+body.theme-dark .knowledge-increment[data-review-state="needs-rework"],
+body.theme-dark .knowledge-increment[data-review-state="rejected"] {
+  border-left-color: #f0a39a;
+}
+
+body.theme-dark .knowledge-review-token {
+  background: rgba(241, 235, 224, 0.06);
+  border-color: rgba(241, 235, 224, 0.16);
+  color: #d8cebd;
+}
+
+body.theme-dark .knowledge-review-token.approved {
+  background: rgba(122, 216, 191, 0.12);
+  border-color: rgba(122, 216, 191, 0.34);
+  color: #b9f3e6;
+}
+
+body.theme-dark .knowledge-review-token.pending-review,
+body.theme-dark .knowledge-review-token.candidate,
+body.theme-dark .knowledge-review-token.draft {
+  background: rgba(224, 194, 141, 0.13);
+  border-color: rgba(224, 194, 141, 0.36);
+  color: #f0d9a8;
+}
+
+body.theme-dark .knowledge-review-token.needs-rework,
+body.theme-dark .knowledge-review-token.rejected {
+  background: rgba(240, 163, 154, 0.13);
+  border-color: rgba(240, 163, 154, 0.38);
+  color: #ffc5bd;
+}
+
+body.theme-dark .knowledge-increment-source {
+  background: rgba(12, 15, 13, 0.34);
+  border: 1px solid rgba(241, 235, 224, 0.1);
+  border-radius: 8px;
+  padding: 7px;
+}
+
+body.theme-dark .knowledge-increment-source code {
+  color: #d8cebd;
+}
+
+body.theme-dark .knowledge-increment-source span,
+body.theme-dark .knowledge-increment-fabric small {
+  color: #bcb1a4;
+}
+
+body.theme-dark .knowledge-increment-fabric > span {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-source-affordances button {
+  background: rgba(32, 37, 31, 0.96);
+  border-color: rgba(241, 235, 224, 0.16);
+  color: #eee6d8;
+}
+
+body.theme-dark .knowledge-source-affordances button:hover {
+  border-color: rgba(122, 216, 191, 0.42);
+  color: #b9f3e6;
+}
+
+/* Final Knowledge Browser QA overrides: keep review states and sources legible in dark mode. */
+.knowledge-source-affordances {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.knowledge-source-affordances button {
+  min-height: 28px;
+  padding: 5px 8px;
+}
+
+body.theme-dark .knowledge-browser-panel {
+  background:
+    linear-gradient(180deg, rgba(18, 22, 19, 0.92), rgba(15, 18, 16, 0.92));
+  border-color: rgba(241, 235, 224, 0.16);
+}
+
+body.theme-dark .knowledge-increment {
+  background:
+    linear-gradient(90deg, rgba(24, 30, 26, 0.96), rgba(19, 23, 20, 0.96));
+  border-color: rgba(241, 235, 224, 0.15);
+  border-left-width: 4px;
+  box-shadow: none;
+}
+
+body.theme-dark .knowledge-increment:hover {
+  background:
+    linear-gradient(90deg, rgba(28, 36, 31, 0.98), rgba(21, 26, 23, 0.98));
+  border-color: rgba(122, 216, 191, 0.38);
+}
+
+body.theme-dark .knowledge-increment[data-review-state="approved"] {
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .knowledge-increment[data-review-state="pending-review"],
+body.theme-dark .knowledge-increment[data-review-state="candidate"],
+body.theme-dark .knowledge-increment[data-review-state="draft"] {
+  border-left-color: #e0c28d;
+}
+
+body.theme-dark .knowledge-increment[data-review-state="needs-rework"],
+body.theme-dark .knowledge-increment[data-review-state="rejected"] {
+  border-left-color: #f0a39a;
+}
+
+body.theme-dark .knowledge-review-token {
+  background: rgba(241, 235, 224, 0.06);
+  border-color: rgba(241, 235, 224, 0.16);
+  color: #d8cebd;
+}
+
+body.theme-dark .knowledge-review-token.approved {
+  background: rgba(122, 216, 191, 0.12);
+  border-color: rgba(122, 216, 191, 0.34);
+  color: #b9f3e6;
+}
+
+body.theme-dark .knowledge-review-token.pending-review,
+body.theme-dark .knowledge-review-token.candidate,
+body.theme-dark .knowledge-review-token.draft {
+  background: rgba(224, 194, 141, 0.13);
+  border-color: rgba(224, 194, 141, 0.36);
+  color: #f0d9a8;
+}
+
+body.theme-dark .knowledge-review-token.needs-rework,
+body.theme-dark .knowledge-review-token.rejected {
+  background: rgba(240, 163, 154, 0.13);
+  border-color: rgba(240, 163, 154, 0.38);
+  color: #ffc5bd;
+}
+
+body.theme-dark .knowledge-increment-source {
+  background: rgba(12, 15, 13, 0.34);
+  border: 1px solid rgba(241, 235, 224, 0.1);
+  border-radius: 8px;
+  padding: 7px;
+}
+
+body.theme-dark .knowledge-increment-source code {
+  color: #d8cebd;
+}
+
+body.theme-dark .knowledge-increment-source span,
+body.theme-dark .knowledge-increment-fabric small {
+  color: #bcb1a4;
+}
+
+body.theme-dark .knowledge-increment-fabric > span {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-source-affordances button {
+  background: rgba(32, 37, 31, 0.96);
+  border-color: rgba(241, 235, 224, 0.16);
+  color: #eee6d8;
+}
+
+body.theme-dark .knowledge-source-affordances button:hover {
+  border-color: rgba(122, 216, 191, 0.42);
+  color: #b9f3e6;
+}
+
+@media (max-width: 900px) {
+  .knowledge-source-affordances {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .knowledge-source-affordances button {
+    width: 100%;
+  }
+}
+
 /* Zielmodus 4: contract status, trace cockpit, and dark-mode knowledge/graph polish */
 .chat-contract-badges,
 .agent-trace-history-list {

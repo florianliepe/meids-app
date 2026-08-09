@@ -14759,10 +14759,15 @@ function renderKnowledgeFabric(fabric) {
 function renderKnowledgeSource(concept, sourceLabel) {
   const fullPath = concept.path || "";
   const shortPath = compactPath(fullPath).replace(/^concepts\/[^/]+\//, "");
+  const sourceRef = concept.source_deep_link || concept.source_anchor || concept.evidence_path || concept.source_path || fullPath;
   return `
     <div class="knowledge-increment-source">
       <code title="${escapeHtml(fullPath)}">${escapeHtml(shortPath || fullPath || "source pending")}</code>
       <span>${escapeHtml(sourceLabel)}</span>
+      <div class="knowledge-source-affordances">
+        ${fullPath ? `<button class="small secondary" type="button" data-concept-open="${escapeHtml(fullPath)}">Open</button>` : ""}
+        ${sourceRef ? `<button class="small secondary source-copy-btn" type="button" data-copy-value="${escapeHtml(sourceRef)}">Copy ref</button>` : ""}
+      </div>
     </div>
   `;
 }
