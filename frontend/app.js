@@ -13644,6 +13644,10 @@ function bindKnowledgeFabricQueueActions() {
       showToast("Knowledge Fabric manifest", copied ? "Copied to clipboard." : "Copy failed.", copied ? "success" : "warning");
       return;
     }
+    if (action === "export") {
+      exportKnowledgeFabricQueueArtifact(queueId, button);
+      return;
+    }
     if (["approve", "needs-rework", "reject"].includes(action)) {
       updateKnowledgeFabricQueueReview(queueId, action);
       return;
@@ -13658,6 +13662,79 @@ function bindKnowledgeFabricQueueActions() {
       renderKnowledgeFabricQueuePanels();
     }
   });
+}
+
+function exportKnowledgeFabricQueueArtifact(queueId, button) {
+  const item = state.knowledgeFabricIngestQueue.find((entry) => entry.queue_id === queueId);
+  if (!item) {
+    showToast("Knowledge Fabric export", "Queue item not found.", "warning");
+    return;
+  }
+  const artifact = buildKnowledgeFabricQueueArtifact(item);
+  const filename = [
+    "meids-okf-handoff",
+    safeGraphClass(item.twin_id || state.activeTwin || "twin"),
+    safeGraphClass(item.review_state || "pending-review"),
+    safeGraphClass(item.request_id || item.queue_id || "handoff").slice(0, 48),
+  ].filter(Boolean).join("-") + ".json";
+  const blob = new Blob([JSON.stringify(artifact, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, filename);
+  URL.revokeObjectURL(url);
+  markButtonDone(button, "Exported");
+  showToast("Knowledge Fabric artifact exported", filename, "success");
+}
+
+function buildKnowledgeFabricQueueArtifact(item = {}) {
+  const exportedAt = new Date().toISOString();
+  const graphPromotions = knowledgeFabricQueuePromotionHistoryItems()
+    .filter((entry) => {
+      const sourcePath = item.concept_path || item.evidence_path || "";
+      return !sourcePath || entry.path === sourcePath || entry.source_path === sourcePath || String(entry.edge_key || "").includes(slugify(item.queue_id || item.request_id || ""));
+    });
+  return {
+    schema: "meids.okf.reviewed_handoff.v1",
+    exported_at: exportedAt,
+    boundary: "Portable review artifact only. Does not mutate OKF storage, graph store, vector index, or n8n runtime.",
+    twin_id: item.twin_id || state.activeTwin || "florian",
+    status: item.review_state || "pending-review",
+    queue: {
+      queue_id: item.queue_id || "",
+      request_id: item.request_id || "",
+      trace_id: item.trace_id || "",
+      created_at: item.created_at || "",
+      reviewed_at: item.reviewed_at || "",
+      reviewer: item.reviewer || "",
+      review_note: item.review_note || "",
+      runtime: item.runtime || "",
+      source_type: item.source_type || "",
+      intent: item.intent || "",
+    },
+    okf_targets: {
+      concept_path: item.concept_path || "",
+      evidence_path: item.evidence_path || "",
+      transcript_path: item.transcript_path || "",
+      crud_log_path: item.crud_log_path || "",
+    },
+    graph_promotion: {
+      trigger: item.graph_curator_trigger || "not_queued",
+      review_state: item.review_state || "pending-review",
+      candidate_edges: Array.isArray(item.candidate_edges) ? item.candidate_edges : [],
+      promotion_history: graphPromotions,
+    },
+    vector_boundary: {
+      requested_state: item.vector_refresh || "deferred_until_approved",
+      adapter_ready: Boolean(state.okfValidationStatus?.summary?.vector_request_fixture_count),
+      rule: item.review_state === "approved"
+        ? "Queue for approved-index adapter after OKF storage merge."
+        : "Hold vector refresh until human review approves the concept.",
+    },
+    repo_split_target: {
+      app_repo: "florianliepe/meids-app",
+      knowledge_repo: "meids-knowledge-fabric",
+      agent_config_repo: "meids-agent-configs",
+    },
+  };
 }
 
 function updateKnowledgeFabricQueueReview(queueId, action) {
@@ -13796,6 +13873,7 @@ function renderKnowledgeFabricQueueCard(item = {}) {
         <button class="secondary small" type="button" data-kf-queue-action="review" data-queue-id="${escapeHtml(item.queue_id || "")}">Review cockpit</button>
         <button class="secondary small" type="button" data-kf-queue-action="graph" data-queue-id="${escapeHtml(item.queue_id || "")}">Open graph</button>
         <button class="secondary small" type="button" data-kf-queue-action="copy" data-queue-id="${escapeHtml(item.queue_id || "")}">Copy manifest</button>
+        <button class="secondary small" type="button" data-kf-queue-action="export" data-queue-id="${escapeHtml(item.queue_id || "")}">Export artifact</button>
       </div>
     </article>
   `;
