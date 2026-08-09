@@ -13644,6 +13644,10 @@ function bindKnowledgeFabricQueueActions() {
       showToast("Knowledge Fabric manifest", copied ? "Copied to clipboard." : "Copy failed.", copied ? "success" : "warning");
       return;
     }
+    if (["approve", "needs-rework", "reject"].includes(action)) {
+      updateKnowledgeFabricQueueReview(queueId, action);
+      return;
+    }
     if (action === "clear") {
       state.knowledgeFabricIngestQueue = [];
       try {
@@ -13654,6 +13658,82 @@ function bindKnowledgeFabricQueueActions() {
       renderKnowledgeFabricQueuePanels();
     }
   });
+}
+
+function updateKnowledgeFabricQueueReview(queueId, action) {
+  if (!queueId) return;
+  const index = state.knowledgeFabricIngestQueue.findIndex((entry) => entry.queue_id === queueId);
+  if (index < 0) {
+    showToast("Knowledge Fabric queue", "Queue item not found.", "warning");
+    return;
+  }
+  const reviewedAt = new Date().toISOString();
+  const reviewState = action === "approve" ? "approved" : action === "reject" ? "rejected" : "needs-rework";
+  const item = state.knowledgeFabricIngestQueue[index];
+  const note = knowledgeFabricQueueReviewNote(reviewState, item);
+  const updated = {
+    ...item,
+    review_state: reviewState,
+    reviewed_at: reviewedAt,
+    reviewer: "local-human-review",
+    review_note: note,
+    vector_refresh: reviewState === "approved" ? "queued_for_approved_index" : "hold_until_reworked",
+    graph_curator_trigger: reviewState === "approved" ? "promotion_accepted" : reviewState === "needs-rework" ? "promotion_needs_rework" : "promotion_rejected",
+  };
+  state.knowledgeFabricIngestQueue = [
+    updated,
+    ...state.knowledgeFabricIngestQueue.filter((entry) => entry.queue_id !== queueId),
+  ].slice(0, 12);
+  try {
+    window.localStorage.setItem(storageKeys.knowledgeFabricIngestQueue, JSON.stringify(state.knowledgeFabricIngestQueue));
+  } catch (error) {
+    console.warn("Knowledge Fabric queue review persistence failed", error);
+  }
+  appendKnowledgeFabricGraphReviews(updated, reviewState, note, reviewedAt);
+  renderKnowledgeFabricQueuePanels();
+  renderDashboardGraphPromotionHistory();
+  renderGraphCockpit();
+  showToast("Knowledge Fabric review saved", labelizeGraph(reviewState), reviewState === "approved" ? "success" : "warning");
+}
+
+function knowledgeFabricQueueReviewNote(reviewState, item = {}) {
+  if (reviewState === "approved") {
+    return "Source handoff approved for OKF promotion. Vector refresh may target the approved index.";
+  }
+  if (reviewState === "needs-rework") {
+    return "Source handoff needs stronger evidence, clearer claim boundaries, or better graph relation wording.";
+  }
+  return "Source handoff rejected from trusted OKF use. Keep audit evidence but do not promote graph/vector artifacts.";
+}
+
+function appendKnowledgeFabricGraphReviews(item = {}, reviewState, note, reviewedAt) {
+  const candidateEdges = Array.isArray(item.candidate_edges) && item.candidate_edges.length
+    ? item.candidate_edges
+    : [{
+      source: item.concept_path || `concept:${slugify(item.title || "source-handoff")}`,
+      target: "knowledge-fabric-review-gate",
+      relation_type: "reviewed_for_promotion",
+      confidence: reviewState === "approved" ? 0.8 : 0.5,
+    }];
+  const reviews = candidateEdges.map((edge, index) => ({
+    edge_key: edge.edge_key || `${slugify(item.queue_id || item.request_id || item.title || "queue")}-${slugify(edge.relation_type || "edge")}-${index}`,
+    decision: reviewState,
+    review_state: reviewState,
+    note,
+    reviewer: "local-human-review",
+    reviewed_at: reviewedAt,
+    confidence: edge.confidence,
+    source: edge.source || item.concept_path || "source",
+    target: edge.target || "target",
+    relation_type: edge.relation_type || edge.edge_type || "related",
+    path: item.concept_path || item.evidence_path || "",
+    source_path: item.concept_path || "",
+  }));
+  const nextByKey = new Map((state.graphEdgeReviews || []).map((review) => [review.edge_key, review]));
+  reviews.forEach((review) => nextByKey.set(review.edge_key, review));
+  state.graphEdgeReviews = Array.from(nextByKey.values())
+    .sort((a, b) => String(b.reviewed_at || "").localeCompare(String(a.reviewed_at || "")))
+    .slice(0, 24);
 }
 
 function renderKnowledgeFabricQueuePanels() {
@@ -13706,8 +13786,14 @@ function renderKnowledgeFabricQueueCard(item = {}) {
           ${edges.slice(0, 4).map((edge) => `<span>${escapeHtml(`${edge.relation_type || "candidate edge"} · ${edge.confidence ?? "-"} confidence`)}</span>`).join("")}
         </div>
       ` : ""}
+      ${item.reviewed_at ? `
+        <p class="knowledge-fabric-review-note">${escapeHtml(`${formatShortDate(item.reviewed_at)} · ${item.review_note || "Review decision saved."}`)}</p>
+      ` : ""}
       <div class="button-row tight">
-        <button class="secondary small" type="button" data-kf-queue-action="review" data-queue-id="${escapeHtml(item.queue_id || "")}">Review concept</button>
+        <button class="secondary small" type="button" data-kf-queue-action="approve" data-queue-id="${escapeHtml(item.queue_id || "")}">Approve OKF</button>
+        <button class="secondary small" type="button" data-kf-queue-action="needs-rework" data-queue-id="${escapeHtml(item.queue_id || "")}">Needs rework</button>
+        <button class="danger small" type="button" data-kf-queue-action="reject" data-queue-id="${escapeHtml(item.queue_id || "")}">Reject</button>
+        <button class="secondary small" type="button" data-kf-queue-action="review" data-queue-id="${escapeHtml(item.queue_id || "")}">Review cockpit</button>
         <button class="secondary small" type="button" data-kf-queue-action="graph" data-queue-id="${escapeHtml(item.queue_id || "")}">Open graph</button>
         <button class="secondary small" type="button" data-kf-queue-action="copy" data-queue-id="${escapeHtml(item.queue_id || "")}">Copy manifest</button>
       </div>
@@ -15346,9 +15432,42 @@ function graphPromotionHistoryItems() {
       path: review.path || "",
     });
   });
+  knowledgeFabricQueuePromotionHistoryItems().forEach((item) => {
+    if (items.some((existing) => existing.edge_key === item.edge_key)) return;
+    items.push(item);
+  });
   return items
     .sort((a, b) => String(b.reviewed_at || "").localeCompare(String(a.reviewed_at || "")))
     .slice(0, 8);
+}
+
+function knowledgeFabricQueuePromotionHistoryItems() {
+  return (state.knowledgeFabricIngestQueue || [])
+    .filter((item) => item.reviewed_at && ["approved", "needs-rework", "rejected"].includes(String(item.review_state || "")))
+    .flatMap((item) => {
+      const candidateEdges = Array.isArray(item.candidate_edges) && item.candidate_edges.length
+        ? item.candidate_edges
+        : [{
+          source: item.concept_path || `concept:${slugify(item.title || "source-handoff")}`,
+          target: "knowledge-fabric-review-gate",
+          relation_type: "reviewed_for_promotion",
+          confidence: item.review_state === "approved" ? 0.8 : 0.5,
+        }];
+      return candidateEdges.map((edge, index) => ({
+        edge_key: edge.edge_key || `${slugify(item.queue_id || item.request_id || item.title || "queue")}-${slugify(edge.relation_type || "edge")}-${index}`,
+        decision: item.review_state,
+        review_state: item.review_state,
+        reviewed_at: item.reviewed_at,
+        relation_type: edge.relation_type || edge.edge_type || "related",
+        confidence: edge.confidence,
+        note: item.review_note || knowledgeFabricQueueReviewNote(item.review_state, item),
+        source_title: labelizeGraph(edge.source || item.title || "source"),
+        target_title: labelizeGraph(edge.target || "target"),
+        source_path: item.concept_path || item.evidence_path || "",
+        edge_class: item.review_state === "approved" ? "explicit" : "candidate",
+        path: item.concept_path || item.evidence_path || "",
+      }));
+    });
 }
 
 function renderDashboardGraphPromotionHistory() {

@@ -22005,6 +22005,18 @@ body.cockpit-mode .workspace-signal {
   padding: 14px;
 }
 
+.knowledge-fabric-queue-card.approved {
+  border-left-color: #3c9d75;
+}
+
+.knowledge-fabric-queue-card.needs-rework {
+  border-left-color: #b5832d;
+}
+
+.knowledge-fabric-queue-card.rejected {
+  border-left-color: #b85c55;
+}
+
 .knowledge-fabric-queue-card-head {
   align-items: start;
   display: grid;
@@ -22086,6 +22098,15 @@ body.cockpit-mode .workspace-signal {
   gap: 10px;
   margin-top: 10px;
   padding-top: 12px;
+}
+
+.knowledge-fabric-review-note {
+  border-top: 1px solid color-mix(in srgb, var(--line) 68%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+  padding-top: 10px;
 }
 
 .messages {
@@ -22252,6 +22273,18 @@ body.theme-dark .knowledge-fabric-queue-card {
   background: rgba(23, 27, 24, 0.82);
 }
 
+body.theme-dark .knowledge-fabric-queue-card.approved {
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .knowledge-fabric-queue-card.needs-rework {
+  border-left-color: #d6a95c;
+}
+
+body.theme-dark .knowledge-fabric-queue-card.rejected {
+  border-left-color: #d98578;
+}
+
 body.theme-dark .knowledge-fabric-queue-card code,
 body.theme-dark .knowledge-fabric-artifact-list a,
 body.theme-dark .knowledge-fabric-target-path {
@@ -22275,6 +22308,11 @@ body.theme-dark .knowledge-fabric-target-path span {
 
 body.theme-dark .knowledge-fabric-output {
   border-top-color: rgba(232, 226, 214, 0.12);
+}
+
+body.theme-dark .knowledge-fabric-review-note {
+  border-top-color: rgba(232, 226, 214, 0.12);
+  color: #c9c0b3;
 }
 
 body.theme-dark .chat-workspace-drawer > summary::before {
