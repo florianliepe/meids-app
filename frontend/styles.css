@@ -7349,6 +7349,55 @@ body.theme-dark .knowledge-source-readiness-grid span {
   color: var(--ink);
 }
 
+.agent-trace-setup-notice {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(220px, 0.62fr);
+  gap: 12px;
+  align-items: start;
+  border: 1px solid color-mix(in srgb, var(--warn) 42%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--warn) 9%, var(--surface));
+  padding: 12px;
+}
+
+.agent-trace-setup-notice.compact {
+  grid-template-columns: 1fr;
+}
+
+.agent-trace-setup-notice strong,
+.agent-trace-setup-notice p {
+  margin: 3px 0 0;
+}
+
+.agent-trace-setup-notice p,
+.agent-trace-setup-notice small {
+  color: var(--muted);
+}
+
+.agent-trace-missing-list {
+  display: grid;
+  gap: 8px;
+}
+
+.agent-trace-missing-list span {
+  display: grid;
+  gap: 3px;
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 86%, transparent);
+  padding: 9px 10px;
+}
+
+.agent-trace-missing-list strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.agent-trace-missing-list small {
+  font-size: 10px;
+  line-height: 1.35;
+}
+
 .chat-active-contract-badge {
   display: inline-grid;
   grid-template-columns: auto auto auto;
@@ -7546,6 +7595,16 @@ body.theme-dark .agent-trace-filter button.active {
   border-color: rgba(122, 216, 191, 0.58);
   background: rgba(122, 216, 191, 0.14);
   color: #f1ebe0;
+}
+
+body.theme-dark .agent-trace-setup-notice {
+  border-color: rgba(240, 163, 154, 0.5);
+  background: rgba(240, 163, 154, 0.08);
+}
+
+body.theme-dark .agent-trace-missing-list span {
+  border-color: rgba(241, 235, 224, 0.16);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 body.theme-dark .agent-trace-agent-chip {
@@ -11996,6 +12055,24 @@ body.theme-dark .composer input:focus {
 }
 
 @media (max-width: 900px) {
+  #dashboard .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .metric-card {
+    min-width: 0;
+  }
+
+  .metric-card span,
+  .metric-card strong,
+  .metric-card small {
+    overflow-wrap: anywhere;
+  }
+
+  .agent-trace-setup-notice {
+    grid-template-columns: 1fr;
+  }
+
   .shell,
   .grid.two,
   .grid.three,
@@ -13257,6 +13334,12 @@ body.theme-dark .setup-step-detail {
 
 #dashboard .dashboard-grid {
   grid-template-columns: repeat(5, minmax(140px, 1fr));
+}
+
+@media (max-width: 900px) {
+  #dashboard .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .dashboard-insights {

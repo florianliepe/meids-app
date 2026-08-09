@@ -12,6 +12,8 @@ const cases = [
   { view: "concepts", name: "knowledge-mobile-dark", width: 390, height: 900, main: ".knowledge-browser-panel", cards: ".knowledge-increment" },
   { view: "graph", name: "graph-desktop-dark", width: 1440, height: 1000, main: ".graph-cockpit-panel", cards: ".graph-svg-node, .graph-node, .graph-list-node" },
   { view: "graph", name: "graph-mobile-dark", width: 390, height: 900, main: ".graph-cockpit-panel", cards: ".graph-svg-node, .graph-node, .graph-list-node" },
+  { view: "dashboard", name: "trace-dashboard-desktop-dark", width: 1440, height: 1000, main: "#dashboard", cards: ".agent-trace-row" },
+  { view: "dashboard", name: "trace-dashboard-mobile-dark", width: 390, height: 900, main: "#dashboard", cards: ".agent-trace-row" },
 ];
 
 function contentType(filePath) {
@@ -99,6 +101,9 @@ async function run() {
       if (qaCase.view === "graph") {
         interactionMetrics = await exerciseGraphRelationLayerFilter(page);
       }
+      if (qaCase.view === "dashboard") {
+        interactionMetrics = await inspectTraceDashboard(page);
+      }
       const metrics = await page.evaluate((selector) => {
         const main = document.querySelector(selector.main);
         const cards = Array.from(document.querySelectorAll(selector.cards));
@@ -161,6 +166,10 @@ async function run() {
           failures.push(`candidate layer click did not apply edge-class filter: ${interactionMetrics.edgeClassFilter || "unset"}`);
         }
       }
+      if (qaCase.view === "dashboard") {
+        if (!interactionMetrics.traceRows) failures.push("trace dashboard has no visible agent trace rows");
+        if (!interactionMetrics.setupNotice) failures.push("trace dashboard missing live URL setup notice");
+      }
       results.push({ ...qaCase, metrics, contrast: Number(contrast.toFixed(2)), screenshot, status: failures.length ? "failed" : "passed", failures });
     }
   } finally {
@@ -201,6 +210,13 @@ async function exerciseGraphRelationLayerFilter(page) {
     document.querySelector(".graph-relation-layer-summary button.active")?.dataset?.graphEdgeClassFilter || "",
   );
   return { nodeClicked, relationLayerSummaryFound, layerButtonCount, candidateClicked, edgeClassFilter };
+}
+
+async function inspectTraceDashboard(page) {
+  await page.waitForSelector("#dashAgentTraceHistory", { timeout: 10000 }).catch(() => {});
+  const traceRows = await page.locator("#dashAgentTraceHistory .agent-trace-row").count();
+  const setupNotice = await page.locator("#dashAgentTraceHistory .agent-trace-setup-notice").count();
+  return { traceRows, setupNotice };
 }
 
 run().catch((error) => {

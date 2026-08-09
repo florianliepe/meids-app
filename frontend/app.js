@@ -9389,6 +9389,8 @@ function refreshStaticPagesWorkspace() {
   renderAgentOperatingModelPanel();
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticOkfValidationStatus();
+  renderAgentTraceHistoryPanel();
+  renderDashboardAgentTraceHistory();
   const graphStatus = $("#graphStatus");
   if (graphStatus) graphStatus.textContent = "Static staging graph loaded: 4 nodes, 4 relations.";
   renderProductionProgressHeader();
@@ -13235,10 +13237,52 @@ function persistAgentTrace(result = {}) {
 function readAgentTraceLog() {
   try {
     const value = JSON.parse(window.localStorage.getItem(storageKeys.agentTraceLog) || "[]");
-    return Array.isArray(value) ? value : [];
+    if (Array.isArray(value) && value.length) return value;
+    return staticPagesMode ? buildStaticPagesAgentTraceLog() : [];
   } catch {
-    return [];
+    return staticPagesMode ? buildStaticPagesAgentTraceLog() : [];
   }
+}
+
+function buildStaticPagesAgentTraceLog() {
+  return [
+    {
+      timestamp: "2026-08-10T08:30:00Z",
+      twin: "florian",
+      agent_id: "actor_twin",
+      agent_name: "Actor Twin",
+      status: "completed",
+      runtime: "n8n connected · public UAT",
+      request_id: "req_static_actor_001",
+      trace_id: "trace_static_actor_001",
+      approval_required: false,
+      demo: true,
+    },
+    {
+      timestamp: "2026-08-10T08:34:00Z",
+      twin: "florian",
+      agent_id: "knowledge_fabric_agent",
+      agent_name: "Knowledge Fabric Agent",
+      status: "blocked",
+      runtime: "fixture replay · missing live URL",
+      request_id: "req_static_knowledge_001",
+      trace_id: "trace_static_knowledge_001",
+      approval_required: false,
+      demo: true,
+    },
+    {
+      timestamp: "2026-08-10T08:39:00Z",
+      twin: "florian",
+      agent_id: "agentic_butler",
+      agent_name: "Agentic Butler",
+      status: "approval_required",
+      runtime: "fixture replay · approval-gated",
+      request_id: "req_static_butler_001",
+      trace_id: "trace_static_butler_001",
+      approval_required: true,
+      demo: true,
+    },
+  ];
 }
 
 function clearAgentTraceHistory() {
@@ -13310,15 +13354,16 @@ function renderAgentTraceHistoryPanel() {
   const filtered = filteredAgentTraces(traces);
   renderAgentTraceSummary(traces, filtered);
   renderAgentTraceFilterControls();
+  const setupNotice = renderAgentTraceSetupNotice();
   if (!traces.length) {
-    target.innerHTML = '<p class="empty">No local agent handoffs yet.</p>';
+    target.innerHTML = `${setupNotice}<p class="empty">No local agent handoffs yet. Run Actor Twin, Knowledge Fabric, or Agentic Butler from Chat to populate this trace history.</p>`;
     return;
   }
   if (!filtered.length) {
-    target.innerHTML = '<p class="empty">No traces match this filter.</p>';
+    target.innerHTML = `${setupNotice}<p class="empty">No traces match this filter.</p>`;
     return;
   }
-  target.innerHTML = renderAgentTraceHistoryRows(filtered, 12);
+  target.innerHTML = `${setupNotice}${renderAgentTraceHistoryRows(filtered, 12)}`;
 }
 
 function renderDashboardAgentTraceHistory() {
@@ -13329,7 +13374,32 @@ function renderDashboardAgentTraceHistory() {
     target.innerHTML = renderEmptyState("No local n8n handoffs yet.", "Open agent contracts", "openProductionCockpit");
     return;
   }
-  target.innerHTML = renderAgentTraceHistoryRows(traces, 8);
+  target.innerHTML = `${renderAgentTraceSetupNotice({ compact: true })}${renderAgentTraceHistoryRows(traces, 8)}`;
+}
+
+function renderAgentTraceSetupNotice(options = {}) {
+  const missing = chatAgentContractStatuses().filter((item) => !item.configured);
+  if (!missing.length) return "";
+  const compact = Boolean(options.compact);
+  return `
+    <article class="agent-trace-setup-notice ${compact ? "compact" : ""}">
+      <div>
+        <span class="badge">Trace setup</span>
+        <strong>${escapeHtml(`${missing.length} live agent URL${missing.length === 1 ? "" : "s"} missing`)}</strong>
+        <p>${escapeHtml(compact
+          ? "Fixture traces are visible; live Knowledge Fabric and Butler traces need webhook URLs."
+          : "The trace cockpit can show fixture and local handoffs now. End-to-end live trace evidence remains blocked until the missing n8n webhook URLs are configured.")}</p>
+      </div>
+      <div class="agent-trace-missing-list">
+        ${missing.map((item) => `
+          <span>
+            <strong>${escapeHtml(item.label)}</strong>
+            <small>${escapeHtml(item.detail)}</small>
+          </span>
+        `).join("")}
+      </div>
+    </article>
+  `;
 }
 
 function renderAgentTraceHistoryRows(traces = [], limit = 12) {
@@ -13340,7 +13410,7 @@ function renderAgentTraceHistoryRows(traces = [], limit = 12) {
     return `
     <article class="agent-trace-row ${statusClass} ${agentClass}">
       <div>
-        <span class="badge">${escapeHtml(trace.approval_required ? "approval gate" : trace.status || "trace")}</span>
+        <span class="badge">${escapeHtml(trace.demo ? "staging trace" : trace.approval_required ? "approval gate" : trace.status || "trace")}</span>
         <span class="agent-trace-agent-chip ${agentClass}">${escapeHtml(agentDisplayName(agentId))}</span>
         <strong>${escapeHtml(trace.agent_name || agentDisplayName(trace.agent_id || ""))}</strong>
         <p>${escapeHtml(`${trace.runtime || "fixture/local"} · ${trace.twin || "active twin"} · ${formatShortDate(trace.timestamp)}`)}</p>
