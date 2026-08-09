@@ -3,6 +3,7 @@
   backendStatus: null,
   concepts: [],
   openAIConfigured: false,
+  agentTraceFilter: "all",
   mediaRecorder: null,
   audioChunks: [],
   recordedBlob: null,
@@ -7164,6 +7165,12 @@ function bindQuality() {
   $("#agentOperatingModelPanel")?.addEventListener("click", handleAgentOperatingModelClick);
   $("#refreshAgentTraceHistoryBtn")?.addEventListener("click", renderAgentTraceHistoryPanel);
   $("#clearAgentTraceHistoryBtn")?.addEventListener("click", clearAgentTraceHistory);
+  $$("[data-agent-trace-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.agentTraceFilter = button.dataset.agentTraceFilter || "all";
+      renderAgentTraceHistoryPanel();
+    });
+  });
   $("#refreshOkfValidationStatusBtn")?.addEventListener("click", safeRefreshStaticOkfValidationStatus);
   $("#rebuildVectorIndexBtn").addEventListener("click", rebuildVectorIndex);
   $("#refreshDeepHealthBtn")?.addEventListener("click", safeRefreshDeepHealth);
@@ -13000,15 +13007,74 @@ function clearAgentTraceHistory() {
   renderDashboardAgentTraceHistory();
 }
 
+function filteredAgentTraces(traces = [], filter = state.agentTraceFilter || "all") {
+  if (filter === "all") return traces;
+  if (filter === "approval_required") return traces.filter((trace) => Boolean(trace.approval_required));
+  return traces.filter((trace) => String(trace.agent_id || "").toLowerCase() === filter);
+}
+
+function agentTraceSummary(traces = []) {
+  const byAgent = {
+    actor_twin: 0,
+    knowledge_fabric_agent: 0,
+    agentic_butler: 0,
+    unknown: 0,
+  };
+  let approvals = 0;
+  let live = 0;
+  traces.forEach((trace) => {
+    const agentId = String(trace.agent_id || "").toLowerCase();
+    byAgent[agentId in byAgent ? agentId : "unknown"] += 1;
+    if (trace.approval_required) approvals += 1;
+    if (/n8n connected|live n8n|webhook/i.test(trace.runtime || "")) live += 1;
+  });
+  return {
+    total: traces.length,
+    approvals,
+    live,
+    fixture: Math.max(0, traces.length - live),
+    byAgent,
+  };
+}
+
+function renderAgentTraceSummary(traces = [], filtered = traces) {
+  const target = $("#agentTraceSummary");
+  if (!target) return;
+  const summary = agentTraceSummary(traces);
+  target.innerHTML = `
+    <span><strong>${escapeHtml(String(summary.total))}</strong><small>total traces</small></span>
+    <span><strong>${escapeHtml(String(filtered.length))}</strong><small>visible</small></span>
+    <span><strong>${escapeHtml(String(summary.byAgent.actor_twin))}</strong><small>Actor Twin</small></span>
+    <span><strong>${escapeHtml(String(summary.byAgent.knowledge_fabric_agent))}</strong><small>Knowledge Fabric</small></span>
+    <span><strong>${escapeHtml(String(summary.byAgent.agentic_butler))}</strong><small>Agentic Butler</small></span>
+    <span><strong>${escapeHtml(String(summary.approvals))}</strong><small>approval gates</small></span>
+  `;
+}
+
+function renderAgentTraceFilterControls() {
+  $$("[data-agent-trace-filter]").forEach((button) => {
+    const active = (button.dataset.agentTraceFilter || "all") === (state.agentTraceFilter || "all");
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
 function renderAgentTraceHistoryPanel() {
   const target = $("#agentTraceHistoryPanel");
   if (!target) return;
   const traces = readAgentTraceLog();
+  const filtered = filteredAgentTraces(traces);
+  renderAgentTraceSummary(traces, filtered);
+  renderAgentTraceFilterControls();
   if (!traces.length) {
     target.innerHTML = '<p class="empty">No local agent handoffs yet.</p>';
     return;
   }
-  target.innerHTML = renderAgentTraceHistoryRows(traces, 12);
+  if (!filtered.length) {
+    target.innerHTML = '<p class="empty">No traces match this filter.</p>';
+    return;
+  }
+  target.innerHTML = renderAgentTraceHistoryRows(filtered, 12);
 }
 
 function renderDashboardAgentTraceHistory() {
@@ -13023,10 +13089,15 @@ function renderDashboardAgentTraceHistory() {
 }
 
 function renderAgentTraceHistoryRows(traces = [], limit = 12) {
-  return traces.slice(0, limit).map((trace) => `
-    <article class="agent-trace-row ${trace.approval_required ? "approval" : "completed"}">
+  return traces.slice(0, limit).map((trace) => {
+    const agentId = String(trace.agent_id || "unknown").toLowerCase();
+    const agentClass = safeGraphClass(agentId);
+    const statusClass = trace.approval_required ? "approval" : safeGraphClass(trace.status || "completed");
+    return `
+    <article class="agent-trace-row ${statusClass} ${agentClass}">
       <div>
         <span class="badge">${escapeHtml(trace.approval_required ? "approval gate" : trace.status || "trace")}</span>
+        <span class="agent-trace-agent-chip ${agentClass}">${escapeHtml(agentDisplayName(agentId))}</span>
         <strong>${escapeHtml(trace.agent_name || agentDisplayName(trace.agent_id || ""))}</strong>
         <p>${escapeHtml(`${trace.runtime || "fixture/local"} · ${trace.twin || "active twin"} · ${formatShortDate(trace.timestamp)}`)}</p>
       </div>
@@ -13035,7 +13106,8 @@ function renderAgentTraceHistoryRows(traces = [], limit = 12) {
         <small>${escapeHtml(trace.request_id || "")}</small>
       </div>
     </article>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function outputFromN8nData(data) {

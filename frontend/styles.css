@@ -7100,6 +7100,52 @@ body.theme-dark .knowledge-source-readiness-grid span {
   margin-top: 10px;
 }
 
+.agent-trace-summary {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 10px;
+}
+
+.agent-trace-summary span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 88%, transparent);
+  padding: 9px 10px;
+}
+
+.agent-trace-summary strong {
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.agent-trace-summary small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.agent-trace-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.agent-trace-filter button.active {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-quiet));
+  color: var(--ink);
+}
+
 .chat-active-contract-badge {
   display: inline-grid;
   grid-template-columns: auto auto auto;
@@ -7215,6 +7261,50 @@ body.theme-dark .knowledge-source-readiness-grid span {
   border-left-color: #d7a84f;
 }
 
+.agent-trace-row.actor-twin {
+  border-left-color: #7ad8bf;
+}
+
+.agent-trace-row.knowledge-fabric-agent {
+  border-left-color: #7aa7d8;
+}
+
+.agent-trace-row.agentic-butler {
+  border-left-color: #d7b56d;
+}
+
+.agent-trace-agent-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  margin-left: 6px;
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-quiet) 86%, transparent);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1;
+  padding: 5px 7px;
+  vertical-align: middle;
+}
+
+.agent-trace-agent-chip.actor-twin {
+  border-color: color-mix(in srgb, #7ad8bf 48%, var(--line));
+  color: color-mix(in srgb, #246b5c 74%, var(--ink));
+}
+
+.agent-trace-agent-chip.knowledge-fabric-agent {
+  border-color: color-mix(in srgb, #7aa7d8 48%, var(--line));
+  color: color-mix(in srgb, #2f5f91 74%, var(--ink));
+}
+
+.agent-trace-agent-chip.agentic-butler {
+  border-color: color-mix(in srgb, #d7b56d 48%, var(--line));
+  color: color-mix(in srgb, #806126 74%, var(--ink));
+}
+
 .agent-trace-row strong {
   display: block;
   margin-top: 4px;
@@ -7243,9 +7333,37 @@ body.theme-dark .knowledge-source-readiness-grid span {
 
 body.theme-dark .chat-contract-badges span,
 body.theme-dark .chat-active-contract-badge,
+body.theme-dark .agent-trace-summary span,
 body.theme-dark .agent-trace-row {
   border-color: rgba(241, 235, 224, 0.18);
   background: #171d18;
+}
+
+body.theme-dark .agent-trace-filter button.active {
+  border-color: rgba(122, 216, 191, 0.58);
+  background: rgba(122, 216, 191, 0.14);
+  color: #f1ebe0;
+}
+
+body.theme-dark .agent-trace-agent-chip {
+  border-color: rgba(241, 235, 224, 0.2);
+  background: rgba(255, 255, 255, 0.03);
+  color: #b9b2a6;
+}
+
+body.theme-dark .agent-trace-agent-chip.actor-twin {
+  border-color: rgba(122, 216, 191, 0.54);
+  color: #9ce6d2;
+}
+
+body.theme-dark .agent-trace-agent-chip.knowledge-fabric-agent {
+  border-color: rgba(122, 167, 216, 0.54);
+  color: #a9cff5;
+}
+
+body.theme-dark .agent-trace-agent-chip.agentic-butler {
+  border-color: rgba(215, 181, 109, 0.54);
+  color: #e7ce96;
 }
 
 body.theme-dark .chat-active-contract-badge.configured,
@@ -7382,6 +7500,7 @@ body.theme-dark .graph-svg-edge-label text {
 
 @media (max-width: 760px) {
   .chat-contract-badges,
+  .agent-trace-summary,
   .agent-trace-row {
     grid-template-columns: minmax(0, 1fr);
   }

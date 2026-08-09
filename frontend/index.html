@@ -1291,6 +1291,14 @@
                 </div>
               </div>
               <p class="muted-inline">Local browser trace metadata only. Prompt text and source exports are not stored here.</p>
+              <div id="agentTraceSummary" class="agent-trace-summary" aria-label="Agent trace summary"></div>
+              <div class="agent-trace-filter" aria-label="Filter agent traces">
+                <button class="secondary small active" type="button" data-agent-trace-filter="all">All</button>
+                <button class="secondary small" type="button" data-agent-trace-filter="actor_twin">Actor Twin</button>
+                <button class="secondary small" type="button" data-agent-trace-filter="knowledge_fabric_agent">Knowledge Fabric</button>
+                <button class="secondary small" type="button" data-agent-trace-filter="agentic_butler">Agentic Butler</button>
+                <button class="secondary small" type="button" data-agent-trace-filter="approval_required">Approvals</button>
+              </div>
               <div id="agentTraceHistoryPanel" class="agent-trace-history-list">
                 <p class="empty">No local agent handoffs yet.</p>
               </div>
