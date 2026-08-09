@@ -14,6 +14,17 @@ MeIDs can run in GitHub Pages fixture mode without live n8n workflows. For produ
 | Knowledge Fabric Agent | `n8nKnowledgeFabricWebhookUrl` / `n8nAgentWebhooks.knowledge_fabric_agent` | missing URL |
 | Agentic Butler | `n8nAgenticButlerWebhookUrl` / `n8nAgentWebhooks.agentic_butler` | missing URL |
 
+## GitHub Pages Secrets
+
+The Pages workflow generates `runtime-config.js` during deployment. Configure these repository secrets when live workflow URLs are available:
+
+| Secret | Purpose |
+|---|---|
+| `GH_PAGES_N8N_CHAT_WEBHOOK_URL` | Embedded n8n chat / Actor Twin chat widget URL |
+| `GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL` | Optional explicit Actor Twin contract webhook; falls back to chat webhook |
+| `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` | Knowledge Fabric Agent ingest / graph / vector handoff webhook |
+| `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` | Agentic Butler approved skill activation webhook |
+
 ## Current Static Fallback
 
 When a URL is missing, the frontend must stay usable:
