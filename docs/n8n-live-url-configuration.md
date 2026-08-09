@@ -25,6 +25,22 @@ The Pages workflow generates `runtime-config.js` during deployment. Configure th
 | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` | Knowledge Fabric Agent ingest / graph / vector handoff webhook |
 | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` | Agentic Butler approved skill activation webhook |
 
+Changing the Pages workflow requires a GitHub credential with `workflow` scope. If that scope is unavailable, use the public staging asset below.
+
+## Public Staging Asset
+
+GitHub Pages also loads `frontend/assets/agent-runtime-config.json` in static mode. The workflow copies this asset unchanged, so it can expose non-secret staging webhook URLs without editing `.github/workflows/intellectual-twin-pages.yml`.
+
+Use this only for intentionally public UAT endpoints:
+
+| Asset key | Purpose |
+|---|---|
+| `n8nAgentWebhooks.actor_twin` | Actor Twin chat / intent contract endpoint |
+| `n8nAgentWebhooks.knowledge_fabric_agent` | Knowledge Fabric ingest / curation endpoint |
+| `n8nAgentWebhooks.agentic_butler` | Agentic Butler skill activation endpoint |
+
+Do not put private credentials, API keys, bearer tokens, or internal-only URLs in this file. Private production URLs should move to the hosted backend or workflow-generated runtime config.
+
 ## Current Static Fallback
 
 When a URL is missing, the frontend must stay usable:

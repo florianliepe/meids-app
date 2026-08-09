@@ -256,6 +256,7 @@ const N8N_CHAT_MODE = "__n8n_agent";
 const N8N_CHAT_CSS_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css";
 const N8N_CHAT_MODULE_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js";
 const N8N_CONTRACT_REPLAY_STATUS_PATH = "assets/n8n-contract-replay-status.json";
+const N8N_AGENT_RUNTIME_CONFIG_PATH = "assets/agent-runtime-config.json";
 const OKF_VALIDATION_STATUS_PATH = "assets/okf-validation-status.json";
 const storageKeys = {
   theme: "intellectualTwin.theme",
@@ -286,6 +287,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("#refreshActivityBtn").addEventListener("click", safeRefreshActivity);
   $("#conceptSearch").addEventListener("input", renderConcepts);
   bindViewFilters();
+  await loadAgentRuntimeConfig();
   await refreshAll();
   applyInitialRoute();
 });
@@ -12617,6 +12619,39 @@ function agentContractStatusesFor(agentId) {
     "contract tested",
     runtimeReadiness.configured ? runtimeReadiness.status : "missing URL",
   ];
+}
+
+async function loadAgentRuntimeConfig() {
+  if (!staticPagesMode) return;
+  try {
+    const response = await fetch(frontendAssetUrl(N8N_AGENT_RUNTIME_CONFIG_PATH), { cache: "no-store" });
+    if (!response.ok) return;
+    const config = await response.json();
+    mergeAgentRuntimeConfig(config);
+  } catch (error) {
+    console.info("Optional agent runtime config unavailable", error);
+  }
+}
+
+function mergeAgentRuntimeConfig(config = {}) {
+  const agentWebhooks = {
+    ...(runtimeConfig.n8nAgentWebhooks || runtimeConfig.n8n_agent_webhooks || {}),
+    ...(config.n8nAgentWebhooks || config.n8n_agent_webhooks || {}),
+  };
+  runtimeConfig.n8nAgentWebhooks = agentWebhooks;
+  runtimeConfig.n8nActorTwinWebhookUrl = runtimeConfig.n8nActorTwinWebhookUrl
+    || config.n8nActorTwinWebhookUrl
+    || agentWebhooks.actor_twin
+    || runtimeConfig.n8nChatWebhookUrl
+    || "";
+  runtimeConfig.n8nKnowledgeFabricWebhookUrl = runtimeConfig.n8nKnowledgeFabricWebhookUrl
+    || config.n8nKnowledgeFabricWebhookUrl
+    || agentWebhooks.knowledge_fabric_agent
+    || "";
+  runtimeConfig.n8nAgenticButlerWebhookUrl = runtimeConfig.n8nAgenticButlerWebhookUrl
+    || config.n8nAgenticButlerWebhookUrl
+    || agentWebhooks.agentic_butler
+    || "";
 }
 
 function n8nAgentWebhooks() {

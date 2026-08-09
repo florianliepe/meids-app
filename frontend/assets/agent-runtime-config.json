@@ -1,0 +1,11 @@
+{
+  "purpose": "Optional public staging endpoints for top-level n8n agents. Keep empty until a workflow is intentionally exposed for public UAT.",
+  "n8nAgentWebhooks": {
+    "actor_twin": "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/actor-twin/chat",
+    "knowledge_fabric_agent": "",
+    "agentic_butler": ""
+  },
+  "n8nActorTwinWebhookUrl": "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/actor-twin/chat",
+  "n8nKnowledgeFabricWebhookUrl": "",
+  "n8nAgenticButlerWebhookUrl": ""
+}
