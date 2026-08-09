@@ -1,0 +1,21 @@
+# OKF Contract Fixtures
+
+Public-safe fixtures for the MeIDs Knowledge Fabric contract.
+
+These examples are intentionally synthetic. They prove the file shape for:
+
+- concepts
+- evidence manifests
+- transcripts
+- graph nodes
+- graph edges
+- CRUD/audit events
+- vector adapter requests
+
+Validate them with:
+
+```powershell
+node scripts\validate-okf-fixtures.cjs
+```
+
+The durable schema contract is documented in `docs/knowledge-fabric-okf-schema.md`.

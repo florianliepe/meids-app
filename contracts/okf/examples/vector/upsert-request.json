@@ -1,0 +1,20 @@
+{
+  "operation": "upsert",
+  "twin_id": "florian",
+  "source_policy": "selected_pending",
+  "documents": [
+    {
+      "concept_id": "cpt_example_001",
+      "repo_path": "concepts/florian/client-delivery/2026-08-09-client-delivery-steering.md",
+      "review_state": "pending-review",
+      "text": "When a client delivery topic contains stakeholder urgency and unresolved decisions, prioritize explicit decision preparation before status reporting.",
+      "metadata": {
+        "cluster": "client-delivery",
+        "type": "Decision Principle",
+        "evidence_refs": [
+          "evidence/florian/uploads/2026-08-09-source-001.yaml#page-2-paragraph-4"
+        ]
+      }
+    }
+  ]
+}

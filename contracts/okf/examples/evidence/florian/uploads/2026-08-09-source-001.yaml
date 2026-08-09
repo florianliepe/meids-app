@@ -1,0 +1,17 @@
+schema: okf.evidence.v1
+evidence_id: ev_example_001
+twin_id: florian
+source_type: upload
+storage:
+  repo_path: evidence/florian/uploads/2026-08-09-source-001.pdf
+  mime_type: application/pdf
+  sha256: sha256:example
+anchors:
+  - anchor_id: page-2-paragraph-4
+    label: Scope decision
+    excerpt_hash: sha256:example
+privacy:
+  pii_present: unknown
+  sensitivity: internal
+  retention: review_required
+created_at: "2026-08-09T10:00:00Z"

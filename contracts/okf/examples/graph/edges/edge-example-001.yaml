@@ -1,0 +1,15 @@
+schema: okf.graph_edge.v1
+edge_key: edge_example_001
+twin_id: florian
+from: concept/client-delivery
+to: concept/stakeholder-urgency
+relation: supports
+edge_class: candidate
+review_state: candidate
+confidence: 0.72
+evidence_refs:
+  - evidence/florian/uploads/2026-08-09-source-001.yaml#page-2-paragraph-4
+promotion:
+  proposed_by: graph_curator
+  proposed_at: "2026-08-09T10:00:00Z"
+  decision: pending

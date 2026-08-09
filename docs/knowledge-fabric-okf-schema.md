@@ -12,6 +12,9 @@ This document defines the durable knowledge contract for MeIDs. The app can run 
 
 The app repo must not store private knowledge or secrets. It may store schemas, public-safe examples, and sync tooling.
 
+Public-safe fixtures for this contract are stored in `contracts/okf/examples`.
+Run `node scripts\validate-okf-fixtures.cjs` before changing the contract shape.
+
 ## Review States
 
 Use one shared lifecycle across concepts, evidence, graph nodes, graph edges, and transcripts:

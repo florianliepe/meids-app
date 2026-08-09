@@ -1,0 +1,8 @@
+schema: okf.graph_node.v1
+node_key: concept/client-delivery
+twin_id: florian
+label: Client Delivery
+node_type: cluster
+review_state: approved
+concept_refs:
+  - concepts/florian/client-delivery/2026-08-09-client-delivery-steering.md

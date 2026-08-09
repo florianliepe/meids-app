@@ -16,6 +16,8 @@ direction is documented in
 [`docs/agent-architecture-and-n8n-contracts.md`](docs/agent-architecture-and-n8n-contracts.md).
 The portable knowledge contract is documented in
 [`docs/knowledge-fabric-okf-schema.md`](docs/knowledge-fabric-okf-schema.md).
+Public-safe OKF examples live in [`contracts/okf`](contracts/okf) and can be
+checked with `node scripts\validate-okf-fixtures.cjs`.
 
 Top-level agents:
 
