@@ -834,6 +834,13 @@ function bindGraph() {
       applySelectedGraphRelationContext(relationApplyAction.dataset.graphSelectedRelationAction || "chat");
       return;
     }
+    const edgeClassFilter = event.target.closest("[data-graph-edge-class-filter]");
+    if (edgeClassFilter) {
+      state.graphReasoningPreset = "custom";
+      state.graphEdgeClassFilter = edgeClassFilter.dataset.graphEdgeClassFilter || "all";
+      renderGraphCockpit();
+      return;
+    }
     const snapshotAction = event.target.closest("[data-graph-node-snapshot-action]");
     if (snapshotAction) {
       const action = snapshotAction.dataset.graphNodeSnapshotAction || "";
@@ -4561,6 +4568,7 @@ function renderGraphNodeDetail() {
   const governanceQueue = renderGraphNodeGovernanceQueue(node, governanceEdges, detailNodeMap);
   const reviewFeedback = renderGraphNodeReviewFeedback(node, detailNodeMap);
   const reviewHistory = renderGraphNodeReviewHistory(node, detailNodeMap);
+  const relationLayerSummary = renderGraphNodeRelationLayerSummary(directEdges);
   $("#graphNodeDetail").innerHTML = `
     <div class="graph-detail-card ${safeGraphClass(node.review_state || "unknown")}">
       <div class="graph-detail-hero">
@@ -4576,6 +4584,7 @@ function renderGraphNodeDetail() {
       </div>
       ${renderGraphConsumerBadges(node)}
       ${renderGraphNodeActorReadiness(readiness)}
+      ${relationLayerSummary}
       ${governanceQueue}
       ${reviewFeedback}
       ${reviewHistory}
@@ -4617,6 +4626,47 @@ function renderGraphNodeDetail() {
     </div>
   `;
   renderGraphQualityActions();
+}
+
+function renderGraphNodeRelationLayerSummary(edges = []) {
+  const layerItems = [
+    {
+      key: "explicit",
+      label: "Approved fabric",
+      detail: "Safe for grounded answers",
+      count: edges.filter((edge) => graphEdgeClass(edge) === "explicit").length,
+    },
+    {
+      key: "inferred",
+      label: "Inference",
+      detail: "Use with confidence context",
+      count: edges.filter((edge) => graphEdgeClass(edge) === "inferred").length,
+    },
+    {
+      key: "candidate",
+      label: "Candidate",
+      detail: "Needs human review",
+      count: edges.filter((edge) => String(graphEdgeClass(edge)).includes("candidate")).length,
+    },
+    {
+      key: "contradiction-candidate",
+      label: "Conflict",
+      detail: "Block from confident use",
+      count: edges.filter((edge) => String(graphEdgeClass(edge)).includes("contradiction")).length,
+    },
+  ];
+  const total = Math.max(1, edges.length);
+  return `
+    <section class="graph-relation-layer-summary" aria-label="Relation layer summary">
+      ${layerItems.map((item) => `
+        <button class="${safeGraphClass(item.key)} ${state.graphEdgeClassFilter === item.key || (item.key === "candidate" && state.graphEdgeClassFilter === "candidate") ? "active" : ""}" type="button" data-graph-edge-class-filter="${escapeHtml(item.key === "contradiction-candidate" ? "candidate" : item.key)}">
+          <strong>${escapeHtml(item.count)}</strong>
+          <span>${escapeHtml(item.label)}</span>
+          <small>${escapeHtml(item.detail)} · ${Math.round((item.count / total) * 100)}%</small>
+        </button>
+      `).join("")}
+    </section>
+  `;
 }
 
 function graphNodeActorReadiness(node = {}, evidenceCount = 0, governanceEdges = [], directEdges = []) {

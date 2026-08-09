@@ -23639,6 +23639,88 @@ body.theme-dark .knowledge-source-readiness-grid button small {
   color: #c9c0b3;
 }
 
+.graph-relation-layer-summary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.graph-relation-layer-summary button {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 76%, transparent);
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.graph-relation-layer-summary button:hover,
+.graph-relation-layer-summary button.active {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.graph-relation-layer-summary button.explicit {
+  border-left-color: #34c795;
+}
+
+.graph-relation-layer-summary button.inferred {
+  border-left-color: #6a8de8;
+}
+
+.graph-relation-layer-summary button.candidate {
+  border-left-color: #d7a84f;
+}
+
+.graph-relation-layer-summary button.contradiction-candidate {
+  border-left-color: #d9826b;
+}
+
+.graph-relation-layer-summary strong {
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.graph-relation-layer-summary span {
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.graph-relation-layer-summary small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+body.theme-dark .graph-relation-layer-summary button {
+  background: #1d241f;
+  border-color: rgba(241, 235, 224, 0.13);
+  color: #f6f1e7;
+}
+
+body.theme-dark .graph-relation-layer-summary button:hover,
+body.theme-dark .graph-relation-layer-summary button.active {
+  background: rgba(122, 216, 191, 0.08);
+  border-color: rgba(122, 216, 191, 0.34);
+}
+
+body.theme-dark .graph-relation-layer-summary strong,
+body.theme-dark .graph-relation-layer-summary span {
+  color: #fff8ea;
+}
+
+body.theme-dark .graph-relation-layer-summary small {
+  color: #c9c0b3;
+}
+
 @media (max-width: 900px) {
   .knowledge-increment-source {
     grid-template-columns: minmax(0, 1fr);
@@ -23648,5 +23730,9 @@ body.theme-dark .knowledge-source-readiness-grid button small {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
+  }
+
+  .graph-relation-layer-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
