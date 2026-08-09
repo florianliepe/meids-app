@@ -3685,6 +3685,30 @@ function graphEdgeUsagePolicy(edge) {
   const relation = edge.relation_type || edge.edge_type || "";
   const reviewState = edge.review_state || "unreviewed";
   const edgeClass = graphEdgeClass(edge);
+  if (reviewState === "rejected") {
+    return {
+      label: "excluded from retrieval",
+      why: "Rejected graph edges must not be used as memory or reasoning support.",
+      use: "Keep visible only as audit history and as a signal for curator refinement.",
+      escalate: "Create a new candidate only after source evidence changes.",
+    };
+  }
+  if (reviewState === "needs-rework") {
+    return {
+      label: "cockpit-only until reworked",
+      why: "The relation may be plausible but needs stronger evidence or clearer wording.",
+      use: "Use only as a review task; do not use as answer or skill context.",
+      escalate: "Add evidence anchors or clarify the relation before promotion.",
+    };
+  }
+  if (reviewState === "accepted" || reviewState === "approved") {
+    return {
+      label: "trusted after human review",
+      why: "The relation has passed the graph promotion gate.",
+      use: "Use for grounded answers, skill context assembly, and graph reasoning with attribution.",
+      escalate: "Escalate only if the connected concept itself is not approved or needs rework.",
+    };
+  }
   if (relation === "contradiction_candidate") {
     return {
       label: "blocked for autonomous use",
@@ -5281,6 +5305,7 @@ function renderGraphSelectedEdgeActions(edge, source = {}, targetNode = {}) {
         ${detailRow("Decision", graphQueueRecommendation(relation, reviewState))}
         ${detailRow("Confidence", graphEdgeConfidencePercent(edge) ? `${graphEdgeConfidencePercent(edge)}%` : edge.confidence ?? "-")}
       </dl>
+      ${renderGraphPromotionChips(edge)}
       ${renderGraphEdgeProvenancePanel(edge, source, targetNode)}
       <div class="graph-quality-action-row">
         <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.source)}">Source</button>
@@ -5294,6 +5319,7 @@ function renderGraphSelectedEdgeActions(edge, source = {}, targetNode = {}) {
           <button class="small secondary" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="needs-rework">Needs rework</button>
         ` : `<small>Governance decision recorded: ${escapeHtml(reviewState)}</small>`}
       </div>
+      ${renderGraphPromotionFixtureLinks(edge)}
     </section>
   `;
 }
@@ -5383,11 +5409,16 @@ function renderGraphSelectedNodeActions(node, candidateEdges, nodeMap) {
       const relation = edge.relation_type || edge.edge_type || "candidate";
       const otherKey = edge.source === node.node_key ? edge.target : edge.source;
       const other = nodeMap.get(otherKey) || {};
+      const promotion = graphPromotionDecision(edge);
       return `
         <article class="graph-quality-candidate ${safeGraphClass(relation)}" data-graph-edge="${escapeHtml(edge.edge_key || "")}">
           <strong>${escapeHtml(labelizeGraph(relation))}</strong>
           <span>${escapeHtml(other.title || otherKey)}</span>
           <small>${escapeHtml(edge.review_state || "unreviewed")} · confidence ${escapeHtml(edge.confidence ?? "-")}</small>
+          <div class="graph-candidate-promotion-row">
+            <span class="${safeGraphClass(promotion.className)}">${escapeHtml(promotion.trust)}</span>
+            <em>${escapeHtml(promotion.description)}</em>
+          </div>
         </article>
       `;
     })
@@ -12547,6 +12578,96 @@ function chatSourceContext() {
     teams_input: $("#chatSkillTeams")?.value || "",
     knowledge_context: $("#chatSkillKnowledge")?.value || "",
   };
+}
+
+function graphPromotionDecision(edge = {}) {
+  const reviewState = edge.review_state || "unreviewed";
+  const relation = edge.relation_type || edge.edge_type || "";
+  const edgeClass = graphEdgeClass(edge);
+  if (reviewState === "accepted" || reviewState === "approved") {
+    return {
+      label: reviewState === "accepted" ? "accepted" : "approved",
+      trust: "trusted",
+      className: "approved",
+      fixture: "contracts/okf/promotions/approve-edge-example.json",
+      description: "Available to the Actor Twin for grounded retrieval and skill context.",
+    };
+  }
+  if (reviewState === "rejected") {
+    return {
+      label: "rejected",
+      trust: "excluded",
+      className: "rejected",
+      fixture: "contracts/okf/promotions/reject-edge-example.json",
+      description: "Excluded from retrieval; retained only for audit and curator learning.",
+    };
+  }
+  if (reviewState === "needs-rework") {
+    return {
+      label: "needs rework",
+      trust: "cockpit only",
+      className: "needs-rework",
+      fixture: "contracts/okf/promotions/needs-rework-edge-example.json",
+      description: "Requires stronger evidence or clearer relation wording before use.",
+    };
+  }
+  if (String(edgeClass).includes("candidate") || String(relation).includes("candidate")) {
+    return {
+      label: "candidate",
+      trust: "review required",
+      className: "candidate",
+      fixture: "contracts/okf/promotions/approve-edge-example.json",
+      description: "Visible as a hypothesis; not trusted until a human promotion decision.",
+    };
+  }
+  if (edgeClass === "explicit") {
+    return {
+      label: "explicit",
+      trust: "source-backed",
+      className: "approved",
+      fixture: "contracts/okf/promotions/approve-edge-example.json",
+      description: "Source-backed relation that can support grounded retrieval.",
+    };
+  }
+  return {
+    label: "inferred",
+    trust: "use with attribution",
+    className: "inferred",
+    fixture: "contracts/okf/promotions/needs-rework-edge-example.json",
+    description: "Useful for recall expansion; decisions should cite supporting nodes.",
+  };
+}
+
+function renderGraphPromotionChips(edge = {}) {
+  const decision = graphPromotionDecision(edge);
+  const relation = edge.relation_type || edge.edge_type || "related";
+  const edgeClass = graphEdgeClass(edge);
+  return `
+    <div class="graph-promotion-strip ${safeGraphClass(decision.className)}">
+      <span class="graph-promotion-chip ${safeGraphClass(decision.className)}">${escapeHtml(decision.label)}</span>
+      <span class="graph-promotion-chip trust">${escapeHtml(decision.trust)}</span>
+      <span class="graph-promotion-chip">${escapeHtml(labelizeGraph(edgeClass))}</span>
+      <span class="graph-promotion-chip">${escapeHtml(labelizeGraph(relation))}</span>
+      <small>${escapeHtml(decision.description)}</small>
+    </div>
+  `;
+}
+
+function renderGraphPromotionFixtureLinks(edge = {}) {
+  const decision = graphPromotionDecision(edge);
+  const fixtures = [
+    ["Approve fixture", "contracts/okf/promotions/approve-edge-example.json"],
+    ["Needs rework fixture", "contracts/okf/promotions/needs-rework-edge-example.json"],
+    ["Reject fixture", "contracts/okf/promotions/reject-edge-example.json"],
+  ];
+  return `
+    <div class="graph-promotion-fixtures">
+      <small>Promotion contract</small>
+      ${fixtures.map(([label, path]) => `
+        <a class="${path === decision.fixture ? "active" : ""}" href="${escapeHtml(githubBlobUrl(path))}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>
+      `).join("")}
+    </div>
+  `;
 }
 
 function activePrincipal() {

@@ -17367,6 +17367,106 @@ body.graph-presenting {
   display: contents;
 }
 
+.graph-promotion-strip {
+  align-items: center;
+  background: color-mix(in srgb, var(--surface-quiet) 86%, var(--accent) 14%);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 9px;
+}
+
+.graph-promotion-strip small {
+  color: var(--muted);
+  flex: 1 1 220px;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.graph-promotion-strip.approved {
+  border-color: color-mix(in srgb, #2f8f79 38%, var(--line));
+}
+
+.graph-promotion-strip.candidate {
+  border-color: color-mix(in srgb, #c8a35d 44%, var(--line));
+}
+
+.graph-promotion-strip.needs-rework,
+.graph-promotion-strip.rejected {
+  border-color: color-mix(in srgb, #c84f3f 42%, var(--line));
+}
+
+.graph-promotion-chip {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  min-height: 24px;
+  padding: 6px 8px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.graph-promotion-chip.trust {
+  color: var(--ink);
+}
+
+.graph-promotion-chip.approved {
+  background: color-mix(in srgb, #79d8c4 24%, var(--surface));
+  border-color: color-mix(in srgb, #2f8f79 34%, var(--line));
+  color: #1d6d5d;
+}
+
+.graph-promotion-chip.candidate {
+  background: color-mix(in srgb, #f1d08c 24%, var(--surface));
+  border-color: color-mix(in srgb, #c8a35d 36%, var(--line));
+  color: #7b5d1e;
+}
+
+.graph-promotion-chip.needs-rework,
+.graph-promotion-chip.rejected {
+  background: color-mix(in srgb, #f0a39a 22%, var(--surface));
+  border-color: color-mix(in srgb, #c84f3f 34%, var(--line));
+  color: #8f2e24;
+}
+
+.graph-promotion-fixtures {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.graph-promotion-fixtures small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.graph-promotion-fixtures a {
+  background: var(--surface-quiet);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  padding: 6px 8px;
+  text-decoration: none;
+}
+
+.graph-promotion-fixtures a.active {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+  color: var(--accent-strong);
+}
+
 .graph-label-review-prompt {
   background: color-mix(in srgb, var(--surface-quiet) 88%, var(--accent) 12%);
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
@@ -17615,6 +17715,48 @@ body.graph-presenting {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 800;
+}
+
+.graph-candidate-promotion-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.graph-candidate-promotion-row span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  flex: 0 0 auto;
+  font-size: 0.64rem;
+  line-height: 1;
+  padding: 5px 7px;
+  text-transform: uppercase;
+}
+
+.graph-candidate-promotion-row span.approved {
+  background: color-mix(in srgb, #79d8c4 18%, var(--surface));
+  border-color: color-mix(in srgb, #2f8f79 30%, var(--line));
+}
+
+.graph-candidate-promotion-row span.candidate {
+  background: color-mix(in srgb, #f1d08c 20%, var(--surface));
+  border-color: color-mix(in srgb, #c8a35d 34%, var(--line));
+}
+
+.graph-candidate-promotion-row span.needs-rework,
+.graph-candidate-promotion-row span.rejected {
+  background: color-mix(in srgb, #f0a39a 18%, var(--surface));
+  border-color: color-mix(in srgb, #c84f3f 32%, var(--line));
+}
+
+.graph-candidate-promotion-row em {
+  color: var(--muted);
+  flex: 1 1 180px;
+  font-size: 0.7rem;
+  font-style: normal;
+  line-height: 1.3;
 }
 
 .graph-tools-cockpit {
@@ -19100,6 +19242,60 @@ body.theme-dark .graph-edge-proof-rule,
 body.theme-dark .graph-edge-provenance-head > span {
   background: color-mix(in srgb, #151a16 88%, var(--accent) 12%);
   border-color: #394037;
+}
+
+body.theme-dark .graph-promotion-strip {
+  background: color-mix(in srgb, #151a16 86%, var(--accent) 14%);
+  border-color: #394037;
+}
+
+body.theme-dark .graph-promotion-strip.approved {
+  border-color: color-mix(in srgb, #8ce2ca 38%, #394037);
+}
+
+body.theme-dark .graph-promotion-strip.candidate {
+  border-color: color-mix(in srgb, #f1d08c 42%, #394037);
+}
+
+body.theme-dark .graph-promotion-strip.needs-rework,
+body.theme-dark .graph-promotion-strip.rejected {
+  border-color: color-mix(in srgb, #f0a39a 42%, #394037);
+}
+
+body.theme-dark .graph-promotion-chip,
+body.theme-dark .graph-promotion-fixtures a,
+body.theme-dark .graph-candidate-promotion-row span {
+  background: #20271f;
+  border-color: #3c463a;
+}
+
+body.theme-dark .graph-promotion-chip.approved,
+body.theme-dark .graph-candidate-promotion-row span.approved {
+  background: rgba(123, 225, 199, 0.14);
+  border-color: color-mix(in srgb, #8ce2ca 40%, #3c463a);
+  color: #b9f3e6;
+}
+
+body.theme-dark .graph-promotion-chip.candidate,
+body.theme-dark .graph-candidate-promotion-row span.candidate {
+  background: rgba(241, 208, 140, 0.14);
+  border-color: color-mix(in srgb, #f1d08c 42%, #3c463a);
+  color: #f7e1aa;
+}
+
+body.theme-dark .graph-promotion-chip.needs-rework,
+body.theme-dark .graph-promotion-chip.rejected,
+body.theme-dark .graph-candidate-promotion-row span.needs-rework,
+body.theme-dark .graph-candidate-promotion-row span.rejected {
+  background: rgba(240, 163, 154, 0.14);
+  border-color: color-mix(in srgb, #f0a39a 42%, #3c463a);
+  color: #ffc5bd;
+}
+
+body.theme-dark .graph-promotion-fixtures a.active {
+  background: rgba(123, 225, 199, 0.12);
+  border-color: color-mix(in srgb, #8ce2ca 44%, #3c463a);
+  color: #b9f3e6;
 }
 
 body.theme-dark .graph-path-explainer article,
