@@ -13648,6 +13648,10 @@ function bindKnowledgeFabricQueueActions() {
       exportKnowledgeFabricQueueArtifact(queueId, button);
       return;
     }
+    if (action === "export-reviewed-bundle") {
+      exportReviewedKnowledgeFabricBundle(button);
+      return;
+    }
     if (["approve", "needs-rework", "reject"].includes(action)) {
       updateKnowledgeFabricQueueReview(queueId, action);
       return;
@@ -13662,6 +13666,64 @@ function bindKnowledgeFabricQueueActions() {
       renderKnowledgeFabricQueuePanels();
     }
   });
+}
+
+function reviewedKnowledgeFabricQueueItems() {
+  return (state.knowledgeFabricIngestQueue || [])
+    .filter((item) => item.reviewed_at && ["approved", "needs-rework", "rejected"].includes(String(item.review_state || "")));
+}
+
+function exportReviewedKnowledgeFabricBundle(button) {
+  const reviewedItems = reviewedKnowledgeFabricQueueItems();
+  if (!reviewedItems.length) {
+    showToast("Knowledge Fabric bundle", "No reviewed handoffs to export yet.", "warning");
+    return;
+  }
+  const artifact = buildKnowledgeFabricReviewedBundle(reviewedItems);
+  const filename = [
+    "meids-okf-reviewed-handoff-bundle",
+    safeGraphClass(state.activeTwin || reviewedItems[0]?.twin_id || "twin"),
+    new Date().toISOString().replace(/[:.]/g, "-"),
+  ].join("-") + ".json";
+  const blob = new Blob([JSON.stringify(artifact, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, filename);
+  URL.revokeObjectURL(url);
+  markButtonDone(button, "Exported");
+  showToast("Knowledge Fabric bundle exported", `${reviewedItems.length} reviewed handoff${reviewedItems.length === 1 ? "" : "s"}`, "success");
+}
+
+function buildKnowledgeFabricReviewedBundle(reviewedItems = []) {
+  const artifacts = reviewedItems.map((item) => buildKnowledgeFabricQueueArtifact(item));
+  const reviewedAtValues = reviewedItems.map((item) => item.reviewed_at).filter(Boolean).sort();
+  const counts = countBy(reviewedItems, (item) => item.review_state || "pending-review");
+  return {
+    schema: "meids.okf.reviewed_handoff_bundle.v1",
+    exported_at: new Date().toISOString(),
+    boundary: "Portable reviewed handoff bundle only. Intended for knowledge repo sync review, graph promotion review, or n8n fixture replay. Does not mutate external systems.",
+    twin_id: state.activeTwin || reviewedItems[0]?.twin_id || "florian",
+    summary: {
+      handoff_count: reviewedItems.length,
+      approved: counts.approved || 0,
+      needs_rework: counts["needs-rework"] || counts.needs_rework || 0,
+      rejected: counts.rejected || 0,
+      first_reviewed_at: reviewedAtValues[0] || "",
+      last_reviewed_at: reviewedAtValues[reviewedAtValues.length - 1] || "",
+    },
+    repo_split_target: {
+      app_repo: "florianliepe/meids-app",
+      knowledge_repo: "meids-knowledge-fabric",
+      agent_config_repo: "meids-agent-configs",
+    },
+    sync_plan: [
+      "Open bundle in knowledge fabric repo review branch.",
+      "Materialize approved OKF targets into Markdown/YAML files.",
+      "Store needs-rework and rejected handoffs as audit evidence only.",
+      "Create graph promotion fixtures from approved graph_promotion entries.",
+      "Queue vector adapter payloads only after approved OKF storage merge.",
+    ],
+    handoffs: artifacts,
+  };
 }
 
 function exportKnowledgeFabricQueueArtifact(queueId, button) {
