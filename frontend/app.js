@@ -5649,6 +5649,7 @@ function applyStaticGraphEdgeReview(edgeKey, decision) {
   state.selectedGraphEdgeKey = edgeKey;
   state.graphEdgeSelectionSource = "review";
   renderGraphCockpit();
+  renderDashboardGraphPromotionHistory();
   if (state.selectedGraphNodeKey) {
     state.okfGraphNodeDetail = buildStaticGraphNodeDetail(state.selectedGraphNodeKey);
     renderGraphNodeDetail();
@@ -9467,6 +9468,9 @@ function refreshStaticPagesWorkspace() {
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticOkfValidationStatus();
   renderAgentTraceHistoryPanel();
+  state.reviewDashboard = buildStaticPagesReviewDashboard();
+  state.reviewDashboard.refreshed_at = new Date().toISOString();
+  renderReviewDashboard(state.reviewDashboard);
   renderDashboardAgentTraceHistory();
   const graphStatus = $("#graphStatus");
   if (graphStatus) graphStatus.textContent = "Static staging graph loaded: 4 nodes, 4 relations.";
@@ -9683,6 +9687,109 @@ function buildStaticPagesConcepts() {
       },
     },
   ];
+}
+
+function buildStaticPagesReviewDashboard() {
+  const concepts = state.concepts?.length ? state.concepts : buildStaticPagesConcepts();
+  const pending = concepts.filter((concept) => concept.review_state !== "approved");
+  const approved = concepts.filter((concept) => concept.review_state === "approved");
+  const traces = buildStaticPagesAgentTraceLog().slice(0, 3).map((trace, index) => ({
+    trace_id: trace.trace_id || trace.id || `static-trace-${index + 1}`,
+    path: trace.path || `traces/static/${trace.trace_id || index + 1}.json`,
+    title: trace.title || trace.action || "Static agent interaction trace",
+    summary: trace.summary || trace.note || "Public staging trace for cockpit validation.",
+    review_state: trace.review_state || "unreviewed",
+    quality_score: trace.quality_score || trace.confidence || 78,
+    confidence: trace.confidence || 0.78,
+    created_at: trace.created_at || trace.timestamp || new Date().toISOString(),
+    actor_agent: trace.agent || trace.agent_name || "Actor Twin",
+    sources: trace.sources || ["contracts/n8n/fixtures/actor-twin.json"],
+  }));
+  return {
+    mode: "static-pages",
+    concept_review: {
+      total: concepts.length,
+      states: {
+        approved: approved.length,
+        "pending-review": pending.length,
+      },
+      pending,
+      needs_rework: [],
+      rejected: [],
+      voice_created: [],
+      cluster_health: [
+        {
+          cluster: "agent-architecture",
+          total: concepts.length,
+          pending_review: pending.length,
+          approved: approved.length,
+          health_score: concepts.length ? Math.round((approved.length / concepts.length) * 100) : 0,
+        },
+      ],
+    },
+    trace_review: {
+      total: traces.length,
+      states: {
+        unreviewed: traces.length,
+      },
+      latest: traces,
+    },
+    persona_quality: {
+      score: 82,
+      status: "Static staging profile ready for visual QA.",
+    },
+    skills: {
+      total: state.skills?.length || 1,
+      states: {
+        approved: state.skills?.filter((skill) => skill.status === "approved").length || 1,
+      },
+      pending_approval: [],
+      refinements: {
+        total: 0,
+        states: {},
+        pending: [],
+      },
+      runs: {
+        total: traces.length,
+        states: {
+          unreviewed: traces.length,
+        },
+        latest: [],
+      },
+    },
+    mcp_tool_calls: {
+      total: state.n8nAgentContracts?.contract_count || 3,
+      states: {
+        "fixture-ready": state.n8nAgentContracts?.fixture_ready_count || 3,
+        blocked: Math.max((state.n8nAgentContracts?.contract_count || 3) - (state.n8nAgentContracts?.configured_count || 0), 0),
+      },
+      readiness: {
+        status: "static-fixture",
+        blockers: state.n8nAgentContracts?.configured_count === state.n8nAgentContracts?.contract_count
+          ? []
+          : ["Knowledge Fabric Agent and Agentic Butler live n8n URLs are not configured in public runtime config."],
+      },
+      canary_packages: {
+        packages: [],
+      },
+      voice_proof_chain: {
+        status: "not-connected",
+        items: [],
+      },
+    },
+    actions: [
+      {
+        title: "Connect remaining n8n URLs",
+        detail: "Add Knowledge Fabric Agent and Agentic Butler webhook URLs to runtime config when ready.",
+        status: "blocked",
+      },
+      {
+        title: "Review candidate graph relations",
+        detail: "Promote or reject candidate/inferred relations before they become approved retrieval context.",
+        status: "pending-review",
+      },
+    ],
+  };
 }
 
 function buildStaticPagesGraph() {
@@ -10683,11 +10790,18 @@ async function refreshReviewDashboard() {
 }
 
 async function safeRefreshReviewDashboard() {
+  if (staticPagesMode) {
+    const result = buildStaticPagesReviewDashboard();
+    state.reviewDashboard = result;
+    result.refreshed_at = new Date().toISOString();
+    renderReviewDashboard(result);
+    return;
+  }
   try {
     await refreshReviewDashboard();
   } catch (error) {
     $("#dashConceptStates").textContent = "Dashboard endpoint unavailable. Restart the local MVP server.";
-    ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
+    ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashGraphPromotionHistory", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
       const node = $(selector);
       if (node) node.innerHTML = renderErrorState("Dashboard unavailable");
     });
@@ -10697,7 +10811,7 @@ async function safeRefreshReviewDashboard() {
 
 function setDashboardLoading() {
   $("#cockpitOverview").innerHTML = '<div class="skeleton-block"></div><div class="skeleton-block"></div>';
-  ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
+  ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashGraphPromotionHistory", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
     const node = $(selector);
     if (node) node.innerHTML = renderLoadingState("Loading cockpit data");
   });
@@ -10749,6 +10863,7 @@ function renderReviewDashboard(result) {
   renderDashboardConcepts("#dashRejectedConcepts", concept.rejected || [], "No rejected concepts.");
   renderDashboardTraces(trace.latest || []);
   renderDashboardAgentTraceHistory();
+  renderDashboardGraphPromotionHistory();
   renderDashboardSkillQueue(result.skills?.pending_approval || []);
   renderDashboardRefinementQueue(result.skills?.refinements || {}, result.skills?.runs || {});
   renderDashboardVoiceProofChain(result.mcp_tool_calls?.voice_proof_chain || {});
@@ -11281,6 +11396,7 @@ function renderDashboardFilterCounts(result) {
   const counts = {
     concepts: (concept.pending || []).length + (concept.needs_rework || []).length + (concept.rejected || []).length,
     traces: (trace.latest || []).length,
+    graph: graphPromotionHistoryItems().length,
     skills: (result.skills?.pending_approval || []).length,
     refinements:
       (refinements.pending || []).length +
@@ -11291,7 +11407,7 @@ function renderDashboardFilterCounts(result) {
       (result.mcp_tool_calls?.readiness?.blockers?.length || 0) +
       (result.mcp_tool_calls?.canary_packages?.packages || []).length,
   };
-  counts.all = counts.concepts + counts.traces + counts.skills + counts.refinements + counts.mcp;
+  counts.all = counts.concepts + counts.traces + counts.graph + counts.skills + counts.refinements + counts.mcp;
   $$(".dashboard-filter").forEach((button) => {
     const key = button.dataset.dashboardFilter || "all";
     const label = dashboardFilterLabel(key);
@@ -11304,6 +11420,7 @@ function dashboardFilterLabel(key) {
     all: "All review",
     concepts: "Concept review",
     traces: "Trace review",
+    graph: "Graph review",
     skills: "Skill approvals",
     refinements: "Refinements",
     mcp: "MCP and sync",
@@ -11396,6 +11513,7 @@ function renderCockpitOverview(result) {
 function dashboardPriorityClass(kind, stateValue = "") {
   const stateText = String(stateValue || "").toLowerCase();
   if (kind === "mcp" || stateText.includes("approval") || stateText.includes("rework") || stateText.includes("rejected")) return "needs-action";
+  if (kind === "graph" && (stateText.includes("candidate") || stateText.includes("draft") || stateText.includes("unreviewed"))) return "review";
   if (kind === "trace" && stateText.includes("unreviewed")) return "review";
   if (stateText.includes("approved") || stateText.includes("done")) return "ready";
   return "review";
@@ -14941,6 +15059,98 @@ function renderDashboardTraces(traces) {
   target.querySelectorAll(".dashboard-trace-review").forEach((button) => {
     button.addEventListener("click", () => openAnswerTraceDrawer(button.dataset.path));
   });
+}
+
+function graphPromotionHistoryItems() {
+  const graph = state.okfGraph || {};
+  const nodes = new Map((graph.nodes || []).map((node) => [node.node_key, node]));
+  const reviewByEdge = new Map((state.graphEdgeReviews || []).map((review) => [review.edge_key, review]));
+  const items = [];
+  (graph.edges || []).forEach((edge) => {
+    const review = reviewByEdge.get(edge.edge_key) || {};
+    const decision = review.decision || edge.promotion?.decision || edge.review_state || graphPromotionDecision(edge).label;
+    const edgeClass = graphEdgeClass(edge);
+    const candidate = String(edgeClass).includes("candidate") || ["candidate", "draft", "unreviewed", "needs-rework", "rejected"].includes(String(edge.review_state || "").toLowerCase());
+    const reviewed = Boolean(review.reviewed_at || edge.reviewed_at || edge.promotion?.reviewed_at);
+    if (!candidate && !reviewed) return;
+    const source = nodes.get(edge.source) || {};
+    const target = nodes.get(edge.target) || {};
+    items.push({
+      edge_key: edge.edge_key,
+      decision,
+      review_state: review.review_state || edge.review_state || "candidate",
+      reviewed_at: review.reviewed_at || edge.reviewed_at || edge.promotion?.reviewed_at || "",
+      relation_type: review.relation_type || edge.relation_type || edge.edge_type || "related",
+      confidence: edge.confidence,
+      note: review.note || edge.review_note || edge.promotion?.rationale || graphPromotionDecision(edge).detail,
+      source_title: source.title || edge.source,
+      target_title: target.title || edge.target,
+      source_path: edge.source_path || source.path || source.okf_path || "",
+      edge_class: edgeClass,
+      path: review.path || edge.path || "",
+    });
+  });
+  (state.graphEdgeReviews || []).forEach((review) => {
+    if (items.some((item) => item.edge_key === review.edge_key)) return;
+    items.push({
+      edge_key: review.edge_key,
+      decision: review.decision || "reviewed",
+      review_state: review.review_state || review.decision || "reviewed",
+      reviewed_at: review.reviewed_at || "",
+      relation_type: review.relation_type || review.edge_type || "related",
+      confidence: review.confidence,
+      note: review.note || "",
+      source_title: review.source || "source",
+      target_title: review.target || "target",
+      source_path: review.path || "",
+      edge_class: "reviewed",
+      path: review.path || "",
+    });
+  });
+  return items
+    .sort((a, b) => String(b.reviewed_at || "").localeCompare(String(a.reviewed_at || "")))
+    .slice(0, 8);
+}
+
+function renderDashboardGraphPromotionHistory() {
+  const target = $("#dashGraphPromotionHistory");
+  if (!target) return;
+  const items = graphPromotionHistoryItems();
+  if (!items.length) {
+    target.innerHTML = renderEmptyState("No graph promotion decisions yet.", "Open Knowledge Graph", "openGraph");
+    return;
+  }
+  target.innerHTML = items.map((item) => `
+    <article class="activity-row queue-card graph-promotion-history-card ${dashboardPriorityClass("graph", item.review_state)} ${safeGraphClass(item.review_state)}">
+      <div class="queue-card-head">
+        <span class="queue-kind">${escapeHtml(labelizeGraph(item.relation_type))}</span>
+        ${renderQueueMeta([
+          labelizeGraph(item.review_state || item.decision),
+          labelizeGraph(item.edge_class),
+          item.confidence === undefined ? "" : `confidence ${item.confidence}`,
+        ])}
+      </div>
+      <h3>${escapeHtml(`${item.source_title || "source"} -> ${item.target_title || "target"}`)}</h3>
+      <p>${escapeHtml(item.note || "Candidate relation awaits human graph promotion review.")}</p>
+      ${item.source_path ? `<code>${escapeHtml(item.source_path)}</code>` : item.path ? `<code>${escapeHtml(item.path)}</code>` : ""}
+      <div class="queue-card-actions">
+        <button class="secondary small dashboard-graph-open" type="button" data-edge-key="${escapeHtml(item.edge_key || "")}">Open graph</button>
+      </div>
+    </article>
+  `).join("");
+  target.querySelectorAll(".dashboard-graph-open").forEach((button) => {
+    button.addEventListener("click", () => openGraphPromotionFromDashboard(button.dataset.edgeKey || ""));
+  });
+}
+
+function openGraphPromotionFromDashboard(edgeKey) {
+  if (edgeKey) {
+    state.selectedGraphEdgeKey = edgeKey;
+    state.graphEdgeSelectionSource = "dashboard";
+  }
+  showView("graph");
+  renderGraphCockpit();
+  $("#graphStatus")?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
 function renderDashboardActions(actions) {
