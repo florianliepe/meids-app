@@ -24452,6 +24452,138 @@ body.theme-dark .knowledge-source-readiness-grid button small {
   color: #c9c0b3;
 }
 
+/* Knowledge Browser card readability polish. This sits late in the cascade by design. */
+.knowledge-increment-list {
+  gap: 10px;
+}
+
+.knowledge-increment {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(190px, 0.5fr) minmax(280px, 0.8fr) auto;
+  align-items: center;
+}
+
+.knowledge-increment.compact {
+  gap: 7px;
+  grid-template-columns: minmax(0, 1.3fr) minmax(180px, 0.48fr) minmax(260px, 0.76fr) auto;
+}
+
+.knowledge-increment-main {
+  gap: 6px;
+}
+
+.knowledge-title-row {
+  grid-template-columns: 9px minmax(0, 1fr);
+}
+
+.knowledge-title-stack {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.knowledge-increment-title {
+  max-width: 100%;
+}
+
+.knowledge-review-token {
+  align-items: center;
+  min-height: 22px;
+}
+
+.knowledge-increment-fabric {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 68%, transparent);
+  padding: 8px 9px;
+}
+
+.knowledge-increment-actions {
+  justify-content: flex-end;
+  min-width: 84px;
+}
+
+.knowledge-increment .knowledge-increment-source {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.knowledge-increment .knowledge-source-label {
+  grid-column: 1 / -1;
+}
+
+.knowledge-increment .knowledge-source-affordances {
+  align-self: stretch;
+  display: grid;
+  gap: 6px;
+  grid-auto-flow: column;
+}
+
+body.theme-dark .knowledge-increment {
+  background:
+    linear-gradient(90deg, rgba(122, 216, 191, 0.035), rgba(16, 20, 17, 0.92));
+  border-color: rgba(232, 226, 214, 0.13);
+  box-shadow: none;
+}
+
+body.theme-dark .knowledge-increment:hover {
+  background:
+    linear-gradient(90deg, rgba(122, 216, 191, 0.075), rgba(19, 24, 20, 0.96));
+  border-color: rgba(122, 216, 191, 0.28);
+}
+
+body.theme-dark .knowledge-increment[data-review-state="approved"] {
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .knowledge-increment[data-review-state="pending-review"],
+body.theme-dark .knowledge-increment[data-review-state="candidate"],
+body.theme-dark .knowledge-increment[data-review-state="draft"] {
+  border-left-color: #d7b36d;
+}
+
+body.theme-dark .knowledge-increment[data-review-state="needs-rework"],
+body.theme-dark .knowledge-increment[data-review-state="rejected"] {
+  border-left-color: #e28d76;
+}
+
+body.theme-dark .knowledge-increment-fabric {
+  background: rgba(28, 34, 29, 0.88);
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .knowledge-increment-fabric > span {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-review-token {
+  background: rgba(232, 226, 214, 0.06);
+  border-color: rgba(232, 226, 214, 0.14);
+  color: #d8d0c2;
+}
+
+body.theme-dark .knowledge-review-token.approved {
+  background: rgba(122, 216, 191, 0.12);
+  border-color: rgba(122, 216, 191, 0.34);
+  color: #9fe8d5;
+}
+
+body.theme-dark .knowledge-review-token.pending-review,
+body.theme-dark .knowledge-review-token.candidate,
+body.theme-dark .knowledge-review-token.draft {
+  background: rgba(215, 179, 109, 0.13);
+  border-color: rgba(215, 179, 109, 0.34);
+  color: #f2d39b;
+}
+
+body.theme-dark .knowledge-review-token.needs-rework,
+body.theme-dark .knowledge-review-token.rejected {
+  background: rgba(226, 141, 118, 0.12);
+  border-color: rgba(226, 141, 118, 0.34);
+  color: #f0b19f;
+}
+
 .graph-relation-layer-summary {
   display: grid;
   gap: 8px;
@@ -24535,6 +24667,16 @@ body.theme-dark .graph-relation-layer-summary small {
 }
 
 @media (max-width: 900px) {
+  .knowledge-increment,
+  .knowledge-increment.compact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knowledge-increment-actions {
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
   .knowledge-increment-source {
     grid-template-columns: minmax(0, 1fr);
   }
