@@ -15052,6 +15052,10 @@ function renderChatRuntimeSetupShortcuts() {
       fixture_status: item.replayPassed ? "fixture replay passed" : "fixture documented",
     })),
   };
+  const localOverrideControls = missing.map((item) => renderAgentWebhookOverrideControl(item.agentId, {
+    compact: true,
+    label: `${item.label} public UAT URL`,
+  })).join("");
   target.innerHTML = `
     <section class="chat-runtime-missing-card">
       <div>
@@ -15065,8 +15069,16 @@ function renderChatRuntimeSetupShortcuts() {
         ${missingSnippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(missingSnippet)}">Copy runtime JSON</button>` : ""}
         <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/n8n-live-url-configuration.md"))}" target="_blank" rel="noreferrer">Setup guide</a>
       </div>
+      ${localOverrideControls ? `
+        <div class="chat-runtime-local-overrides" aria-label="Browser-local n8n UAT URL overrides">
+          ${localOverrideControls}
+        </div>
+      ` : ""}
     </section>
   `;
+  target.querySelectorAll("[data-agent-webhook-action]").forEach((button) => {
+    button.addEventListener("click", () => handleAgentWebhookOverrideAction(button));
+  });
 }
 
 function renderChatContractActions() {
@@ -15346,20 +15358,23 @@ function normalizeAgentWebhookUrl(value = "") {
   if (!trimmed) return "";
   try {
     const url = new URL(trimmed);
-    if (!["https:", "http:"].includes(url.protocol)) throw new Error("Unsupported protocol");
+    if (url.protocol !== "https:") throw new Error("Unsupported protocol");
+    if (!/\/webhook\//i.test(url.pathname)) throw new Error("Missing webhook path");
     return url.toString();
   } catch (_error) {
-    throw new Error("Use a valid http(s) public UAT webhook URL.");
+    throw new Error("Use a valid https public UAT URL with /webhook/ in the path.");
   }
 }
 
-function renderAgentWebhookOverrideControl(agentId) {
+function renderAgentWebhookOverrideControl(agentId, options = {}) {
   const overrides = readAgentWebhookOverrides();
   const value = overrides[agentId] || "";
+  const compact = options.compact ? " compact" : "";
+  const label = options.label || "Browser-local UAT URL";
   return `
-    <div class="agent-webhook-local-override" data-agent-webhook-override="${escapeHtml(agentId)}">
+    <div class="agent-webhook-local-override${compact}" data-agent-webhook-override="${escapeHtml(agentId)}">
       <label>
-        <span>Browser-local UAT URL</span>
+        <span>${escapeHtml(label)}</span>
         <input type="url" value="${escapeHtml(value)}" placeholder="https://.../webhook/...">
       </label>
       <div class="button-row tight">

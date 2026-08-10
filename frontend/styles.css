@@ -8002,6 +8002,15 @@ body.theme-dark .knowledge-source-readiness-grid span {
   margin-top: 4px;
 }
 
+.chat-runtime-local-overrides {
+  border-top: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  display: grid;
+  gap: 8px;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-top: 10px;
+}
+
 .chat-mode-health {
   align-items: center;
   border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
@@ -10425,6 +10434,7 @@ body.theme-dark .graph-svg-edge-label text {
   .chat-agent-trace-head,
   .chat-agent-trace-list,
   .chat-runtime-missing-card,
+  .chat-runtime-local-overrides,
   .chat-runtime-setup-ready,
   .chat-mode-readiness-rail,
   .chat-contract-actions,
@@ -14546,6 +14556,11 @@ body.theme-dark .graph-promotion-flow small {
   padding: 9px;
 }
 
+.agent-webhook-local-override.compact {
+  margin-top: 0;
+  padding: 8px;
+}
+
 .agent-webhook-local-override label {
   display: grid;
   gap: 5px;
@@ -14562,6 +14577,8 @@ body.theme-dark .graph-promotion-flow small {
   border-radius: 8px;
   font-size: 0.78rem;
   min-height: 34px;
+  min-width: 0;
+  width: 100%;
 }
 
 .agent-webhook-local-override small {
