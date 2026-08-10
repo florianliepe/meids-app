@@ -11354,7 +11354,7 @@ async function safeRefreshReviewDashboard() {
     await refreshReviewDashboard();
   } catch (error) {
     $("#dashConceptStates").textContent = "Dashboard endpoint unavailable. Restart the local MVP server.";
-    ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashGraphPromotionHistory", "#dashOkfGraphPackage", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
+    ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashGraphPromotionHistory", "#dashOkfGraphPackage", "#dashKnowledgeGraphHandoff", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
       const node = $(selector);
       if (node) node.innerHTML = renderErrorState("Dashboard unavailable");
     });
@@ -11364,7 +11364,7 @@ async function safeRefreshReviewDashboard() {
 
 function setDashboardLoading() {
   $("#cockpitOverview").innerHTML = '<div class="skeleton-block"></div><div class="skeleton-block"></div>';
-  ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashGraphPromotionHistory", "#dashOkfGraphPackage", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
+  ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashGraphPromotionHistory", "#dashOkfGraphPackage", "#dashKnowledgeGraphHandoff", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
     const node = $(selector);
     if (node) node.innerHTML = renderLoadingState("Loading cockpit data");
   });
@@ -11420,6 +11420,7 @@ function renderReviewDashboard(result) {
   renderDashboardGraphDecisionQueue();
   renderDashboardGraphPromotionHistory();
   renderDashboardOkfGraphPackage();
+  renderDashboardKnowledgeGraphHandoff();
   renderDashboardSkillQueue(result.skills?.pending_approval || []);
   renderDashboardRefinementQueue(result.skills?.refinements || {}, result.skills?.runs || {});
   renderDashboardVoiceProofChain(result.mcp_tool_calls?.voice_proof_chain || {});
@@ -11983,6 +11984,15 @@ function dashboardFilterLabel(key) {
   }[key] || key;
 }
 
+function dashboardActionText(action, fallback = "") {
+  if (!action) return fallback;
+  if (typeof action === "string") return action;
+  if (typeof action === "object") {
+    return [action.title, action.detail || action.status].filter(Boolean).join(" · ") || fallback;
+  }
+  return String(action);
+}
+
 function renderCockpitOverview(result) {
   const target = $("#cockpitOverview");
   if (!target) return;
@@ -12055,7 +12065,7 @@ function renderCockpitOverview(result) {
         </button>
       `).join("")}
     </div>
-    <p class="cockpit-next">${escapeHtml(actions[0] || "No urgent cockpit action. Continue improving source quality and reviewing skill outcomes.")}</p>
+    <p class="cockpit-next">${escapeHtml(dashboardActionText(actions[0], "No urgent cockpit action. Continue improving source quality and reviewing skill outcomes."))}</p>
     <div class="cockpit-actions">
       <button class="secondary small" type="button" data-cockpit-action="reviewConcepts">Review concepts</button>
       <button class="secondary small" type="button" data-cockpit-action="openGraph">Review graph</button>
@@ -17392,6 +17402,77 @@ function renderDashboardOkfGraphPackage() {
   target.querySelector('[data-cockpit-action="openGraph"]')?.addEventListener("click", () => showView("graph"));
 }
 
+function renderDashboardKnowledgeGraphHandoff() {
+  const target = $("#dashKnowledgeGraphHandoff");
+  if (!target) return;
+  const source = knowledgeFabricSourceTraceSummary();
+  const promotions = graphPromotionHistoryItems(120);
+  const approvedPromotions = promotions.filter((item) => ["approved", "accepted"].includes(String(item.review_state || item.decision || "").toLowerCase()));
+  const blockedPromotions = promotions.filter((item) => ["rejected", "needs-rework", "blocked"].includes(String(item.review_state || item.decision || "").toLowerCase()));
+  const vectorFixtureReady = Number(state.okfValidationStatus?.summary?.vector_request_fixture_count || 0) > 0;
+  const liveKnowledgeUrl = chatAgentContractStatuses().find((item) => item.id === "knowledge_fabric_agent")?.configured;
+  const steps = [
+    {
+      label: "Source intake",
+      value: source.queueCount ? `${source.queueCount} queued` : "empty",
+      state: source.queueCount ? "ready" : "pending",
+      detail: source.queueCount ? "Uploads/transcripts exist in local review memory." : "Add source context or upload/transcribe first.",
+    },
+    {
+      label: "Human review",
+      value: source.approvedCount ? `${source.approvedCount} approved` : `${source.pendingCount} pending`,
+      state: source.approvedCount ? "ready" : source.pendingCount ? "warning" : "pending",
+      detail: "Only approved handoffs can become trusted OKF storage.",
+    },
+    {
+      label: "Graph promotion",
+      value: approvedPromotions.length ? `${approvedPromotions.length} accepted` : `${source.graphCandidateCount} candidates`,
+      state: approvedPromotions.length ? "ready" : source.graphCandidateCount ? "warning" : "pending",
+      detail: "Candidate edges need accepted/rejected/rework decisions before trusted graph use.",
+    },
+    {
+      label: "Vector boundary",
+      value: vectorFixtureReady ? "fixture ready" : "deferred",
+      state: vectorFixtureReady ? "warning" : "pending",
+      detail: vectorFixtureReady
+        ? "Adapter payloads are testable, but live vector refresh waits for repo merge and credentials."
+        : "Prepare vector fixture before hosted vector integration.",
+    },
+    {
+      label: "n8n live agent",
+      value: liveKnowledgeUrl ? "configured" : "blocked",
+      state: liveKnowledgeUrl ? "ready" : "blocked",
+      detail: liveKnowledgeUrl ? "Knowledge Fabric webhook URL is present." : "Knowledge Fabric live URL still needs runtime configuration.",
+    },
+  ];
+  target.innerHTML = `
+    <div class="knowledge-graph-handoff-flow" aria-label="Knowledge Fabric to graph handoff gates">
+      ${steps.map((step, index) => `
+        <article class="${safeGraphClass(step.state)}">
+          <span>${escapeHtml(String(index + 1))}</span>
+          <strong>${escapeHtml(step.label)}</strong>
+          <em>${escapeHtml(step.value)}</em>
+          <small>${escapeHtml(step.detail)}</small>
+        </article>
+      `).join("")}
+    </div>
+    <div class="knowledge-graph-handoff-summary">
+      <div>
+        <span class="badge">Actor use boundary</span>
+        <strong>${escapeHtml(source.trustedRetrievalAllowed ? "Trusted retrieval may use approved handoffs only." : "Actor Twin stays review-gated.")}</strong>
+        <p>${escapeHtml("Draft, rejected, and needs-rework handoffs remain audit/context signals. They must not be promoted to trusted answer memory without human review.")}</p>
+      </div>
+      <div class="knowledge-graph-handoff-metrics">
+        <span><strong>${escapeHtml(String(source.graphCandidateCount))}</strong><small>candidate edges</small></span>
+        <span><strong>${escapeHtml(String(approvedPromotions.length))}</strong><small>accepted</small></span>
+        <span><strong>${escapeHtml(String(blockedPromotions.length))}</strong><small>blocked/rework</small></span>
+        <span><strong>${escapeHtml(source.repoSyncReady ? "yes" : "no")}</strong><small>repo review</small></span>
+      </div>
+    </div>
+  `;
+  document.querySelector('[data-dashboard-action="open-knowledge-graph"]')?.addEventListener("click", () => showView("graph"));
+}
+
 function exportGraphPromotionHistory() {
   const items = graphPromotionHistoryItems(120);
   if (!items.length) {
@@ -17592,7 +17673,7 @@ function openGraphPromotionFromDashboard(edgeKey) {
 function renderDashboardActions(actions) {
   const target = $("#dashActions");
   target.innerHTML = actions.length
-    ? actions.map((action, index) => `<article class="activity-row action-row queue-card ${index === 0 ? "needs-action" : "review"}"><span>Priority ${index + 1}</span><p>${escapeHtml(action)}</p></article>`).join("")
+    ? actions.map((action, index) => `<article class="activity-row action-row queue-card ${index === 0 ? "needs-action" : "review"}"><span>Priority ${index + 1}</span><p>${escapeHtml(dashboardActionText(action, "Review cockpit action"))}</p></article>`).join("")
     : renderEmptyState("No recommended actions.", "Return to Chat", "openChat");
 }
 

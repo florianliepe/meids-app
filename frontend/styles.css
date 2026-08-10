@@ -8236,6 +8236,116 @@ body.theme-dark .knowledge-source-readiness-grid span {
   margin-top: 5px;
 }
 
+.knowledge-graph-handoff-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.knowledge-graph-handoff-flow {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.knowledge-graph-handoff-flow article,
+.knowledge-graph-handoff-summary,
+.knowledge-graph-handoff-metrics span {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-strong) 78%, transparent);
+  min-width: 0;
+}
+
+.knowledge-graph-handoff-flow article {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  border-left: 3px solid color-mix(in srgb, var(--muted) 45%, var(--line));
+  padding: 10px;
+}
+
+.knowledge-graph-handoff-flow article.ready {
+  border-left-color: #5bbf9f;
+}
+
+.knowledge-graph-handoff-flow article.warning,
+.knowledge-graph-handoff-flow article.pending {
+  border-left-color: #d7a84f;
+}
+
+.knowledge-graph-handoff-flow article.blocked {
+  border-left-color: #d06e68;
+}
+
+.knowledge-graph-handoff-flow span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.knowledge-graph-handoff-flow strong,
+.knowledge-graph-handoff-flow em,
+.knowledge-graph-handoff-flow small,
+.knowledge-graph-handoff-summary strong,
+.knowledge-graph-handoff-summary p,
+.knowledge-graph-handoff-metrics strong,
+.knowledge-graph-handoff-metrics small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-graph-handoff-flow strong,
+.knowledge-graph-handoff-summary strong,
+.knowledge-graph-handoff-metrics strong {
+  color: var(--ink);
+}
+
+.knowledge-graph-handoff-flow em {
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.knowledge-graph-handoff-flow small,
+.knowledge-graph-handoff-summary p,
+.knowledge-graph-handoff-metrics small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.knowledge-graph-handoff-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  padding: 12px;
+}
+
+.knowledge-graph-handoff-summary p {
+  margin: 6px 0 0;
+}
+
+.knowledge-graph-handoff-metrics {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.knowledge-graph-handoff-metrics span {
+  padding: 9px;
+}
+
+.knowledge-graph-handoff-metrics strong {
+  font-size: 15px;
+}
+
 .agent-trace-row.approval {
   border-left-color: #d7a84f;
 }
@@ -8545,6 +8655,47 @@ body.theme-dark .okf-graph-package-links code {
 
 body.theme-dark .okf-graph-package-links article {
   border-left-color: #9ce6d2;
+}
+
+body.theme-dark .knowledge-graph-handoff-flow article,
+body.theme-dark .knowledge-graph-handoff-summary,
+body.theme-dark .knowledge-graph-handoff-metrics span {
+  background: rgba(23, 27, 24, 0.84);
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .knowledge-graph-handoff-flow article.ready {
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .knowledge-graph-handoff-flow article.warning,
+body.theme-dark .knowledge-graph-handoff-flow article.pending {
+  border-left-color: #f2d39b;
+}
+
+body.theme-dark .knowledge-graph-handoff-flow article.blocked {
+  border-left-color: #f0a39f;
+}
+
+body.theme-dark .knowledge-graph-handoff-flow span {
+  background: rgba(122, 216, 191, 0.13);
+  color: #9ce6d2;
+}
+
+body.theme-dark .knowledge-graph-handoff-flow strong,
+body.theme-dark .knowledge-graph-handoff-summary strong,
+body.theme-dark .knowledge-graph-handoff-metrics strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-graph-handoff-flow em {
+  color: #9ce6d2;
+}
+
+body.theme-dark .knowledge-graph-handoff-flow small,
+body.theme-dark .knowledge-graph-handoff-summary p,
+body.theme-dark .knowledge-graph-handoff-metrics small {
+  color: #c9c0b3;
 }
 
 body.theme-dark .knowledge-increment {
@@ -26940,6 +27091,14 @@ body.theme-dark .graph-retrieval-contract-flow article {
 
   .okf-graph-package-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .knowledge-graph-handoff-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .knowledge-graph-handoff-summary {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .knowledge-increment,
