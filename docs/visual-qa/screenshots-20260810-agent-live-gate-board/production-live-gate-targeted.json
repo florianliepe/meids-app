@@ -1,0 +1,20 @@
+[
+  {
+    "viewport": 390,
+    "hasBoard": true,
+    "boardWidth": 195,
+    "rows": 3,
+    "buttons": 3,
+    "docScrollWidth": 390,
+    "boardOverflow": false
+  },
+  {
+    "viewport": 1440,
+    "hasBoard": true,
+    "boardWidth": 559,
+    "rows": 3,
+    "buttons": 3,
+    "docScrollWidth": 1440,
+    "boardOverflow": false
+  }
+]

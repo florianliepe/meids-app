@@ -12576,6 +12576,7 @@ async function safeRefreshStaticN8nReplayStatus() {
     renderChatContractSurfaces();
     renderDashboardKnowledgeGraphHandoff();
     renderAgentProbeEvidencePanels();
+    renderProductionKnowledgeRepoReadiness();
   } catch (error) {
     console.warn("Static n8n fixture replay status refresh failed", error);
   }
@@ -25569,6 +25570,7 @@ function productionAgentUrlReadiness() {
       approvalBoundary: contract.approval_boundary || "",
       configured: readiness.configured,
       runtimeSnippet: buildSingleAgentRuntimeConfigSnippet(agentId),
+      liveProbePayload: contract.live_probe_payload || agentLiveProbePayload(agentId),
     };
   });
 }
@@ -25705,16 +25707,102 @@ function renderProductionAgentUrlReadiness(agents = []) {
             <div class="button-row tight">
               <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(agent.githubSecret)}">Copy secret</button>
               ${agent.runtimeSnippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(agent.runtimeSnippet)}">Copy JSON</button>` : ""}
+              ${agent.liveProbePayload ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(agent.liveProbePayload, null, 2))}">Copy probe payload</button>` : ""}
               <a class="secondary small" href="${escapeHtml(liveUrlGuide)}" target="_blank" rel="noreferrer">Live URL guide</a>
               <a class="secondary small" href="${escapeHtml(runtimeAsset)}" target="_blank" rel="noreferrer">Runtime asset</a>
             </div>
           </article>
         `).join("")}
       </div>
+      ${renderProductionAgentLiveGateBoard(agents)}
       ${renderProductionAgentRolloutChecklist(agents)}
       <small>Public GitHub Pages can only use public UAT webhook URLs. Private production endpoints should move behind the hosted backend or a workflow-generated runtime config.</small>
     </section>
   `;
+}
+
+function renderProductionAgentLiveGateBoard(agents = []) {
+  if (!agents.length) return "";
+  const rows = agents.map(productionAgentLiveGateRow);
+  const liveReady = rows.filter((row) => row.urlReady && row.probeReady && row.traceReady).length;
+  return `
+    <div class="production-agent-live-gate-board">
+      <div class="production-agent-live-gate-head">
+        <div>
+          <span class="badge">Live gate evidence</span>
+          <strong>${escapeHtml(`${liveReady}/${rows.length} agents live-evidence ready`)}</strong>
+          <p>Fixture replay proves the contract shape. Live readiness requires a configured URL, successful probe, and non-demo trace evidence.</p>
+        </div>
+      </div>
+      <div class="production-agent-live-gate-table" role="table" aria-label="Agent live gate evidence">
+        <div class="production-agent-live-gate-row header" role="row">
+          <span role="columnheader">Agent</span>
+          <span role="columnheader">Contract</span>
+          <span role="columnheader">URL</span>
+          <span role="columnheader">Probe</span>
+          <span role="columnheader">Trace</span>
+          <span role="columnheader">Next gate</span>
+        </div>
+        ${rows.map((row) => `
+          <div class="production-agent-live-gate-row ${escapeHtml(row.state)}" role="row">
+            <span role="cell"><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.agentId)}</small></span>
+            <span role="cell"><i class="${row.fixtureReady ? "ready" : "blocked"}">${escapeHtml(row.fixtureLabel)}</i><small>${escapeHtml(row.caseLabel)}</small></span>
+            <span role="cell"><i class="${row.urlReady ? "ready" : "blocked"}">${escapeHtml(row.urlLabel)}</i><small>${escapeHtml(row.envVar)}</small></span>
+            <span role="cell"><i class="${row.probeReady ? "ready" : row.urlReady ? "pending" : "blocked"}">${escapeHtml(row.probeLabel)}</i><small>${escapeHtml(row.probeDetail)}</small></span>
+            <span role="cell"><i class="${row.traceReady ? "ready" : "pending"}">${escapeHtml(row.traceLabel)}</i><small>${escapeHtml(row.traceDetail)}</small></span>
+            <span role="cell">
+              <small>${escapeHtml(row.nextGate)}</small>
+              ${row.probePayload ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(row.probePayload, null, 2))}">Copy probe payload</button>` : ""}
+            </span>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function productionAgentLiveGateRow(agent = {}) {
+  const probe = state.n8nLiveProbeResults?.[agent.agentId] || null;
+  const traces = readComposedAgentTraces()
+    .filter((trace) => String(trace.agent_id || "").toLowerCase() === String(agent.agentId || "").toLowerCase());
+  const liveTrace = traces.find((trace) => /n8n connected|live n8n|webhook/i.test(String(trace.runtime || "")) && !trace.demo);
+  const latestTrace = traces[0] || null;
+  const fixtureReady = Boolean(agent.fixture && agent.fixtureUrl);
+  const urlReady = Boolean(agent.configured);
+  const probeReady = probe?.status === "connected";
+  const traceReady = Boolean(liveTrace);
+  const nextGate = !fixtureReady
+    ? "Fix contract fixture before UAT."
+    : !urlReady
+      ? "Add public UAT webhook URL or hosted backend endpoint."
+      : !probeReady
+        ? "Run live probe and capture n8n response."
+        : !traceReady
+          ? "Run non-demo UAT and retain trace evidence."
+          : "Ready for production trace review.";
+  return {
+    agentId: agent.agentId || "",
+    name: agent.name || agentDisplayName(agent.agentId || ""),
+    state: traceReady ? "ready" : urlReady ? "pending" : "blocked",
+    fixtureReady,
+    fixtureLabel: fixtureReady ? "fixture ready" : "missing",
+    caseLabel: agent.fixture ? agent.fixture : "contract fixture missing",
+    urlReady,
+    urlLabel: urlReady ? "configured" : "missing URL",
+    envVar: agent.envVar || "N8N_WEBHOOK_URL",
+    probeReady,
+    probeLabel: probeReady ? "connected" : probe?.status || (urlReady ? "not probed" : "blocked"),
+    probeDetail: probe?.detail || agent.detail || "Run a no-write live probe after URL setup.",
+    traceReady,
+    traceLabel: traceReady ? "live trace" : latestTrace ? "demo/local trace" : "missing",
+    traceDetail: liveTrace
+      ? `${liveTrace.trace_id || liveTrace.request_id || "trace"} · ${liveTrace.runtime || "live runtime"}`
+      : latestTrace
+        ? `${latestTrace.trace_id || latestTrace.request_id || "trace"} · ${latestTrace.runtime || "local runtime"}`
+        : "No trace evidence recorded yet.",
+    nextGate,
+    probePayload: agent.liveProbePayload || agentLiveProbePayload(agent.agentId || ""),
+  };
 }
 
 function githubBranchReviewEvidence(bridge = {}, reviewArtifacts = []) {

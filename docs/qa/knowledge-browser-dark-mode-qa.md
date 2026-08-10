@@ -158,6 +158,20 @@ Latest local QA pass for n8n live-probe payload affordances:
 
 This pass exposes the public-safe `live_probe` envelopes in the replay artifact, uses the same envelopes for cockpit live probes, and adds copy affordances for n8n workflow testing. The public replay artifact reports three agents with probe payloads and 15 replay cases. Screenshots are stored in `docs/visual-qa/screenshots-20260810-live-probe-payload-affordance/`.
 
+Latest local QA pass for Production live-gate evidence board:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-agent-config-export.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/replay-n8n-fixtures.cjs --write`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-agent-live-gate-board`
+- Targeted Playwright assertions open `?view=quality&quality=production`, expand the production repository stage, and verify `.production-agent-live-gate-board` at `390px` and `1440px`.
+
+This pass adds a Production Cockpit live-gate evidence board that distinguishes contract fixture readiness, configured URL, live probe, and non-demo trace evidence for Actor Twin, Knowledge Fabric Agent, and Agentic Butler. The board exposes three public-safe probe payload copy actions and remains contained in dark mode. Screenshots are stored in `docs/visual-qa/screenshots-20260810-agent-live-gate-board/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:
