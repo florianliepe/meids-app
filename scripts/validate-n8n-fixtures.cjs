@@ -70,6 +70,21 @@ function validateKnowledgeFabricFixture(fixture) {
   if (!["deferred", "blocked"].includes(output.vector_refresh?.status)) {
     fail(`${fixture.agent_id}: vector_refresh.status must be deferred or blocked before approval`);
   }
+  const liveProbe = fixture.live_probe;
+  if (!liveProbe || typeof liveProbe !== "object") fail(`${fixture.agent_id}: live_probe missing`);
+  assertEnvelope("live_probe", liveProbe, fixture.agent_id);
+  if (liveProbe.intent !== "live_probe") fail(`${fixture.agent_id}: live_probe.intent must be live_probe`);
+  if (liveProbe.input?.execute !== false) fail(`${fixture.agent_id}: live_probe.input.execute must be false`);
+  if (liveProbe.context?.side_effect_policy !== "no_write_probe") {
+    fail(`${fixture.agent_id}: live_probe.context.side_effect_policy must be no_write_probe`);
+  }
+  const expectedCapabilities = liveProbe.context?.expected_capabilities;
+  if (!Array.isArray(expectedCapabilities) || expectedCapabilities.length < 5) {
+    fail(`${fixture.agent_id}: live_probe.context.expected_capabilities incomplete`);
+  }
+  if (liveProbe.expected_response?.trace?.trace_id_required !== true) {
+    fail(`${fixture.agent_id}: live_probe.expected_response.trace.trace_id_required must be true`);
+  }
   const examples = fixture.source_path_examples;
   if (!Array.isArray(examples) || examples.length < 2) {
     fail(`${fixture.agent_id}: source_path_examples must cover upload and transcript paths`);
@@ -81,8 +96,15 @@ function validateKnowledgeFabricFixture(fixture) {
 }
 
 const files = fs.readdirSync(fixtureDir).filter((file) => file.endsWith(".json"));
-const seen = new Set(files.map((file) => validateFixture(path.join(fixtureDir, file))));
+const validatedFixtures = files.map((file) => {
+  const filePath = path.join(fixtureDir, file);
+  const agentId = validateFixture(filePath);
+  return readJson(filePath);
+});
+const seen = new Set(validatedFixtures.map((fixture) => fixture.agent_id));
 const missing = requiredAgents.filter((agent) => !seen.has(agent));
 if (missing.length) fail(`Missing fixtures: ${missing.join(", ")}`);
+const liveProbeCount = validatedFixtures.filter((fixture) => fixture.live_probe).length;
+const caseCount = (files.length * requiredSections.length) + liveProbeCount;
 
-console.log(`n8n fixture validation passed: ${files.length} fixtures, ${files.length * requiredSections.length} replay cases`);
+console.log(`n8n fixture validation passed: ${files.length} fixtures, ${caseCount} replay cases`);

@@ -836,7 +836,7 @@ function bindGraph() {
     }
     const applyAction = event.target.closest("[data-graph-selected-context-action]");
     if (applyAction) {
-      applySelectedGraphContext(applyAction.dataset.graphSelectedContextAction || "chat");
+      handleSelectedGraphContextAction(applyAction.dataset.graphSelectedContextAction || "chat");
       return;
     }
     const relationApplyAction = event.target.closest("[data-graph-selected-relation-action]");
@@ -5145,6 +5145,7 @@ function applySelectedGraphContext(surface = "chat") {
     edges: packet.relations,
     projection: packet.view,
   };
+  renderProductionKnowledgeRepoReadiness();
   if (surface === "runner") {
     showView("skills");
   } else {
@@ -5157,6 +5158,38 @@ function applySelectedGraphContext(surface = "chat") {
     packet.selected_node?.title || packet.selected_node?.node_key || "OKF node",
     "success",
   );
+}
+
+function handleSelectedGraphContextAction(action = "chat") {
+  if (action === "actor-twin") {
+    prepareSelectedGraphNodeForActorTwin();
+    return;
+  }
+  applySelectedGraphContext(action || "chat");
+}
+
+function prepareSelectedGraphNodeForActorTwin() {
+  const packet = selectedGraphContextPacket();
+  if (!packet) {
+    showToast("No graph node selected", "Select a graph node before asking the Actor Twin.", "error");
+    return;
+  }
+  applySelectedGraphContext("chat");
+  state.activeChatInteractionMode = "actor_twin";
+  const select = $("#chatInteractionModeSelect");
+  if (select) select.value = "actor_twin";
+  const query = $("#queryInput");
+  const node = packet.selected_node || {};
+  if (query) {
+    query.value = [
+      "Use the selected OKF graph node to answer as the Actor Twin.",
+      `Explain what can be trusted, which relations are inferred or pending review, and what needs human confirmation for: ${node.title || node.node_key || "selected node"}.`,
+    ].join(" ");
+    query.dispatchEvent(new Event("input", { bubbles: true }));
+    query.focus();
+  }
+  renderChatSkillMode();
+  showToast("Actor Twin prompt prepared", "Selected graph node is attached as structured context.", "success");
 }
 
 function selectedGraphRelationContextPacket(edgeKey = state.selectedGraphEdgeKey) {
@@ -5307,6 +5340,7 @@ function applySelectedGraphRelationContext(surface = "chat") {
     }].filter((edge) => edge?.edge_key),
     projection: packet.view,
   };
+  renderProductionKnowledgeRepoReadiness();
   if (surface === "runner") {
     showView("skills");
   } else {
@@ -5623,6 +5657,7 @@ function graphNodeReviewHistory(nodeKey) {
 function renderGraphNodeSourceActions(node = {}, provenance = {}) {
   const actions = [];
   if (node.node_key) {
+    actions.push(`<button class="primary small graph-actor-action" type="button" data-graph-selected-context-action="actor-twin">Ask Actor Twin</button>`);
     actions.push(`<button class="secondary small" type="button" data-graph-selected-context-action="chat">Apply to chat</button>`);
     actions.push(`<button class="secondary small" type="button" data-graph-selected-context-action="runner">Apply to skill runner</button>`);
     actions.push(`<button class="secondary small" type="button" data-graph-node-snapshot-action="copy-json">Copy snapshot JSON</button>`);
@@ -5858,6 +5893,11 @@ function renderGraphSelectedNodeActions(node, candidateEdges, nodeMap) {
       <h4>${escapeHtml(node.title || node.node_key)}</h4>
       <p>${candidateEdges.length ? "Candidate relations are available for review before this node is used as steering context." : "No unresolved candidate relation is attached to this node."}</p>
       <div class="graph-quality-candidates">${rows || "<small>No candidate edges for this node.</small>"}</div>
+      <div class="graph-quality-action-row">
+        <button class="small primary graph-actor-action" type="button" data-graph-selected-context-action="actor-twin">Ask Actor Twin</button>
+        <button class="small secondary" type="button" data-graph-selected-context-action="chat">Apply node to chat</button>
+        <button class="small secondary" type="button" data-graph-selected-context-action="runner">Apply node to skill</button>
+      </div>
     </section>
   `;
 }
@@ -12330,7 +12370,11 @@ function n8nFixtureLiveComparisonRow(agent = {}, readiness = null) {
     fixtureReady,
     fixtureStatus: fixtureReady ? "passed" : readiness?.replay_status || readiness?.status || "unknown",
     caseCount,
-    caseCoverage: missingCases.length ? `missing ${missingCases.join(", ")}` : "request, response, approval, failure",
+    caseCoverage: missingCases.length
+      ? `missing ${missingCases.join(", ")}`
+      : testedCases.includes("live_probe")
+        ? "request, response, approval, failure, live probe"
+        : "request, response, approval, failure",
     configured: runtimeReadiness.configured,
     runtimeStatus: runtimeReadiness.configured ? runtimeReadiness.status : "missing URL",
     envVar: runtimeReadiness.envVar || "N8N_WEBHOOK_URL",
@@ -12722,6 +12766,7 @@ async function probeAgentContract(agentId) {
     };
     renderAgentOperatingModelPanel();
     renderChatContractSurfaces();
+    renderProductionKnowledgeRepoReadiness();
     showToast("Live probe blocked", `${agentDisplayName(agentId)} webhook is not configured.`, "warning");
     return;
   }
@@ -12732,17 +12777,11 @@ async function probeAgentContract(agentId) {
     };
     renderAgentOperatingModelPanel();
     renderChatContractSurfaces();
+    renderProductionKnowledgeRepoReadiness();
     showToast("Live probe configured", `${agentDisplayName(agentId)} has a webhook URL.`, "success");
     return;
   }
-  const envelope = buildAgentContractEnvelope(
-    agentId,
-    "contract_probe",
-    "Contract readiness probe from MeIDs cockpit.",
-    { execute: false },
-    { probe: true, source_context: {} },
-    { required: false, reason: "Readiness probe only." },
-  );
+  const envelope = buildAgentLiveProbeEnvelope(agentId);
   try {
     const result = await postAgentContractEnvelope(agentId, envelope, (fallbackEnvelope) => normalizeAgentContractResponse(agentId, {
       status: "completed",
@@ -12755,6 +12794,7 @@ async function probeAgentContract(agentId) {
     };
     renderAgentOperatingModelPanel();
     renderChatContractSurfaces();
+    renderProductionKnowledgeRepoReadiness();
     showToast("Live probe completed", `${agentDisplayName(agentId)}: ${state.n8nLiveProbeResults[agentId].status}`, "success");
   } catch (error) {
     state.n8nLiveProbeResults = {
@@ -12763,8 +12803,45 @@ async function probeAgentContract(agentId) {
     };
     renderAgentOperatingModelPanel();
     renderChatContractSurfaces();
+    renderProductionKnowledgeRepoReadiness();
     showToast("Live probe failed", `${agentDisplayName(agentId)}: ${compactError(error.message)}`, "error");
   }
+}
+
+function buildAgentLiveProbeEnvelope(agentId) {
+  if (agentId === "knowledge_fabric_agent") {
+    return buildAgentContractEnvelope(
+      agentId,
+      "live_probe",
+      "Knowledge Fabric readiness probe from MeIDs cockpit.",
+      {
+        execute: false,
+        source_type: "probe",
+        content: "Public-safe Knowledge Fabric readiness probe. Do not store as trusted knowledge.",
+      },
+      {
+        probe: true,
+        source_context: {},
+        expected_capabilities: [
+          "okf_pending_concept_contract",
+          "evidence_storage_contract",
+          "crud_audit_contract",
+          "graph_candidate_trigger_contract",
+          "vector_refresh_boundary",
+        ],
+        side_effect_policy: "no_write_probe",
+      },
+      { required: false, reason: "Readiness probe only; no durable knowledge write." },
+    );
+  }
+  return buildAgentContractEnvelope(
+    agentId,
+    "contract_probe",
+    "Contract readiness probe from MeIDs cockpit.",
+    { execute: false },
+    { probe: true, source_context: {} },
+    { required: false, reason: "Readiness probe only." },
+  );
 }
 
 function showAgentUatPayload(agentId) {
@@ -16417,6 +16494,40 @@ function renderGraphPromotionSummary(summary = graphPromotionSummary()) {
         <strong>${escapeHtml(liveBlocked ? `${liveBlocked} URL` : "ready")}</strong>
         <span>${escapeHtml(liveBlocked ? "agent URL gates missing" : "agent URL gates configured")}</span>
       </article>
+    </section>
+  `;
+}
+
+function graphActorContextHandoffStatus() {
+  const packet = state.graphSkillContextPacket || null;
+  if (!packet) {
+    return {
+      className: "blocked",
+      label: "No graph context attached",
+      detail: "Select a graph node or relation and use Ask Actor Twin before expecting graph-bounded actor steering.",
+      metric: "not attached",
+    };
+  }
+  const nodeCount = Array.isArray(packet.nodes) ? packet.nodes.length : 0;
+  const edgeCount = Array.isArray(packet.edges) ? packet.edges.length : 0;
+  return {
+    className: "ready",
+    label: "Graph context attached",
+    detail: packet.query || packet.selected_node?.title || packet.selected_relation?.relation_type || "Selected OKF graph packet is ready for Actor Twin routing.",
+    metric: `${nodeCount} node${nodeCount === 1 ? "" : "s"} · ${edgeCount} edge${edgeCount === 1 ? "" : "s"}`,
+  };
+}
+
+function renderGraphActorContextHandoffStatus() {
+  const status = graphActorContextHandoffStatus();
+  return `
+    <section class="graph-actor-context-status ${safeGraphClass(status.className)}">
+      <div>
+        <span class="badge">Actor graph context</span>
+        <strong>${escapeHtml(status.label)}</strong>
+        <p>${escapeHtml(status.detail)}</p>
+      </div>
+      <span>${escapeHtml(status.metric)}</span>
     </section>
   `;
 }
@@ -23641,6 +23752,7 @@ function renderProductionKnowledgeRepoReadiness() {
           <p>Accepted relations can support Actor Twin reasoning. Candidate, inferred, rejected, and needs-rework edges remain attributed or blocked until reviewed.</p>
         </div>
         ${renderGraphPromotionSummary()}
+        ${renderGraphActorContextHandoffStatus()}
       </div>
       ${renderProductionAgentUrlReadiness(agentUrlReadiness)}
       <details class="production-knowledge-operator" open>

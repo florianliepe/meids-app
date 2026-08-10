@@ -7781,6 +7781,49 @@ body.theme-dark .knowledge-source-readiness-grid span {
   background: color-mix(in srgb, var(--accent) 18%, var(--surface));
 }
 
+.graph-actor-context-status {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--warn) 58%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 10px;
+}
+
+.graph-actor-context-status.ready {
+  border-left-color: color-mix(in srgb, var(--accent) 62%, var(--line));
+}
+
+.graph-actor-context-status strong,
+.graph-actor-context-status p {
+  margin: 0;
+}
+
+.graph-actor-context-status strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.graph-actor-context-status p,
+.graph-actor-context-status > span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 760;
+  line-height: 1.4;
+}
+
+.graph-actor-context-status > span {
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 999px;
+  background: var(--surface-quiet);
+  color: var(--ink);
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
 .graph-promotion-summary-strip article.approved {
   border-left-color: color-mix(in srgb, var(--accent) 64%, var(--line));
 }
@@ -8561,6 +8604,16 @@ body.theme-dark .n8n-comparison-row i.blocked {
 body.theme-dark .production-graph-review-gates {
   border-color: rgba(232, 226, 214, 0.13);
   background: rgba(19, 24, 20, 0.78);
+}
+
+body.theme-dark .graph-actor-context-status {
+  border-color: rgba(232, 226, 214, 0.13);
+  background: rgba(14, 18, 15, 0.72);
+}
+
+body.theme-dark .graph-actor-context-status > span {
+  border-color: rgba(232, 226, 214, 0.13);
+  background: rgba(24, 29, 25, 0.9);
 }
 
 .agent-contract-message {

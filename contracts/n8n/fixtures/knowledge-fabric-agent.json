@@ -95,6 +95,53 @@
       "recoverable": true
     }
   },
+  "live_probe": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_knowledge_fabric_live_probe_001",
+    "agent_id": "knowledge_fabric_agent",
+    "intent": "live_probe",
+    "principal": {
+      "twin_id": "florian",
+      "display_name": "Florian"
+    },
+    "input": {
+      "execute": false,
+      "source_type": "probe",
+      "content": "Public-safe Knowledge Fabric readiness probe. Do not store as trusted knowledge."
+    },
+    "context": {
+      "expected_capabilities": [
+        "okf_pending_concept_contract",
+        "evidence_storage_contract",
+        "crud_audit_contract",
+        "graph_candidate_trigger_contract",
+        "vector_refresh_boundary"
+      ],
+      "side_effect_policy": "no_write_probe"
+    },
+    "approval": {
+      "required": false,
+      "reason": "Readiness probe only; no durable knowledge write."
+    },
+    "expected_response": {
+      "status": "completed",
+      "output": {
+        "readiness": "connected",
+        "side_effects": "none",
+        "capabilities_checked": [
+          "okf_pending_concept_contract",
+          "evidence_storage_contract",
+          "crud_audit_contract",
+          "graph_candidate_trigger_contract",
+          "vector_refresh_boundary"
+        ]
+      },
+      "trace": {
+        "stored": true,
+        "trace_id_required": true
+      }
+    }
+  },
   "source_path_examples": [
     {
       "name": "upload_to_pending_okf",

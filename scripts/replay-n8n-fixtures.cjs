@@ -84,6 +84,30 @@ function replayFailure(fixture) {
   return { case: "failure", status: "passed", request_id: failure.request_id, error_code: failure.error.code, checks };
 }
 
+function replayLiveProbe(fixture) {
+  if (!hasObject(fixture.live_probe)) return null;
+  const probe = fixture.live_probe;
+  if (probe.agent_id !== fixture.agent_id) fail(`${fixture.agent_id}.live_probe: agent_id mismatch`);
+  if (!probe.envelope_version) fail(`${fixture.agent_id}.live_probe: envelope_version missing`);
+  if (!probe.request_id) fail(`${fixture.agent_id}.live_probe: request_id missing`);
+  const checks = [];
+  if (probe.intent !== "live_probe") fail(`${fixture.agent_id}.live_probe: intent must be live_probe`);
+  checks.push("live_probe_intent");
+  if (probe.input?.execute !== false) fail(`${fixture.agent_id}.live_probe: input.execute must be false`);
+  checks.push("no_execution");
+  if (probe.context?.side_effect_policy !== "no_write_probe") fail(`${fixture.agent_id}.live_probe: side_effect_policy must be no_write_probe`);
+  checks.push("no_write_boundary");
+  if (!Array.isArray(probe.context?.expected_capabilities) || !probe.context.expected_capabilities.length) {
+    fail(`${fixture.agent_id}.live_probe: expected_capabilities missing`);
+  }
+  checks.push("capability_contract");
+  if (probe.expected_response?.trace?.trace_id_required !== true) {
+    fail(`${fixture.agent_id}.live_probe: trace_id_required must be true`);
+  }
+  checks.push("trace_required");
+  return { case: "live_probe", status: "passed", request_id: probe.request_id, checks };
+}
+
 function replayFixture(file) {
   const fixture = readJson(file);
   if (!requiredAgents.includes(fixture.agent_id)) fail(`${file}: unknown agent_id ${fixture.agent_id}`);
@@ -95,7 +119,7 @@ function replayFixture(file) {
     replayResponse(fixture),
     replayApprovalRequired(fixture),
     replayFailure(fixture),
-  ];
+  ].concat(replayLiveProbe(fixture) || []);
   return {
     agent_id: fixture.agent_id,
     agent_name: fixture.agent_name,
