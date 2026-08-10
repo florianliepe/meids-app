@@ -14770,14 +14770,14 @@ function chatAgentContractStatuses() {
       ? "n8n connected"
       : configured
         ? "configured"
-        : contractTested
-          ? "contract tested"
-          : replayPassed
-            ? "fixture ready"
-            : runtimeState === "awaiting URL"
-              ? "awaiting URL"
-              : contract.live_status_label === "blocked"
-                ? "blocked"
+        : runtimeState === "awaiting URL"
+          ? "awaiting URL"
+          : contract.live_status_label === "blocked"
+            ? "blocked"
+            : contractTested
+              ? "contract tested"
+              : replayPassed
+                ? "fixture ready"
                 : "documented";
     return {
       agentId,
