@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-08-10T04:24:26.555Z",
+  "metrics": {
+    "title": "Production",
+    "hasSnapshot": true,
+    "hasActor": true,
+    "hasKfa": true,
+    "hasButler": true,
+    "hasOpenTrace": true,
+    "hasProbe": true,
+    "boxes": [
+      "Actor Twin 4/6 open: probe, trace",
+      "Knowledge Fabric Agent 3/6 open: url, probe, trace",
+      "Agentic Butler 3/6 open: url, probe, trace"
+    ],
+    "overflow": false,
+    "width": 1440,
+    "scrollWidth": 1440
+  },
+  "screenshot": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\screenshots-20260810-agent-rollout-checklist\\production-agent-rollout-desktop-dark.png",
+  "failures": []
+}

@@ -9883,6 +9883,7 @@ function refreshStaticPagesWorkspace() {
   if (graphStatus) graphStatus.textContent = "Static staging graph loaded: 4 nodes, 4 relations.";
   renderProductionProgressHeader();
   renderProductionKnowledgeRepoReadiness();
+  renderQualityCockpit();
 }
 
 function buildStaticPagesStatus() {
@@ -9984,6 +9985,7 @@ function buildStaticPagesN8nAgentContracts() {
       runtime_status: agentRuntimeReadiness("actor_twin").status,
       webhook_url_configured: hasAgentWebhook("actor_twin"),
       statuses: agentContractStatusesFor("actor_twin"),
+      approval_boundary: "Answer-only requests can complete without approval. External actions route to Agentic Butler and human approval gates.",
       blocker: "Live n8n webhook is intentionally not required for GitHub Pages fixture mode.",
     },
     {
@@ -9999,6 +10001,7 @@ function buildStaticPagesN8nAgentContracts() {
       runtime_status: agentRuntimeReadiness("knowledge_fabric_agent").status,
       webhook_url_configured: hasAgentWebhook("knowledge_fabric_agent"),
       statuses: agentContractStatusesFor("knowledge_fabric_agent"),
+      approval_boundary: "Creates pending-review concepts and candidate graph edges only. Trusted promotion and vector refresh require review policy approval.",
       blocker: "Live Knowledge Fabric Agent workflow URL is missing; vector DB credentials remain pending.",
     },
     {
@@ -10014,6 +10017,7 @@ function buildStaticPagesN8nAgentContracts() {
       runtime_status: agentRuntimeReadiness("agentic_butler").status,
       webhook_url_configured: hasAgentWebhook("agentic_butler"),
       statuses: agentContractStatusesFor("agentic_butler"),
+      approval_boundary: "Activates approved skills and drafts outputs. External actions, meetings, emails, and requires_human steps must pause.",
       blocker: "Live Agentic Butler workflow URL is missing; skill execution remains approval-gated.",
     },
   ];
@@ -24424,10 +24428,109 @@ function productionAgentUrlReadiness() {
       fixtureUrl: contract.source_url || "",
       workflow: contract.workflow_source || "",
       workflowUrl: contract.workflow_url || "",
+      approvalBoundary: contract.approval_boundary || "",
       configured: readiness.configured,
       runtimeSnippet: buildSingleAgentRuntimeConfigSnippet(agentId),
     };
   });
+}
+
+function productionAgentRolloutGateSummary(agents = []) {
+  const totalGates = agents.length * 6;
+  const readyGates = agents
+    .flatMap((agent) => productionAgentRolloutGates(agent))
+    .filter((gate) => gate.ready).length;
+  return { readyGates, totalGates };
+}
+
+function productionAgentRolloutGates(agent = {}) {
+  const probe = state.n8nLiveProbeResults?.[agent.agentId] || null;
+  const traces = readComposedAgentTraces();
+  const liveTrace = traces.find((trace) => {
+    const sameAgent = String(trace.agent_id || "").toLowerCase() === String(agent.agentId || "").toLowerCase();
+    const liveRuntime = /n8n connected|live n8n|webhook/i.test(String(trace.runtime || ""));
+    return sameAgent && liveRuntime && !trace.demo;
+  });
+  const fixtureReady = Boolean(agent.fixture && agent.fixtureUrl);
+  const blueprintReady = Boolean(agent.workflow && agent.workflowUrl);
+  const urlReady = Boolean(agent.configured);
+  const probeReady = probe?.status === "connected";
+  const traceReady = Boolean(liveTrace);
+  const approvalReady = Boolean(agent.approvalBoundary);
+  return [
+    {
+      key: "fixture",
+      label: "Fixture",
+      ready: fixtureReady,
+      detail: fixtureReady ? "Contract fixture exists." : "Fixture missing.",
+    },
+    {
+      key: "blueprint",
+      label: "Blueprint",
+      ready: blueprintReady,
+      detail: blueprintReady ? "n8n workflow target exists." : "Workflow target missing.",
+    },
+    {
+      key: "url",
+      label: "URL",
+      ready: urlReady,
+      detail: urlReady ? "Runtime URL configured." : "Live URL missing.",
+    },
+    {
+      key: "probe",
+      label: "Probe",
+      ready: probeReady,
+      detail: probeReady ? "Live probe reached n8n." : "Run live probe after URL setup.",
+    },
+    {
+      key: "trace",
+      label: "Trace",
+      ready: traceReady,
+      detail: traceReady ? `Trace ${liveTrace.trace_id || liveTrace.request_id || "recorded"}.` : "No non-demo live trace evidence.",
+    },
+    {
+      key: "approval",
+      label: "Approval",
+      ready: approvalReady,
+      detail: approvalReady ? "Approval boundary documented." : "Approval boundary missing.",
+    },
+  ];
+}
+
+function renderProductionAgentRolloutChecklist(agents = []) {
+  const summary = productionAgentRolloutGateSummary(agents);
+  return `
+    <div class="production-agent-rollout-checklist">
+      <div class="production-agent-rollout-head">
+        <span class="badge">Agent rollout checklist</span>
+        <strong>${escapeHtml(`${summary.readyGates}/${summary.totalGates} gates ready`)}</strong>
+        <p>Fixture and blueprint prove build readiness. URL, probe, and non-demo trace evidence are required before live production approval.</p>
+      </div>
+      <div class="production-agent-rollout-grid">
+        ${agents.map((agent) => {
+          const gates = productionAgentRolloutGates(agent);
+          const readyCount = gates.filter((gate) => gate.ready).length;
+          return `
+            <article class="${readyCount === gates.length ? "ready" : agent.configured ? "pending" : "blocked"}">
+              <header>
+                <strong>${escapeHtml(agent.name)}</strong>
+                <span>${escapeHtml(`${readyCount}/${gates.length}`)}</span>
+              </header>
+              <ol>
+                ${gates.map((gate) => `
+                  <li class="${gate.ready ? "ready" : "pending"}">
+                    <span>${gate.ready ? "ready" : "open"}</span>
+                    <strong>${escapeHtml(gate.label)}</strong>
+                    <small>${escapeHtml(gate.detail)}</small>
+                  </li>
+                `).join("")}
+              </ol>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
 }
 
 function renderProductionAgentUrlReadiness(agents = []) {
@@ -24470,6 +24573,7 @@ function renderProductionAgentUrlReadiness(agents = []) {
           </article>
         `).join("")}
       </div>
+      ${renderProductionAgentRolloutChecklist(agents)}
       <small>Public GitHub Pages can only use public UAT webhook URLs. Private production endpoints should move behind the hosted backend or a workflow-generated runtime config.</small>
     </section>
   `;
@@ -25848,7 +25952,35 @@ function renderQualityCockpit() {
         <span>Skill memory: ${escapeHtml(telemetry.total_runs ?? 0)} runs</span>
         <span>Migration items: ${escapeHtml(migrationItems)}</span>
       </div>
+      ${renderQualityAgentRolloutSnapshot()}
     </article>
+  `;
+}
+
+function renderQualityAgentRolloutSnapshot() {
+  const agents = productionAgentUrlReadiness();
+  const summary = productionAgentRolloutGateSummary(agents);
+  return `
+    <div class="quality-agent-rollout-snapshot" aria-label="Top-level agent rollout gates">
+      <div>
+        <span class="badge">Agent rollout</span>
+        <strong>${escapeHtml(`${summary.readyGates}/${summary.totalGates} gates`)}</strong>
+      </div>
+      <div class="quality-agent-rollout-list">
+        ${agents.map((agent) => {
+          const gates = productionAgentRolloutGates(agent);
+          const readyCount = gates.filter((gate) => gate.ready).length;
+          const blocked = gates.filter((gate) => !gate.ready).map((gate) => gate.label.toLowerCase()).join(", ");
+          return `
+            <span class="${readyCount === gates.length ? "ready" : agent.configured ? "pending" : "blocked"}">
+              <strong>${escapeHtml(agent.name)}</strong>
+              <em>${escapeHtml(`${readyCount}/${gates.length}`)}</em>
+              <small>${escapeHtml(blocked ? `open: ${blocked}` : "ready for approval evidence")}</small>
+            </span>
+          `;
+        }).join("")}
+      </div>
+    </div>
   `;
 }
 
