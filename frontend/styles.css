@@ -29516,3 +29516,122 @@ body.theme-dark .graph-selected-edge-brief.blocked span {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Compact fixture/live runtime boundary used in Knowledge Fabric and Graph panels. */
+.agent-runtime-boundary-strip {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-quiet) 92%, var(--accent) 8%), var(--surface-quiet));
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 12px;
+  display: grid;
+  gap: 9px;
+  margin: 9px 0;
+  padding: 10px;
+}
+
+.agent-runtime-boundary-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.agent-runtime-boundary-head small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35;
+  max-width: 680px;
+}
+
+.agent-runtime-boundary-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.agent-runtime-boundary-grid article {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--warn) 68%, var(--line));
+  border-radius: 10px;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 9px;
+}
+
+.agent-runtime-boundary-grid article.configured,
+.agent-runtime-boundary-grid article.n8n-connected {
+  border-left-color: color-mix(in srgb, var(--accent) 72%, var(--line));
+}
+
+.agent-runtime-boundary-grid article.blocked,
+.agent-runtime-boundary-grid article.missing-url,
+.agent-runtime-boundary-grid article.awaiting-url {
+  border-left-color: color-mix(in srgb, #c84f3f 68%, var(--line));
+}
+
+.agent-runtime-boundary-grid strong,
+.agent-runtime-boundary-grid span,
+.agent-runtime-boundary-grid small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.agent-runtime-boundary-grid strong {
+  color: var(--ink);
+  font-size: 0.8rem;
+  line-height: 1.18;
+}
+
+.agent-runtime-boundary-grid > article > span {
+  color: var(--accent-strong);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.agent-runtime-boundary-grid > article > small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+body.theme-dark .agent-runtime-boundary-strip {
+  background:
+    linear-gradient(135deg, rgba(123, 225, 199, 0.07), rgba(18, 23, 19, 0.96));
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .agent-runtime-boundary-grid article {
+  background: rgba(16, 20, 17, 0.92);
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .agent-runtime-boundary-grid strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .agent-runtime-boundary-grid > article > span {
+  color: #8ce2ca;
+}
+
+body.theme-dark .agent-runtime-boundary-head small,
+body.theme-dark .agent-runtime-boundary-grid > article > small {
+  color: #c9c0b3;
+}
+
+@media (max-width: 720px) {
+  .agent-runtime-boundary-head {
+    align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agent-runtime-boundary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

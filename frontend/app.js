@@ -2612,6 +2612,10 @@ function renderGraphRetrievalContract(nodes = [], edges = [], availableEdges = e
         </div>
         <span>${escapeHtml(labelizeGraph(mode))}</span>
       </div>
+      ${renderCompactAgentBoundary(["actor_twin", "knowledge_fabric_agent"], {
+        label: "Graph agent boundary",
+        detail: "Actor Twin can use governed graph context; Knowledge Fabric Agent still owns relation promotion and source updates.",
+      })}
       <div class="graph-retrieval-contract-flow">
         ${lanes.map((lane) => `
           <article class="${escapeHtml(lane.className)}">
@@ -14391,6 +14395,35 @@ function renderChatContractStageRow(stages = [], options = {}) {
   `;
 }
 
+function renderCompactAgentBoundary(agentIds = [], options = {}) {
+  const statuses = new Map(chatAgentContractStatuses().map((item) => [item.agentId, item]));
+  const items = agentIds.map((agentId) => statuses.get(agentId)).filter(Boolean);
+  if (!items.length) return "";
+  return `
+    <section class="agent-runtime-boundary-strip" aria-label="${escapeHtml(options.label || "Agent runtime boundary")}">
+      <div class="agent-runtime-boundary-head">
+        <span class="badge">${escapeHtml(options.label || "Agent boundary")}</span>
+        <small>${escapeHtml(options.detail || "Fixture replay and live n8n readiness are tracked separately.")}</small>
+      </div>
+      <div class="agent-runtime-boundary-grid">
+        ${items.map((item) => {
+          const configuredLabel = item.webhookLabel || (item.configured ? "URL configured" : "fixture only");
+          const gateLabel = `${item.readyGateCount ?? 0}/${item.totalGateCount ?? 6} gates`;
+          const replayLabel = item.replayCaseCount ? `${item.replayCaseCount} replay cases` : "no replay evidence";
+          return `
+            <article class="${item.configured ? "configured" : "fixture"} ${safeGraphClass(item.state || "documented")}" title="${escapeHtml(item.detail || "")}">
+              <strong>${escapeHtml(item.label || agentDisplayName(item.agentId))}</strong>
+              <span>${escapeHtml(item.state || "documented")}</span>
+              <small>${escapeHtml(`${gateLabel} · ${configuredLabel} · ${replayLabel}`)}</small>
+              ${renderChatContractStageRow(item.stageItems, { compact: true })}
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
+}
+
 function renderChatModeReadinessRail() {
   const target = $("#chatModeReadinessRail");
   if (!target) return;
@@ -19232,6 +19265,10 @@ function renderKnowledgeFabricContractStrip(allConcepts = [], visibleConcepts = 
       <strong>${escapeHtml(status.status === "passed" ? "Knowledge fabric contract tested" : "Knowledge fabric contract pending")}</strong>
       <small>${escapeHtml(`${visible.total}/${totals.total} visible concepts · ${totals.approved} approved · ${totals.pending} pending · ${totals.unlinked} source gaps`)}</small>
     </div>
+    ${renderCompactAgentBoundary(["knowledge_fabric_agent"], {
+      label: "Knowledge agent boundary",
+      detail: "OKF validation and fixture replay can pass before the live ingest workflow URL is connected.",
+    })}
     <div class="knowledge-fabric-contract-grid">
       ${tiles.map((tile) => {
         const content = `

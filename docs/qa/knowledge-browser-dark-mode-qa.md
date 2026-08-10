@@ -269,6 +269,20 @@ Latest local QA pass for Knowledge Graph selected-edge actions:
 
 This pass separates selected-edge actions into usage and governance groups so users can distinguish actor/skill reuse from relation promotion decisions before relying on inferred graph context. Screenshots are stored in `docs/visual-qa/screenshots-20260810-graph-selected-edge-actions/`.
 
+Latest local QA pass for Knowledge/Graph agent boundary strips:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-agent-config-export.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/replay-n8n-fixtures.cjs --write`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-agent-boundary-strips`
+- Targeted Playwright assertions open `?view=concepts` and `?view=graph`, verify visible `.agent-runtime-boundary-strip`, Knowledge Fabric Agent, Actor Twin on graph, fixture/live URL wording, dark mode, and zero horizontal overflow at `390px` and `1440px`.
+
+This pass makes the fixture/live boundary visible directly in the Knowledge Fabric and Graph panels: OKF validation and fixture replay can be green while live n8n ingest/curation remains gated by missing Knowledge Fabric Agent and Agentic Butler URLs. Screenshots are stored in `docs/visual-qa/screenshots-20260810-agent-boundary-strips/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:
