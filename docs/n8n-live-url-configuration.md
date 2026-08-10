@@ -110,6 +110,15 @@ The Actor Twin is configured for public staging. The following live endpoints ar
 | Knowledge Fabric Agent | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` or fallback `n8nAgentWebhooks.knowledge_fabric_agent` | Review Cockpit -> Knowledge-to-Graph Handoff -> Copy setup packet |
 | Agentic Butler | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` or fallback `n8nAgentWebhooks.agentic_butler` | Review Cockpit -> Knowledge-to-Graph Handoff -> Copy setup packet |
 
+Public-safe workflow blueprints for these missing live workflows are already prepared:
+
+| Agent | Blueprint | Validator |
+|---|---|---|
+| Knowledge Fabric Agent | `workflows/n8n/knowledge-fabric-agent.workflow.json` | `node scripts/validate-agent-config-export.cjs` |
+| Agentic Butler | `workflows/n8n/agentic-butler.workflow.json` | `node scripts/validate-agent-config-export.cjs` |
+
+These files are implementation blueprints, not live n8n exports. They define the webhook trigger, minimum node responsibilities, approval boundary, trace fields, and live-probe return shape. When building the actual n8n workflows, use the blueprint plus the matching fixture in `contracts/n8n/fixtures/`.
+
 The Production/Review Cockpit also shows a **Missing live URL setup** panel when either URL is absent. Use it as the operational handoff:
 
 1. Copy the setup packet for the missing agent.

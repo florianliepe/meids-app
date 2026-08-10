@@ -16,7 +16,7 @@ Purpose: provide requirement-by-requirement evidence for the Knowledge Fabric, O
 | Knowledge Browser dark mode | QA passed | `docs/qa/knowledge-browser-dark-mode-qa.md`, `docs/visual-qa/screenshots-20260810-z4-knowledge-browser-dark-polish/` | Optional future density tuning after real content grows |
 | Knowledge Graph dark mode | QA passed | `docs/qa/knowledge-browser-dark-mode-qa.md`, `docs/visual-qa/screenshots-20260810-z4-graph-legend-dark-polish/` | Optional future simplification after user testing |
 | Agent trace/history UI | Implemented | Chat latest trace panel, Production/Review trace cockpit, `docs/visual-qa/screenshots-20260810-z4-chat-latest-agent-traces/` | Live traces for two missing agents cannot be captured yet |
-| n8n live URLs | Partially configured | `docs/n8n-live-url-configuration.md`, `frontend/assets/agent-runtime-config.json`, `frontend/assets/n8n-runtime-readiness-status.json` | Knowledge Fabric Agent and Agentic Butler URLs are absent |
+| n8n live URLs and workflow blueprints | Partially configured | `docs/n8n-live-url-configuration.md`, `contracts/n8n/agent-config-public-export.json`, `workflows/n8n/*.workflow.json`, `frontend/assets/agent-runtime-config.json`, `frontend/assets/n8n-runtime-readiness-status.json` | Knowledge Fabric Agent and Agentic Butler URLs are absent |
 
 ## Requirement Evidence
 
@@ -30,7 +30,7 @@ Purpose: provide requirement-by-requirement evidence for the Knowledge Fabric, O
 | Improve dark mode Knowledge Browser | CSS-only dark-mode polish applied to increment rows and state ribbons. QA evidence stored under `docs/visual-qa/screenshots-20260810-z4-knowledge-browser-dark-polish/`; browser QA passed 6/6. | Complete for current MVP |
 | Improve Knowledge Graph: clearer legend, approved vs draft vs inferred colors, readable labels, mobile containment | CSS-only graph legend polish applied. QA evidence stored under `docs/visual-qa/screenshots-20260810-z4-graph-legend-dark-polish/`; browser QA passed 6/6. | Complete for current MVP |
 | Add visible agent trace/history panel in Review or Production Cockpit | Production/Review Cockpit trace history exists, and Chat now includes `Latest agent traces` linked to the cockpit. QA evidence stored under `docs/visual-qa/screenshots-20260810-z4-chat-latest-agent-traces/`. | Complete for fixture/local traces |
-| Wire real n8n URLs for Knowledge Fabric Agent and Agentic Butler | Runtime config exposes slots and setup guidance. `docs/n8n-live-url-configuration.md` defines required secrets and config keys. | Incomplete: URLs are not available yet |
+| Wire real n8n URLs for Knowledge Fabric Agent and Agentic Butler | Runtime config exposes slots and setup guidance. `docs/n8n-live-url-configuration.md` defines required secrets and config keys. Public-safe workflow blueprints exist under `workflows/n8n/`, and `scripts/validate-agent-config-export.cjs` validates the handoff manifest against the fixtures and blueprint files. | Incomplete: URLs are not available yet |
 | Add contract health badges directly beside Chat modes | Chat-level contract actions and badges are documented in `docs/n8n-live-url-configuration.md`; UI includes active contract badges and mode health. | Complete for status display; live status still depends on URLs |
 
 ## Validation Commands
@@ -42,6 +42,7 @@ Run from the repository root:
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-zielmodus-4-readiness.cjs
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-zielmodus-4-readiness.cjs --write
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-n8n-fixtures.cjs
+& "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-agent-config-export.cjs
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-okf-fixtures.cjs
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-graph-promotions.cjs
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-vector-adapter.cjs

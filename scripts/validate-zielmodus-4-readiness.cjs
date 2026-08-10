@@ -95,9 +95,14 @@ const requirements = [
   },
   {
     id: "live_url_guidance",
-    label: "Live n8n URL guidance",
+    label: "Live n8n URL guidance and workflow blueprints",
     evidence: [
       "docs/n8n-live-url-configuration.md",
+      "contracts/n8n/agent-config-public-export.json",
+      "workflows/n8n/actor-twin.workflow.json",
+      "workflows/n8n/knowledge-fabric-agent.workflow.json",
+      "workflows/n8n/agentic-butler.workflow.json",
+      "scripts/validate-agent-config-export.cjs",
       "frontend/assets/agent-runtime-config.json",
       "frontend/assets/n8n-runtime-readiness-status.json",
     ],
