@@ -12046,7 +12046,7 @@ body.theme-dark .graph-promotion-flow small {
 .knowledge-increment-head,
 .knowledge-increment {
   display: grid;
-  grid-template-columns: minmax(240px, 1.55fr) minmax(140px, 0.62fr) minmax(150px, 0.68fr) auto;
+  grid-template-columns: minmax(260px, 1.28fr) minmax(140px, 0.5fr) minmax(300px, 0.92fr) auto;
   gap: 10px;
   align-items: center;
 }
@@ -27863,15 +27863,30 @@ body.theme-dark .graph-trust-boundary-grid button.active {
   }
 }
 
+@media (max-width: 1180px) {
+  .knowledge-increment-head,
+  .knowledge-increment {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.72fr) auto;
+  }
+
+  .knowledge-increment-source {
+    grid-column: 1 / -1;
+  }
+
+  .knowledge-increment-actions {
+    align-self: start;
+  }
+}
+
 /* Knowledge Browser source affordance polish. Keep this late so it overrides generated legacy layers. */
 .knowledge-increment-source {
-  align-items: center;
+  align-items: start;
   border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   border-radius: 10px;
   background: color-mix(in srgb, var(--surface-quiet) 70%, transparent);
   display: grid;
-  gap: 7px;
-  grid-template-columns: minmax(112px, 0.36fr) minmax(0, 1fr) minmax(170px, auto) auto;
+  gap: 8px;
+  grid-template-columns: minmax(96px, 0.38fr) minmax(0, 1fr);
   min-width: 0;
   padding: 8px;
 }
@@ -27975,7 +27990,8 @@ body.theme-dark .graph-trust-boundary-grid button.active {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  justify-content: flex-end;
+  grid-column: 1 / -1;
+  justify-content: flex-start;
   min-width: 0;
 }
 
@@ -28000,7 +28016,8 @@ body.theme-dark .graph-trust-boundary-grid button.active {
 .knowledge-source-use {
   display: grid;
   gap: 5px;
-  grid-template-columns: minmax(0, 1.25fr) minmax(64px, 0.42fr) minmax(86px, 0.72fr);
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
 }
 
@@ -28008,7 +28025,7 @@ body.theme-dark .graph-trust-boundary-grid button.active {
   display: grid;
   gap: 5px;
   grid-column: 1 / -1;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   min-width: 0;
 }
 
@@ -28162,6 +28179,7 @@ body.theme-dark .graph-trust-boundary-grid button.active {
 }
 
 .knowledge-source-affordances {
+  grid-column: 1 / -1;
   justify-content: flex-end;
 }
 

@@ -214,6 +214,20 @@ Latest local QA pass for Chat contract health badges:
 
 This pass adds explicit Chat contract health stages beside the interaction modes: Documented, Fixture, Tested, and n8n. Public fixture replay remains contract-tested for all three top-level agents; live n8n connection remains a separate gate until webhook URLs are configured. Screenshots are stored in `docs/visual-qa/screenshots-20260810-chat-contract-health-badges/`.
 
+Latest local QA pass for Knowledge source panel dark-mode polish:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-agent-config-export.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/replay-n8n-fixtures.cjs --write`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-knowledge-source-panel-polish`
+- Targeted Playwright assertions open `?view=concepts` and verify the Knowledge source panel, source contract strip, source-use labels, dark mode, and zero horizontal overflow at `390px` and `1440px`.
+
+This pass widens the Knowledge source column, stacks source-use metadata into a contained single column, and moves the source panel beneath the increment on narrower layouts. Source readiness, evidence, actor-use, decision-interface, and vector labels remain visible without clipping in dark mode. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-source-panel-polish/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:
