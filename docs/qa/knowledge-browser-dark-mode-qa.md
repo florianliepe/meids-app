@@ -384,6 +384,19 @@ Latest local QA pass for trusted retrieval readiness:
 
 This pass adds a compact trusted retrieval readiness panel to the Production/Review Cockpit. It ties OKF source trust, graph relation promotion, vector adapter boundary, Postgres graph projection, and live n8n handoff state into one operator-readable signal. Screenshots are stored in `docs/visual-qa/screenshots-20260810-trusted-retrieval-readiness/`.
 
+Latest local QA pass for Chat live URL setup actions:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- Targeted Playwright assertions open `?view=chat`, verify visible `.chat-runtime-missing-card`, Knowledge Fabric Agent and Agentic Butler missing URL labels, setup/copy actions, open Interaction setup drawer, dark/light containment, and zero horizontal overflow at `390px` and `1440px`.
+
+This pass moves the missing live n8n URL action from the collapsed setup drawer into the primary Chat workspace. Actor Twin remains configured; Knowledge Fabric Agent and Agentic Butler remain fixture-tested but blocked from live routing until public UAT webhook URLs are added. Screenshots are stored in `docs/visual-qa/screenshots-20260810-chat-live-url-setup/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

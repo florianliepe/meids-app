@@ -7787,6 +7787,56 @@ body.theme-dark .knowledge-source-readiness-grid span {
   width: min(100%, 840px);
 }
 
+.chat-runtime-setup-shortcuts {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  width: min(100%, 840px);
+}
+
+.chat-runtime-missing-card,
+.chat-runtime-setup-ready {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--warn) 36%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--warn) 7%, var(--surface));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 11px 12px;
+  text-align: left;
+}
+
+.chat-runtime-setup-ready {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+
+.chat-runtime-missing-card strong,
+.chat-runtime-setup-ready strong {
+  color: var(--ink);
+  display: block;
+  font-size: 0.86rem;
+}
+
+.chat-runtime-missing-card span,
+.chat-runtime-setup-ready span {
+  color: var(--muted);
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.chat-runtime-missing-card small {
+  color: var(--muted);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
 .chat-mode-health {
   align-items: center;
   border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
@@ -9772,6 +9822,27 @@ body.theme-dark .chat-mode-health.blocked {
   background: rgba(240, 163, 154, 0.08);
 }
 
+body.theme-dark .chat-runtime-missing-card {
+  border-color: rgba(240, 163, 154, 0.5);
+  background: rgba(240, 163, 154, 0.08);
+}
+
+body.theme-dark .chat-runtime-setup-ready {
+  border-color: rgba(122, 216, 191, 0.5);
+  background: rgba(122, 216, 191, 0.08);
+}
+
+body.theme-dark .chat-runtime-missing-card strong,
+body.theme-dark .chat-runtime-setup-ready strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .chat-runtime-missing-card span,
+body.theme-dark .chat-runtime-missing-card small,
+body.theme-dark .chat-runtime-setup-ready span {
+  color: #c9c0b3;
+}
+
 body.theme-dark .chat-mode-health strong {
   color: #fff8ea;
 }
@@ -10153,6 +10224,8 @@ body.theme-dark .graph-svg-edge-label text {
 @media (max-width: 760px) {
   .chat-contract-badges,
   .chat-mode-health-strip,
+  .chat-runtime-missing-card,
+  .chat-runtime-setup-ready,
   .chat-mode-readiness-rail,
   .chat-contract-actions,
   .agent-trace-summary,

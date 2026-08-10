@@ -14081,6 +14081,7 @@ function renderChatSkillMode() {
 
 function renderChatContractSurfaces() {
   renderChatModeHealthStrip();
+  renderChatRuntimeSetupShortcuts();
   renderActiveChatContractBadge();
   renderChatInlineModeBadges();
   renderChatContractBadges();
@@ -14720,6 +14721,51 @@ function renderChatModeHealthStrip() {
   target.querySelectorAll("[data-chat-mode]").forEach((button) => {
     button.addEventListener("click", () => switchChatInteractionMode(button.dataset.chatMode || "actor_twin"));
   });
+}
+
+function renderChatRuntimeSetupShortcuts() {
+  const target = $("#chatRuntimeSetupShortcuts");
+  if (!target) return;
+  const missing = chatAgentContractStatuses().filter((item) => !item.configured);
+  if (!missing.length) {
+    const configured = chatAgentContractStatuses().filter((item) => item.configured);
+    target.innerHTML = configured.length ? `
+      <div class="chat-runtime-setup-ready">
+        <strong>Live agent URLs configured</strong>
+        <span>${escapeHtml(configured.map((item) => item.label).join(", "))}</span>
+      </div>
+    ` : "";
+    return;
+  }
+  const missingSnippet = buildN8nRuntimeConfigSnippet(missing.map((item) => ({ id: item.agentId })));
+  const setupPacket = {
+    purpose: "Add missing public UAT webhook URLs so Chat can route live requests to external n8n agents.",
+    config_file: "frontend/assets/agent-runtime-config.json",
+    setup_guide: "docs/n8n-live-url-configuration.md",
+    missing_agents: missing.map((item) => ({
+      agent_id: item.agentId,
+      label: item.label,
+      env_key: item.envVar || agentRuntimeReadiness(item.agentId).envVar,
+      current_state: item.state,
+      next_action: item.nextAction || agentRuntimeReadiness(item.agentId).nextAction,
+      fixture_status: item.replayPassed ? "fixture replay passed" : "fixture documented",
+    })),
+  };
+  target.innerHTML = `
+    <section class="chat-runtime-missing-card">
+      <div>
+        <strong>Live URL setup needed</strong>
+        <span>${escapeHtml(missing.map((item) => item.label).join(", "))}</span>
+        <small>Fixture contracts are ready; live n8n routing waits for public UAT webhook URLs.</small>
+      </div>
+      <div class="button-row tight">
+        <button class="secondary small" type="button" data-chat-action="open-interaction-setup">Open setup</button>
+        <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(setupPacket, null, 2))}">Copy setup packet</button>
+        ${missingSnippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(missingSnippet)}">Copy runtime JSON</button>` : ""}
+        <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/n8n-live-url-configuration.md"))}" target="_blank" rel="noreferrer">Setup guide</a>
+      </div>
+    </section>
+  `;
 }
 
 function renderChatContractActions() {

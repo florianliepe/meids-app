@@ -1,0 +1,24 @@
+[
+  {
+    "name": "desktop-chat-live-url-setup",
+    "viewport": {
+      "width": 1440,
+      "height": 1100
+    },
+    "setupText": "Live URL setup needed\nKnowledge Fabric Agent, Agentic Butler\nFixture contracts are ready; live n8n routing waits for public UAT webhook URLs.\nOpen setup\nCopy setup packet\nCopy runtime JSON\nSetup guide",
+    "copyButtons": 2,
+    "overflow": 0,
+    "consoleErrors": []
+  },
+  {
+    "name": "mobile-chat-live-url-setup",
+    "viewport": {
+      "width": 390,
+      "height": 1200
+    },
+    "setupText": "Live URL setup needed\nKnowledge Fabric Agent, Agentic Butler\nFixture contracts are ready; live n8n routing waits for public UAT webhook URLs.\nOpen setup\nCopy setup packet\nCopy runtime JSON\nSetup guide",
+    "copyButtons": 2,
+    "overflow": 0,
+    "consoleErrors": []
+  }
+]
