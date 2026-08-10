@@ -11,6 +11,8 @@ on:
       - "docs/**"
       - "scripts/pages-smoke-check.cjs"
       - "scripts/validate-n8n-fixtures.cjs"
+      - "scripts/write-n8n-runtime-readiness-status.cjs"
+      - "scripts/write-pages-agent-runtime-config.cjs"
       - ".github/workflows/intellectual-twin-pages.yml"
 
 permissions:
@@ -92,6 +94,8 @@ jobs:
             staticPagesMode: "$GH_PAGES_API_BASE_URL" === ""
           };
           EOF
+          node scripts/write-pages-agent-runtime-config.cjs --output dist-pages/assets/agent-runtime-config.json
+          node scripts/write-n8n-runtime-readiness-status.cjs --config dist-pages/assets/agent-runtime-config.json --output dist-pages/assets/n8n-runtime-readiness-status.json
 
       - name: Smoke check static artifact
         run: node scripts/pages-smoke-check.cjs dist-pages
