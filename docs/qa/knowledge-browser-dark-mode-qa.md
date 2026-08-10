@@ -228,6 +228,19 @@ Latest local QA pass for Knowledge source panel dark-mode polish:
 
 This pass widens the Knowledge source column, stacks source-use metadata into a contained single column, and moves the source panel beneath the increment on narrower layouts. Source readiness, evidence, actor-use, decision-interface, and vector labels remain visible without clipping in dark mode. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-source-panel-polish/`.
 
+Latest local QA pass for GitHub Pages n8n runtime injection:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-agent-config-export.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/replay-n8n-fixtures.cjs --write`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-pages-runtime-injection`
+
+This pass applies the GitHub Pages workflow runtime config boundary for all three top-level agents. Repository secrets can now populate Actor Twin, Knowledge Fabric Agent, and Agentic Butler webhook slots at deploy time, while the UI still reports `awaiting_url` until the corresponding public UAT URLs exist. Screenshots are stored in `docs/visual-qa/screenshots-20260810-pages-runtime-injection/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

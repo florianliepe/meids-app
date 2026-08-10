@@ -1,7 +1,7 @@
 # GitHub Pages Agent Runtime Workflow Patch
 
 Date: 2026-08-10
-Status: prepared; remote workflow update is blocked until the GitHub credential has `workflow` scope
+Status: applied to `.github/workflows/intellectual-twin-pages.yml`; awaiting live Knowledge Fabric Agent and Agentic Butler webhook secrets
 Owner: MeIDs production setup
 
 ## Purpose
@@ -10,7 +10,7 @@ This document records the GitHub Pages workflow update needed to inject all thre
 
 ## Current Supported Paths
 
-Preferred production path after credential upgrade: apply this workflow patch, configure GitHub repository secrets, and rerun the Pages workflow.
+Preferred production path: keep the workflow patch active, configure GitHub repository secrets, and rerun the Pages workflow.
 
 Fallback path for local/static public UAT testing: configure intentionally public webhook URLs through:
 
@@ -31,12 +31,10 @@ Do not place secrets, bearer tokens, private n8n URLs, Azure keys, or internal e
 
 Before using live n8n URLs through workflow-generated config:
 
-1. Provide or install a GitHub credential with `workflow` scope.
-2. Apply this patch to `.github/workflows/intellectual-twin-pages.yml`.
-3. Confirm all webhook URLs are safe to expose to GitHub Pages users, or proxy private endpoints through a hosted backend.
-4. Configure the required secrets in `Settings -> Secrets and variables -> Actions -> Repository secrets`.
-5. Rerun the Pages workflow after secret updates.
-6. Keep `frontend/assets/agent-runtime-config.json` as fallback for public UAT setup and local static testing.
+1. Confirm all webhook URLs are safe to expose to GitHub Pages users, or proxy private endpoints through a hosted backend.
+2. Configure the required secrets in `Settings -> Secrets and variables -> Actions -> Repository secrets`.
+3. Rerun the Pages workflow after secret updates.
+4. Keep `frontend/assets/agent-runtime-config.json` as fallback for public UAT setup and local static testing.
 
 ## Required Secrets
 
@@ -48,9 +46,9 @@ Before using live n8n URLs through workflow-generated config:
 | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` | Knowledge Fabric Agent ingest / graph / vector handoff webhook. | Required for Knowledge Fabric live UAT |
 | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` | Agentic Butler approved skill activation webhook. | Required for Agentic Butler live UAT |
 
-## Required Workflow Shape
+## Applied Workflow Shape
 
-The workflow should contain this runtime-config generation shape after the credential boundary is resolved.
+The workflow contains this runtime-config generation shape.
 
 ```diff
 diff --git a/.github/workflows/intellectual-twin-pages.yml b/.github/workflows/intellectual-twin-pages.yml
@@ -139,7 +137,7 @@ window.INTELLECTUAL_TWIN_CONFIG = {
 };
 ```
 
-## Validation After Applying
+## Validation After Secret Changes
 
 Run locally before pushing:
 
@@ -151,7 +149,7 @@ Run locally before pushing:
 
 After deployment:
 
-1. Open the GitHub Pages URL.
+1. Open the GitHub Pages URL with a cache-busting `?v=<commit>` query.
 2. Open Production/Review Cockpit.
 3. Verify the three agent statuses:
    - Actor Twin: `configured`
