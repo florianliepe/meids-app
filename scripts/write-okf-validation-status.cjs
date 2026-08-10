@@ -45,6 +45,55 @@ function rel(file) {
   return path.relative(root, file).replaceAll("\\", "/");
 }
 
+function readJson(file) {
+  return JSON.parse(fs.readFileSync(file, "utf8"));
+}
+
+function vectorEligibilitySummary(vectorRequests) {
+  const summary = {
+    request_count: vectorRequests.length,
+    document_count: 0,
+    approved_only_request_count: 0,
+    selected_pending_request_count: 0,
+    evidence_ref_count: 0,
+    evidence_state_count: 0,
+    aligned_evidence_state_count: 0,
+    approved_evidence_count: 0,
+    pending_evidence_count: 0,
+    candidate_evidence_count: 0,
+    blocked_evidence_count: 0,
+    statuses: [],
+  };
+  for (const file of vectorRequests) {
+    const request = readJson(file);
+    if (request.source_policy === "approved_only") summary.approved_only_request_count += 1;
+    if (request.source_policy === "selected_pending") summary.selected_pending_request_count += 1;
+    const documents = Array.isArray(request.documents) ? request.documents : [];
+    summary.document_count += documents.length;
+    for (const document of documents) {
+      const evidenceRefs = Array.isArray(document.metadata?.evidence_refs) ? document.metadata.evidence_refs : [];
+      const evidenceStates = Array.isArray(document.metadata?.evidence_review_states) ? document.metadata.evidence_review_states : [];
+      summary.evidence_ref_count += evidenceRefs.length;
+      summary.evidence_state_count += evidenceStates.length;
+      if (evidenceRefs.length === evidenceStates.length) summary.aligned_evidence_state_count += evidenceRefs.length;
+      for (const state of evidenceStates) {
+        if (state === "approved") summary.approved_evidence_count += 1;
+        else if (state === "pending-review") summary.pending_evidence_count += 1;
+        else if (state === "candidate") summary.candidate_evidence_count += 1;
+        else summary.blocked_evidence_count += 1;
+      }
+    }
+  }
+  if (summary.evidence_ref_count && summary.evidence_ref_count === summary.aligned_evidence_state_count) {
+    summary.statuses.push("evidence aligned");
+  }
+  if (summary.selected_pending_request_count) summary.statuses.push("selected pending gated");
+  if (summary.approved_only_request_count) summary.statuses.push("approved only tested");
+  else summary.statuses.push("approved only fixture missing");
+  if (summary.blocked_evidence_count) summary.statuses.push("blocked evidence found");
+  return summary;
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const checks = [
@@ -72,6 +121,7 @@ function main() {
       check_count: checks.length,
       passed_check_count: checks.length - failed.length,
     },
+    vector_eligibility: vectorEligibilitySummary(vectorRequests),
     paths: {
       schema_doc: "docs/knowledge-fabric-okf-schema.md",
       fixture_root: "contracts/okf/examples",

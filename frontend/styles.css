@@ -8216,6 +8216,59 @@ body.theme-dark .graph-svg-edge-label text {
   color: var(--muted);
 }
 
+.okf-vector-eligibility {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+
+.okf-vector-eligibility p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.okf-vector-state-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.okf-vector-state-grid span {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.okf-vector-state-grid strong {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.okf-vector-state-grid small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.okf-vector-state-grid .ready {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+}
+
+.okf-vector-state-grid .pending {
+  border-color: color-mix(in srgb, var(--warn) 28%, var(--line));
+}
+
+.okf-vector-state-grid .warning {
+  border-color: color-mix(in srgb, var(--danger) 42%, var(--line));
+}
+
 .okf-validation-checks article {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -8232,7 +8285,9 @@ body.theme-dark .graph-svg-edge-label text {
 }
 
 body.theme-dark .okf-validation-summary,
-body.theme-dark .okf-validation-checks article {
+body.theme-dark .okf-validation-checks article,
+body.theme-dark .okf-vector-eligibility,
+body.theme-dark .okf-vector-state-grid span {
   border-color: rgba(241, 235, 224, 0.18);
   background: #171d18;
 }
@@ -8250,6 +8305,10 @@ body.theme-dark .okf-validation-summary.warning {
   .okf-validation-summary,
   .okf-validation-checks article {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .okf-vector-state-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -8293,7 +8352,9 @@ body.theme-dark .okf-validation-summary.warning {
 }
 
 .agent-contract-status-strip .blocked,
-.agent-contract-status-strip .missing-url {
+.agent-contract-status-strip .missing-url,
+.agent-contract-status-strip .approved-only-fixture-missing,
+.agent-contract-status-strip .blocked-evidence-found {
   border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
   color: var(--warn);
 }

@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-10T01:38:24.524Z",
+  "generated_at": "2026-08-10T01:41:55.165Z",
   "status": "passed",
   "statuses": [
     "documented",
@@ -16,6 +16,24 @@
     "vector_request_fixture_count": 2,
     "check_count": 3,
     "passed_check_count": 3
+  },
+  "vector_eligibility": {
+    "request_count": 2,
+    "document_count": 2,
+    "approved_only_request_count": 0,
+    "selected_pending_request_count": 2,
+    "evidence_ref_count": 2,
+    "evidence_state_count": 2,
+    "aligned_evidence_state_count": 2,
+    "approved_evidence_count": 0,
+    "pending_evidence_count": 2,
+    "candidate_evidence_count": 0,
+    "blocked_evidence_count": 0,
+    "statuses": [
+      "evidence aligned",
+      "selected pending gated",
+      "approved only fixture missing"
+    ]
   },
   "paths": {
     "schema_doc": "docs/knowledge-fabric-okf-schema.md",

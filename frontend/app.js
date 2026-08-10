@@ -12449,6 +12449,7 @@ function renderOkfValidationStatusPanel() {
     return;
   }
   const summary = status.summary || {};
+  const vector = status.vector_eligibility || {};
   const paths = status.paths || {};
   const checks = Array.isArray(status.checks) ? status.checks : [];
   const statusClass = status.status === "passed" ? "ready" : status.status === "blocked" ? "pending" : "warning";
@@ -12463,6 +12464,22 @@ function renderOkfValidationStatusPanel() {
       </div>
       <div class="agent-contract-status-strip">
         ${(status.statuses || []).map((item) => `<span class="${safeGraphClass(item)}">${escapeHtml(item)}</span>`).join("")}
+      </div>
+    </div>
+    <div class="okf-vector-eligibility">
+      <div>
+        <span class="queue-kind">vector eligibility</span>
+        <strong>${escapeHtml(`${vector.document_count ?? 0} documents · ${vector.evidence_ref_count ?? 0} evidence refs`)}</strong>
+        <p>${escapeHtml(`${vector.selected_pending_request_count ?? 0} selected-pending · ${vector.approved_only_request_count ?? 0} approved-only · ${vector.aligned_evidence_state_count ?? 0}/${vector.evidence_ref_count ?? 0} evidence states aligned`)}</p>
+      </div>
+      <div class="okf-vector-state-grid">
+        <span class="ready"><strong>${escapeHtml(String(vector.approved_evidence_count ?? 0))}</strong><small>approved evidence</small></span>
+        <span class="pending"><strong>${escapeHtml(String(vector.pending_evidence_count ?? 0))}</strong><small>pending evidence</small></span>
+        <span class="pending"><strong>${escapeHtml(String(vector.candidate_evidence_count ?? 0))}</strong><small>candidate evidence</small></span>
+        <span class="${Number(vector.blocked_evidence_count || 0) ? "warning" : "ready"}"><strong>${escapeHtml(String(vector.blocked_evidence_count ?? 0))}</strong><small>blocked evidence</small></span>
+      </div>
+      <div class="agent-contract-status-strip">
+        ${(vector.statuses || []).map((item) => `<span class="${safeGraphClass(item)}">${escapeHtml(item)}</span>`).join("")}
       </div>
     </div>
     <div class="okf-validation-checks">
