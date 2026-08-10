@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-10T19:23:15.051Z",
+  "generated_at": "2026-08-10T22:08:32.894Z",
   "status": "passed",
   "statuses": [
     "documented",
@@ -16,6 +16,7 @@
     "generated_ingest_file_count": 9,
     "promotion_fixture_count": 3,
     "repo_sync_package_fixture_count": 1,
+    "schema_file_count": 6,
     "vector_request_fixture_count": 3,
     "negative_vector_fixture_count": 2,
     "negative_concept_fixture_count": 1,
@@ -44,6 +45,7 @@
   },
   "paths": {
     "schema_doc": "docs/knowledge-fabric-okf-schema.md",
+    "schema_root": "contracts/okf/schemas",
     "fixture_root": "contracts/okf/examples",
     "ingest_request": "contracts/okf/ingest/sample-ingest-request.json",
     "generated_root": "contracts/okf/generated",
@@ -57,7 +59,7 @@
       "command": "node scripts/validate-okf-fixtures.cjs",
       "status": "passed",
       "exit_code": 0,
-      "stdout": "OKF fixture validation passed: 18 files across 16 fixture groups",
+      "stdout": "OKF fixture validation passed: 18 files across 17 fixture groups",
       "stderr": ""
     },
     {
@@ -104,6 +106,14 @@
     ],
     "repo_sync_packages": [
       "contracts/okf/repo-sync/okf-graph-package-example.json"
+    ],
+    "schema_files": [
+      "contracts/okf/schemas/concept.schema.json",
+      "contracts/okf/schemas/evidence.schema.json",
+      "contracts/okf/schemas/graph-edge.schema.json",
+      "contracts/okf/schemas/graph-node.schema.json",
+      "contracts/okf/schemas/shared-definitions.schema.json",
+      "contracts/okf/schemas/transcript.schema.json"
     ],
     "vector_requests": [
       "contracts/okf/examples/vector/approved-only-upsert-request.json",

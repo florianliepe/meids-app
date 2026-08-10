@@ -13756,6 +13756,7 @@ function renderOkfValidationStatusPanel() {
   const vector = status.vector_eligibility || {};
   const evidenceGaps = okfEvidenceReviewGapSummary(state.concepts || []);
   const paths = status.paths || {};
+  const schemaFiles = Array.isArray(status.sample_files?.schema_files) ? status.sample_files.schema_files : [];
   const checks = Array.isArray(status.checks) ? status.checks : [];
   const statusClass = status.status === "passed" ? "ready" : status.status === "blocked" ? "pending" : "warning";
   target.innerHTML = `
@@ -13798,6 +13799,23 @@ function renderOkfValidationStatusPanel() {
         <span class="pending"><strong>${escapeHtml(String(evidenceGaps.pendingEvidenceConceptCount))}</strong><small>pending evidence</small></span>
         <span class="${evidenceGaps.blockedEvidenceConceptCount ? "warning" : "ready"}"><strong>${escapeHtml(String(evidenceGaps.blockedEvidenceConceptCount))}</strong><small>blocked evidence</small></span>
         <span class="${evidenceGaps.missingReviewStateCount ? "warning" : "ready"}"><strong>${escapeHtml(String(evidenceGaps.missingReviewStateCount))}</strong><small>missing state</small></span>
+      </div>
+    </div>
+    <div class="okf-schema-bundle-card">
+      <div>
+        <span class="queue-kind">OKF schema bundle</span>
+        <strong>${escapeHtml(`${schemaFiles.length || summary.schema_file_count || 0} schema artifacts`)}</strong>
+        <p>Portable contracts for concepts, evidence, transcripts, graph nodes, graph edges, and shared review states.</p>
+      </div>
+      <div class="okf-schema-link-grid">
+        ${schemaFiles.map((file) => `
+          <a href="${escapeHtml(githubBlobUrl(file))}" target="_blank" rel="noreferrer">${escapeHtml(file.split("/").pop() || file)}</a>
+        `).join("") || `<span>${escapeHtml("Schema file list unavailable.")}</span>`}
+      </div>
+      <div class="button-row tight">
+        ${paths.schema_root ? `<a class="secondary small" href="${escapeHtml(githubBlobUrl(paths.schema_root))}" target="_blank" rel="noreferrer">Open schema folder</a>` : ""}
+        ${paths.schema_doc ? `<a class="secondary small" href="${escapeHtml(githubBlobUrl(paths.schema_doc))}" target="_blank" rel="noreferrer">Open schema guide</a>` : ""}
+        <a class="secondary small" href="${escapeHtml(githubBlobUrl("frontend/assets/okf-validation-status.json"))}" target="_blank" rel="noreferrer">Open status artifact</a>
       </div>
     </div>
     <div class="okf-validation-checks">

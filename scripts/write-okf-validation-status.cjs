@@ -119,6 +119,7 @@ function main() {
   const generated = listFiles(path.join(root, "contracts", "okf", "generated"), (file) => /\.(md|yaml|json|jsonl)$/.test(file));
   const promotions = listFiles(path.join(root, "contracts", "okf", "promotions"), (file) => file.endsWith(".json"));
   const repoSyncPackages = listFiles(path.join(root, "contracts", "okf", "repo-sync"), (file) => file.endsWith(".json"));
+  const schemaFiles = listFiles(path.join(root, "contracts", "okf", "schemas"), (file) => file.endsWith(".schema.json"));
   const vectorRequests = listFiles(path.join(root, "contracts", "okf"), (file) => file.includes(`${path.sep}vector${path.sep}`) && !file.includes(`${path.sep}negative${path.sep}`) && file.endsWith(".json"));
   const negativeVectorRequests = listFiles(path.join(root, "contracts", "okf", "negative", "vector"), (file) => file.endsWith(".json"));
   const negativeConcepts = listFiles(path.join(root, "contracts", "okf", "negative", "concepts"), (file) => file.endsWith(".md"));
@@ -135,6 +136,7 @@ function main() {
       generated_ingest_file_count: generated.length,
       promotion_fixture_count: promotions.length,
       repo_sync_package_fixture_count: repoSyncPackages.length,
+      schema_file_count: schemaFiles.length,
       vector_request_fixture_count: vectorRequests.length,
       negative_vector_fixture_count: negativeVectorRequests.length,
       negative_concept_fixture_count: negativeConcepts.length,
@@ -146,6 +148,7 @@ function main() {
     vector_eligibility: vectorEligibilitySummary(vectorRequests),
     paths: {
       schema_doc: "docs/knowledge-fabric-okf-schema.md",
+      schema_root: "contracts/okf/schemas",
       fixture_root: "contracts/okf/examples",
       ingest_request: "contracts/okf/ingest/sample-ingest-request.json",
       generated_root: "contracts/okf/generated",
@@ -160,6 +163,7 @@ function main() {
       generated: generated.slice(0, 5).map(rel),
       promotions: promotions.map(rel),
       repo_sync_packages: repoSyncPackages.map(rel),
+      schema_files: schemaFiles.map(rel),
       vector_requests: vectorRequests.map(rel),
       negative_vector_requests: negativeVectorRequests.map(rel),
       negative_concepts: negativeConcepts.map(rel),
