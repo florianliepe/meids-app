@@ -16,7 +16,7 @@ MeIDs can run in GitHub Pages fixture mode without live n8n workflows. For produ
 
 ## GitHub Pages Secrets
 
-The Pages workflow generates `runtime-config.js` during deployment. The currently deployed workflow injects the chat webhook. Explicit top-level agent webhook secrets are reserved for the next workflow-scope update:
+The preferred production path is to let the Pages workflow generate `runtime-config.js` during deployment from repository secrets. This requires a workflow update that adds explicit top-level agent webhook secret slots:
 
 | Secret | Purpose |
 |---|---|
@@ -25,21 +25,23 @@ The Pages workflow generates `runtime-config.js` during deployment. The currentl
 | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` | Knowledge Fabric Agent ingest / graph / vector handoff webhook |
 | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` | Agentic Butler approved skill activation webhook |
 
-Target behavior after the workflow-scope update: if a secret is empty, the generated runtime config keeps that agent in `awaiting_url` state. The Actor Twin URL falls back to `GH_PAGES_N8N_CHAT_WEBHOOK_URL` when the explicit Actor Twin secret is empty.
+If a secret is empty, the generated runtime config should keep that agent in `awaiting_url` state. The Actor Twin URL should fall back to `GH_PAGES_N8N_CHAT_WEBHOOK_URL` when the explicit Actor Twin secret is empty.
 
 Secrets must be configured in GitHub at:
 
 `Settings -> Secrets and variables -> Actions -> Repository secrets`
 
-Current access note: GitHub rejects workflow edits from the available OAuth credential because it lacks `workflow` scope. Until a workflow-scope credential is available, configure public UAT endpoints through `frontend/assets/agent-runtime-config.json`.
+Current credential boundary: the repository workflow patch is documented, but pushing workflow file changes requires a GitHub credential with `workflow` scope.
 
-Prepared workflow-scope patch: [`docs/production/github-pages-agent-runtime-workflow-patch.md`](production/github-pages-agent-runtime-workflow-patch.md). Apply it only after the GitHub credential or GitHub App has permission to update workflow files.
+Current workflow: [`.github/workflows/intellectual-twin-pages.yml`](../.github/workflows/intellectual-twin-pages.yml).
+
+Workflow patch record: [`docs/production/github-pages-agent-runtime-workflow-patch.md`](production/github-pages-agent-runtime-workflow-patch.md).
 
 After changing a secret later, trigger the Pages workflow again through a push to `main` or `Actions -> Deploy MeIDs frontend to GitHub Pages -> Run workflow`.
 
-## Public Staging Asset
+## Current Public Staging Asset Path
 
-GitHub Pages also loads `frontend/assets/agent-runtime-config.json` in static mode. The workflow copies this asset unchanged, so it can expose non-secret staging webhook URLs when an Actions secret is not suitable.
+GitHub Pages also loads `frontend/assets/agent-runtime-config.json` in static mode. The workflow copies this asset unchanged, so it can expose non-secret staging webhook URLs when an Actions secret is not suitable or for local/static fallback testing.
 
 Use this only for intentionally public UAT endpoints:
 
@@ -76,8 +78,8 @@ The Actor Twin is configured for public staging. The following live endpoints ar
 
 | Agent | Required public UAT key | UI setup action |
 |---|---|---|
-| Knowledge Fabric Agent | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` or `n8nAgentWebhooks.knowledge_fabric_agent` | Production/Review Cockpit -> Runtime setup actions -> Copy JSON |
-| Agentic Butler | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` or `n8nAgentWebhooks.agentic_butler` | Production/Review Cockpit -> Runtime setup actions -> Copy JSON |
+| Knowledge Fabric Agent | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` or fallback `n8nAgentWebhooks.knowledge_fabric_agent` | Review Cockpit -> Knowledge-to-Graph Handoff -> Copy setup packet |
+| Agentic Butler | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` or fallback `n8nAgentWebhooks.agentic_butler` | Review Cockpit -> Knowledge-to-Graph Handoff -> Copy setup packet |
 
 Minimal public staging JSON shape:
 

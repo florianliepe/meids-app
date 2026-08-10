@@ -8358,22 +8358,26 @@ body.theme-dark .knowledge-source-readiness-grid span {
 .dashboard-agent-probe-head {
   align-items: end;
   display: grid;
-  gap: 6px;
+  gap: 12px;
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
-.dashboard-agent-probe-head .badge,
-.dashboard-agent-probe-head small {
-  grid-column: 1 / -1;
+.dashboard-agent-probe-head > div:first-child {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
 .dashboard-agent-probe-head strong {
   color: var(--ink);
   font-size: 15px;
+  overflow-wrap: anywhere;
 }
 
 .dashboard-agent-probe-head small {
   color: var(--muted);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .dashboard-agent-probe-grid {

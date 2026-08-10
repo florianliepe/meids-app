@@ -1,18 +1,18 @@
 # GitHub Pages Agent Runtime Workflow Patch
 
 Date: 2026-08-10
-Status: prepared, not applied
+Status: prepared; applying requires a GitHub credential with `workflow` scope
 Owner: MeIDs production setup
 
 ## Purpose
 
-This document defines the exact GitHub Pages workflow update required to inject all three MeIDs top-level n8n agent URLs into `runtime-config.js` during deployment.
+This document records the GitHub Pages workflow update needed to inject all three MeIDs top-level n8n agent URLs into `runtime-config.js` during deployment.
 
-It is intentionally stored as documentation only. The current available GitHub credential can push code and documentation, but GitHub rejects edits to `.github/workflows/intellectual-twin-pages.yml` unless the credential has `workflow` scope.
+## Current Supported Paths
 
-## Current Safe Path
+Preferred production path: apply this workflow patch, configure GitHub repository secrets, and rerun the Pages workflow.
 
-Until workflow-scope access is available, configure intentionally public UAT webhook URLs through:
+Fallback path for local/static public UAT testing: configure intentionally public webhook URLs through:
 
 ```text
 frontend/assets/agent-runtime-config.json
@@ -29,12 +29,13 @@ Do not place secrets, bearer tokens, private n8n URLs, Azure keys, or internal e
 
 ## Preconditions
 
-Before applying the workflow patch:
+Before using live n8n URLs through workflow-generated config:
 
-1. Use a GitHub credential with `workflow` scope, or a GitHub App installation with workflow write permission.
-2. Confirm all webhook URLs are safe to expose to GitHub Pages users, or proxy private endpoints through a hosted backend.
-3. Configure the required secrets in `Settings -> Secrets and variables -> Actions -> Repository secrets`.
-4. Keep `frontend/assets/agent-runtime-config.json` as fallback for public UAT setup and local static testing.
+1. Apply this patch with a credential that can update `.github/workflows/*` files.
+2. Confirm the workflow on `main` includes the three top-level webhook secret slots.
+3. Confirm all webhook URLs are safe to expose to GitHub Pages users, or proxy private endpoints through a hosted backend.
+4. Configure the required secrets in `Settings -> Secrets and variables -> Actions -> Repository secrets`.
+5. Keep `frontend/assets/agent-runtime-config.json` as fallback for public UAT setup and local static testing.
 
 ## Required Secrets
 
@@ -46,9 +47,9 @@ Before applying the workflow patch:
 | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` | Knowledge Fabric Agent ingest / graph / vector handoff webhook. | Required for Knowledge Fabric live UAT |
 | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` | Agentic Butler approved skill activation webhook. | Required for Agentic Butler live UAT |
 
-## Intended Workflow Patch
+## Required Workflow Shape
 
-Apply this patch only after workflow-scope access is available.
+The workflow should contain this runtime-config generation shape.
 
 ```diff
 diff --git a/.github/workflows/intellectual-twin-pages.yml b/.github/workflows/intellectual-twin-pages.yml

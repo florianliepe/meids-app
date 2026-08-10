@@ -12697,11 +12697,12 @@ function renderN8nCurrentSupportedConfigPath(snippet = "") {
     <aside class="n8n-current-config-path">
       <div>
         <span class="badge">Current supported path</span>
-        <strong>Edit the public staging runtime asset for Knowledge Fabric and Agentic Butler URLs.</strong>
-        <p>GitHub workflow-secret injection is prepared as the future path, but the current OAuth credential cannot update workflow files because it lacks workflow scope. Use this asset for intentionally public UAT webhooks until a workflow-scope credential or hosted backend is available.</p>
+        <strong>Add missing agent webhook URLs through the runtime asset, or apply the workflow patch with a workflow-scoped credential.</strong>
+        <p>The cockpit can generate setup packets for Actor Twin, Knowledge Fabric Agent, and Agentic Butler. GitHub workflow-secret injection is documented as the production path, but updating workflow files requires a credential with workflow scope.</p>
       </div>
       <code>${escapeHtml(runtimeAssetPath)}</code>
       <div class="button-row tight">
+        <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/production/github-pages-agent-runtime-workflow-patch.md"))}" target="_blank" rel="noreferrer">Open workflow patch</a>
         <a class="secondary small" href="${escapeHtml(githubBlobUrl(runtimeAssetPath))}" target="_blank" rel="noreferrer">Open asset</a>
         ${snippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(snippet)}">Copy asset JSON</button>` : ""}
         <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/n8n-live-url-configuration.md"))}" target="_blank" rel="noreferrer">Open guide</a>
@@ -17482,12 +17483,25 @@ function renderDashboardKnowledgeGraphHandoff() {
 function renderDashboardAgentProbeStrip(statuses = chatAgentContractStatuses()) {
   const replayPassed = state.n8nAgentContracts?.replay_status === "passed";
   const replayCaseCount = Number(state.n8nAgentContracts?.replay_case_count || 0);
+  const contractByAgent = new Map((state.n8nAgentContracts?.contracts || []).map((contract) => [contract.agent_id, contract]));
+  const missingAgents = statuses
+    .filter((item) => !item.configured)
+    .map((item) => ({ id: item.agentId, name: item.label }));
+  const setupPacket = buildN8nLiveUrlSetupPacket(missingAgents, contractByAgent);
+  const missingConfig = buildN8nRuntimeConfigSnippet(missingAgents);
   return `
     <div class="dashboard-agent-probe-strip" aria-label="Top-level agent contract readiness">
       <div class="dashboard-agent-probe-head">
-        <span class="badge">Top-level agent contracts</span>
-        <strong>${escapeHtml(`${statuses.filter((item) => item.configured).length}/${statuses.length} URLs configured`)}</strong>
-        <small>${escapeHtml("Fixture replay can pass before live workflow rollout; production approval still requires URL, probe, and trace evidence.")}</small>
+        <div>
+          <span class="badge">Top-level agent contracts</span>
+          <strong>${escapeHtml(`${statuses.filter((item) => item.configured).length}/${statuses.length} URLs configured`)}</strong>
+          <small>${escapeHtml("Fixture replay can pass before live workflow rollout; production approval still requires URL, probe, and trace evidence.")}</small>
+        </div>
+        <div class="button-row tight">
+          <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/n8n-live-url-configuration.md"))}" target="_blank" rel="noreferrer">Open guide</a>
+          ${setupPacket ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(setupPacket)}">Copy setup packet</button>` : ""}
+          ${missingConfig ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(missingConfig)}">Copy runtime JSON</button>` : ""}
+        </div>
       </div>
       <div class="dashboard-agent-probe-grid">
         ${statuses.map((item) => {
