@@ -12,6 +12,7 @@ Each fixture includes:
 - `response`: successful output envelope.
 - `approval_required`: human-gated action envelope.
 - `failure`: recoverable failure envelope.
+- `live_probe`: no-write readiness probe used after a public UAT or hosted webhook URL exists.
 
 Run the local structural check:
 
@@ -25,7 +26,7 @@ Replay all fixture cases and refresh the public cockpit status artifact:
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\replay-n8n-fixtures.cjs --write
 ```
 
-The replay artifact is written to `frontend/assets/n8n-contract-replay-status.json` and is safe for GitHub Pages because it contains only readiness metadata, case counts, and public fixture references.
+The replay artifact is written to `frontend/assets/n8n-contract-replay-status.json` and is safe for GitHub Pages because it contains only readiness metadata, case counts, and public fixture references. Current coverage is 15 replay cases across the three top-level agents.
 
 The public-safe agent-config handoff manifest is:
 

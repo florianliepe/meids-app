@@ -53,8 +53,35 @@ function validateFixture(file) {
   if (typeof fixture.failure.error?.recoverable !== "boolean") {
     fail(`${fixture.agent_id}: failure.error.recoverable boolean missing`);
   }
+  validateLiveProbeFixture(fixture);
   if (fixture.agent_id === "knowledge_fabric_agent") validateKnowledgeFabricFixture(fixture);
   return fixture.agent_id;
+}
+
+function validateLiveProbeFixture(fixture) {
+  const liveProbe = fixture.live_probe;
+  if (!liveProbe || typeof liveProbe !== "object") fail(`${fixture.agent_id}: live_probe missing`);
+  assertEnvelope("live_probe", liveProbe, fixture.agent_id);
+  if (liveProbe.intent !== "live_probe") fail(`${fixture.agent_id}: live_probe.intent must be live_probe`);
+  if (liveProbe.input?.execute !== false) fail(`${fixture.agent_id}: live_probe.input.execute must be false`);
+  if (liveProbe.context?.side_effect_policy !== "no_write_probe") {
+    fail(`${fixture.agent_id}: live_probe.context.side_effect_policy must be no_write_probe`);
+  }
+  const expectedCapabilities = liveProbe.context?.expected_capabilities;
+  if (!Array.isArray(expectedCapabilities) || expectedCapabilities.length < 5) {
+    fail(`${fixture.agent_id}: live_probe.context.expected_capabilities incomplete`);
+  }
+  const expected = liveProbe.expected_response || {};
+  if (expected.status !== "completed") fail(`${fixture.agent_id}: live_probe.expected_response.status must be completed`);
+  if (expected.output?.side_effects !== "none") {
+    fail(`${fixture.agent_id}: live_probe.expected_response.output.side_effects must be none`);
+  }
+  if (!Array.isArray(expected.output?.capabilities_checked) || expected.output.capabilities_checked.length !== expectedCapabilities.length) {
+    fail(`${fixture.agent_id}: live_probe.expected_response.output.capabilities_checked must match expected_capabilities`);
+  }
+  if (expected.trace?.trace_id_required !== true) {
+    fail(`${fixture.agent_id}: live_probe.expected_response.trace.trace_id_required must be true`);
+  }
 }
 
 function validateKnowledgeFabricFixture(fixture) {
@@ -69,21 +96,6 @@ function validateKnowledgeFabricFixture(fixture) {
   }
   if (!["deferred", "blocked"].includes(output.vector_refresh?.status)) {
     fail(`${fixture.agent_id}: vector_refresh.status must be deferred or blocked before approval`);
-  }
-  const liveProbe = fixture.live_probe;
-  if (!liveProbe || typeof liveProbe !== "object") fail(`${fixture.agent_id}: live_probe missing`);
-  assertEnvelope("live_probe", liveProbe, fixture.agent_id);
-  if (liveProbe.intent !== "live_probe") fail(`${fixture.agent_id}: live_probe.intent must be live_probe`);
-  if (liveProbe.input?.execute !== false) fail(`${fixture.agent_id}: live_probe.input.execute must be false`);
-  if (liveProbe.context?.side_effect_policy !== "no_write_probe") {
-    fail(`${fixture.agent_id}: live_probe.context.side_effect_policy must be no_write_probe`);
-  }
-  const expectedCapabilities = liveProbe.context?.expected_capabilities;
-  if (!Array.isArray(expectedCapabilities) || expectedCapabilities.length < 5) {
-    fail(`${fixture.agent_id}: live_probe.context.expected_capabilities incomplete`);
-  }
-  if (liveProbe.expected_response?.trace?.trace_id_required !== true) {
-    fail(`${fixture.agent_id}: live_probe.expected_response.trace.trace_id_required must be true`);
   }
   const examples = fixture.source_path_examples;
   if (!Array.isArray(examples) || examples.length < 2) {

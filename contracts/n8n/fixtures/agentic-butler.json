@@ -77,5 +77,54 @@
       "message": "The requested skill is not approved for runtime use.",
       "recoverable": true
     }
+  },
+  "live_probe": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_agentic_butler_live_probe_001",
+    "agent_id": "agentic_butler",
+    "intent": "live_probe",
+    "principal": {
+      "twin_id": "florian",
+      "display_name": "Florian"
+    },
+    "input": {
+      "execute": false,
+      "skill_id": "project-management-support-steering",
+      "manual_trigger": true,
+      "source_summary": "Public-safe Agentic Butler readiness probe. Do not create meetings or send messages."
+    },
+    "context": {
+      "expected_capabilities": [
+        "approved_skill_validation",
+        "internal_skill_orchestrator_boundary",
+        "actor_twin_checkpoint",
+        "approval_gate_detection",
+        "trace_response"
+      ],
+      "skill_orchestrator": "internal_component",
+      "side_effect_policy": "no_write_probe"
+    },
+    "approval": {
+      "required": false,
+      "reason": "Readiness probe only; no durable action or external side effect."
+    },
+    "expected_response": {
+      "status": "completed",
+      "output": {
+        "readiness": "connected",
+        "side_effects": "none",
+        "capabilities_checked": [
+          "approved_skill_validation",
+          "internal_skill_orchestrator_boundary",
+          "actor_twin_checkpoint",
+          "approval_gate_detection",
+          "trace_response"
+        ]
+      },
+      "trace": {
+        "stored": true,
+        "trace_id_required": true
+      }
+    }
   }
 }

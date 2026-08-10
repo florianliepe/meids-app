@@ -132,6 +132,19 @@ Latest local QA pass for the Knowledge Browser source contract strip:
 
 This pass adds a per-concept source contract strip for review state, source linkage, evidence readiness, and Actor Twin use policy. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-source-contract-strip/`.
 
+Latest local QA pass for n8n live-probe fixture coverage:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-agent-config-export.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/replay-n8n-fixtures.cjs --write`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-n8n-live-probe-fixtures`
+
+This pass makes `live_probe` a required replay case for Actor Twin, Knowledge Fabric Agent, and Agentic Butler. The public replay artifact now reports 15 fixture cases. Screenshots are stored in `docs/visual-qa/screenshots-20260810-n8n-live-probe-fixtures/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

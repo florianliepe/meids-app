@@ -71,5 +71,52 @@
       "message": "No approved or cited context was available for this question.",
       "recoverable": true
     }
+  },
+  "live_probe": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_actor_twin_live_probe_001",
+    "agent_id": "actor_twin",
+    "intent": "live_probe",
+    "principal": {
+      "twin_id": "florian",
+      "display_name": "Florian"
+    },
+    "input": {
+      "execute": false,
+      "query": "Public-safe Actor Twin readiness probe. Do not use private knowledge.",
+      "mode": "contract_probe"
+    },
+    "context": {
+      "expected_capabilities": [
+        "intent_interpretation",
+        "approved_first_retrieval_policy",
+        "citation_contract",
+        "approval_boundary_detection",
+        "trace_response"
+      ],
+      "side_effect_policy": "no_write_probe"
+    },
+    "approval": {
+      "required": false,
+      "reason": "Readiness probe only; no external action."
+    },
+    "expected_response": {
+      "status": "completed",
+      "output": {
+        "readiness": "connected",
+        "side_effects": "none",
+        "capabilities_checked": [
+          "intent_interpretation",
+          "approved_first_retrieval_policy",
+          "citation_contract",
+          "approval_boundary_detection",
+          "trace_response"
+        ]
+      },
+      "trace": {
+        "stored": true,
+        "trace_id_required": true
+      }
+    }
   }
 }

@@ -1,9 +1,9 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-10T05:56:35.075Z",
+  "generated_at": "2026-08-10T07:38:28.614Z",
   "status": "passed",
   "fixture_count": 3,
-  "case_count": 13,
+  "case_count": 15,
   "statuses": [
     "documented",
     "fixture ready",
@@ -20,12 +20,13 @@
       "contract_version": "0.1.0",
       "source": "contracts/n8n/fixtures/actor-twin.json",
       "status": "passed",
-      "case_count": 4,
+      "case_count": 5,
       "tested_cases": [
         "request",
         "response",
         "approval_required",
-        "failure"
+        "failure",
+        "live_probe"
       ],
       "statuses": [
         "documented",
@@ -82,6 +83,18 @@
             "error_message",
             "recoverability"
           ]
+        },
+        {
+          "case": "live_probe",
+          "status": "passed",
+          "request_id": "req_actor_twin_live_probe_001",
+          "checks": [
+            "live_probe_intent",
+            "no_execution",
+            "no_write_boundary",
+            "capability_contract",
+            "trace_required"
+          ]
         }
       ]
     },
@@ -91,12 +104,13 @@
       "contract_version": "0.1.0",
       "source": "contracts/n8n/fixtures/agentic-butler.json",
       "status": "passed",
-      "case_count": 4,
+      "case_count": 5,
       "tested_cases": [
         "request",
         "response",
         "approval_required",
-        "failure"
+        "failure",
+        "live_probe"
       ],
       "statuses": [
         "documented",
@@ -152,6 +166,18 @@
             "error_code",
             "error_message",
             "recoverability"
+          ]
+        },
+        {
+          "case": "live_probe",
+          "status": "passed",
+          "request_id": "req_agentic_butler_live_probe_001",
+          "checks": [
+            "live_probe_intent",
+            "no_execution",
+            "no_write_boundary",
+            "capability_contract",
+            "trace_required"
           ]
         }
       ]
