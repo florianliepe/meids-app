@@ -21405,6 +21405,59 @@ body.graph-presenting {
   margin: 0;
 }
 
+.graph-promotion-decision-summary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.graph-promotion-decision-summary span {
+  background: color-mix(in srgb, var(--surface) 88%, var(--surface-quiet));
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--muted) 34%, transparent);
+  border-radius: 9px;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 9px;
+}
+
+.graph-promotion-decision-summary span.explicit,
+.graph-promotion-decision-summary span.approved,
+.graph-promotion-decision-summary span.accepted,
+.graph-promotion-decision-summary span.trusted {
+  border-left-color: #34c795;
+}
+
+.graph-promotion-decision-summary span.inferred,
+.graph-promotion-decision-summary span.candidate,
+.graph-promotion-decision-summary span.unreviewed,
+.graph-promotion-decision-summary span.confidence {
+  border-left-color: #d7a84f;
+}
+
+.graph-promotion-decision-summary span.needs-rework,
+.graph-promotion-decision-summary span.rejected,
+.graph-promotion-decision-summary span.blocked {
+  border-left-color: #d06e68;
+}
+
+.graph-promotion-decision-summary small {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.graph-promotion-decision-summary strong {
+  color: var(--ink);
+  font-size: 0.8rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
 .graph-promotion-decision-grid {
   display: grid;
   gap: 8px;
@@ -21420,6 +21473,7 @@ body.graph-presenting {
   color: var(--ink);
   display: grid;
   gap: 4px;
+  min-height: 116px;
   min-width: 0;
   padding: 10px;
   text-align: left;
@@ -23443,6 +23497,19 @@ body.theme-dark .graph-promotion-decision-head p {
   color: #cfc6b8;
 }
 
+body.theme-dark .graph-promotion-decision-summary span {
+  background: #101411;
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .graph-promotion-decision-summary small {
+  color: #b7ad9e;
+}
+
+body.theme-dark .graph-promotion-decision-summary strong {
+  color: #fff8ea;
+}
+
 body.theme-dark .graph-promotion-decision-grid button,
 body.theme-dark .graph-promotion-decision-grid span {
   background: #101411;
@@ -24280,6 +24347,10 @@ body.theme-dark .kg-count {
   }
 
   .graph-confidence-band-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .graph-promotion-decision-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

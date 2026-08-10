@@ -6029,7 +6029,8 @@ function renderGraphReviewOutcome(edge, nodeMap) {
 function renderGraphSelectedEdgeActions(edge, source = {}, targetNode = {}) {
   const relation = edge.relation_type || edge.edge_type || "related";
   const reviewState = edge.review_state || "unreviewed";
-  const candidate = String(relation).includes("candidate");
+  const relationClass = graphEdgeClass(edge);
+  const candidate = String(relation).includes("candidate") || relationClass === "candidate";
   const pending = candidate && reviewState === "unreviewed";
   const policy = graphEdgeUsagePolicy(edge);
   const labelTriggered = state.graphEdgeSelectionSource === "label" && state.selectedGraphEdgeKey === edge.edge_key;
@@ -6101,6 +6102,7 @@ function renderGraphPromotionDecisionShortcuts(edge = {}) {
         <span class="badge">Promotion decision</span>
         <p>Choose how this candidate relation enters the compound knowledge fabric.</p>
       </div>
+      ${renderGraphPromotionDecisionSummary(edge)}
       <div class="graph-promotion-decision-grid">
         ${actions.map((action) => `
           <button class="${escapeHtml(action.className)}" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="${escapeHtml(action.decision)}">
@@ -6122,6 +6124,7 @@ function renderGraphPromotionDecisionOutcome(edge = {}) {
         <span class="badge">Promotion state</span>
         <p>${escapeHtml(decision.description)}</p>
       </div>
+      ${renderGraphPromotionDecisionSummary(edge)}
       <div class="graph-promotion-decision-grid readonly">
         <span class="${safeGraphClass(decision.className)}">
           <strong>${escapeHtml(labelizeGraph(decision.label))}</strong>
@@ -6130,6 +6133,34 @@ function renderGraphPromotionDecisionOutcome(edge = {}) {
         </span>
       </div>
     </section>
+  `;
+}
+
+function renderGraphPromotionDecisionSummary(edge = {}) {
+  const relation = edge.relation_type || edge.edge_type || "related";
+  const reviewState = edge.review_state || "unreviewed";
+  const confidence = graphEdgeConfidencePercent(edge);
+  const policy = graphEdgeUsagePolicy(edge);
+  const relationClass = graphEdgeClass(edge);
+  return `
+    <div class="graph-promotion-decision-summary">
+      <span class="${safeGraphClass(relationClass)}">
+        <small>Relation</small>
+        <strong>${escapeHtml(labelizeGraph(relation))}</strong>
+      </span>
+      <span class="${safeGraphClass(reviewState)}">
+        <small>State</small>
+        <strong>${escapeHtml(labelizeGraph(reviewState))}</strong>
+      </span>
+      <span class="confidence">
+        <small>Confidence</small>
+        <strong>${escapeHtml(confidence ? `${confidence}%` : edge.confidence ?? "-")}</strong>
+      </span>
+      <span class="${safeGraphClass(policy.className || "policy")}">
+        <small>Actor use</small>
+        <strong>${escapeHtml(policy.label)}</strong>
+      </span>
+    </div>
   `;
 }
 
