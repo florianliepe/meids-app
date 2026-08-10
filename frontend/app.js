@@ -16924,6 +16924,7 @@ function renderKnowledgeSource(concept, sourceLabel) {
   const shortPath = compactPath(fullPath).replace(/^concepts\/[^/]+\//, "");
   const sourceRef = concept.source_deep_link || concept.source_anchor || concept.evidence_path || concept.source_path || fullPath;
   const sourceState = conceptSourceState(concept);
+  const evidence = knowledgeEvidenceState(concept);
   return `
     <div class="knowledge-increment-source ${sourceState}">
       <div class="knowledge-source-label">
@@ -16931,10 +16932,29 @@ function renderKnowledgeSource(concept, sourceLabel) {
         <span>${escapeHtml(sourceLabel)}</span>
       </div>
       <code title="${escapeHtml(fullPath)}">${escapeHtml(shortPath || fullPath || "source pending")}</code>
+      ${renderKnowledgeEvidenceChips(evidence)}
       <div class="knowledge-source-affordances">
         ${fullPath ? `<button class="small secondary" type="button" data-concept-open="${escapeHtml(fullPath)}">Open</button>` : ""}
         ${sourceRef ? `<button class="small secondary source-copy-btn" type="button" data-copy-value="${escapeHtml(sourceRef)}">Copy ref</button>` : ""}
       </div>
+    </div>
+  `;
+}
+
+function renderKnowledgeEvidenceChips(evidence) {
+  const chips = [
+    { label: "evidence", value: evidence.label, className: evidence.className, title: evidence.title },
+    { label: "vector", value: evidence.vectorLabel, className: evidence.vectorClass, title: evidence.vectorTitle },
+  ].filter((chip) => chip.value);
+  if (!chips.length) return "";
+  return `
+    <div class="knowledge-evidence-state" aria-label="Evidence and vector readiness">
+      ${chips.map((chip) => `
+        <span class="${escapeHtml(chip.className)}" title="${escapeHtml(chip.title || "")}">
+          <strong>${escapeHtml(chip.label)}</strong>
+          ${escapeHtml(chip.value)}
+        </span>
+      `).join("")}
     </div>
   `;
 }
@@ -16981,6 +17001,61 @@ function conceptSourceState(concept) {
   const evidenceStrength = String(fabric.evidence_strength || "").toLowerCase();
   if (!sourceRef || ["", "unlinked", "missing"].includes(evidenceStrength)) return "gap";
   return "linked";
+}
+
+function conceptSourceRefs(concept) {
+  const refs = [
+    ...(Array.isArray(concept.source_refs) ? concept.source_refs : []),
+    ...(Array.isArray(concept.evidence_refs) ? concept.evidence_refs : []),
+    concept.evidence_path,
+    concept.source_path,
+    concept.source_anchor,
+    concept.source_deep_link,
+  ].filter(Boolean);
+  return Array.from(new Set(refs.map((ref) => String(ref))));
+}
+
+function knowledgeEvidenceState(concept) {
+  const reviewState = concept.review_state || "pending-review";
+  const refs = conceptSourceRefs(concept);
+  const evidenceReviewStates = Array.isArray(concept.evidence_review_states)
+    ? concept.evidence_review_states.map((item) => String(item || "pending-review"))
+    : [];
+  const vectorPolicy = concept.vector_policy && typeof concept.vector_policy === "object" ? concept.vector_policy : {};
+  const vectorIndex = String(vectorPolicy.index || concept.vector_index || "");
+  const embeddingStatus = String(vectorPolicy.embedding_status || concept.embedding_status || "");
+  const hasRefs = refs.length > 0;
+  const hasBlockedEvidence = evidenceReviewStates.some((stateValue) => ["rejected", "needs-rework", "blocked"].includes(stateValue));
+  const hasApprovedEvidence = evidenceReviewStates.some((stateValue) => stateValue === "approved");
+  const evidenceLabel = hasBlockedEvidence
+    ? "blocked"
+    : hasApprovedEvidence
+      ? "approved"
+      : hasRefs
+        ? `${refs.length} pending`
+        : "missing";
+  const evidenceClass = hasBlockedEvidence
+    ? "blocked"
+    : hasApprovedEvidence
+      ? "approved"
+      : hasRefs
+        ? "pending"
+        : "missing";
+  const fallbackVector = reviewState === "approved" ? "approved only" : hasRefs ? "selected pending" : "hold";
+  const vectorLabel = vectorIndex ? labelizeGraph(vectorIndex) : fallbackVector;
+  const vectorClass = ["approved", "approved_only"].includes(vectorIndex) || reviewState === "approved"
+    ? "approved"
+    : hasBlockedEvidence || !hasRefs
+      ? "blocked"
+      : "pending";
+  return {
+    label: evidenceLabel,
+    className: evidenceClass,
+    title: hasRefs ? refs.slice(0, 4).join("\n") : "No source_refs or evidence_refs on this concept.",
+    vectorLabel: embeddingStatus ? `${vectorLabel} · ${labelizeGraph(embeddingStatus)}` : vectorLabel,
+    vectorClass,
+    vectorTitle: vectorIndex || embeddingStatus ? `index: ${vectorIndex || "-"}; embedding: ${embeddingStatus || "-"}` : "Derived from concept review state and evidence refs.",
+  };
 }
 
 function matchesConceptSourceFilter(concept) {
