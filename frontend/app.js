@@ -7354,6 +7354,11 @@ function bindIngest() {
         twin: state.activeTwin,
       });
       showIngest(JSON.stringify(result, null, 2));
+      persistLocalKnowledgeFabricIngest(result, {
+        sourceType: "manual-paste",
+        sourceName: "manual-paste",
+        fallbackTitle: text.slice(0, 90),
+      });
       $("#textIngest").value = "";
       await refreshConcepts();
       await safeRefreshActivity();
@@ -7373,6 +7378,11 @@ function bindIngest() {
     try {
       const result = await postForm("/api/ingest/document", form);
       showIngest(formatIngestResult(result));
+      persistLocalKnowledgeFabricIngest(result, {
+        sourceType: file.name.split(".").pop() || "document",
+        sourceName: file.name,
+        fallbackTitle: file.name,
+      });
       $("#documentInput").value = "";
       await refreshConcepts();
       await safeRefreshActivity();
@@ -13746,6 +13756,58 @@ function knowledgeFabricQueueItemFromResult(result = {}) {
     candidate_edges: candidateEdges,
     source_type: input.source_type || context.source || "chat_source_context",
   };
+}
+
+function persistLocalKnowledgeFabricIngest(result = {}, options = {}) {
+  const concepts = Array.isArray(result.concepts)
+    ? result.concepts
+    : result.concept
+      ? [result.concept]
+      : [];
+  if (!concepts.length) return;
+  const createdAt = new Date().toISOString();
+  const sourceType = options.sourceType || result.source || "local-ingest";
+  const sourceName = options.sourceName || result.source || "local source";
+  const baseRequestId = `local_ingest_${createdAt.replace(/[-:.TZ]/g, "").slice(0, 14)}`;
+  const items = concepts.map((concept, index) => {
+    const conceptPath = concept.path || concept.concept_path || "";
+    const title = concept.title || options.fallbackTitle || "Pending OKF concept";
+    const sourceAnchor = concept.source_anchor || concept.anchor || "";
+    const queueId = `${baseRequestId}_${index}:${conceptPath || slugify(title)}`;
+    return {
+      queue_id: queueId,
+      request_id: `${baseRequestId}_${index}`,
+      trace_id: result.trace_id || result.trace?.trace_id || `trace_${baseRequestId}_${index}`,
+      created_at: createdAt,
+      runtime: "local backend ingest",
+      title,
+      twin_id: result.twin || result.twin_id || state.activeTwin || "florian",
+      intent: "ingest_concept",
+      review_state: "pending-review",
+      concept_path: conceptPath,
+      evidence_path: concept.evidence_path || (sourceAnchor ? `${conceptPath}#${sourceAnchor}` : ""),
+      transcript_path: concept.transcript_path || "",
+      crud_log_path: concept.crud_log_path || `audit/${state.activeTwin || "florian"}/crud-log.jsonl`,
+      graph_curator_trigger: "queued_for_candidate_generation",
+      vector_refresh: "deferred_until_approved",
+      candidate_edges: Array.isArray(concept.candidate_edges) ? concept.candidate_edges : [],
+      source_type: sourceType,
+      source_name: sourceName,
+      guardrail_status: concept.guardrail_status || "not-evaluated",
+    };
+  });
+  const nextById = new Map((state.knowledgeFabricIngestQueue || []).map((item) => [item.queue_id, item]));
+  items.forEach((item) => nextById.set(item.queue_id, item));
+  state.knowledgeFabricIngestQueue = Array.from(nextById.values())
+    .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")))
+    .slice(0, 12);
+  try {
+    window.localStorage.setItem(storageKeys.knowledgeFabricIngestQueue, JSON.stringify(state.knowledgeFabricIngestQueue));
+  } catch (error) {
+    console.warn("Local Knowledge Fabric ingest persistence failed", error);
+  }
+  renderKnowledgeFabricQueuePanels();
+  showToast("Pending OKF handoff created", `${items.length} source concept${items.length === 1 ? "" : "s"} added to review queue.`, "success");
 }
 
 function readKnowledgeFabricIngestQueue() {
