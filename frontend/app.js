@@ -2196,6 +2196,7 @@ function renderGraphCockpit() {
     $("#graphSummary").innerHTML = "";
     $("#graphTrustBoundary").innerHTML = "";
     $("#graphExportReadiness").innerHTML = "";
+    $("#graphRetrievalContract").innerHTML = "";
     $("#graphPresetSignal").innerHTML = "";
     $("#graphInterpretationPanel").innerHTML = "";
     $("#graphTraceabilityPanel").innerHTML = "";
@@ -2216,6 +2217,7 @@ function renderGraphCockpit() {
   renderGraphSummary(graph, nodes, edges);
   renderGraphTrustBoundary(graph, nodes, edges, availableEdges);
   renderGraphExportReadiness(graph, nodes, edges, availableEdges);
+  renderGraphRetrievalContract(nodes, edges, availableEdges);
   renderGraphPresetTransitionPanel(nodes, edges);
   renderGraphInferenceVisual(graph, nodes, edges);
   renderGraphInterpretationPanel(graph, nodes, edges);
@@ -2470,6 +2472,72 @@ function graphTrustLayerSummary(edges = []) {
     reviewable: 0,
     blocked: 0,
   });
+}
+
+function renderGraphRetrievalContract(nodes = [], edges = [], availableEdges = edges) {
+  const target = $("#graphRetrievalContract");
+  if (!target) return;
+  const nodeStates = countBy(nodes, (node) => node.review_state || "unknown");
+  const visibleTrust = graphTrustLayerSummary(edges);
+  const availableTrust = graphTrustLayerSummary(availableEdges);
+  const approvedNodes = nodeStates.approved || 0;
+  const draftNodes = Math.max(0, nodes.length - approvedNodes);
+  const trustedContext = approvedNodes + visibleTrust.trusted;
+  const citedContext = visibleTrust.inferred;
+  const reviewQueue = visibleTrust.reviewable + availableTrust.reviewable;
+  const blockedContext = visibleTrust.blocked + (nodeStates["needs-rework"] || 0) + (nodeStates.rejected || 0);
+  const mode = trustedContext && !reviewQueue && !blockedContext
+    ? "production"
+    : trustedContext
+      ? "governed"
+      : "exploratory";
+  const lanes = [
+    {
+      className: "answer",
+      value: trustedContext,
+      label: "answer",
+      detail: "Approved concepts and explicit edges may ground direct Actor Twin answers.",
+    },
+    {
+      className: "cite",
+      value: citedContext,
+      label: "cite",
+      detail: "Inferred paths can be shown as reasoning context with attribution.",
+    },
+    {
+      className: "review",
+      value: reviewQueue,
+      label: "review",
+      detail: "Candidate relations remain Knowledge Fabric review work, not actor memory.",
+    },
+    {
+      className: "exclude",
+      value: blockedContext,
+      label: "exclude",
+      detail: "Rejected, rework, and conflict paths stay out of retrieval.",
+    },
+  ];
+  target.innerHTML = `
+    <section class="graph-retrieval-contract-panel ${safeGraphClass(mode)}">
+      <div class="graph-retrieval-contract-head">
+        <div>
+          <span class="badge">Actor retrieval contract</span>
+          <strong>${escapeHtml(mode === "production" ? "Trusted graph context can answer directly" : mode === "governed" ? "Graph can answer with governance gates" : "Graph is exploratory until review improves")}</strong>
+          <p>${escapeHtml(`${approvedNodes}/${nodes.length} approved nodes · ${draftNodes} draft or pending nodes · ${edges.length}/${availableEdges.length} active relations`)}</p>
+        </div>
+        <span>${escapeHtml(labelizeGraph(mode))}</span>
+      </div>
+      <div class="graph-retrieval-contract-flow">
+        ${lanes.map((lane) => `
+          <article class="${escapeHtml(lane.className)}">
+            <strong>${escapeHtml(String(lane.value))}</strong>
+            <span>${escapeHtml(lane.label)}</span>
+            <small>${escapeHtml(lane.detail)}</small>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function renderGraphExportReadiness(graph, nodes = [], edges = [], availableEdges = edges) {

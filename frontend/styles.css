@@ -26615,6 +26615,118 @@ body.theme-dark .knowledge-review-token.rejected {
   overflow-wrap: anywhere;
 }
 
+.graph-retrieval-contract {
+  margin-top: 10px;
+}
+
+.graph-retrieval-contract:empty {
+  display: none;
+}
+
+.graph-retrieval-contract-panel {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--accent) 52%, var(--line));
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-quiet) 82%, var(--accent) 8%), var(--surface));
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.graph-retrieval-contract-panel.exploratory {
+  border-left-color: #d7a84f;
+}
+
+.graph-retrieval-contract-panel.governed {
+  border-left-color: #6a8de8;
+}
+
+.graph-retrieval-contract-head {
+  align-items: start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.graph-retrieval-contract-head strong {
+  color: var(--ink);
+  display: block;
+  font-size: 16px;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+
+.graph-retrieval-contract-head p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 4px 0 0;
+}
+
+.graph-retrieval-contract-head > span {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-quiet) 88%, transparent);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 850;
+  padding: 6px 9px;
+  white-space: nowrap;
+}
+
+.graph-retrieval-contract-flow {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.graph-retrieval-contract-flow article {
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px 10px;
+}
+
+.graph-retrieval-contract-flow article.answer {
+  border-top: 3px solid #34c795;
+}
+
+.graph-retrieval-contract-flow article.cite {
+  border-top: 3px solid #6a8de8;
+}
+
+.graph-retrieval-contract-flow article.review {
+  border-top: 3px solid #d7a84f;
+}
+
+.graph-retrieval-contract-flow article.exclude {
+  border-top: 3px solid #d9826b;
+}
+
+.graph-retrieval-contract-flow strong {
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.graph-retrieval-contract-flow span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.graph-retrieval-contract-flow small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
 body.theme-dark .graph-relation-layer-summary button {
   background: #1d241f;
   border-color: rgba(241, 235, 224, 0.13);
@@ -26634,6 +26746,38 @@ body.theme-dark .graph-relation-layer-summary span {
 
 body.theme-dark .graph-relation-layer-summary small {
   color: #c9c0b3;
+}
+
+body.theme-dark .graph-retrieval-contract-panel {
+  background:
+    linear-gradient(135deg, rgba(122, 216, 191, 0.055), rgba(17, 22, 18, 0.94));
+  border-color: rgba(241, 235, 224, 0.14);
+}
+
+body.theme-dark .graph-retrieval-contract-panel.exploratory {
+  border-left-color: #d7b36d;
+}
+
+body.theme-dark .graph-retrieval-contract-panel.governed {
+  border-left-color: #8fa4f2;
+}
+
+body.theme-dark .graph-retrieval-contract-head strong,
+body.theme-dark .graph-retrieval-contract-flow strong,
+body.theme-dark .graph-retrieval-contract-flow span {
+  color: #fff8ea;
+}
+
+body.theme-dark .graph-retrieval-contract-head p,
+body.theme-dark .graph-retrieval-contract-flow small {
+  color: #c9c0b3;
+}
+
+body.theme-dark .graph-retrieval-contract-head > span,
+body.theme-dark .graph-retrieval-contract-flow article {
+  background: #1d241f;
+  border-color: rgba(241, 235, 224, 0.14);
+  color: #f6f1e7;
 }
 
 @media (max-width: 900px) {
@@ -26705,6 +26849,11 @@ body.theme-dark .graph-relation-layer-summary small {
 
   .graph-relation-layer-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .graph-retrieval-contract-head,
+  .graph-retrieval-contract-flow {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
