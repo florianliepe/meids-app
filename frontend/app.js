@@ -12758,6 +12758,7 @@ function renderOkfValidationStatusPanel() {
       ${paths.fixture_root ? `<a href="${escapeHtml(githubBlobUrl(paths.fixture_root))}" target="_blank" rel="noreferrer">Fixtures</a>` : ""}
       ${paths.generated_root ? `<a href="${escapeHtml(githubBlobUrl(paths.generated_root))}" target="_blank" rel="noreferrer">Generated ingest</a>` : ""}
       ${paths.promotion_root ? `<a href="${escapeHtml(githubBlobUrl(paths.promotion_root))}" target="_blank" rel="noreferrer">Promotions</a>` : ""}
+      ${paths.postgres_graph_schema ? `<a href="${escapeHtml(githubBlobUrl(paths.postgres_graph_schema))}" target="_blank" rel="noreferrer">Postgres graph</a>` : ""}
       ${paths.vector_adapter_example ? `<a href="${escapeHtml(githubBlobUrl(paths.vector_adapter_example))}" target="_blank" rel="noreferrer">Vector adapter</a>` : ""}
     </div>
   `;
@@ -17830,6 +17831,7 @@ function renderKnowledgeFabricContractStrip(allConcepts = [], visibleConcepts = 
   const vectorReady = Number(summary.vector_request_fixture_count || 0) > 0;
   const promotionReady = Number(summary.promotion_fixture_count || 0) >= 3;
   const ingestReady = Number(summary.generated_ingest_file_count || 0) > 0;
+  const postgresGraphReady = Number(summary.postgres_graph_schema_count || 0) > 0;
   const schemaReady = Boolean(paths.schema_doc);
   const statusClass = status.status === "passed" ? "ready" : status.status === "blocked" ? "blocked" : "pending";
   const tiles = [
@@ -17853,6 +17855,13 @@ function renderKnowledgeFabricContractStrip(allConcepts = [], visibleConcepts = 
       detail: `${summary.promotion_fixture_count || 0} decisions`,
       className: promotionReady ? "ready" : "pending",
       href: paths.promotion_root ? githubBlobUrl(paths.promotion_root) : "",
+    },
+    {
+      label: "Graph projection",
+      value: postgresGraphReady ? "schema tested" : "missing",
+      detail: postgresGraphReady ? "Postgres projection contract" : "Projection schema unavailable",
+      className: postgresGraphReady ? "ready" : "pending",
+      href: paths.postgres_graph_schema ? githubBlobUrl(paths.postgres_graph_schema) : "",
     },
     {
       label: "Vector boundary",
@@ -24213,6 +24222,7 @@ function renderProductionKnowledgeRepoReadiness() {
   const payloadReady = Boolean(bridgePayload.latest_path || bridgePayload.payload_hash);
   const okfReady = okf.status === "passed";
   const repoSyncFixtureReady = Number(okfSummary.repo_sync_package_fixture_count || 0) > 0;
+  const postgresGraphReady = Number(okfSummary.postgres_graph_schema_count || 0) > 0;
   const splitReady = repos.length >= 3;
   const branchReady = Boolean(bridge.expected_branch && bridgeLocal.branch === bridge.expected_branch);
   const checks = [
@@ -24236,6 +24246,13 @@ function renderProductionKnowledgeRepoReadiness() {
       ready: okfReady && repoSyncFixtureReady,
       metric: `${okfSummary.repo_sync_package_fixture_count || 0} fixture`,
       detail: repoSyncFixtureReady ? "OKF + graph promotion repo-sync package shape is regression-tested." : "Add repo-sync package fixture before relying on graph handoff exports.",
+    },
+    {
+      key: "postgres-graph",
+      label: "Graph projection",
+      ready: okfReady && postgresGraphReady,
+      metric: `${okfSummary.postgres_graph_schema_count || 0} schema`,
+      detail: postgresGraphReady ? "Postgres graph projection contract is statically validated without credentials." : "Add or validate the Postgres graph projection schema before hosted graph retrieval.",
     },
     {
       key: "payload",
@@ -24266,7 +24283,7 @@ function renderProductionKnowledgeRepoReadiness() {
     {
       label: "Confirm repo boundaries",
       state: okfReady ? "ready" : "open",
-      detail: okfReady ? "OKF schema, fixtures, graph promotions, repo-sync package, and vector boundary are validated." : "Validate OKF fixtures before moving knowledge content.",
+      detail: okfReady ? "OKF schema, fixtures, graph promotions, Postgres projection, repo-sync package, and vector boundary are validated." : "Validate OKF fixtures before moving knowledge content.",
     },
     {
       label: "Clone private knowledge repo",
