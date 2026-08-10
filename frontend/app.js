@@ -442,6 +442,12 @@ function bindNavigation() {
     if (!action) return;
     handleCockpitAction(action.dataset.cockpitAction);
   });
+  document.addEventListener("click", async (event) => {
+    const action = event.target.closest("[data-agent-probe-evidence-action]");
+    if (!action) return;
+    if (action.dataset.agentProbeEvidenceAction === "copy") await copyAgentProbeEvidencePacket();
+    if (action.dataset.agentProbeEvidenceAction === "export") exportAgentProbeEvidencePacket();
+  });
 }
 
 function applyInitialRoute() {
@@ -15373,6 +15379,7 @@ function renderAgentTraceFilterControls() {
 
 function renderAgentTraceHistoryPanel() {
   const target = $("#agentTraceHistoryPanel");
+  renderAgentProbeEvidencePanels();
   if (!target) return;
   const traces = readComposedAgentTraces();
   const filtered = filteredAgentTraces(traces);
@@ -15393,6 +15400,7 @@ function renderAgentTraceHistoryPanel() {
 
 function renderDashboardAgentTraceHistory() {
   const target = $("#dashAgentTraceHistory");
+  renderAgentProbeEvidencePanels();
   if (!target) return;
   const traces = readComposedAgentTraces();
   const sourceTraceSummary = renderKnowledgeFabricSourceTraceSummary({ compact: true });
@@ -15401,6 +15409,56 @@ function renderDashboardAgentTraceHistory() {
     return;
   }
   target.innerHTML = `${renderAgentTraceSetupNotice({ compact: true })}${sourceTraceSummary}${renderAgentTraceHistoryRows(traces, 8)}`;
+}
+
+function renderAgentProbeEvidencePanels() {
+  renderAgentProbeEvidencePanel("#agentProbeEvidencePanel", { compact: false });
+  renderAgentProbeEvidencePanel("#dashAgentProbeEvidence", { compact: true });
+}
+
+function renderAgentProbeEvidencePanel(selector, options = {}) {
+  const target = $(selector);
+  if (!target) return;
+  const artifact = buildAgentProbeEvidenceArtifact();
+  const compact = Boolean(options.compact);
+  const agents = Array.isArray(artifact.agents) ? artifact.agents : [];
+  const readyCount = artifact.summary?.connected_agent_count || 0;
+  const configuredCount = artifact.summary?.configured_agent_count || 0;
+  const blockedCount = artifact.summary?.blocked_agent_count || 0;
+  target.innerHTML = `
+    <article class="agent-probe-evidence-card">
+      <div class="agent-probe-evidence-head">
+        <div>
+          <span class="badge">Live probe evidence</span>
+          <strong>${escapeHtml(`${readyCount}/${artifact.summary.agent_count} live connected · ${configuredCount} configured`)}</strong>
+          <p>${escapeHtml(compact
+            ? "Exportable readiness packet for trace review and production gates."
+            : "Single review artifact for contract fixtures, webhook readiness, probe outcomes, recent traces, Knowledge Fabric handoff state, and graph promotion context.")}</p>
+        </div>
+        <div class="button-row tight">
+          <button class="secondary small" type="button" data-agent-probe-evidence-action="copy">Copy packet</button>
+          <button class="secondary small" type="button" data-agent-probe-evidence-action="export">Export packet</button>
+        </div>
+      </div>
+      <div class="agent-probe-evidence-grid">
+        <span><strong>${escapeHtml(String(artifact.summary.trace_count || 0))}</strong><small>agent traces</small></span>
+        <span><strong>${escapeHtml(String(artifact.summary.replay_case_count || 0))}</strong><small>fixture cases</small></span>
+        <span><strong>${escapeHtml(String(artifact.summary.knowledge_handoff_count || 0))}</strong><small>OKF handoffs</small></span>
+        <span><strong>${escapeHtml(String(artifact.summary.graph_promotion_count || 0))}</strong><small>graph decisions</small></span>
+        <span class="${blockedCount ? "blocked" : "ready"}"><strong>${escapeHtml(String(blockedCount))}</strong><small>URL blockers</small></span>
+      </div>
+      ${compact ? "" : `
+        <div class="agent-probe-evidence-agents">
+          ${agents.map((agent) => `
+            <span class="${safeGraphClass(agent.production_gate)}">
+              <strong>${escapeHtml(agent.agent_name)}</strong>
+              <small>${escapeHtml(`${agent.status || "documented"} · ${agent.webhook_label || "fixture only"} · ${agent.production_gate}`)}</small>
+            </span>
+          `).join("")}
+        </div>
+      `}
+    </article>
+  `;
 }
 
 function knowledgeFabricSourceTraceSummary() {

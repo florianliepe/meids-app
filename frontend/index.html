@@ -893,6 +893,13 @@
               <div id="dashLatestTraces" class="activity-list"></div>
             </section>
             <section class="panel dashboard-section" data-dashboard-section="traces">
+              <div class="dashboard-section-head">
+                <h2>Live Probe Evidence</h2>
+                <button class="secondary small" type="button" data-agent-probe-evidence-action="export">Export packet</button>
+              </div>
+              <div id="dashAgentProbeEvidence" class="agent-probe-evidence-panel"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="traces">
               <h2>Agent Handoff History</h2>
               <div id="dashAgentTraceHistory" class="agent-trace-history-list"></div>
             </section>
@@ -1376,6 +1383,7 @@
               </div>
               <p class="muted-inline">Local browser trace metadata only. Prompt text and source exports are not stored here.</p>
               <div id="agentTraceSummary" class="agent-trace-summary" aria-label="Agent trace summary"></div>
+              <div id="agentProbeEvidencePanel" class="agent-probe-evidence-panel"></div>
               <div class="agent-trace-filter" aria-label="Filter agent traces">
                 <button class="secondary small active" type="button" data-agent-trace-filter="all">All</button>
                 <button class="secondary small" type="button" data-agent-trace-filter="actor_twin">Actor Twin</button>
