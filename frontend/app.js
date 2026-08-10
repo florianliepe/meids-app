@@ -12324,6 +12324,7 @@ async function refreshN8nAgentContracts() {
   state.n8nAgentContracts = result;
   renderAgentOperatingModelPanel();
   renderChatContractBadges();
+  renderAgentProbeEvidencePanels();
 }
 
 async function safeRefreshN8nAgentContracts() {
@@ -12344,6 +12345,7 @@ async function safeRefreshStaticN8nReplayStatus() {
     renderAgentOperatingModelPanel();
     renderChatContractSurfaces();
     renderDashboardKnowledgeGraphHandoff();
+    renderAgentProbeEvidencePanels();
   } catch (error) {
     console.warn("Static n8n fixture replay status refresh failed", error);
   }
@@ -15456,8 +15458,48 @@ function renderAgentProbeEvidencePanel(selector, options = {}) {
             </span>
           `).join("")}
         </div>
+        ${renderAgentProbeReplayComparison(agents)}
       `}
     </article>
+  `;
+}
+
+function renderAgentProbeReplayComparison(agents = []) {
+  if (!agents.length) return "";
+  return `
+    <div class="agent-probe-replay-comparison" aria-label="Fixture replay and live probe comparison">
+      <div class="agent-probe-replay-head">
+        <span class="badge">Fixture/live comparison</span>
+        <p>Fixture replay proves the request and response contract. Live readiness still needs URL, probe, and non-demo trace evidence.</p>
+      </div>
+      <div class="agent-probe-replay-grid">
+        ${agents.map((agent) => {
+          const replay = agent.fixture_replay || {};
+          const liveReady = agent.latest_probe?.status === "connected";
+          const traceReady = Number(agent.trace_count || 0) > 0;
+          const nextAction = agent.production_gate === "ready_for_trace_review"
+            ? "Review live trace before production approval."
+            : agent.production_gate === "run_live_probe"
+              ? "Run live probe and capture trace."
+              : "Configure public UAT webhook URL.";
+          return `
+            <article class="${escapeHtml(liveReady ? "ready" : agent.webhook_configured ? "pending" : "blocked")}">
+              <header>
+                <strong>${escapeHtml(agent.agent_name)}</strong>
+                <small>${escapeHtml(agent.contract_fixture || "fixture missing")}</small>
+              </header>
+              <dl>
+                ${detailRow("Fixture replay", replay.passed ? `passed · ${replay.case_count || 0} cases` : replay.status || "unknown")}
+                ${detailRow("Live URL", agent.webhook_configured ? "configured" : "missing")}
+                ${detailRow("Live probe", liveReady ? "connected" : agent.latest_probe?.status || "not run")}
+                ${detailRow("Trace evidence", traceReady ? `${agent.trace_count} trace${agent.trace_count === 1 ? "" : "s"}` : "missing")}
+              </dl>
+              <p>${escapeHtml(nextAction)}</p>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </div>
   `;
 }
 
