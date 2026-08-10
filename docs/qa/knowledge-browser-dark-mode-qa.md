@@ -4,6 +4,25 @@ Date: 2026-08-09
 
 Latest update: 2026-08-10
 
+## Latest Local QA Pass For Inline Chat Contract Badges
+
+- Added inline contract health badges beside the Chat interaction mode selector for Actor Twin, Knowledge Fabric Agent, and Agentic Butler.
+- Verified desktop `1440px` and mobile `390px` dark-mode rendering with Playwright.
+- Verified badge clicks switch the interaction mode to `source_context` and `skill_activation`.
+- Verified no horizontal overflow or clipped badge content.
+- Screenshot and machine-readable QA output:
+  - `docs/visual-qa/screenshots-20260810-chat-inline-contract-badges/`
+
+Validation commands:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+
 ## Scope
 
 Targeted QA for the Knowledge Browser dark-mode readability work in the MeIDs static frontend.

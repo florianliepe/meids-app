@@ -8241,6 +8241,72 @@ body.theme-dark .knowledge-source-readiness-grid span {
   color: var(--warn);
 }
 
+.chat-inline-mode-badges {
+  align-items: stretch;
+  display: grid;
+  gap: 6px;
+  grid-column: span 2;
+  grid-template-columns: repeat(3, minmax(86px, 1fr));
+  min-width: min(420px, 100%);
+}
+
+.chat-inline-mode-badge {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface-quiet) 86%, transparent);
+  color: var(--muted);
+  display: grid;
+  gap: 1px;
+  min-height: 42px;
+  min-width: 0;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.chat-inline-mode-badge:hover,
+.chat-inline-mode-badge.active {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.chat-inline-mode-badge.configured,
+.chat-inline-mode-badge.n8n-connected {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--line));
+}
+
+.chat-inline-mode-badge.fixture-ready,
+.chat-inline-mode-badge.contract-tested {
+  border-color: color-mix(in srgb, #d7b56d 42%, var(--line));
+}
+
+.chat-inline-mode-badge.missing-url,
+.chat-inline-mode-badge.awaiting-url,
+.chat-inline-mode-badge.blocked {
+  border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
+}
+
+.chat-inline-mode-badge strong,
+.chat-inline-mode-badge span,
+.chat-inline-mode-badge small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-inline-mode-badge strong {
+  color: var(--ink);
+  font-size: 0.72rem;
+  line-height: 1.05;
+}
+
+.chat-inline-mode-badge span,
+.chat-inline-mode-badge small {
+  color: var(--muted);
+  font-size: 0.6rem;
+  font-weight: 780;
+}
+
 .chat-contract-badges > span {
   display: grid;
   gap: 2px;
@@ -9400,6 +9466,7 @@ body.theme-dark .chat-contract-badges > span,
 body.theme-dark .chat-mode-readiness,
 body.theme-dark .chat-mode-health,
 body.theme-dark .chat-active-contract-badge,
+body.theme-dark .chat-inline-mode-badge,
 body.theme-dark .chat-contract-actions,
 body.theme-dark .agent-trace-summary span,
 body.theme-dark .agent-trace-handoff-timeline,
@@ -9511,6 +9578,40 @@ body.theme-dark .chat-active-contract-badge.missing-url,
 body.theme-dark .chat-active-contract-badge.blocked {
   border-color: rgba(240, 163, 154, 0.56);
   background: rgba(240, 163, 154, 0.1);
+}
+
+body.theme-dark .chat-inline-mode-badge:hover,
+body.theme-dark .chat-inline-mode-badge.active {
+  border-color: rgba(122, 216, 191, 0.64);
+  background: rgba(122, 216, 191, 0.1);
+}
+
+body.theme-dark .chat-inline-mode-badge.configured,
+body.theme-dark .chat-inline-mode-badge.n8n-connected {
+  border-color: rgba(122, 216, 191, 0.5);
+  background: rgba(122, 216, 191, 0.08);
+}
+
+body.theme-dark .chat-inline-mode-badge.fixture-ready,
+body.theme-dark .chat-inline-mode-badge.contract-tested {
+  border-color: rgba(215, 181, 109, 0.48);
+  background: rgba(215, 181, 109, 0.08);
+}
+
+body.theme-dark .chat-inline-mode-badge.missing-url,
+body.theme-dark .chat-inline-mode-badge.awaiting-url,
+body.theme-dark .chat-inline-mode-badge.blocked {
+  border-color: rgba(240, 163, 154, 0.5);
+  background: rgba(240, 163, 154, 0.08);
+}
+
+body.theme-dark .chat-inline-mode-badge strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .chat-inline-mode-badge span,
+body.theme-dark .chat-inline-mode-badge small {
+  color: #c9c0b3;
 }
 
 body.theme-dark .chat-contract-badges > span.active {
@@ -10459,8 +10560,15 @@ body.theme-dark .agent-response-card .todo-table article {
 
   .chat-skillbar select,
   .chat-skillbar details,
-  .chat-skillbar .compact-select {
+  .chat-skillbar .compact-select,
+  .chat-inline-mode-badges {
     width: 100%;
+  }
+
+  .chat-inline-mode-badges {
+    grid-column: auto;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
   }
 
   .agent-response-card .skill-run-head {

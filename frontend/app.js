@@ -14049,6 +14049,7 @@ function renderChatSkillMode() {
 function renderChatContractSurfaces() {
   renderChatModeHealthStrip();
   renderActiveChatContractBadge();
+  renderChatInlineModeBadges();
   renderChatContractBadges();
   renderChatModeReadinessRail();
   renderChatContractActions();
@@ -14504,6 +14505,69 @@ function renderChatContractStageRow(stages = [], options = {}) {
   `;
 }
 
+function chatModeButtonDefinitions() {
+  return [
+    {
+      mode: "actor_twin",
+      agentId: "actor_twin",
+      label: "Actor",
+      shortLabel: "Twin",
+      purpose: "answer",
+    },
+    {
+      mode: "source_context",
+      agentId: "knowledge_fabric_agent",
+      label: "Knowledge",
+      shortLabel: "OKF",
+      purpose: "ingest",
+    },
+    {
+      mode: "skill_activation",
+      agentId: "agentic_butler",
+      label: "Butler",
+      shortLabel: "Skill",
+      purpose: "execute",
+    },
+  ];
+}
+
+function switchChatInteractionMode(mode) {
+  state.activeChatInteractionMode = mode || "actor_twin";
+  state.chatContractActionResult = null;
+  const select = $("#chatInteractionModeSelect");
+  if (select) select.value = state.activeChatInteractionMode;
+  if (state.activeChatInteractionMode === "source_context") {
+    $("#chatSkillContext").open = true;
+  }
+  if (state.activeChatInteractionMode === "skill_activation") {
+    $("#chatInteractionSetup").open = true;
+  }
+  renderChatSkillMode();
+}
+
+function renderChatInlineModeBadges() {
+  const target = $("#chatInlineModeBadges");
+  if (!target) return;
+  const statuses = new Map(chatAgentContractStatuses().map((item) => [item.agentId, item]));
+  target.innerHTML = chatModeButtonDefinitions().map((mode) => {
+    const status = statuses.get(mode.agentId) || {};
+    const active = state.activeChatInteractionMode === mode.mode;
+    const stateLabel = status.state || "documented";
+    const configuredLabel = status.webhookLabel || (status.configured ? "URL" : "fixture");
+    const gateLabel = `${status.readyGateCount ?? 0}/${status.totalGateCount ?? 6}`;
+    return `
+      <button class="chat-inline-mode-badge ${active ? "active" : ""} ${status.configured ? "configured" : "fixture"} ${safeGraphClass(stateLabel)}" type="button" data-chat-mode="${escapeHtml(mode.mode)}" title="${escapeHtml(`${mode.label}: ${stateLabel}. ${status.detail || ""}`)}">
+        <strong>${escapeHtml(mode.shortLabel)}</strong>
+        <span>${escapeHtml(stateLabel)}</span>
+        <small>${escapeHtml(`${gateLabel} · ${configuredLabel}`)}</small>
+      </button>
+    `;
+  }).join("");
+  target.querySelectorAll("[data-chat-mode]").forEach((button) => {
+    button.addEventListener("click", () => switchChatInteractionMode(button.dataset.chatMode || "actor_twin"));
+  });
+}
+
 function renderCompactAgentBoundary(agentIds = [], options = {}) {
   const statuses = new Map(chatAgentContractStatuses().map((item) => [item.agentId, item]));
   const items = agentIds.map((agentId) => statuses.get(agentId)).filter(Boolean);
@@ -14578,19 +14642,7 @@ function renderChatModeReadinessRail() {
     `;
   }).join("");
   target.querySelectorAll("[data-chat-mode]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.activeChatInteractionMode = button.dataset.chatMode || "actor_twin";
-      state.chatContractActionResult = null;
-      const select = $("#chatInteractionModeSelect");
-      if (select) select.value = state.activeChatInteractionMode;
-      if (state.activeChatInteractionMode === "source_context") {
-        $("#chatSkillContext").open = true;
-      }
-      if (state.activeChatInteractionMode === "skill_activation") {
-        $("#chatInteractionSetup").open = true;
-      }
-      renderChatSkillMode();
-    });
+    button.addEventListener("click", () => switchChatInteractionMode(button.dataset.chatMode || "actor_twin"));
   });
 }
 
@@ -14633,15 +14685,7 @@ function renderChatModeHealthStrip() {
     `;
   }).join("");
   target.querySelectorAll("[data-chat-mode]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.activeChatInteractionMode = button.dataset.chatMode || "actor_twin";
-      state.chatContractActionResult = null;
-      const select = $("#chatInteractionModeSelect");
-      if (select) select.value = state.activeChatInteractionMode;
-      if (state.activeChatInteractionMode === "source_context") $("#chatSkillContext").open = true;
-      if (state.activeChatInteractionMode === "skill_activation") $("#chatInteractionSetup").open = true;
-      renderChatSkillMode();
-    });
+    button.addEventListener("click", () => switchChatInteractionMode(button.dataset.chatMode || "actor_twin"));
   });
 }
 
