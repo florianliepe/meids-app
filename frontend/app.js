@@ -212,6 +212,7 @@
   n8nRuntimeReadinessStatus: null,
   n8nLiveProbeEvidenceStatus: null,
   n8nLiveReadinessPreflight: null,
+  zielmodus4LiveCompletionChecklist: null,
   zielmodus4ReadinessStatus: null,
   n8nContractTestResult: null,
   chatContractActionResult: null,
@@ -270,6 +271,7 @@ const N8N_AGENT_RUNTIME_CONFIG_PATH = "assets/agent-runtime-config.json";
 const N8N_RUNTIME_READINESS_STATUS_PATH = "assets/n8n-runtime-readiness-status.json";
 const N8N_LIVE_PROBE_EVIDENCE_STATUS_PATH = "assets/n8n-live-probe-evidence.json";
 const N8N_LIVE_READINESS_PREFLIGHT_PATH = "assets/n8n-live-readiness-preflight.json";
+const ZIELMODUS_4_LIVE_COMPLETION_CHECKLIST_PATH = "assets/zielmodus-4-live-completion-checklist.json";
 const ZIELMODUS_4_READINESS_STATUS_PATH = "assets/zielmodus-4-readiness-status.json";
 const OKF_VALIDATION_STATUS_PATH = "assets/okf-validation-status.json";
 const storageKeys = {
@@ -8509,6 +8511,7 @@ function bindQuality() {
       await safeRefreshStaticN8nRuntimeReadinessStatus();
       await safeRefreshStaticN8nLiveProbeEvidenceStatus();
       await safeRefreshStaticN8nLiveReadinessPreflight();
+      await safeRefreshStaticZielmodus4LiveCompletionChecklist();
       await safeRefreshStaticZielmodus4ReadinessStatus();
       await safeRefreshStaticN8nReplayStatus();
       return;
@@ -10675,6 +10678,7 @@ function refreshStaticPagesWorkspace() {
   safeRefreshStaticN8nRuntimeReadinessStatus();
   safeRefreshStaticN8nLiveProbeEvidenceStatus();
   safeRefreshStaticN8nLiveReadinessPreflight();
+  safeRefreshStaticZielmodus4LiveCompletionChecklist();
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticZielmodus4ReadinessStatus();
   safeRefreshStaticOkfValidationStatus();
@@ -13063,6 +13067,19 @@ async function safeRefreshStaticN8nLiveReadinessPreflight() {
   }
 }
 
+async function safeRefreshStaticZielmodus4LiveCompletionChecklist() {
+  if (!staticPagesMode) return;
+  try {
+    state.zielmodus4LiveCompletionChecklist = await fetchFrontendAssetJson(ZIELMODUS_4_LIVE_COMPLETION_CHECKLIST_PATH, { optional: true });
+    renderAgentOperatingModelPanel();
+    renderProductionProgressHeader();
+  } catch (error) {
+    state.zielmodus4LiveCompletionChecklist = null;
+    renderAgentOperatingModelPanel();
+    console.warn("Static Zielmodus live completion checklist refresh failed", error);
+  }
+}
+
 async function safeRefreshStaticZielmodus4ReadinessStatus() {
   if (!staticPagesMode) return;
   try {
@@ -13343,6 +13360,47 @@ function renderZielmodus4LiveHandoffGrid() {
               </dl>
               <p>${escapeHtml(connected ? "Live probe evidence is recorded." : runtime.nextAction || persistedProbe.next_action || "Run live probe and record trace evidence.")}</p>
               <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(recordCommand)}">Copy evidence command</button>
+            </article>
+          `;
+        }).join("")}
+      </div>
+      ${renderZielmodus4CompletionChecklist()}
+    </div>
+  `;
+}
+
+function renderZielmodus4CompletionChecklist() {
+  const checklist = state.zielmodus4LiveCompletionChecklist || {};
+  const agents = Array.isArray(checklist.agents) ? checklist.agents : [];
+  if (!agents.length) return "";
+  const summary = checklist.summary || {};
+  return `
+    <div class="zielmodus-completion-checklist" aria-label="Zielmodus live completion checklist">
+      <div class="zielmodus-completion-checklist-head">
+        <span class="badge">Completion checklist</span>
+        <strong>${escapeHtml(`${summary.missing_live_url_count ?? 0} URL gaps · ${summary.missing_probe_trace_count ?? 0} trace gaps`)}</strong>
+        <p>${escapeHtml(`Estimated remaining after URLs exist: ${summary.estimated_remaining_after_urls_exist || "45-90 minutes"}.`)}</p>
+      </div>
+      <div class="zielmodus-completion-items">
+        ${agents.map((agent) => {
+          const openItems = Array.isArray(agent.open_items) ? agent.open_items : [];
+          return `
+            <article class="${escapeHtml(agent.status === "ready_for_final_gate" ? "ready" : "open")}">
+              <div>
+                <span>${escapeHtml(agent.status || "open")}</span>
+                <strong>${escapeHtml(agent.agent_name || agentDisplayName(agent.agent_id))}</strong>
+              </div>
+              ${openItems.length ? `
+                <ul>
+                  ${openItems.map((item) => `
+                    <li>
+                      <span>${escapeHtml(item.type || "item")}</span>
+                      <p>${escapeHtml(item.label || item.probe || "Open completion item")}</p>
+                      ${item.command ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(item.command)}">Copy command</button>` : ""}
+                    </li>
+                  `).join("")}
+                </ul>
+              ` : "<p>Ready for strict final gate.</p>"}
             </article>
           `;
         }).join("")}
