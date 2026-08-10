@@ -9295,6 +9295,10 @@ body.theme-dark .knowledge-source-readiness-grid span {
   line-height: 1.35;
 }
 
+.dashboard-agent-probe-evidence {
+  color: color-mix(in srgb, var(--accent) 68%, var(--muted));
+}
+
 .dashboard-agent-probe-meta {
   display: flex;
   flex-wrap: wrap;
@@ -10118,6 +10122,10 @@ body.theme-dark .agent-probe-evidence-agents small {
   color: #c9c0b3;
 }
 
+body.theme-dark .dashboard-agent-probe-evidence {
+  color: #b7dfd1;
+}
+
 body.theme-dark .dashboard-agent-probe-grid span,
 body.theme-dark .dashboard-agent-probe-meta em {
   border-color: rgba(232, 226, 214, 0.13);
@@ -10766,6 +10774,11 @@ body.theme-dark .graph-actor-context-status > span {
   line-height: 1.35;
 }
 
+.agent-response-contract-health .agent-response-probe-evidence {
+  margin-top: 2px;
+  color: color-mix(in srgb, var(--accent) 72%, var(--muted));
+}
+
 .agent-response-contract-health.configured,
 .agent-response-contract-health.n8n-connected {
   border-color: color-mix(in srgb, var(--success) 28%, var(--line));
@@ -10838,6 +10851,10 @@ body.theme-dark .agent-response-contract-health.awaiting-url,
 body.theme-dark .agent-response-contract-health.blocked {
   border-color: rgba(215, 181, 109, 0.34);
   background: rgba(48, 40, 24, 0.76);
+}
+
+body.theme-dark .agent-response-contract-health .agent-response-probe-evidence {
+  color: #b7dfd1;
 }
 
 @media (max-width: 900px) {

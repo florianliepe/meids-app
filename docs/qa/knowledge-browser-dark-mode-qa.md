@@ -494,6 +494,20 @@ Latest local QA pass for Chat contract-health cards:
 
 This pass adds active contract health directly inside Chat agent result cards. Each result now carries the same contract state model as the mode badges: stage readiness, runtime boundary, gate count, fixture/live state, and next action. Screenshots are stored in `docs/visual-qa/screenshots-20260810-chat-contract-health-cards/`.
 
+Latest local QA pass for probe evidence timestamps:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-probe-evidence-timestamps`
+- Targeted Playwright assertion starts a local static server, records blocked probes through `probeAgentContract`, verifies Chat `.agent-response-probe-evidence`, verifies dashboard `.dashboard-agent-probe-evidence`, confirms checked timestamp and last-error text, and checks zero text overflow.
+
+This pass makes live probe evidence more auditable. Blocked, configured, fixture, connected, and failed probe results now carry `checked_at`, `trace_id` when available, `runtime`, and `last_error`. Chat cards and the cockpit probe strip render timestamp and failure evidence without inventing trace ids for blocked probes. Screenshots are stored in `docs/visual-qa/screenshots-20260810-probe-evidence-timestamps/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

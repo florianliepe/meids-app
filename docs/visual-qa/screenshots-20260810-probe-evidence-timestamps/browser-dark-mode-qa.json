@@ -1,0 +1,175 @@
+{
+  "generated_at": "2026-08-10T18:12:07.133Z",
+  "root": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\frontend",
+  "out_dir": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\screenshots-20260810-probe-evidence-timestamps",
+  "results": [
+    {
+      "view": "concepts",
+      "name": "knowledge-desktop-dark",
+      "width": 1440,
+      "height": 1000,
+      "main": ".knowledge-browser-panel",
+      "cards": ".knowledge-increment",
+      "metrics": {
+        "themeDark": true,
+        "title": "Knowledge",
+        "mainFound": true,
+        "cardCount": 4,
+        "bodyBackground": "rgba(0, 0, 0, 0)",
+        "headerColor": "rgb(246, 241, 231)",
+        "contrastSample": {
+          "foreground": "rgb(246, 241, 231)",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        "mainWidth": 1080,
+        "viewportWidth": 1440,
+        "documentScrollWidth": 1440,
+        "overflowing": []
+      },
+      "contrast": 18.65,
+      "screenshot": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\screenshots-20260810-probe-evidence-timestamps\\knowledge-desktop-dark.png",
+      "status": "passed",
+      "failures": []
+    },
+    {
+      "view": "concepts",
+      "name": "knowledge-mobile-dark",
+      "width": 390,
+      "height": 900,
+      "main": ".knowledge-browser-panel",
+      "cards": ".knowledge-increment",
+      "metrics": {
+        "themeDark": true,
+        "title": "Knowledge",
+        "mainFound": true,
+        "cardCount": 4,
+        "bodyBackground": "rgba(0, 0, 0, 0)",
+        "headerColor": "rgb(246, 241, 231)",
+        "contrastSample": {
+          "foreground": "rgb(246, 241, 231)",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        "mainWidth": 351,
+        "viewportWidth": 390,
+        "documentScrollWidth": 390,
+        "overflowing": []
+      },
+      "contrast": 18.65,
+      "screenshot": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\screenshots-20260810-probe-evidence-timestamps\\knowledge-mobile-dark.png",
+      "status": "passed",
+      "failures": []
+    },
+    {
+      "view": "graph",
+      "name": "graph-desktop-dark",
+      "width": 1440,
+      "height": 1000,
+      "main": ".graph-cockpit-panel",
+      "cards": ".graph-svg-node, .graph-node, .graph-list-node",
+      "metrics": {
+        "themeDark": true,
+        "title": "Graph",
+        "mainFound": true,
+        "cardCount": 4,
+        "bodyBackground": "rgba(0, 0, 0, 0)",
+        "headerColor": "rgb(246, 241, 231)",
+        "contrastSample": {
+          "foreground": "rgb(246, 241, 231)",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        "mainWidth": 1080,
+        "viewportWidth": 1440,
+        "documentScrollWidth": 1440,
+        "overflowing": []
+      },
+      "contrast": 18.65,
+      "screenshot": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\screenshots-20260810-probe-evidence-timestamps\\graph-desktop-dark.png",
+      "status": "passed",
+      "failures": []
+    },
+    {
+      "view": "graph",
+      "name": "graph-mobile-dark",
+      "width": 390,
+      "height": 900,
+      "main": ".graph-cockpit-panel",
+      "cards": ".graph-svg-node, .graph-node, .graph-list-node",
+      "metrics": {
+        "themeDark": true,
+        "title": "Graph",
+        "mainFound": true,
+        "cardCount": 4,
+        "bodyBackground": "rgba(0, 0, 0, 0)",
+        "headerColor": "rgb(246, 241, 231)",
+        "contrastSample": {
+          "foreground": "rgb(246, 241, 231)",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        "mainWidth": 351,
+        "viewportWidth": 390,
+        "documentScrollWidth": 390,
+        "overflowing": []
+      },
+      "contrast": 18.65,
+      "screenshot": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\screenshots-20260810-probe-evidence-timestamps\\graph-mobile-dark.png",
+      "status": "passed",
+      "failures": []
+    },
+    {
+      "view": "dashboard",
+      "name": "trace-dashboard-desktop-dark",
+      "width": 1440,
+      "height": 1000,
+      "main": "#dashboard",
+      "cards": ".agent-trace-row",
+      "metrics": {
+        "themeDark": true,
+        "title": "Review",
+        "mainFound": true,
+        "cardCount": 8,
+        "bodyBackground": "rgba(0, 0, 0, 0)",
+        "headerColor": "rgb(246, 241, 231)",
+        "contrastSample": {
+          "foreground": "rgb(246, 241, 231)",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        "mainWidth": 1192,
+        "viewportWidth": 1440,
+        "documentScrollWidth": 1440,
+        "overflowing": []
+      },
+      "contrast": 18.65,
+      "screenshot": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\screenshots-20260810-probe-evidence-timestamps\\trace-dashboard-desktop-dark.png",
+      "status": "passed",
+      "failures": []
+    },
+    {
+      "view": "dashboard",
+      "name": "trace-dashboard-mobile-dark",
+      "width": 390,
+      "height": 900,
+      "main": "#dashboard",
+      "cards": ".agent-trace-row",
+      "metrics": {
+        "themeDark": true,
+        "title": "Review",
+        "mainFound": true,
+        "cardCount": 8,
+        "bodyBackground": "rgba(0, 0, 0, 0)",
+        "headerColor": "rgb(246, 241, 231)",
+        "contrastSample": {
+          "foreground": "rgb(246, 241, 231)",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        "mainWidth": 351,
+        "viewportWidth": 390,
+        "documentScrollWidth": 390,
+        "overflowing": []
+      },
+      "contrast": 18.65,
+      "screenshot": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\screenshots-20260810-probe-evidence-timestamps\\trace-dashboard-mobile-dark.png",
+      "status": "passed",
+      "failures": []
+    }
+  ]
+}

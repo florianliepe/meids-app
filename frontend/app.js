@@ -13695,7 +13695,9 @@ async function probeAgentContract(agentId) {
   const webhookUrl = getAgentWebhook(agentId);
   const envelope = buildAgentLiveProbeEnvelope(agentId);
   if (!webhookUrl) {
-    const probeResult = { status: "blocked", detail: "No runtime webhook configured." };
+    const probeResult = makeAgentProbeResult(agentId, "blocked", "No runtime webhook configured.", {
+      last_error: `${agentDisplayName(agentId)} has no runtime webhook URL configured.`,
+    });
     state.n8nLiveProbeResults = {
       ...state.n8nLiveProbeResults,
       [agentId]: probeResult,
@@ -13708,7 +13710,7 @@ async function probeAgentContract(agentId) {
     return;
   }
   if (staticPagesMode && !isN8nChatWebhook(webhookUrl)) {
-    const probeResult = { status: "configured", detail: "Webhook URL exists; live POST is disabled in static probe mode." };
+    const probeResult = makeAgentProbeResult(agentId, "configured", "Webhook URL exists; live POST is disabled in static probe mode.");
     state.n8nLiveProbeResults = {
       ...state.n8nLiveProbeResults,
       [agentId]: probeResult,
@@ -13726,7 +13728,15 @@ async function probeAgentContract(agentId) {
       output: { answer: "Fixture probe completed." },
       trace: { trace_id: `trace_${fallbackEnvelope.request_id}`, stored: false },
     }, fallbackEnvelope, "fixture fallback"));
-    const probeResult = { status: result.runtime === "n8n connected" ? "connected" : "fixture", detail: result.trace_id || result.response?.request_id || "" };
+    const probeResult = makeAgentProbeResult(
+      agentId,
+      result.runtime === "n8n connected" ? "connected" : "fixture",
+      result.trace_id || result.response?.request_id || "",
+      {
+        trace_id: result.trace_id || result.response?.trace?.trace_id || "",
+        runtime: result.runtime || "",
+      },
+    );
     state.n8nLiveProbeResults = {
       ...state.n8nLiveProbeResults,
       [agentId]: probeResult,
@@ -13738,7 +13748,8 @@ async function probeAgentContract(agentId) {
     renderProductionKnowledgeRepoReadiness();
     showToast("Live probe completed", `${agentDisplayName(agentId)}: ${state.n8nLiveProbeResults[agentId].status}`, "success");
   } catch (error) {
-    const probeResult = { status: "failed", detail: compactError(error.message) };
+    const compact = compactError(error.message);
+    const probeResult = makeAgentProbeResult(agentId, "failed", compact, { last_error: compact });
     state.n8nLiveProbeResults = {
       ...state.n8nLiveProbeResults,
       [agentId]: probeResult,
@@ -13749,6 +13760,18 @@ async function probeAgentContract(agentId) {
     renderProductionKnowledgeRepoReadiness();
     showToast("Live probe failed", `${agentDisplayName(agentId)}: ${compactError(error.message)}`, "error");
   }
+}
+
+function makeAgentProbeResult(agentId, status, detail = "", extra = {}) {
+  return {
+    agent_id: agentId,
+    status,
+    detail,
+    checked_at: new Date().toISOString(),
+    trace_id: extra.trace_id || "",
+    runtime: extra.runtime || "",
+    last_error: extra.last_error || "",
+  };
 }
 
 function buildAgentLiveProbeEnvelope(agentId) {
@@ -14584,6 +14607,10 @@ function chatAgentContractStatuses() {
       contractTested,
       replayCaseCount,
       webhookLabel,
+      probe,
+      probeCheckedAt: probe?.checked_at || "",
+      probeTraceId: probe?.trace_id || "",
+      probeLastError: probe?.last_error || "",
       readyGateCount,
       totalGateCount: gates.length,
       openGates,
@@ -18860,6 +18887,10 @@ function renderDashboardAgentProbeStrip(statuses = chatAgentContractStatuses()) 
               : fixtureReady
                 ? "pending"
                 : "blocked";
+          const probeEvidence = agentProbeEvidenceLine({
+            ...item,
+            probe,
+          });
           return `
             <article class="${stateClass}">
               <div>
@@ -18867,6 +18898,7 @@ function renderDashboardAgentProbeStrip(statuses = chatAgentContractStatuses()) 
                 <span>${escapeHtml(probe?.status || item.state || "documented")}</span>
               </div>
               <small>${escapeHtml(probe?.detail || item.detail || item.nextAction || "Contract fixture documented.")}</small>
+              ${probeEvidence ? `<small class="dashboard-agent-probe-evidence">${escapeHtml(probeEvidence)}</small>` : ""}
               <div class="dashboard-agent-probe-meta">
                 <em>${escapeHtml(fixtureReady ? `${fixtureCases} replay cases` : "fixture pending")}</em>
                 <em>${escapeHtml(item.webhookLabel || (item.configured ? "URL configured" : "fixture only"))}</em>
@@ -30333,16 +30365,33 @@ function renderAgentResponseContractHealth(contract = {}) {
   const gateLabel = `${contract.readyGateCount ?? 0}/${contract.totalGateCount ?? 4} gates`;
   const runtimeLabel = contract.webhookLabel || (contract.configured ? "URL configured" : "fixture only");
   const nextAction = contract.nextAction || contract.detail || "";
+  const probeEvidence = agentProbeEvidenceLine(contract);
   return `
     <div class="agent-response-contract-health ${contract.configured ? "configured" : "fixture"} ${safeGraphClass(stateLabel)}">
       <div>
         <span>Contract health</span>
         <strong>${escapeHtml(`${stateLabel} · ${runtimeLabel}`)}</strong>
         <small>${escapeHtml(`${gateLabel}${nextAction ? ` · ${nextAction}` : ""}`)}</small>
+        ${probeEvidence ? `<small class="agent-response-probe-evidence">${escapeHtml(probeEvidence)}</small>` : ""}
       </div>
       ${renderChatContractStageRow(contract.stageItems || [], { compact: true })}
     </div>
   `;
+}
+
+function agentProbeEvidenceLine(contract = {}) {
+  const probe = contract.probe || {};
+  const status = probe.status || contract.probeStatus || "";
+  const checkedAt = probe.checked_at || contract.probeCheckedAt || "";
+  const lastError = probe.last_error || contract.probeLastError || "";
+  const traceId = probe.trace_id || contract.probeTraceId || "";
+  if (!status && !checkedAt && !lastError && !traceId) return "";
+  const parts = [];
+  if (status) parts.push(`probe ${status}`);
+  if (checkedAt) parts.push(`checked ${formatShortDate(checkedAt)}`);
+  if (traceId) parts.push(`trace ${traceId}`);
+  if (lastError) parts.push(`last error: ${lastError}`);
+  return parts.join(" · ");
 }
 
 function agentResponseRouteMeta(agentId = "", output = {}, isApproval = false, sourceCount = 0) {
