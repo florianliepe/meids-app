@@ -5947,13 +5947,113 @@ body.theme-dark .repo-responsibility-lane {
   padding-left: 20px;
 }
 
+.zielmodus-live-handoff {
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+}
+
+.zielmodus-live-handoff-head {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.zielmodus-live-handoff-head strong {
+  color: var(--ink);
+  display: block;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.zielmodus-live-handoff-head p,
+.zielmodus-live-handoff-grid article p {
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 3px 0 0;
+}
+
+.zielmodus-live-handoff-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.zielmodus-live-handoff-grid article {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-quiet) 82%, transparent);
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.zielmodus-live-handoff-grid article.ready {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+}
+
+.zielmodus-live-handoff-grid article.pending {
+  border-color: color-mix(in srgb, var(--warn) 34%, var(--line));
+}
+
+.zielmodus-live-handoff-grid article.blocked {
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--line));
+}
+
+.zielmodus-live-handoff-grid article > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.zielmodus-live-handoff-grid article strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.zielmodus-live-handoff-grid dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.zielmodus-live-handoff-grid dl div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.zielmodus-live-handoff-grid dt {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.zielmodus-live-handoff-grid dd {
+  color: var(--ink);
+  font-size: 11px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 720px) {
   .zielmodus-readiness-head {
     display: grid;
   }
 
-  .zielmodus-readiness-metrics {
+  .zielmodus-readiness-metrics,
+  .zielmodus-live-handoff-grid {
     grid-template-columns: 1fr;
+  }
+
+  .zielmodus-live-handoff-head {
+    display: grid;
   }
 }
 

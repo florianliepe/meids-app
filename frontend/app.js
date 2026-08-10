@@ -210,6 +210,7 @@
   agentOperatingModel: null,
   n8nAgentContracts: null,
   n8nRuntimeReadinessStatus: null,
+  n8nLiveProbeEvidenceStatus: null,
   zielmodus4ReadinessStatus: null,
   n8nContractTestResult: null,
   chatContractActionResult: null,
@@ -266,6 +267,7 @@ const N8N_CHAT_MODULE_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bu
 const N8N_CONTRACT_REPLAY_STATUS_PATH = "assets/n8n-contract-replay-status.json";
 const N8N_AGENT_RUNTIME_CONFIG_PATH = "assets/agent-runtime-config.json";
 const N8N_RUNTIME_READINESS_STATUS_PATH = "assets/n8n-runtime-readiness-status.json";
+const N8N_LIVE_PROBE_EVIDENCE_STATUS_PATH = "assets/n8n-live-probe-evidence.json";
 const ZIELMODUS_4_READINESS_STATUS_PATH = "assets/zielmodus-4-readiness-status.json";
 const OKF_VALIDATION_STATUS_PATH = "assets/okf-validation-status.json";
 const storageKeys = {
@@ -8503,6 +8505,7 @@ function bindQuality() {
   $("#refreshProductionAgentRuntimeBtn")?.addEventListener("click", async () => {
     if (staticPagesMode) {
       await safeRefreshStaticN8nRuntimeReadinessStatus();
+      await safeRefreshStaticN8nLiveProbeEvidenceStatus();
       await safeRefreshStaticZielmodus4ReadinessStatus();
       await safeRefreshStaticN8nReplayStatus();
       return;
@@ -10667,6 +10670,7 @@ function refreshStaticPagesWorkspace() {
   renderAgentOperatingModelPanel();
   renderKnowledgeFabricQueuePanels();
   safeRefreshStaticN8nRuntimeReadinessStatus();
+  safeRefreshStaticN8nLiveProbeEvidenceStatus();
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticZielmodus4ReadinessStatus();
   safeRefreshStaticOkfValidationStatus();
@@ -13029,6 +13033,19 @@ async function safeRefreshStaticN8nRuntimeReadinessStatus() {
   }
 }
 
+async function safeRefreshStaticN8nLiveProbeEvidenceStatus() {
+  if (!staticPagesMode) return;
+  try {
+    state.n8nLiveProbeEvidenceStatus = await fetchFrontendAssetJson(N8N_LIVE_PROBE_EVIDENCE_STATUS_PATH, { optional: true });
+    renderAgentOperatingModelPanel();
+    renderProductionProgressHeader();
+  } catch (error) {
+    state.n8nLiveProbeEvidenceStatus = null;
+    renderAgentOperatingModelPanel();
+    console.warn("Static n8n live probe evidence refresh failed", error);
+  }
+}
+
 async function safeRefreshStaticZielmodus4ReadinessStatus() {
   if (!staticPagesMode) return;
   try {
@@ -13229,7 +13246,61 @@ function renderZielmodus4ReadinessCard() {
           ${nextActions.slice(0, 4).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
         </ol>
       ` : ""}
+      ${renderZielmodus4LiveHandoffGrid()}
     </section>
+  `;
+}
+
+function renderZielmodus4LiveHandoffGrid() {
+  const agentIds = ["actor_twin", "knowledge_fabric_agent", "agentic_butler"];
+  const probeAgents = Array.isArray(state.n8nLiveProbeEvidenceStatus?.agents)
+    ? state.n8nLiveProbeEvidenceStatus.agents
+    : [];
+  const readinessArtifact = githubBlobUrl("frontend/assets/n8n-runtime-readiness-status.json");
+  const probeArtifact = githubBlobUrl("frontend/assets/n8n-live-probe-evidence.json");
+  return `
+    <div class="zielmodus-live-handoff">
+      <div class="zielmodus-live-handoff-head">
+        <div>
+          <span class="badge">Live n8n handoff</span>
+          <strong>URL + probe evidence required</strong>
+          <p>Public-safe contracts are ready. Production readiness still requires public webhook URLs, no-write probes, and non-demo trace ids.</p>
+        </div>
+        <div class="button-row tight">
+          <a class="secondary small" href="${escapeHtml(readinessArtifact)}" target="_blank" rel="noreferrer">Runtime status</a>
+          <a class="secondary small" href="${escapeHtml(probeArtifact)}" target="_blank" rel="noreferrer">Probe evidence</a>
+        </div>
+      </div>
+      <div class="zielmodus-live-handoff-grid">
+        ${agentIds.map((agentId) => {
+          const runtime = agentRuntimeReadiness(agentId);
+          const persistedProbe = probeAgents.find((agent) => agent.agent_id === agentId) || {};
+          const sessionProbe = state.n8nLiveProbeResults?.[agentId] || {};
+          const probeStatus = sessionProbe.status || persistedProbe.status || "awaiting_probe";
+          const traceId = sessionProbe.trace_id || persistedProbe.trace_id || "";
+          const connected = String(probeStatus).toLowerCase().includes("connected") && traceId && persistedProbe.demo !== true;
+          const className = connected ? "ready" : runtime.configured ? "pending" : "blocked";
+          const secretKey = {
+            actor_twin: "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
+            knowledge_fabric_agent: "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+            agentic_butler: "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+          }[agentId] || "GH_PAGES_N8N_WEBHOOK_URL";
+          const recordCommand = `node scripts/record-n8n-live-probe-evidence.cjs --agent ${agentId} --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed`;
+          return `
+            <article class="${escapeHtml(className)}">
+              <span>${escapeHtml(className === "ready" ? "connected" : runtime.configured ? "probe pending" : "URL blocked")}</span>
+              <strong>${escapeHtml(agentDisplayName(agentId))}</strong>
+              <dl>
+                <div><dt>URL</dt><dd>${escapeHtml(runtime.configured ? runtime.urlSourceLabel || "configured" : secretKey)}</dd></div>
+                <div><dt>Probe</dt><dd>${escapeHtml(connected ? `trace ${traceId}` : probeStatus)}</dd></div>
+              </dl>
+              <p>${escapeHtml(connected ? "Live probe evidence is recorded." : runtime.nextAction || persistedProbe.next_action || "Run live probe and record trace evidence.")}</p>
+              <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(recordCommand)}">Copy evidence command</button>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </div>
   `;
 }
 
