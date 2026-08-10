@@ -23840,6 +23840,7 @@ function renderProductionKnowledgeRepoReadiness() {
   const repoReady = Boolean(bridgeLocal.status === "git_repo" || bridgeLocal.branch || bridgeRepo.configured_path);
   const payloadReady = Boolean(bridgePayload.latest_path || bridgePayload.payload_hash);
   const okfReady = okf.status === "passed";
+  const repoSyncFixtureReady = Number(okfSummary.repo_sync_package_fixture_count || 0) > 0;
   const splitReady = repos.length >= 3;
   const branchReady = Boolean(bridge.expected_branch && bridgeLocal.branch === bridge.expected_branch);
   const checks = [
@@ -23856,6 +23857,13 @@ function renderProductionKnowledgeRepoReadiness() {
       ready: repoReady,
       metric: bridgeLocal.branch || bridgeLocal.status || "not cloned",
       detail: repoReady ? bridgeRepo.configured_path || bridgeLocal.path || "Local knowledge repo configured." : "Clone/configure the private knowledge fabric repository.",
+    },
+    {
+      key: "repo-sync-fixture",
+      label: "Repo-sync package",
+      ready: okfReady && repoSyncFixtureReady,
+      metric: `${okfSummary.repo_sync_package_fixture_count || 0} fixture`,
+      detail: repoSyncFixtureReady ? "OKF + graph promotion repo-sync package shape is regression-tested." : "Add repo-sync package fixture before relying on graph handoff exports.",
     },
     {
       key: "payload",
@@ -23886,7 +23894,7 @@ function renderProductionKnowledgeRepoReadiness() {
     {
       label: "Confirm repo boundaries",
       state: okfReady ? "ready" : "open",
-      detail: okfReady ? "OKF schema, fixtures, graph promotions, and vector boundary are validated." : "Validate OKF fixtures before moving knowledge content.",
+      detail: okfReady ? "OKF schema, fixtures, graph promotions, repo-sync package, and vector boundary are validated." : "Validate OKF fixtures before moving knowledge content.",
     },
     {
       label: "Clone private knowledge repo",

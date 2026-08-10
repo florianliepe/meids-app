@@ -1,0 +1,93 @@
+{
+  "schema": "meids.okf_graph_promotion_package.v1",
+  "exported_at": "2026-08-10T02:50:00Z",
+  "boundary": "Portable OKF handoff and graph promotion package only. Does not mutate OKF storage, graph store, vector index, GitHub, MCP, or n8n runtime.",
+  "twin_id": "florian",
+  "summary": {
+    "handoff_count": 1,
+    "promotion_count": 1,
+    "linked_path_count": 1,
+    "trusted_candidate_count": 1,
+    "ready_for_knowledge_repo_review": true
+  },
+  "repo_split_target": {
+    "app_repo": "florianliepe/meids-app",
+    "knowledge_repo": "meids-knowledge-fabric",
+    "agent_config_repo": "meids-agent-configs"
+  },
+  "knowledge_repo_sync_plan": {
+    "target_branch_prefix": "knowledge-fabric/okf-graph-promotion",
+    "target_paths": {
+      "concepts": "concepts/<twin>/<cluster>/<slug>.md",
+      "evidence": "evidence/<twin>/<source>/<date>-<slug>.md",
+      "transcripts": "transcripts/<twin>/<date>-<slug>.md",
+      "graph_nodes": "graph/nodes/<twin>.yaml",
+      "graph_edges": "graph/edges/<twin>.yaml",
+      "crud_log": "audit/crud/<twin>/<date>.jsonl"
+    },
+    "apply_rules": [
+      "Approved OKF handoffs may be materialized as Markdown/YAML in the knowledge fabric repo.",
+      "Accepted or approved graph relations may update graph edge YAML only when source evidence links are present.",
+      "Needs-rework and rejected items must remain audit-only and must not enter trusted retrieval.",
+      "Vector refresh payloads remain queued until the knowledge repo PR is approved and merged."
+    ],
+    "approval_gate": "Human PR review is required before trusted OKF storage, graph promotion, or vector refresh."
+  },
+  "review_sequence": [
+    "Inspect reviewed OKF handoffs and graph promotion decisions together.",
+    "Materialize approved handoffs as Markdown/YAML in the knowledge fabric repo.",
+    "Apply accepted graph promotions to graph edge YAML after source evidence exists.",
+    "Keep rejected and needs-rework items as audit-only evidence.",
+    "Queue vector adapter requests only after OKF and graph changes are approved and merged."
+  ],
+  "okf_reviewed_bundle": {
+    "schema": "meids.okf.reviewed_handoff_bundle.v1",
+    "summary": {
+      "handoff_count": 1,
+      "approved": 1,
+      "needs_rework": 0,
+      "rejected": 0
+    }
+  },
+  "graph_promotion_bundle": {
+    "schema": "okf.graph_promotion_history_export.v1",
+    "summary": {
+      "promotion_count": 1,
+      "approved": 1,
+      "needs_rework": 0,
+      "rejected": 0
+    },
+    "promotions": [
+      {
+        "edge_key": "edge_ing_example_001",
+        "decision": "approved",
+        "review_state": "approved",
+        "reviewed_at": "2026-08-09T12:05:00Z",
+        "reviewer": "human",
+        "relation_type": "supports",
+        "confidence": 0.82,
+        "edge_class": "explicit",
+        "source": "Prepare client alignment before status update",
+        "target": "Client delivery steering",
+        "source_path": "concepts/florian/client-delivery/2026-08-09-prepare-client-alignment-before-status-update.md",
+        "note": "Evidence is sufficient and the relation is useful for delivery steering.",
+        "retrieval_rule": "eligible_for_trusted_retrieval_after_okf_merge"
+      }
+    ]
+  },
+  "handoff_graph_links": [
+    {
+      "queue_id": "kfq_example_001",
+      "request_id": "ing_example_001",
+      "title": "Prepare client alignment before status update",
+      "review_state": "approved",
+      "concept_path": "concepts/florian/client-delivery/2026-08-09-prepare-client-alignment-before-status-update.md",
+      "evidence_path": "evidence/florian/transcripts/2026-08-09-prepare-client-alignment-before-status-update.yaml",
+      "transcript_path": "transcripts/florian/2026-08-09-prepare-client-alignment-before-status-update.md",
+      "graph_decision": "approved",
+      "graph_edge_keys": ["edge_ing_example_001"],
+      "graph_relation_types": ["supports"],
+      "vector_rule": "eligible_for_vector_adapter_after_knowledge_repo_merge"
+    }
+  ]
+}

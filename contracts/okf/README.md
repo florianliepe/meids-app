@@ -11,6 +11,7 @@ These examples are intentionally synthetic. They prove the file shape for:
 - graph edges
 - CRUD/audit events
 - vector adapter requests
+- OKF + graph repo-sync packages
 
 Validate them with:
 
@@ -44,5 +45,10 @@ The OKF fixture validator also checks negative concept fixtures in
 `contracts/okf/negative/concepts`. These fixtures must fail for their declared
 reason, proving source-linked concepts cannot omit aligned
 `evidence_review_states`.
+
+The repo-sync package fixture in `contracts/okf/repo-sync` proves the combined
+OKF handoff + graph promotion export shape. It must keep knowledge repository
+application human-reviewed and defer vector refresh until after the reviewed
+knowledge repo merge.
 
 The durable schema contract is documented in `docs/knowledge-fabric-okf-schema.md`.

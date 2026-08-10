@@ -191,6 +191,41 @@ function validateVectorRequest(file) {
   }
 }
 
+function validateRepoSyncPackage(file) {
+  const data = JSON.parse(read(file));
+  assertRequired(data, file, ["schema", "exported_at", "boundary", "twin_id", "summary", "repo_split_target", "knowledge_repo_sync_plan", "review_sequence"]);
+  if (data.schema !== "meids.okf_graph_promotion_package.v1") {
+    fail(`${file}: schema must be meids.okf_graph_promotion_package.v1`);
+  }
+  const repos = data.repo_split_target || {};
+  assertRequired(repos, `${file}:repo_split_target`, ["app_repo", "knowledge_repo", "agent_config_repo"]);
+  const syncPlan = data.knowledge_repo_sync_plan || {};
+  assertRequired(syncPlan, `${file}:knowledge_repo_sync_plan`, ["target_branch_prefix", "target_paths", "apply_rules", "approval_gate"]);
+  if (!String(syncPlan.target_branch_prefix || "").startsWith("knowledge-fabric/")) {
+    fail(`${file}: knowledge_repo_sync_plan.target_branch_prefix must start with knowledge-fabric/`);
+  }
+  const targetPaths = syncPlan.target_paths || {};
+  for (const key of ["concepts", "evidence", "transcripts", "graph_nodes", "graph_edges", "crud_log"]) {
+    if (!targetPaths[key]) fail(`${file}: knowledge_repo_sync_plan.target_paths.${key} missing`);
+  }
+  const applyRules = Array.isArray(syncPlan.apply_rules) ? syncPlan.apply_rules : [];
+  if (!applyRules.some((rule) => /approved OKF/i.test(rule))) fail(`${file}: apply_rules must mention approved OKF handoffs`);
+  if (!applyRules.some((rule) => /source evidence/i.test(rule))) fail(`${file}: apply_rules must gate graph edges on source evidence`);
+  if (!applyRules.some((rule) => /audit-only/i.test(rule))) fail(`${file}: apply_rules must keep rejected or rework items audit-only`);
+  if (!applyRules.some((rule) => /Vector refresh.*merged/i.test(rule))) fail(`${file}: apply_rules must defer vector refresh until PR merge`);
+  if (!/Human PR review/i.test(syncPlan.approval_gate || "")) fail(`${file}: approval_gate must require human PR review`);
+  const links = Array.isArray(data.handoff_graph_links) ? data.handoff_graph_links : [];
+  if (!links.length) fail(`${file}: handoff_graph_links must include at least one link`);
+  for (const [index, link] of links.entries()) {
+    assertRequired(link, `${file}:handoff_graph_links[${index}]`, ["review_state", "concept_path", "graph_decision", "graph_edge_keys", "vector_rule"]);
+    if (!reviewStates.has(link.review_state)) fail(`${file}:handoff_graph_links[${index}]: invalid review_state ${link.review_state}`);
+    if (!Array.isArray(link.graph_edge_keys) || !link.graph_edge_keys.length) fail(`${file}:handoff_graph_links[${index}]: graph_edge_keys must be a non-empty array`);
+    if (link.review_state === "approved" && !String(link.vector_rule || "").includes("after_knowledge_repo_merge")) {
+      fail(`${file}:handoff_graph_links[${index}]: approved link vector_rule must wait for knowledge repo merge`);
+    }
+  }
+}
+
 function validateNegativeConcept(file) {
   const text = read(file);
   const expected = text.match(/expected_failure:\s*([^\r\n]+)/)?.[1]?.trim();
@@ -227,6 +262,12 @@ for (const fixtureRoot of fixtureRoots) {
     groupCount += 1;
   }
 }
+
+const repoSyncPackages = listFiles(path.join(contractRoot, "repo-sync"), (file) => file.endsWith(".json"));
+if (!repoSyncPackages.length) fail("Missing OKF repo-sync package fixture in contracts/okf/repo-sync");
+for (const file of repoSyncPackages) validateRepoSyncPackage(file);
+total += repoSyncPackages.length;
+groupCount += 1;
 
 const negativeConcepts = listFiles(path.join(contractRoot, "negative", "concepts"), (file) => file.endsWith(".md"));
 for (const file of negativeConcepts) validateNegativeConcept(file);

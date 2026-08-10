@@ -105,6 +105,7 @@ function main() {
   const examples = listFiles(path.join(root, "contracts", "okf", "examples"), (file) => /\.(md|yaml|json|jsonl)$/.test(file));
   const generated = listFiles(path.join(root, "contracts", "okf", "generated"), (file) => /\.(md|yaml|json|jsonl)$/.test(file));
   const promotions = listFiles(path.join(root, "contracts", "okf", "promotions"), (file) => file.endsWith(".json"));
+  const repoSyncPackages = listFiles(path.join(root, "contracts", "okf", "repo-sync"), (file) => file.endsWith(".json"));
   const vectorRequests = listFiles(path.join(root, "contracts", "okf"), (file) => file.includes(`${path.sep}vector${path.sep}`) && !file.includes(`${path.sep}negative${path.sep}`) && file.endsWith(".json"));
   const negativeVectorRequests = listFiles(path.join(root, "contracts", "okf", "negative", "vector"), (file) => file.endsWith(".json"));
   const negativeConcepts = listFiles(path.join(root, "contracts", "okf", "negative", "concepts"), (file) => file.endsWith(".md"));
@@ -119,6 +120,7 @@ function main() {
       example_fixture_count: examples.length,
       generated_ingest_file_count: generated.length,
       promotion_fixture_count: promotions.length,
+      repo_sync_package_fixture_count: repoSyncPackages.length,
       vector_request_fixture_count: vectorRequests.length,
       negative_vector_fixture_count: negativeVectorRequests.length,
       negative_concept_fixture_count: negativeConcepts.length,
@@ -133,6 +135,7 @@ function main() {
       ingest_request: "contracts/okf/ingest/sample-ingest-request.json",
       generated_root: "contracts/okf/generated",
       promotion_root: "contracts/okf/promotions",
+      repo_sync_root: "contracts/okf/repo-sync",
       vector_adapter_example: "contracts/okf/generated/vector/ing_example_001-upsert-request.json",
     },
     checks,
@@ -140,6 +143,7 @@ function main() {
       examples: examples.slice(0, 5).map(rel),
       generated: generated.slice(0, 5).map(rel),
       promotions: promotions.map(rel),
+      repo_sync_packages: repoSyncPackages.map(rel),
       vector_requests: vectorRequests.map(rel),
       negative_vector_requests: negativeVectorRequests.map(rel),
       negative_concepts: negativeConcepts.map(rel),
