@@ -208,6 +208,7 @@
   agentInstructions: null,
   agentOperatingModel: null,
   n8nAgentContracts: null,
+  n8nRuntimeReadinessStatus: null,
   n8nContractTestResult: null,
   chatContractActionResult: null,
   okfValidationStatus: null,
@@ -261,6 +262,7 @@ const N8N_CHAT_CSS_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css"
 const N8N_CHAT_MODULE_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js";
 const N8N_CONTRACT_REPLAY_STATUS_PATH = "assets/n8n-contract-replay-status.json";
 const N8N_AGENT_RUNTIME_CONFIG_PATH = "assets/agent-runtime-config.json";
+const N8N_RUNTIME_READINESS_STATUS_PATH = "assets/n8n-runtime-readiness-status.json";
 const OKF_VALIDATION_STATUS_PATH = "assets/okf-validation-status.json";
 const storageKeys = {
   theme: "intellectualTwin.theme",
@@ -10338,6 +10340,7 @@ function refreshStaticPagesWorkspace() {
   renderGraphCockpit();
   renderAgentOperatingModelPanel();
   renderKnowledgeFabricQueuePanels();
+  safeRefreshStaticN8nRuntimeReadinessStatus();
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticOkfValidationStatus();
   renderAgentTraceHistoryPanel();
@@ -12683,6 +12686,21 @@ async function safeRefreshStaticN8nReplayStatus() {
   }
 }
 
+async function safeRefreshStaticN8nRuntimeReadinessStatus() {
+  if (!staticPagesMode) return;
+  try {
+    state.n8nRuntimeReadinessStatus = await fetchFrontendAssetJson(N8N_RUNTIME_READINESS_STATUS_PATH, { optional: true });
+    renderAgentOperatingModelPanel();
+    renderChatContractSurfaces();
+    renderDashboardKnowledgeGraphHandoff();
+    renderAgentProbeEvidencePanels();
+    renderProductionKnowledgeRepoReadiness();
+    renderProductionProgressHeader();
+  } catch (error) {
+    console.warn("Static n8n runtime readiness status refresh failed", error);
+  }
+}
+
 async function safeRefreshStaticOkfValidationStatus() {
   if (!staticPagesMode) {
     renderOkfValidationStatusPanel();
@@ -14584,6 +14602,7 @@ function agentRuntimeReadiness(agentId) {
   const hasUrl = Boolean(webhookUrl);
   const probe = state.n8nLiveProbeResults?.[agentId];
   const slot = n8nAgentProbeSlot(agentId);
+  const runtimeStatus = n8nRuntimeReadinessFor(agentId);
   const envVar = {
     actor_twin: "N8N_ACTOR_TWIN_WEBHOOK_URL",
     knowledge_fabric_agent: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
@@ -14596,28 +14615,38 @@ function agentRuntimeReadiness(agentId) {
       detail: probe.detail || "Last probe reached the n8n workflow.",
       configured: true,
       envVar,
+      runtimeStatus,
     };
   }
   if (hasUrl) {
     return {
       status: "configured",
       label: "Webhook URL configured",
-      detail: slot.probe_boundary || (staticPagesMode
+      detail: runtimeStatus?.detail || slot.probe_boundary || (staticPagesMode
         ? "Static Pages can hold the URL; production UAT still needs workflow confirmation."
         : "Ready for backend/live probe."),
-      nextAction: slot.next_action || "Run live probe and capture trace evidence.",
+      nextAction: runtimeStatus?.next_action || slot.next_action || "Run live probe and capture trace evidence.",
       configured: true,
       envVar,
+      runtimeStatus,
     };
   }
   return {
-    status: slot.status === "awaiting_url" ? "awaiting URL" : "missing URL",
-    label: slot.status === "awaiting_url" ? "Probe slot ready" : "Live URL missing",
-    detail: slot.probe_boundary || `${envVar} is empty in runtime config; fixture replay remains available.`,
-    nextAction: slot.next_action || `Add ${envVar} when the n8n workflow is exposed.`,
+    status: runtimeStatus?.status === "awaiting_url" || slot.status === "awaiting_url" ? "awaiting URL" : "missing URL",
+    label: runtimeStatus?.status === "awaiting_url" || slot.status === "awaiting_url" ? "Probe slot ready" : "Live URL missing",
+    detail: runtimeStatus?.detail || slot.probe_boundary || `${envVar} is empty in runtime config; fixture replay remains available.`,
+    nextAction: runtimeStatus?.next_action || slot.next_action || `Add ${envVar} when the n8n workflow is exposed.`,
     configured: false,
     envVar,
+    runtimeStatus,
   };
+}
+
+function n8nRuntimeReadinessFor(agentId) {
+  const agents = Array.isArray(state.n8nRuntimeReadinessStatus?.agents)
+    ? state.n8nRuntimeReadinessStatus.agents
+    : [];
+  return agents.find((agent) => agent.agent_id === agentId) || null;
 }
 
 function agentContractStatusesFor(agentId) {
@@ -23055,12 +23084,14 @@ function renderProductionProgressHeader() {
   const readiness = state.productionReadiness || {};
   const finalPacket = state.productionFinalReviewPacket || {};
   const bridge = state.productionGithubKnowledgeBridge || {};
+  const runtimeReadiness = state.n8nRuntimeReadinessStatus || {};
   const hasState = Boolean(
     readiness.type ||
     readiness.status ||
     readiness.check_count !== undefined ||
     finalPacket.status ||
-    bridge.status
+    bridge.status ||
+    runtimeReadiness.schema_version
   );
   if (!hasState) {
     target.hidden = true;
@@ -23091,6 +23122,7 @@ function renderProductionProgressHeader() {
         <button class="secondary small" type="button" data-cockpit-action="openProductionCockpit">Open production</button>
         <button id="quickExportFinalReviewPacketBtn" class="secondary small" type="button">Export final packet</button>
       </div>
+      ${renderN8nRuntimeReadinessMini()}
       <details class="production-progress-details">
         <summary>Lane details</summary>
         <div>
@@ -23107,6 +23139,39 @@ function renderProductionProgressHeader() {
     </section>
   `;
   $("#quickExportFinalReviewPacketBtn")?.addEventListener("click", exportProductionFinalReviewPacket);
+}
+
+function renderN8nRuntimeReadinessMini() {
+  const readiness = state.n8nRuntimeReadinessStatus || {};
+  const summary = readiness.summary || {};
+  const agents = Array.isArray(readiness.agents) ? readiness.agents : [];
+  if (!agents.length) return "";
+  const configured = summary.configured_count ?? agents.filter((agent) => agent.url_configured).length;
+  const total = summary.agent_count ?? agents.length;
+  const awaiting = summary.awaiting_url_count ?? agents.filter((agent) => agent.status === "awaiting_url").length;
+  const status = readiness.status || (configured === total ? "ready" : configured > 0 ? "partial" : "blocked");
+  const nextAgent = agents.find((agent) => agent.status !== "configured") || agents[0];
+  return `
+    <aside class="production-runtime-readiness-mini ${escapeHtml(status)}" aria-label="n8n runtime readiness">
+      <div>
+        <span class="badge">n8n contracts</span>
+        <strong>${escapeHtml(configured)}/${escapeHtml(total)} live URL slots configured</strong>
+        <p>${escapeHtml(awaiting ? `${awaiting} agent workflow URL(s) still awaiting public UAT endpoint.` : "All configured agent URLs have a public webhook shape.")}</p>
+      </div>
+      <div class="production-runtime-readiness-agents">
+        ${agents.map((agent) => `
+          <span class="${escapeHtml(agent.status || "unknown")}">
+            <strong>${escapeHtml(agent.agent_name || agent.agent_id)}</strong>
+            <small>${escapeHtml(agent.status_label || agent.status || "unknown")}</small>
+          </span>
+        `).join("")}
+      </div>
+      <div class="production-runtime-readiness-next">
+        <small>${escapeHtml(nextAgent?.next_action || readiness.boundary || "Review runtime readiness artifact.")}</small>
+        <a class="secondary small" href="${escapeHtml(githubBlobUrl("frontend/assets/n8n-runtime-readiness-status.json"))}" target="_blank" rel="noreferrer">Open status</a>
+      </div>
+    </aside>
+  `;
 }
 
 async function refreshProductionManually() {
@@ -26154,6 +26219,9 @@ function renderProductionAgentUrlReadiness(agents = []) {
   const missingConfig = buildN8nRuntimeConfigSnippet(missing.map((agent) => ({ id: agent.agentId })));
   const liveUrlGuide = githubBlobUrl("docs/n8n-live-url-configuration.md");
   const runtimeAsset = githubBlobUrl("frontend/assets/agent-runtime-config.json");
+  const runtimeStatusAsset = githubBlobUrl("frontend/assets/n8n-runtime-readiness-status.json");
+  const runtimeStatus = state.n8nRuntimeReadinessStatus || {};
+  const runtimeSummary = runtimeStatus.summary || {};
   return `
     <section class="production-agent-url-readiness">
       <div class="production-agent-url-head">
@@ -26166,6 +26234,14 @@ function renderProductionAgentUrlReadiness(agents = []) {
         </div>
         ${missingConfig ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(missingConfig)}">Copy missing JSON</button>` : ""}
       </div>
+      ${runtimeStatus.schema_version ? `
+        <div class="production-agent-runtime-artifact">
+          <span>${escapeHtml(runtimeStatus.status || "runtime status")}</span>
+          <strong>${escapeHtml(`${runtimeSummary.configured_count ?? configuredCount}/${runtimeSummary.agent_count ?? agents.length} URLs validated from runtime asset`)}</strong>
+          <small>${escapeHtml(runtimeStatus.boundary || "Runtime readiness validates URL slots but does not prove live connectivity.")}</small>
+          <a class="secondary small" href="${escapeHtml(runtimeStatusAsset)}" target="_blank" rel="noreferrer">Open readiness artifact</a>
+        </div>
+      ` : ""}
       ${missing.length ? renderN8nCurrentSupportedConfigPath(missingConfig) : ""}
       <div class="production-agent-url-grid">
         ${agents.map((agent) => `

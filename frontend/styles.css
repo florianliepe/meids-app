@@ -1156,6 +1156,95 @@ body.cockpit-mode .main {
   padding-top: 8px;
 }
 
+.production-runtime-readiness-mini {
+  grid-column: 1 / -1;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(320px, 1fr) minmax(240px, 0.7fr);
+  padding: 10px 12px;
+}
+
+.production-runtime-readiness-mini.ready {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+  background: color-mix(in srgb, var(--success-bg) 58%, var(--surface));
+}
+
+.production-runtime-readiness-mini.partial {
+  border-color: color-mix(in srgb, var(--warn) 30%, var(--line));
+  background: color-mix(in srgb, #fff7ed 34%, var(--surface));
+}
+
+.production-runtime-readiness-mini > div {
+  min-width: 0;
+}
+
+.production-runtime-readiness-mini strong {
+  color: var(--ink);
+  display: block;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.production-runtime-readiness-mini p,
+.production-runtime-readiness-mini small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  margin: 3px 0 0;
+}
+
+.production-runtime-readiness-agents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.production-runtime-readiness-agents span {
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-quiet) 84%, transparent);
+  color: var(--muted);
+  display: inline-flex;
+  gap: 5px;
+  max-width: 100%;
+  min-height: 26px;
+  align-items: center;
+  padding: 4px 8px;
+}
+
+.production-runtime-readiness-agents span.configured {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  background: var(--success-bg);
+  color: var(--accent-strong);
+}
+
+.production-runtime-readiness-agents span.awaiting_url,
+.production-runtime-readiness-agents span.blocked {
+  border-color: color-mix(in srgb, var(--warn) 34%, var(--line));
+  background: color-mix(in srgb, #fff7ed 42%, var(--surface));
+  color: color-mix(in srgb, var(--warn) 72%, var(--ink));
+}
+
+.production-runtime-readiness-agents strong,
+.production-runtime-readiness-agents small {
+  color: inherit;
+  font-size: 10px;
+  line-height: 1;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.production-runtime-readiness-next {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .production-progress-details summary {
   cursor: pointer;
   width: fit-content;
@@ -13216,6 +13305,39 @@ body.theme-dark .graph-promotion-flow small {
   margin: 4px 0 0;
 }
 
+.production-agent-runtime-artifact {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 0.85fr) minmax(0, 1.4fr) auto;
+  padding: 9px 10px;
+}
+
+.production-agent-runtime-artifact span {
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line));
+  border-radius: 999px;
+  color: var(--accent-strong);
+  font-size: 0.66rem;
+  font-weight: 880;
+  padding: 5px 8px;
+  text-transform: uppercase;
+}
+
+.production-agent-runtime-artifact strong {
+  color: var(--ink);
+  font-size: 0.86rem;
+  line-height: 1.2;
+}
+
+.production-agent-runtime-artifact small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
 .production-agent-url-grid {
   display: grid;
   gap: 8px;
@@ -14979,6 +15101,16 @@ body.theme-dark .composer input:focus {
 
   .production-progress-pills {
     justify-content: flex-start;
+  }
+
+  .production-runtime-readiness-mini,
+  .production-runtime-readiness-next {
+    grid-template-columns: 1fr;
+  }
+
+  .production-runtime-readiness-next a {
+    justify-content: center;
+    width: 100%;
   }
 
   .production-progress-details > div {
@@ -28485,17 +28617,66 @@ body.theme-dark .production-agent-url-readiness {
   border-color: rgba(232, 226, 214, 0.13);
 }
 
+body.theme-dark .production-agent-runtime-artifact {
+  background: rgba(122, 216, 191, 0.08);
+  border-color: rgba(122, 216, 191, 0.26);
+}
+
+body.theme-dark .production-runtime-readiness-mini {
+  background: rgba(18, 23, 19, 0.88);
+  border-color: rgba(232, 226, 214, 0.14);
+}
+
+body.theme-dark .production-runtime-readiness-mini.ready {
+  background: rgba(122, 216, 191, 0.08);
+  border-color: rgba(122, 216, 191, 0.28);
+}
+
+body.theme-dark .production-runtime-readiness-mini.partial {
+  background: rgba(215, 179, 109, 0.1);
+  border-color: rgba(215, 179, 109, 0.3);
+}
+
 body.theme-dark .production-agent-url-head strong,
+body.theme-dark .production-agent-runtime-artifact strong,
+body.theme-dark .production-runtime-readiness-mini strong,
 body.theme-dark .production-agent-url-grid strong {
   color: #fff8ea;
 }
 
 body.theme-dark .production-agent-url-head p,
 body.theme-dark .production-agent-url-readiness > small,
+body.theme-dark .production-agent-runtime-artifact small,
+body.theme-dark .production-runtime-readiness-mini p,
+body.theme-dark .production-runtime-readiness-mini small,
 body.theme-dark .production-agent-url-grid article > span,
 body.theme-dark .production-agent-url-grid p,
 body.theme-dark .production-agent-url-grid dt {
   color: #c9c0b3;
+}
+
+body.theme-dark .production-agent-runtime-artifact span {
+  border-color: rgba(122, 216, 191, 0.32);
+  color: #7ad8bf;
+}
+
+body.theme-dark .production-runtime-readiness-agents span {
+  background: rgba(29, 36, 31, 0.9);
+  border-color: rgba(232, 226, 214, 0.14);
+  color: #c9c0b3;
+}
+
+body.theme-dark .production-runtime-readiness-agents span.configured {
+  background: rgba(122, 216, 191, 0.1);
+  border-color: rgba(122, 216, 191, 0.32);
+  color: #7ad8bf;
+}
+
+body.theme-dark .production-runtime-readiness-agents span.awaiting_url,
+body.theme-dark .production-runtime-readiness-agents span.blocked {
+  background: rgba(215, 179, 109, 0.12);
+  border-color: rgba(215, 179, 109, 0.34);
+  color: #d7b36d;
 }
 
 body.theme-dark .production-agent-url-grid article {
@@ -29368,6 +29549,16 @@ body.theme-dark .graph-retrieval-contract-flow article {
   .production-agent-live-gate-table,
   .production-agent-rollout-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .production-agent-runtime-artifact {
+    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .production-agent-runtime-artifact a {
+    justify-content: center;
+    width: 100%;
   }
 
   .production-knowledge-repo-actions a {

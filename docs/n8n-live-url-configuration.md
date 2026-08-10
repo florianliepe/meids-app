@@ -33,6 +33,25 @@ Secrets must be configured in GitHub at:
 
 Current credential boundary: the public app can already use `frontend/assets/agent-runtime-config.json` for intentionally public UAT URLs. Workflow-secret injection is documented but blocked until a `workflow`-scope GitHub credential can update the Pages workflow. The missing live work remains to provide values for Knowledge Fabric Agent and Agentic Butler when those n8n workflows are ready.
 
+Runtime URL readiness is also exported to `frontend/assets/n8n-runtime-readiness-status.json`. This generated artifact is public-safe and validates:
+
+- each top-level agent URL slot,
+- expected HTTPS `/webhook/` URL shape,
+- probe-slot metadata,
+- absence of obvious secret-like values.
+
+Regenerate it after editing `frontend/assets/agent-runtime-config.json`:
+
+```powershell
+node scripts\write-n8n-runtime-readiness-status.cjs
+```
+
+Check without rewriting:
+
+```powershell
+node scripts\write-n8n-runtime-readiness-status.cjs --check
+```
+
 Current workflow: [`.github/workflows/intellectual-twin-pages.yml`](../.github/workflows/intellectual-twin-pages.yml).
 
 Workflow patch record: [`docs/production/github-pages-agent-runtime-workflow-patch.md`](production/github-pages-agent-runtime-workflow-patch.md).
@@ -53,6 +72,10 @@ Use this only for intentionally public UAT endpoints:
 | `n8nAgentProbeSlots.actor_twin` | Public metadata for cockpit probe state and next action |
 | `n8nAgentProbeSlots.knowledge_fabric_agent` | Public metadata for the Knowledge Fabric Agent live URL handoff |
 | `n8nAgentProbeSlots.agentic_butler` | Public metadata for the Agentic Butler live URL handoff |
+
+| Generated artifact | Purpose |
+|---|---|
+| `frontend/assets/n8n-runtime-readiness-status.json` | Cockpit-visible validation summary of configured versus awaiting live agent URLs. |
 
 Do not put private credentials, API keys, bearer tokens, or internal-only URLs in this file. Private production URLs should move to the hosted backend or workflow-generated runtime config.
 
