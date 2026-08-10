@@ -2192,6 +2192,7 @@ function renderGraphCockpit() {
   if (!graph) {
     $("#graphSummary").innerHTML = "";
     $("#graphTrustBoundary").innerHTML = "";
+    $("#graphExportReadiness").innerHTML = "";
     $("#graphPresetSignal").innerHTML = "";
     $("#graphInterpretationPanel").innerHTML = "";
     $("#graphTraceabilityPanel").innerHTML = "";
@@ -2211,6 +2212,7 @@ function renderGraphCockpit() {
   const edges = applyGraphEdgeFilters(availableEdges);
   renderGraphSummary(graph, nodes, edges);
   renderGraphTrustBoundary(graph, nodes, edges, availableEdges);
+  renderGraphExportReadiness(graph, nodes, edges, availableEdges);
   renderGraphPresetTransitionPanel(nodes, edges);
   renderGraphInferenceVisual(graph, nodes, edges);
   renderGraphInterpretationPanel(graph, nodes, edges);
@@ -2451,6 +2453,71 @@ function renderGraphTrustBoundary(graph, nodes = [], edges = [], availableEdges 
       `).join("")}
     </div>
   `;
+}
+
+function renderGraphExportReadiness(graph, nodes = [], edges = [], availableEdges = edges) {
+  const target = $("#graphExportReadiness");
+  if (!target) return;
+  const context = graphExportContext();
+  const graphPath = state.okfGraphArtifact?.path || graph?.artifact?.path || graph?.graph_artifact?.path || "";
+  const availableCandidateCount = availableEdges.filter((edge) => String(graphEdgeClass(edge)).includes("candidate")).length;
+  const trustedEdges = edges.filter((edge) => graphRelationTrust(edge).className === "trusted").length;
+  const exportReady = Boolean(nodes.length || edges.length);
+  const selectedReady = Boolean(state.selectedGraphNodeKey || state.selectedGraphEdgeKey);
+  const packageReady = reviewedKnowledgeFabricQueueItems().length > 0 || graphPromotionHistoryItems(120).length > 0;
+  const items = [
+    {
+      label: "Visible projection",
+      value: exportReady ? "ready" : "empty",
+      detail: `${nodes.length} nodes · ${edges.length} edges`,
+      className: exportReady ? "ready" : "blocked",
+    },
+    {
+      label: "Trust boundary",
+      value: `${trustedEdges} trusted`,
+      detail: `${availableCandidateCount} candidate edges available`,
+      className: trustedEdges ? "ready" : availableCandidateCount ? "pending" : "blocked",
+    },
+    {
+      label: "Selection context",
+      value: selectedReady ? "included" : "optional",
+      detail: selectedReady ? "Node or edge context in export" : "Select a node or edge for richer context",
+      className: selectedReady ? "ready" : "pending",
+    },
+    {
+      label: "OKF graph package",
+      value: packageReady ? "available" : "pending",
+      detail: packageReady ? "Review Cockpit can export joined package" : "Review handoffs or promotions first",
+      className: packageReady ? "ready" : "pending",
+    },
+  ];
+  target.innerHTML = `
+    <div class="graph-export-readiness-main">
+      <span class="badge">Export readiness</span>
+      <strong>${escapeHtml(graphPath ? "Graph artifact path recorded" : "Local graph snapshot")}</strong>
+      <small>${escapeHtml(`Preset ${labelizeGraph(context.view?.reasoning_preset || "custom")} · ${context.visible_projection?.node_count || nodes.length} nodes · ${context.visible_projection?.edge_count || edges.length} edges`)}</small>
+    </div>
+    <div class="graph-export-readiness-grid">
+      ${items.map((item) => `
+        <span class="${escapeHtml(item.className)}">
+          <strong>${escapeHtml(item.value)}</strong>
+          <small>${escapeHtml(item.label)}</small>
+          <em>${escapeHtml(item.detail)}</em>
+        </span>
+      `).join("")}
+    </div>
+    <div class="graph-export-readiness-actions">
+      <button class="secondary small" type="button" data-graph-readiness-action="export-graph">Export graph snapshot</button>
+      <button class="secondary small" type="button" data-graph-readiness-action="open-review-package">Open OKF graph package</button>
+    </div>
+  `;
+  target.querySelector('[data-graph-readiness-action="export-graph"]')?.addEventListener("click", exportGraph);
+  target.querySelector('[data-graph-readiness-action="open-review-package"]')?.addEventListener("click", () => {
+    state.dashboardFilter = "graph";
+    showView("dashboard");
+    renderDashboardFilter();
+    $("#dashOkfGraphPackage")?.scrollIntoView({ block: "center", behavior: "smooth" });
+  });
 }
 
 function graphTrustFilterActive(key) {

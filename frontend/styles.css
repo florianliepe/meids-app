@@ -8018,6 +8018,42 @@ body.theme-dark .graph-promotion-history-card.rejected {
   border-left-color: #f0a39a;
 }
 
+body.theme-dark .graph-export-readiness {
+  background: rgba(17, 22, 18, 0.92);
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .graph-export-readiness-grid span {
+  background: rgba(23, 27, 24, 0.88);
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .graph-export-readiness-main strong,
+body.theme-dark .graph-export-readiness-grid strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .graph-export-readiness-main small,
+body.theme-dark .graph-export-readiness-grid em {
+  color: #c9c0b3;
+}
+
+body.theme-dark .graph-export-readiness-grid small {
+  color: #f4ead8;
+}
+
+body.theme-dark .graph-export-readiness-grid span.ready {
+  border-left-color: #9ce6d2;
+}
+
+body.theme-dark .graph-export-readiness-grid span.pending {
+  border-left-color: #f2d39b;
+}
+
+body.theme-dark .graph-export-readiness-grid span.blocked {
+  border-left-color: #f0a39f;
+}
+
 body.theme-dark .okf-graph-package-summary span,
 body.theme-dark .okf-graph-package-links article {
   background: rgba(23, 27, 24, 0.84);
@@ -15883,6 +15919,102 @@ body.theme-dark .compact-filterbar {
   line-height: 1.25;
 }
 
+.graph-export-readiness {
+  align-items: stretch;
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-strong) 76%, transparent);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1.45fr) auto;
+  padding: 12px;
+}
+
+.graph-export-readiness:empty {
+  display: none;
+}
+
+.graph-export-readiness-main,
+.graph-export-readiness-grid span {
+  min-width: 0;
+}
+
+.graph-export-readiness-main {
+  display: grid;
+  gap: 5px;
+}
+
+.graph-export-readiness-main strong {
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.graph-export-readiness-main small {
+  color: var(--muted);
+  line-height: 1.32;
+}
+
+.graph-export-readiness-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.graph-export-readiness-grid span {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--muted) 42%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+}
+
+.graph-export-readiness-grid span.ready {
+  border-left-color: #65c8af;
+}
+
+.graph-export-readiness-grid span.pending {
+  border-left-color: #d4ad63;
+}
+
+.graph-export-readiness-grid span.blocked {
+  border-left-color: #dc887d;
+}
+
+.graph-export-readiness-grid strong,
+.graph-export-readiness-grid small,
+.graph-export-readiness-grid em {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.graph-export-readiness-grid strong {
+  color: var(--ink);
+  font-size: 0.82rem;
+}
+
+.graph-export-readiness-grid small {
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 820;
+}
+
+.graph-export-readiness-grid em {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-style: normal;
+  line-height: 1.25;
+}
+
+.graph-export-readiness-actions {
+  align-content: center;
+  display: grid;
+  gap: 7px;
+  justify-items: end;
+}
+
 .graph-workspace {
   display: grid;
   gap: 14px;
@@ -19398,6 +19530,10 @@ body.graph-presenting {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
+.graph-tools-section {
+  grid-column: 1 / -1;
+}
+
 .graph-tools-lane {
   background:
     linear-gradient(145deg, color-mix(in srgb, var(--surface) 94%, var(--accent) 6%), var(--surface));
@@ -19439,7 +19575,7 @@ body.graph-presenting {
 .graph-tool-primitives {
   display: grid;
   gap: 7px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
 }
 
 .graph-tool-primitives span {
@@ -19451,6 +19587,7 @@ body.graph-presenting {
   font-weight: 820;
   line-height: 1.25;
   min-height: 44px;
+  overflow-wrap: anywhere;
   padding: 8px 9px;
 }
 
@@ -24754,6 +24891,19 @@ body.theme-dark .graph-relation-layer-summary small {
 }
 
 @media (max-width: 900px) {
+  .graph-export-readiness,
+  .graph-export-readiness-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .graph-export-readiness-actions {
+    justify-items: stretch;
+  }
+
+  .graph-export-readiness-actions button {
+    width: 100%;
+  }
+
   .okf-graph-package-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
