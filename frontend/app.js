@@ -19041,12 +19041,51 @@ function renderKnowledgeSource(concept, sourceLabel) {
         <span>${escapeHtml(sourceLabel)}</span>
       </div>
       <code title="${escapeHtml(fullPath)}">${escapeHtml(shortPath || fullPath || "source pending")}</code>
+      ${renderKnowledgeSourceContractStrip(concept, evidence, sourceState)}
       ${renderKnowledgeSourceUseSummary(concept, evidence, sourceState)}
       ${renderKnowledgeEvidenceChips(evidence)}
       <div class="knowledge-source-affordances">
         ${fullPath ? `<button class="small secondary" type="button" data-concept-open="${escapeHtml(fullPath)}">Open</button>` : ""}
         ${sourceRef ? `<button class="small secondary source-copy-btn" type="button" data-copy-value="${escapeHtml(sourceRef)}">Copy ref</button>` : ""}
       </div>
+    </div>
+  `;
+}
+
+function renderKnowledgeSourceContractStrip(concept, evidence, sourceState) {
+  const reviewState = concept.review_state || "pending-review";
+  const refs = conceptSourceRefs(concept);
+  const actorUse = knowledgeActorUseState(concept);
+  const items = [
+    {
+      label: "Review",
+      value: labelizeGraph(reviewState),
+      className: reviewState === "approved" ? "approved" : ["needs-rework", "rejected"].includes(reviewState) ? "blocked" : "pending",
+    },
+    {
+      label: "Source",
+      value: sourceState === "linked" ? `${refs.length || 1} linked` : "gap",
+      className: sourceState === "linked" ? "approved" : "blocked",
+    },
+    {
+      label: "Evidence",
+      value: evidence.label || "missing",
+      className: evidence.className || "missing",
+    },
+    {
+      label: "Actor use",
+      value: actorUse.label || "audit only",
+      className: actorUse.className === "trusted" ? "approved" : actorUse.className === "cite-with-review" ? "pending" : "blocked",
+    },
+  ];
+  return `
+    <div class="knowledge-source-contract-strip" aria-label="Concept source contract">
+      ${items.map((item) => `
+        <span class="${escapeHtml(item.className)}">
+          <strong>${escapeHtml(item.label)}</strong>
+          <small>${escapeHtml(item.value)}</small>
+        </span>
+      `).join("")}
     </div>
   `;
 }

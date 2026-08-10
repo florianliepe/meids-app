@@ -27438,6 +27438,58 @@ body.theme-dark .graph-trust-boundary-grid button.active {
   min-width: 0;
 }
 
+.knowledge-source-contract-strip {
+  display: grid;
+  gap: 5px;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.knowledge-source-contract-strip span {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  display: grid;
+  gap: 2px;
+  min-height: 40px;
+  min-width: 0;
+  padding: 6px 7px;
+}
+
+.knowledge-source-contract-strip strong {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 850;
+  line-height: 1;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.knowledge-source-contract-strip small {
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-source-contract-strip .approved {
+  border-color: color-mix(in srgb, #34c795 42%, var(--line));
+  background: color-mix(in srgb, #34c795 9%, var(--surface));
+}
+
+.knowledge-source-contract-strip .pending {
+  border-color: color-mix(in srgb, #d7a84f 42%, var(--line));
+  background: color-mix(in srgb, #d7a84f 10%, var(--surface));
+}
+
+.knowledge-source-contract-strip .blocked,
+.knowledge-source-contract-strip .missing {
+  border-color: color-mix(in srgb, #d9826b 42%, var(--line));
+  background: color-mix(in srgb, #d9826b 10%, var(--surface));
+}
+
 .knowledge-source-use span {
   border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   border-radius: 9px;
@@ -27586,6 +27638,35 @@ body.theme-dark .knowledge-evidence-state strong {
 body.theme-dark .knowledge-source-use span {
   background: rgba(24, 30, 25, 0.92);
   border-color: rgba(241, 235, 224, 0.14);
+}
+
+body.theme-dark .knowledge-source-contract-strip span {
+  background: rgba(24, 30, 25, 0.92);
+  border-color: rgba(241, 235, 224, 0.14);
+}
+
+body.theme-dark .knowledge-source-contract-strip strong {
+  color: #bdb4a7;
+}
+
+body.theme-dark .knowledge-source-contract-strip small {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-source-contract-strip .approved {
+  background: rgba(122, 216, 191, 0.11);
+  border-color: rgba(122, 216, 191, 0.36);
+}
+
+body.theme-dark .knowledge-source-contract-strip .pending {
+  background: rgba(215, 179, 109, 0.12);
+  border-color: rgba(215, 179, 109, 0.38);
+}
+
+body.theme-dark .knowledge-source-contract-strip .blocked,
+body.theme-dark .knowledge-source-contract-strip .missing {
+  background: rgba(226, 141, 118, 0.12);
+  border-color: rgba(226, 141, 118, 0.38);
 }
 
 body.theme-dark .knowledge-source-use strong {
@@ -28528,6 +28609,10 @@ body.theme-dark .graph-retrieval-contract-flow article {
 
   .knowledge-source-use {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knowledge-source-contract-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .knowledge-source-affordances {
