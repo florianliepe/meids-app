@@ -5990,13 +5990,15 @@ body.theme-dark .repo-responsibility-lane {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.zielmodus-preflight-summary {
+.zielmodus-preflight-summary,
+.zielmodus-handoff-command-summary {
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.zielmodus-preflight-summary span {
+.zielmodus-preflight-summary span,
+.zielmodus-handoff-command-summary span {
   border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
   border-radius: 8px;
   background: color-mix(in srgb, var(--surface-quiet) 82%, transparent);
@@ -6006,13 +6008,15 @@ body.theme-dark .repo-responsibility-lane {
   padding: 9px 10px;
 }
 
-.zielmodus-preflight-summary strong {
+.zielmodus-preflight-summary strong,
+.zielmodus-handoff-command-summary strong {
   color: var(--ink);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
 
-.zielmodus-preflight-summary small {
+.zielmodus-preflight-summary small,
+.zielmodus-handoff-command-summary small {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.35;
@@ -6021,11 +6025,15 @@ body.theme-dark .repo-responsibility-lane {
 
 .zielmodus-preflight-summary.partial-live-url-blocked span,
 .zielmodus-preflight-summary.live-probe-evidence-pending span,
-.zielmodus-preflight-summary.fixture-replay-blocked span {
+.zielmodus-preflight-summary.fixture-replay-blocked span,
+.zielmodus-handoff-command-summary.partial-live-url-blocked span,
+.zielmodus-handoff-command-summary.live-probe-evidence-pending span,
+.zielmodus-handoff-command-summary.fixture-replay-blocked span {
   border-color: color-mix(in srgb, var(--warn) 34%, var(--line));
 }
 
-.zielmodus-preflight-summary.ready-for-production-review span {
+.zielmodus-preflight-summary.ready-for-production-review span,
+.zielmodus-handoff-command-summary.ready-for-production-review span {
   border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
 }
 
@@ -6175,6 +6183,7 @@ body.theme-dark .repo-responsibility-lane {
 
   .zielmodus-readiness-metrics,
   .zielmodus-preflight-summary,
+  .zielmodus-handoff-command-summary,
   .zielmodus-live-handoff-grid,
   .zielmodus-completion-items {
     grid-template-columns: 1fr;

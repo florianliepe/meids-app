@@ -212,6 +212,7 @@
   n8nRuntimeReadinessStatus: null,
   n8nLiveProbeEvidenceStatus: null,
   n8nLiveReadinessPreflight: null,
+  n8nLiveHandoffCommands: null,
   zielmodus4LiveCompletionChecklist: null,
   zielmodus4ReadinessStatus: null,
   n8nContractTestResult: null,
@@ -271,6 +272,7 @@ const N8N_AGENT_RUNTIME_CONFIG_PATH = "assets/agent-runtime-config.json";
 const N8N_RUNTIME_READINESS_STATUS_PATH = "assets/n8n-runtime-readiness-status.json";
 const N8N_LIVE_PROBE_EVIDENCE_STATUS_PATH = "assets/n8n-live-probe-evidence.json";
 const N8N_LIVE_READINESS_PREFLIGHT_PATH = "assets/n8n-live-readiness-preflight.json";
+const N8N_LIVE_HANDOFF_COMMANDS_PATH = "assets/n8n-live-handoff-commands.json";
 const ZIELMODUS_4_LIVE_COMPLETION_CHECKLIST_PATH = "assets/zielmodus-4-live-completion-checklist.json";
 const ZIELMODUS_4_READINESS_STATUS_PATH = "assets/zielmodus-4-readiness-status.json";
 const OKF_VALIDATION_STATUS_PATH = "assets/okf-validation-status.json";
@@ -8511,6 +8513,7 @@ function bindQuality() {
       await safeRefreshStaticN8nRuntimeReadinessStatus();
       await safeRefreshStaticN8nLiveProbeEvidenceStatus();
       await safeRefreshStaticN8nLiveReadinessPreflight();
+      await safeRefreshStaticN8nLiveHandoffCommands();
       await safeRefreshStaticZielmodus4LiveCompletionChecklist();
       await safeRefreshStaticZielmodus4ReadinessStatus();
       await safeRefreshStaticN8nReplayStatus();
@@ -10678,6 +10681,7 @@ function refreshStaticPagesWorkspace() {
   safeRefreshStaticN8nRuntimeReadinessStatus();
   safeRefreshStaticN8nLiveProbeEvidenceStatus();
   safeRefreshStaticN8nLiveReadinessPreflight();
+  safeRefreshStaticN8nLiveHandoffCommands();
   safeRefreshStaticZielmodus4LiveCompletionChecklist();
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticZielmodus4ReadinessStatus();
@@ -13067,6 +13071,19 @@ async function safeRefreshStaticN8nLiveReadinessPreflight() {
   }
 }
 
+async function safeRefreshStaticN8nLiveHandoffCommands() {
+  if (!staticPagesMode) return;
+  try {
+    state.n8nLiveHandoffCommands = await fetchFrontendAssetJson(N8N_LIVE_HANDOFF_COMMANDS_PATH, { optional: true });
+    renderAgentOperatingModelPanel();
+    renderProductionProgressHeader();
+  } catch (error) {
+    state.n8nLiveHandoffCommands = null;
+    renderAgentOperatingModelPanel();
+    console.warn("Static n8n live handoff commands refresh failed", error);
+  }
+}
+
 async function safeRefreshStaticZielmodus4LiveCompletionChecklist() {
   if (!staticPagesMode) return;
   try {
@@ -13302,9 +13319,13 @@ function renderZielmodus4LiveHandoffGrid() {
   const preflight = state.n8nLiveReadinessPreflight || {};
   const preflightSummary = preflight.summary || {};
   const preflightActions = Array.isArray(preflight.next_actions) ? preflight.next_actions : [];
+  const handoff = state.n8nLiveHandoffCommands || {};
+  const handoffSummary = handoff.summary || {};
+  const handoffAgents = Array.isArray(handoff.agents) ? handoff.agents : [];
   const readinessArtifact = githubBlobUrl("frontend/assets/n8n-runtime-readiness-status.json");
   const probeArtifact = githubBlobUrl("frontend/assets/n8n-live-probe-evidence.json");
   const preflightArtifact = githubBlobUrl("frontend/assets/n8n-live-readiness-preflight.json");
+  const handoffArtifact = githubBlobUrl("frontend/assets/n8n-live-handoff-commands.json");
   const blockerSummary = preflightActions
     .flatMap((action) => Array.isArray(action.blockers) ? action.blockers : [])
     .reduce((acc, blocker) => {
@@ -13323,10 +13344,19 @@ function renderZielmodus4LiveHandoffGrid() {
           <a class="secondary small" href="${escapeHtml(readinessArtifact)}" target="_blank" rel="noreferrer">Runtime status</a>
           <a class="secondary small" href="${escapeHtml(probeArtifact)}" target="_blank" rel="noreferrer">Probe evidence</a>
           <a class="secondary small" href="${escapeHtml(preflightArtifact)}" target="_blank" rel="noreferrer">Preflight</a>
+          <a class="secondary small" href="${escapeHtml(handoffArtifact)}" target="_blank" rel="noreferrer">Handoff commands</a>
           <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/production/zielmodus-4-live-completion-plan.md"))}" target="_blank" rel="noreferrer">Completion plan</a>
           <a class="secondary small" href="${escapeHtml(githubBlobUrl("frontend/assets/zielmodus-4-live-completion-checklist.json"))}" target="_blank" rel="noreferrer">Checklist JSON</a>
         </div>
       </div>
+      ${handoff.schema_version ? `
+        <div class="zielmodus-handoff-command-summary ${escapeHtml(safeGraphClass(handoff.status || "unknown"))}">
+          <span><strong>${escapeHtml(String(handoffSummary.missing_live_url_count ?? 0))}</strong><small>missing live URLs</small></span>
+          <span><strong>${escapeHtml(String(handoffSummary.missing_probe_trace_count ?? 0))}</strong><small>missing probe traces</small></span>
+          <span><strong>${escapeHtml(handoff.status || "unknown")}</strong><small>handoff status</small></span>
+          <span><strong>${escapeHtml(String((handoffSummary.strict_gate_commands || []).length))}</strong><small>strict gate commands</small></span>
+        </div>
+      ` : ""}
       ${preflight.schema_version ? `
         <div class="zielmodus-preflight-summary ${escapeHtml(safeGraphClass(preflight.status || "unknown"))}">
           <span><strong>${escapeHtml(String(preflightSummary.fixture_ready_count ?? 0))}/${escapeHtml(String(preflightSummary.agent_count ?? agentIds.length))}</strong><small>fixtures</small></span>
@@ -13339,6 +13369,7 @@ function renderZielmodus4LiveHandoffGrid() {
         ${agentIds.map((agentId) => {
           const runtime = agentRuntimeReadiness(agentId);
           const persistedProbe = probeAgents.find((agent) => agent.agent_id === agentId) || {};
+          const handoffAgent = handoffAgents.find((agent) => agent.agent_id === agentId) || {};
           const sessionProbe = state.n8nLiveProbeResults?.[agentId] || {};
           const probeStatus = sessionProbe.status || persistedProbe.status || "awaiting_probe";
           const traceId = sessionProbe.trace_id || persistedProbe.trace_id || "";
@@ -13349,7 +13380,9 @@ function renderZielmodus4LiveHandoffGrid() {
             knowledge_fabric_agent: "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
             agentic_butler: "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
           }[agentId] || "GH_PAGES_N8N_WEBHOOK_URL";
-          const recordCommand = `node scripts/record-n8n-live-probe-evidence.cjs --agent ${agentId} --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed`;
+          const setupCommand = handoffAgent.commands?.local_public_uat_url || `node scripts/set-n8n-agent-url.cjs --agent ${agentId} --url https://YOUR-N8N-HOST/webhook/YOUR-${agentId.toUpperCase().replace(/_/g, "-")}-UAT-PATH`;
+          const recordCommand = handoffAgent.commands?.record_probe || `node scripts/record-n8n-live-probe-evidence.cjs --agent ${agentId} --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status ${handoffAgent.expected_response_status || "completed"}`;
+          const expectedStatus = handoffAgent.expected_response_status || "completed";
           return `
             <article class="${escapeHtml(className)}">
               <span>${escapeHtml(className === "ready" ? "connected" : runtime.configured ? "probe pending" : "URL blocked")}</span>
@@ -13357,8 +13390,10 @@ function renderZielmodus4LiveHandoffGrid() {
               <dl>
                 <div><dt>URL</dt><dd>${escapeHtml(runtime.configured ? runtime.urlSourceLabel || "configured" : secretKey)}</dd></div>
                 <div><dt>Probe</dt><dd>${escapeHtml(connected ? `trace ${traceId}` : probeStatus)}</dd></div>
+                <div><dt>Expected</dt><dd>${escapeHtml(expectedStatus)}</dd></div>
               </dl>
               <p>${escapeHtml(connected ? "Live probe evidence is recorded." : runtime.nextAction || persistedProbe.next_action || "Run live probe and record trace evidence.")}</p>
+              ${runtime.configured ? "" : `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(setupCommand)}">Copy URL setup command</button>`}
               <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(recordCommand)}">Copy evidence command</button>
             </article>
           `;
