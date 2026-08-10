@@ -15987,15 +15987,16 @@ function renderAgentTraceHistoryPanel() {
   const handoffTimeline = renderAgentTraceHandoffTimeline(traces);
   const setupNotice = renderAgentTraceSetupNotice();
   const sourceTraceSummary = renderKnowledgeFabricSourceTraceSummary();
+  const sourceLifecycle = renderKnowledgeFabricLifecycleTracePanel();
   if (!traces.length) {
-    target.innerHTML = `${handoffTimeline}${setupNotice}${sourceTraceSummary}<p class="empty">No local agent handoffs yet. Run Actor Twin, Knowledge Fabric, or Agentic Butler from Chat to populate this trace history.</p>`;
+    target.innerHTML = `${handoffTimeline}${setupNotice}${sourceTraceSummary}${sourceLifecycle}<p class="empty">No local agent handoffs yet. Run Actor Twin, Knowledge Fabric, or Agentic Butler from Chat to populate this trace history.</p>`;
     return;
   }
   if (!filtered.length) {
-    target.innerHTML = `${handoffTimeline}${setupNotice}${sourceTraceSummary}<p class="empty">No traces match this filter.</p>`;
+    target.innerHTML = `${handoffTimeline}${setupNotice}${sourceTraceSummary}${sourceLifecycle}<p class="empty">No traces match this filter.</p>`;
     return;
   }
-  target.innerHTML = `${handoffTimeline}${setupNotice}${sourceTraceSummary}${renderAgentTraceHistoryRows(filtered, 12)}`;
+  target.innerHTML = `${handoffTimeline}${setupNotice}${sourceTraceSummary}${sourceLifecycle}${renderAgentTraceHistoryRows(filtered, 12)}`;
 }
 
 function renderDashboardAgentTraceHistory() {
@@ -16005,11 +16006,12 @@ function renderDashboardAgentTraceHistory() {
   const traces = readComposedAgentTraces();
   const handoffTimeline = renderAgentTraceHandoffTimeline(traces, { compact: true });
   const sourceTraceSummary = renderKnowledgeFabricSourceTraceSummary({ compact: true });
+  const sourceLifecycle = renderKnowledgeFabricLifecycleTracePanel({ compact: true });
   if (!traces.length) {
-    target.innerHTML = `${handoffTimeline}${sourceTraceSummary}${renderEmptyState("No local n8n handoffs yet.", "Open agent contracts", "openProductionCockpit")}`;
+    target.innerHTML = `${handoffTimeline}${sourceTraceSummary}${sourceLifecycle}${renderEmptyState("No local n8n handoffs yet.", "Open agent contracts", "openProductionCockpit")}`;
     return;
   }
-  target.innerHTML = `${handoffTimeline}${renderAgentTraceSetupNotice({ compact: true })}${sourceTraceSummary}${renderAgentTraceHistoryRows(traces, 8)}`;
+  target.innerHTML = `${handoffTimeline}${renderAgentTraceSetupNotice({ compact: true })}${sourceTraceSummary}${sourceLifecycle}${renderAgentTraceHistoryRows(traces, 8)}`;
 }
 
 function renderAgentTraceHandoffTimeline(traces = [], options = {}) {
@@ -16225,6 +16227,125 @@ function renderKnowledgeFabricSourceTraceSummary(options = {}) {
         <div class="knowledge-fabric-trace-boundary">
           <code>${escapeHtml(summary.latestPath || summary.targetBranchPrefix)}</code>
           <small>${escapeHtml("Pending, rejected, and needs-rework handoffs stay audit-only. Vector refresh remains held until knowledge repo PR approval.")}</small>
+        </div>
+      `}
+    </article>
+  `;
+}
+
+function knowledgeFabricLifecycleTraceModel() {
+  const queue = state.knowledgeFabricIngestQueue || [];
+  const reviewed = reviewedKnowledgeFabricQueueItems();
+  const approved = reviewed.filter((item) => item.review_state === "approved");
+  const pending = queue.filter((item) => !item.reviewed_at || item.review_state === "pending-review");
+  const withConcept = queue.filter((item) => item.concept_path);
+  const withEvidence = queue.filter((item) => item.evidence_path || item.transcript_path);
+  const withCrud = queue.filter((item) => item.crud_log_path);
+  const graphCandidates = queue.reduce((count, item) => count + (Array.isArray(item.candidate_edges) ? item.candidate_edges.length : 0), 0);
+  const graphPromotions = graphPromotionHistoryItems(120);
+  const knowledgeRuntime = agentRuntimeReadiness("knowledge_fabric_agent");
+  const butlerRuntime = agentRuntimeReadiness("agentic_butler");
+  const vectorReady = queue.some((item) => item.vector_refresh === "approved-only" || item.vector_refresh === "selected-pending");
+  const lifecycle = [
+    {
+      key: "source_captured",
+      label: "Source captured",
+      value: queue.length,
+      status: queue.length ? "ready" : "pending",
+      detail: queue.length ? "Upload, paste, transcript, or chat source context is staged locally." : "Create a source handoff from Chat or Upload.",
+    },
+    {
+      key: "pending_concept",
+      label: "Pending OKF concept",
+      value: withConcept.length,
+      status: withConcept.length ? "ready" : queue.length ? "pending" : "blocked",
+      detail: withConcept.length ? "Concept Markdown/YAML targets are present." : "Concept path still needs generation.",
+    },
+    {
+      key: "evidence_crud",
+      label: "Evidence + CRUD",
+      value: Math.min(withEvidence.length, withCrud.length),
+      status: withEvidence.length && withCrud.length ? "ready" : queue.length ? "pending" : "blocked",
+      detail: `${withEvidence.length} evidence refs · ${withCrud.length} audit refs`,
+    },
+    {
+      key: "human_review",
+      label: "Human review",
+      value: reviewed.length,
+      status: approved.length ? "ready" : reviewed.length ? "warning" : queue.length ? "pending" : "blocked",
+      detail: `${pending.length} pending · ${approved.length} approved · ${reviewed.length} reviewed`,
+    },
+    {
+      key: "graph_curator",
+      label: "Graph curator",
+      value: graphCandidates + graphPromotions.length,
+      status: graphPromotions.length ? "ready" : graphCandidates ? "warning" : queue.length ? "pending" : "blocked",
+      detail: `${graphCandidates} candidate edges · ${graphPromotions.length} promotion decisions`,
+    },
+    {
+      key: "vector_boundary",
+      label: "Vector boundary",
+      value: vectorReady ? "prepared" : "held",
+      status: vectorReady ? "ready" : approved.length ? "warning" : "blocked",
+      detail: vectorReady ? "Adapter boundary can prepare refresh payloads without secrets." : "Refresh held until approval/repo merge and Azure credentials.",
+    },
+    {
+      key: "live_n8n",
+      label: "Live n8n handoff",
+      value: knowledgeRuntime.configured && butlerRuntime.configured ? "ready" : "gated",
+      status: knowledgeRuntime.configured && butlerRuntime.configured ? "ready" : knowledgeRuntime.configured ? "warning" : "blocked",
+      detail: `Knowledge Fabric: ${knowledgeRuntime.status}; Butler: ${butlerRuntime.status}`,
+    },
+  ];
+  const latest = queue
+    .slice()
+    .sort((a, b) => String(b.reviewed_at || b.created_at || "").localeCompare(String(a.reviewed_at || a.created_at || "")))[0] || null;
+  return {
+    lifecycle,
+    queue,
+    latest,
+    readyCount: lifecycle.filter((item) => item.status === "ready").length,
+    approvalGate: pending.length || !approved.length,
+    liveGate: !(knowledgeRuntime.configured && butlerRuntime.configured),
+  };
+}
+
+function renderKnowledgeFabricLifecycleTracePanel(options = {}) {
+  const model = knowledgeFabricLifecycleTraceModel();
+  const compact = Boolean(options.compact);
+  if (!model.queue.length && compact) return "";
+  const stateLabel = model.liveGate
+    ? "live gated"
+    : model.approvalGate
+      ? "review gated"
+      : "ready";
+  return `
+    <article class="knowledge-fabric-lifecycle-trace ${compact ? "compact" : ""}">
+      <div class="knowledge-fabric-lifecycle-head">
+        <div>
+          <span class="badge">Ingest lifecycle trace</span>
+          <strong>${escapeHtml(`${model.readyCount}/${model.lifecycle.length} source gates ready`)}</strong>
+          <p>${escapeHtml(model.latest
+            ? `${model.latest.title || model.latest.intent || "Latest source handoff"} · ${model.latest.review_state || "pending-review"} · ${model.latest.trace_id || model.latest.queue_id || "trace pending"}`
+            : "No source handoff has entered the local Knowledge Fabric trace yet.")}</p>
+        </div>
+        <span class="${safeGraphClass(stateLabel)}">${escapeHtml(stateLabel)}</span>
+      </div>
+      <div class="knowledge-fabric-lifecycle-flow">
+        ${model.lifecycle.map((item, index) => `
+          <span class="${safeGraphClass(item.status)} ${safeGraphClass(item.key)}">
+            <small>${escapeHtml(String(index + 1).padStart(2, "0"))}</small>
+            <strong>${escapeHtml(item.label)}</strong>
+            <em>${escapeHtml(String(item.value))}</em>
+            <i>${escapeHtml(item.detail)}</i>
+          </span>
+        `).join("")}
+      </div>
+      ${compact ? "" : `
+        <div class="knowledge-fabric-lifecycle-boundary">
+          <span><strong>Storage</strong><small>Concepts, transcripts, evidence, and CRUD logs remain OKF repo artifacts.</small></span>
+          <span><strong>Trust</strong><small>Pending concepts and candidate edges remain review-only until approved.</small></span>
+          <span><strong>Runtime</strong><small>Live ingestion remains gated until Knowledge Fabric Agent and Agentic Butler URLs exist.</small></span>
         </div>
       `}
     </article>

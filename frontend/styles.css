@@ -29635,3 +29635,190 @@ body.theme-dark .agent-runtime-boundary-grid > article > small {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Knowledge Fabric ingest lifecycle trace panel. */
+.knowledge-fabric-lifecycle-trace {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface) 92%, var(--accent) 8%), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px;
+}
+
+.knowledge-fabric-lifecycle-trace.compact {
+  padding: 10px;
+}
+
+.knowledge-fabric-lifecycle-head {
+  align-items: start;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.knowledge-fabric-lifecycle-head strong,
+.knowledge-fabric-lifecycle-head p {
+  margin: 3px 0 0;
+}
+
+.knowledge-fabric-lifecycle-head p {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.knowledge-fabric-lifecycle-head > span {
+  background: color-mix(in srgb, var(--surface-quiet) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 850;
+  padding: 5px 8px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.knowledge-fabric-lifecycle-head > span.ready {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
+  color: var(--accent-strong);
+}
+
+.knowledge-fabric-lifecycle-head > span.live-gated,
+.knowledge-fabric-lifecycle-head > span.review-gated {
+  border-color: color-mix(in srgb, var(--warn) 52%, var(--line));
+  color: color-mix(in srgb, var(--warn) 72%, var(--ink));
+}
+
+.knowledge-fabric-lifecycle-flow {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.knowledge-fabric-lifecycle-flow > span {
+  background: color-mix(in srgb, var(--surface-quiet) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-top: 3px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 10px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px;
+}
+
+.knowledge-fabric-lifecycle-flow > span.ready {
+  border-top-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+}
+
+.knowledge-fabric-lifecycle-flow > span.warning,
+.knowledge-fabric-lifecycle-flow > span.pending {
+  border-top-color: color-mix(in srgb, var(--warn) 70%, var(--line));
+}
+
+.knowledge-fabric-lifecycle-flow > span.blocked {
+  border-top-color: color-mix(in srgb, #c84f3f 70%, var(--line));
+}
+
+.knowledge-fabric-lifecycle-flow small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 850;
+}
+
+.knowledge-fabric-lifecycle-flow strong {
+  color: var(--ink);
+  font-size: 0.74rem;
+  line-height: 1.14;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-fabric-lifecycle-flow em {
+  color: var(--accent-strong);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-fabric-lifecycle-flow i {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 680;
+  line-height: 1.32;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-fabric-lifecycle-boundary {
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-top: 9px;
+}
+
+.knowledge-fabric-lifecycle-boundary span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.knowledge-fabric-lifecycle-boundary strong {
+  color: var(--ink);
+  font-size: 0.74rem;
+}
+
+.knowledge-fabric-lifecycle-boundary small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+body.theme-dark .knowledge-fabric-lifecycle-trace {
+  background:
+    linear-gradient(135deg, rgba(123, 225, 199, 0.07), rgba(18, 23, 19, 0.96));
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .knowledge-fabric-lifecycle-head p,
+body.theme-dark .knowledge-fabric-lifecycle-flow small,
+body.theme-dark .knowledge-fabric-lifecycle-flow i,
+body.theme-dark .knowledge-fabric-lifecycle-boundary small {
+  color: #c9c0b3;
+}
+
+body.theme-dark .knowledge-fabric-lifecycle-head > span,
+body.theme-dark .knowledge-fabric-lifecycle-flow > span {
+  background: rgba(16, 20, 17, 0.92);
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .knowledge-fabric-lifecycle-flow strong,
+body.theme-dark .knowledge-fabric-lifecycle-boundary strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-fabric-lifecycle-flow em {
+  color: #8ce2ca;
+}
+
+@media (max-width: 1180px) {
+  .knowledge-fabric-lifecycle-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .knowledge-fabric-lifecycle-boundary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .knowledge-fabric-lifecycle-head,
+  .knowledge-fabric-lifecycle-flow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
