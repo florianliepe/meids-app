@@ -33,6 +33,8 @@ Secrets must be configured in GitHub at:
 
 Current access note: GitHub rejects workflow edits from the available OAuth credential because it lacks `workflow` scope. Until a workflow-scope credential is available, configure public UAT endpoints through `frontend/assets/agent-runtime-config.json`.
 
+Prepared workflow-scope patch: [`docs/production/github-pages-agent-runtime-workflow-patch.md`](production/github-pages-agent-runtime-workflow-patch.md). Apply it only after the GitHub credential or GitHub App has permission to update workflow files.
+
 After changing a secret later, trigger the Pages workflow again through a push to `main` or `Actions -> Deploy MeIDs frontend to GitHub Pages -> Run workflow`.
 
 ## Public Staging Asset
