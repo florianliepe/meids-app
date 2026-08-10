@@ -14254,10 +14254,13 @@ function chatAgentContractStatuses() {
     const openGates = gates.filter((gate) => !gate.ready).map((gate) => gate.label.toLowerCase());
     const runtimeReadiness = agentRuntimeReadiness(agentId);
     const configured = runtimeReadiness.configured || Boolean(contract.webhook_configured);
+    const contractStatuses = new Set(Array.isArray(contract.statuses) ? contract.statuses : []);
     const replayPassed = state.n8nAgentContracts?.replay_status === "passed" || contract.replay_status === "passed";
+    const contractTested = replayPassed || contractStatuses.has("contract tested");
     const probe = state.n8nLiveProbeResults?.[agentId];
     const replayCaseCount = Number(contract.replay_case_count || contract.case_count || 0);
     const runtimeState = runtimeReadiness.status || "";
+    const n8nConnected = probe?.status === "connected";
     const webhookLabel = probe?.status === "connected"
       ? "live probe ok"
       : configured
@@ -14265,27 +14268,60 @@ function chatAgentContractStatuses() {
         : runtimeState === "awaiting URL"
           ? "URL slot ready"
           : "fixture only";
+    const stageItems = [
+      {
+        key: "documented",
+        label: "Documented",
+        ready: true,
+        detail: contract.source || "Contract fixture documented.",
+      },
+      {
+        key: "fixture-ready",
+        label: "Fixture",
+        ready: replayPassed || contractStatuses.has("fixture ready"),
+        detail: replayPassed ? `${replayCaseCount || state.n8nAgentContracts?.replay_case_count || 0} replay cases passed.` : "Fixture replay has not passed.",
+      },
+      {
+        key: "contract-tested",
+        label: "Tested",
+        ready: contractTested,
+        detail: contractTested ? "Contract replay validation passed." : "Run fixture replay before rollout.",
+      },
+      {
+        key: "n8n-connected",
+        label: "n8n",
+        ready: n8nConnected,
+        detail: n8nConnected ? "Live workflow probe reached n8n." : (configured ? "URL configured; live probe pending." : "Live URL missing."),
+      },
+    ];
+    const stateLabel = n8nConnected
+      ? "n8n connected"
+      : configured
+        ? "configured"
+        : contractTested
+          ? "contract tested"
+          : replayPassed
+            ? "fixture ready"
+            : runtimeState === "awaiting URL"
+              ? "awaiting URL"
+              : contract.live_status_label === "blocked"
+                ? "blocked"
+                : "documented";
     return {
       agentId,
       label: agentDisplayName(agentId),
-      state: probe?.status === "connected"
-        ? "n8n connected"
-        : configured
-          ? runtimeReadiness.status
-          : runtimeState === "awaiting URL"
-            ? "awaiting URL"
-            : replayPassed
-            ? "fixture ready"
-            : "documented",
+      state: stateLabel,
       detail: runtimeReadiness.detail,
       nextAction: runtimeReadiness.nextAction || "",
       configured,
       replayPassed,
+      contractTested,
       replayCaseCount,
       webhookLabel,
       readyGateCount,
       totalGateCount: gates.length,
       openGates,
+      stageItems,
       active: chatModeAgentId() === agentId,
     };
   });
@@ -14306,9 +14342,24 @@ function renderChatContractBadges() {
         <strong>${escapeHtml(item.label)}</strong>
         <small>${escapeHtml(item.state)}</small>
         <em>${escapeHtml(item.detail)}</em>
+        ${renderChatContractStageRow(item.stageItems, { compact: true })}
       </span>
     `)
     .join("");
+}
+
+function renderChatContractStageRow(stages = [], options = {}) {
+  if (!stages.length) return "";
+  const compact = options.compact ? " compact" : "";
+  return `
+    <span class="chat-contract-stage-row${compact}" aria-label="Contract readiness stages">
+      ${stages.map((stage) => `
+        <span class="${stage.ready ? "ready" : "pending"} ${escapeHtml(stage.key || "")}" title="${escapeHtml(stage.detail || "")}">
+          ${escapeHtml(stage.label || "")}
+        </span>
+      `).join("")}
+    </span>
+  `;
 }
 
 function renderChatModeReadinessRail() {
@@ -14351,6 +14402,7 @@ function renderChatModeReadinessRail() {
         </span>
         <em>${escapeHtml(`${gateLabel} · ${stateLabel} · ${configuredLabel}`)}</em>
         <small class="chat-mode-gate-detail">${escapeHtml(`${blockerLabel} · ${evidenceLabel}`)}</small>
+        ${renderChatContractStageRow(status.stageItems)}
       </button>
     `;
   }).join("");
@@ -14458,6 +14510,7 @@ function renderActiveChatContractBadge() {
     <small>${escapeHtml(stateLabel)}</small>
     <em>${escapeHtml(`${gateLabel} · ${configuredLabel} · ${replayLabel}`)}</em>
     <span>${escapeHtml(`${blockerLabel}. ${nextAction}`)}</span>
+    ${renderChatContractStageRow(active.stageItems, { compact: true })}
   `;
 }
 

@@ -7575,9 +7575,9 @@ body.theme-dark .knowledge-source-readiness-grid span {
   min-width: 0;
 }
 
-.chat-mode-readiness strong,
-.chat-mode-readiness small,
-.chat-mode-readiness em {
+.chat-mode-readiness > span strong,
+.chat-mode-readiness > span small,
+.chat-mode-readiness > em {
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -7587,13 +7587,13 @@ body.theme-dark .knowledge-source-readiness-grid span {
   white-space: normal;
 }
 
-.chat-mode-readiness strong {
+.chat-mode-readiness > span strong {
   color: var(--ink);
   font-size: 12px;
 }
 
-.chat-mode-readiness small,
-.chat-mode-readiness em {
+.chat-mode-readiness > span small,
+.chat-mode-readiness > em {
   color: var(--muted);
   font-size: 10px;
   font-style: normal;
@@ -7611,6 +7611,7 @@ body.theme-dark .knowledge-source-readiness-grid span {
 }
 
 .chat-mode-readiness.missing-url,
+.chat-mode-readiness.awaiting-url,
 .chat-mode-readiness.blocked {
   border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
 }
@@ -7998,30 +7999,30 @@ body.theme-dark .knowledge-source-readiness-grid span {
   white-space: nowrap;
 }
 
-.chat-active-contract-badge strong,
-.chat-active-contract-badge small,
-.chat-active-contract-badge em,
-.chat-active-contract-badge span {
+.chat-active-contract-badge > strong,
+.chat-active-contract-badge > small,
+.chat-active-contract-badge > em,
+.chat-active-contract-badge > span {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.chat-active-contract-badge strong {
+.chat-active-contract-badge > strong {
   color: var(--ink);
   font-size: 11px;
   font-weight: 850;
 }
 
-.chat-active-contract-badge small,
-.chat-active-contract-badge em,
-.chat-active-contract-badge span {
+.chat-active-contract-badge > small,
+.chat-active-contract-badge > em,
+.chat-active-contract-badge > span {
   color: var(--muted);
   font-size: 10px;
   font-style: normal;
   font-weight: 760;
 }
 
-.chat-active-contract-badge span {
+.chat-active-contract-badge > span:not(.chat-contract-stage-row) {
   grid-column: 1 / -1;
   max-width: 100%;
   color: color-mix(in srgb, var(--muted) 84%, var(--ink));
@@ -8045,7 +8046,7 @@ body.theme-dark .knowledge-source-readiness-grid span {
   color: var(--warn);
 }
 
-.chat-contract-badges span {
+.chat-contract-badges > span {
   display: grid;
   gap: 2px;
   border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
@@ -8054,22 +8055,23 @@ body.theme-dark .knowledge-source-readiness-grid span {
   padding: 9px 10px;
 }
 
-.chat-contract-badges span.active {
+.chat-contract-badges > span.active {
   border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
   background: color-mix(in srgb, var(--accent) 12%, var(--surface-quiet));
 }
 
-.chat-contract-badges span.configured,
-.chat-contract-badges span.n8n-connected {
+.chat-contract-badges > span.configured,
+.chat-contract-badges > span.n8n-connected {
   border-color: color-mix(in srgb, var(--accent) 36%, var(--line));
 }
 
-.chat-contract-badges span.fixture-ready {
+.chat-contract-badges > span.fixture-ready {
   border-color: color-mix(in srgb, #d7b56d 38%, var(--line));
 }
 
-.chat-contract-badges span.missing-url,
-.chat-contract-badges span.blocked {
+.chat-contract-badges > span.missing-url,
+.chat-contract-badges > span.awaiting-url,
+.chat-contract-badges > span.blocked {
   border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
 }
 
@@ -8089,6 +8091,48 @@ body.theme-dark .knowledge-source-readiness-grid span {
   font-size: 10px;
   font-style: normal;
   line-height: 1.25;
+}
+
+.chat-contract-stage-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.chat-contract-stage-row span {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 9px;
+  font-weight: 840;
+  line-height: 1;
+  max-width: 100%;
+  min-height: 18px;
+  padding: 4px 6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.chat-contract-stage-row.compact span {
+  font-size: 8px;
+  min-height: 16px;
+  padding: 3px 5px;
+}
+
+.chat-contract-stage-row span.ready {
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--line));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent-strong);
+}
+
+.chat-contract-stage-row span.pending {
+  border-color: color-mix(in srgb, var(--warn) 38%, var(--line));
+  background: color-mix(in srgb, var(--warn) 8%, var(--surface));
+  color: var(--muted);
 }
 
 .agent-trace-row {
@@ -9099,7 +9143,7 @@ body.theme-dark .agent-probe-replay-grid p {
   line-height: 1.35;
 }
 
-body.theme-dark .chat-contract-badges span,
+body.theme-dark .chat-contract-badges > span,
 body.theme-dark .chat-mode-readiness,
 body.theme-dark .chat-active-contract-badge,
 body.theme-dark .chat-contract-actions,
@@ -9215,7 +9259,7 @@ body.theme-dark .chat-active-contract-badge.blocked {
   background: rgba(240, 163, 154, 0.1);
 }
 
-body.theme-dark .chat-contract-badges span.active {
+body.theme-dark .chat-contract-badges > span.active {
   border-color: rgba(122, 216, 191, 0.64);
   background: rgba(122, 216, 191, 0.1);
 }
@@ -9226,7 +9270,7 @@ body.theme-dark .chat-mode-readiness.active {
   background: rgba(122, 216, 191, 0.1);
 }
 
-body.theme-dark .chat-contract-badges span.fixture-ready {
+body.theme-dark .chat-contract-badges > span.fixture-ready {
   border-color: rgba(215, 181, 109, 0.48);
   background: rgba(215, 181, 109, 0.08);
 }
@@ -9237,16 +9281,36 @@ body.theme-dark .chat-mode-readiness.contract-tested {
   background: rgba(215, 181, 109, 0.08);
 }
 
-body.theme-dark .chat-contract-badges span.missing-url,
-body.theme-dark .chat-contract-badges span.blocked {
+body.theme-dark .chat-contract-badges > span.missing-url,
+body.theme-dark .chat-contract-badges > span.awaiting-url,
+body.theme-dark .chat-contract-badges > span.blocked {
   border-color: rgba(240, 163, 154, 0.5);
   background: rgba(240, 163, 154, 0.08);
 }
 
 body.theme-dark .chat-mode-readiness.missing-url,
+body.theme-dark .chat-mode-readiness.awaiting-url,
 body.theme-dark .chat-mode-readiness.blocked {
   border-color: rgba(240, 163, 154, 0.5);
   background: rgba(240, 163, 154, 0.08);
+}
+
+body.theme-dark .chat-contract-stage-row span {
+  border-color: rgba(241, 235, 224, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  color: #b9b2a6;
+}
+
+body.theme-dark .chat-contract-stage-row span.ready {
+  border-color: rgba(122, 216, 191, 0.54);
+  background: rgba(122, 216, 191, 0.1);
+  color: #9ce6d2;
+}
+
+body.theme-dark .chat-contract-stage-row span.pending {
+  border-color: rgba(240, 163, 154, 0.48);
+  background: rgba(240, 163, 154, 0.08);
+  color: #d8cfc2;
 }
 
 body.theme-dark .agent-trace-row.approval {

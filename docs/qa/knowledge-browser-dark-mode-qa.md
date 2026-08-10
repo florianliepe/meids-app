@@ -200,6 +200,20 @@ Latest local QA pass for Knowledge Fabric ingest path status:
 
 This pass adds a Source Upload ingest-path status panel for source intake, pending OKF, evidence/CRUD, human review, graph curator, and vector boundary. The panel keeps local/static operation explicit until the live Knowledge Fabric and Butler n8n URLs are configured. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-fabric-ingest-path-status/`.
 
+Latest local QA pass for Chat contract health badges:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-agent-config-export.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/replay-n8n-fixtures.cjs --write`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-chat-contract-health-badges`
+- Targeted Playwright assertions open `?view=chat`, expand Interaction setup, and verify Actor Twin, Knowledge Fabric Agent, Agentic Butler, contract stage pills, dark mode, and zero horizontal overflow at `390px` and `1440px`.
+
+This pass adds explicit Chat contract health stages beside the interaction modes: Documented, Fixture, Tested, and n8n. Public fixture replay remains contract-tested for all three top-level agents; live n8n connection remains a separate gate until webhook URLs are configured. Screenshots are stored in `docs/visual-qa/screenshots-20260810-chat-contract-health-badges/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:
