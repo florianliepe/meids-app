@@ -13229,7 +13229,9 @@ function renderZielmodus4ReadinessCard() {
   const status = readiness.status || "unknown";
   const summary = readiness.summary || {};
   const live = readiness.live_n8n || {};
+  const liveProbe = readiness.live_probe_evidence || {};
   const missingAgents = Array.isArray(live.missing_live_agents) ? live.missing_live_agents : [];
+  const missingProbeAgents = Array.isArray(liveProbe.missing_probe_agents) ? liveProbe.missing_probe_agents : [];
   const nextActions = Array.isArray(readiness.next_actions) ? readiness.next_actions : [];
   const requirementLabel = `${summary.ready_requirement_count ?? 0}/${summary.requirement_count ?? 0} requirements`;
   const qaLabel = `${summary.passed_qa_check_count ?? 0}/${summary.qa_check_count ?? 0} QA`;
@@ -13259,6 +13261,11 @@ function renderZielmodus4ReadinessCard() {
           <p>${missingAgents.map(agentDisplayName).map(escapeHtml).join(", ")}</p>
         </div>
       ` : ""}
+      <div class="zielmodus-live-proof-summary" aria-label="Remaining live proof">
+        <span><strong>${escapeHtml(String(missingAgents.length))}</strong><small>missing live URLs</small></span>
+        <span><strong>${escapeHtml(String(missingProbeAgents.length))}</strong><small>missing probe traces</small></span>
+        <span><strong>45-90 min</strong><small>estimated integration after URLs exist</small></span>
+      </div>
       ${nextActions.length ? `
         <ol class="zielmodus-readiness-actions">
           ${nextActions.slice(0, 4).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}

@@ -5917,7 +5917,8 @@ body.theme-dark .repo-responsibility-lane {
 }
 
 .zielmodus-readiness-metrics span,
-.zielmodus-readiness-blocker {
+.zielmodus-readiness-blocker,
+.zielmodus-live-proof-summary span {
   border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
   border-radius: 8px;
   background: color-mix(in srgb, var(--surface-quiet) 82%, transparent);
@@ -5928,15 +5929,23 @@ body.theme-dark .repo-responsibility-lane {
 }
 
 .zielmodus-readiness-metrics strong,
-.zielmodus-readiness-blocker strong {
+.zielmodus-readiness-blocker strong,
+.zielmodus-live-proof-summary strong {
   color: var(--ink);
   font-size: 12px;
 }
 
-.zielmodus-readiness-metrics small {
+.zielmodus-readiness-metrics small,
+.zielmodus-live-proof-summary small {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.35;
+}
+
+.zielmodus-live-proof-summary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .zielmodus-readiness-actions {
