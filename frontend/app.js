@@ -18061,12 +18061,16 @@ function graphPromotionHistoryItems(limit = 8) {
       decision,
       review_state: review.review_state || edge.review_state || "candidate",
       reviewed_at: review.reviewed_at || edge.reviewed_at || edge.promotion?.reviewed_at || "",
+      reviewer: review.reviewer || edge.promotion?.reviewer || "local-human-review",
       relation_type: review.relation_type || edge.relation_type || edge.edge_type || "related",
       confidence: edge.confidence,
       note: review.note || edge.review_note || edge.promotion?.rationale || graphPromotionDecision(edge).detail,
       source_title: source.title || edge.source,
       target_title: target.title || edge.target,
       source_path: edge.source_path || source.path || source.okf_path || "",
+      target_path: edge.target_path || target.path || target.okf_path || "",
+      evidence_refs: Array.isArray(edge.evidence_refs) ? edge.evidence_refs : [],
+      graph_curator_trigger: edge.graph_curator_trigger || "",
       edge_class: edgeClass,
       path: review.path || edge.path || "",
     });
@@ -18084,6 +18088,9 @@ function graphPromotionHistoryItems(limit = 8) {
       source_title: review.source || "source",
       target_title: review.target || "target",
       source_path: review.path || "",
+      target_path: "",
+      evidence_refs: [],
+      graph_curator_trigger: "",
       edge_class: "reviewed",
       path: review.path || "",
     });
@@ -18120,6 +18127,9 @@ function knowledgeFabricQueuePromotionHistoryItems() {
         source_title: labelizeGraph(edge.source || item.title || "source"),
         target_title: labelizeGraph(edge.target || "target"),
         source_path: item.concept_path || item.evidence_path || "",
+        target_path: edge.target_path || "",
+        evidence_refs: [item.evidence_path, item.transcript_path].filter(Boolean),
+        graph_curator_trigger: item.graph_curator_trigger || "",
         edge_class: item.review_state === "approved" ? "explicit" : "candidate",
         path: item.concept_path || item.evidence_path || "",
         source_handoff: knowledgeFabricGraphSourceHandoffContext(item, edge),
@@ -18840,6 +18850,12 @@ function reviewedOkfGraphPromotionLinks(reviewedItems = [], promotionItems = [])
       graph_decision: primary.review_state || primary.decision || "",
       graph_edge_keys: matches.map((promotion) => promotion.edge_key).filter(Boolean),
       graph_relation_types: Array.from(new Set(matches.map((promotion) => promotion.relation_type).filter(Boolean))),
+      promotion_review_summary: matches.map((promotion) => ({
+        edge_key: promotion.edge_key || "",
+        decision: promotion.decision || promotion.review_state || "",
+        evidence_refs: graphPromotionEvidenceRefs(promotion),
+        repo_apply: graphPromotionRepoApplyPlan(promotion),
+      })),
       vector_rule: item.review_state === "approved" && ["approved", "accepted"].includes(String(primary.review_state || primary.decision || ""))
         ? "eligible_for_vector_adapter_after_knowledge_repo_merge"
         : "hold_until_okf_and_graph_review_pass",
@@ -18874,23 +18890,89 @@ function buildGraphPromotionHistoryArtifact(items = []) {
       "Keep needs-rework and rejected decisions as audit evidence only.",
       "Refresh vector adapter payloads only for approved graph relations after OKF merge.",
     ],
-    promotions: items.map((item) => ({
-      edge_key: item.edge_key || "",
-      decision: item.decision || item.review_state || "candidate",
-      review_state: item.review_state || "",
-      reviewed_at: item.reviewed_at || "",
-      reviewer: item.reviewer || item.review_actor || "local-human-review",
-      relation_type: item.relation_type || "related",
-      confidence: item.confidence ?? null,
-      edge_class: item.edge_class || "",
-      source: item.source_title || item.source || "",
-      target: item.target_title || item.target || "",
-      source_path: item.source_path || item.path || "",
-      note: item.note || "",
-      retrieval_rule: ["approved", "accepted"].includes(String(item.review_state || item.decision))
-        ? "eligible_for_trusted_retrieval_after_okf_merge"
-        : "not_eligible_for_trusted_retrieval",
-    })),
+    promotions: items.map((item) => buildGraphPromotionExportItem(item)),
+  };
+}
+
+function buildGraphPromotionExportItem(item = {}) {
+  const stateValue = String(item.review_state || item.decision || "").toLowerCase();
+  const evidenceRefs = graphPromotionEvidenceRefs(item);
+  return {
+    edge_key: item.edge_key || "",
+    decision: item.decision || item.review_state || "candidate",
+    review_state: item.review_state || "",
+    reviewed_at: item.reviewed_at || "",
+    reviewer: item.reviewer || item.review_actor || "local-human-review",
+    relation_type: item.relation_type || "related",
+    confidence: item.confidence ?? null,
+    edge_class: item.edge_class || "",
+    source: item.source_title || item.source || "",
+    target: item.target_title || item.target || "",
+    source_path: item.source_path || item.path || "",
+    target_path: item.target_path || "",
+    evidence_refs: evidenceRefs,
+    evidence_gate: {
+      required: ["approved", "accepted"].includes(stateValue),
+      status: evidenceRefs.length ? "source_evidence_present" : "missing_source_evidence",
+      rule: "Accepted graph relations may be applied to graph edge YAML only when source evidence links are present.",
+    },
+    repo_apply: graphPromotionRepoApplyPlan(item),
+    graph_curator_trigger: item.graph_curator_trigger || "",
+    source_handoff: item.source_handoff || graphSourceHandoffContext(item),
+    note: item.note || "",
+    retrieval_rule: ["approved", "accepted"].includes(stateValue)
+      ? "eligible_for_trusted_retrieval_after_okf_merge"
+      : "not_eligible_for_trusted_retrieval",
+  };
+}
+
+function graphPromotionEvidenceRefs(item = {}) {
+  const refs = [];
+  if (Array.isArray(item.evidence_refs)) refs.push(...item.evidence_refs);
+  const handoff = item.source_handoff || graphSourceHandoffContext(item) || {};
+  refs.push(handoff.evidence_path, handoff.transcript_path, item.source_path || item.path);
+  return Array.from(new Set(refs.filter(Boolean)));
+}
+
+function graphPromotionRepoApplyPlan(item = {}) {
+  const decision = String(item.review_state || item.decision || "").toLowerCase();
+  if (["approved", "accepted"].includes(decision)) {
+    return {
+      action: "apply_to_graph_edges_yaml",
+      target_path: "graph/edges/<twin>.yaml",
+      resulting_review_state: "approved",
+      resulting_edge_class: "explicit",
+      requires_human_pr: true,
+      vector_refresh: "queue_after_knowledge_repo_merge",
+    };
+  }
+  if (decision === "needs-rework" || decision === "needs_rework") {
+    return {
+      action: "store_as_audit_only_and_return_to_graph_curator",
+      target_path: "audit/crud/<twin>/<date>.jsonl",
+      resulting_review_state: "needs-rework",
+      resulting_edge_class: "candidate",
+      requires_human_pr: true,
+      vector_refresh: "blocked",
+    };
+  }
+  if (decision === "rejected") {
+    return {
+      action: "store_as_audit_only_and_exclude_from_retrieval",
+      target_path: "audit/crud/<twin>/<date>.jsonl",
+      resulting_review_state: "rejected",
+      resulting_edge_class: "candidate",
+      requires_human_pr: true,
+      vector_refresh: "blocked",
+    };
+  }
+  return {
+    action: "hold_for_relation_review",
+    target_path: "graph/edges/<twin>.yaml",
+    resulting_review_state: "candidate",
+    resulting_edge_class: "candidate",
+    requires_human_pr: true,
+    vector_refresh: "blocked_until_review",
   };
 }
 

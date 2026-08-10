@@ -234,6 +234,24 @@ Human promotion decisions are represented as `okf.graph_promotion.v1` JSON files
 in `contracts/okf/promotions`. Validate candidate-to-approved/rejected/rework
 transitions with `node scripts\validate-graph-promotions.cjs`.
 
+The cockpit export uses `okf.graph_promotion_history_export.v1` and enriches each
+promotion record with operational handoff metadata:
+
+- `evidence_refs` lists concept, evidence, or transcript paths that justify the
+  relation.
+- `evidence_gate` states whether accepted relations have source evidence before
+  graph YAML can be changed.
+- `repo_apply` tells the knowledge repo reviewer whether to apply the relation
+  to `graph/edges/<twin>.yaml`, store it audit-only, return it to the graph
+  curator, or keep it blocked.
+- `source_handoff` links promotion decisions back to Knowledge Fabric ingest
+  queue items when the relation came from an upload, transcript, or local source
+  capture.
+
+Accepted graph relations may become trusted retrieval context only after the
+knowledge repo PR is reviewed and merged. Needs-rework and rejected relations
+remain audit-only and must not trigger vector refresh.
+
 ## Postgres Graph Projection
 
 OKF Markdown/YAML remains the authoring source of truth. Postgres is a hosted
