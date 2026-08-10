@@ -179,6 +179,38 @@ The helper:
 
 Use this helper only for intentionally public UAT endpoints. For production, prefer GitHub Pages repository secrets or hosted backend secret injection.
 
+## Browser-Local Chat UAT Override
+
+The Chat workspace also exposes a browser-local setup path for the two missing live agents:
+
+1. Open Chat.
+2. In the **Live URL setup needed** card, paste the public UAT URL for:
+   - Knowledge Fabric Agent
+   - Agentic Butler
+3. Select **Use locally**.
+4. Run **Probe live** from the selected Chat mode or from the Production/Review Cockpit.
+
+This writes only to browser `localStorage` under `intellectualTwin.agentWebhookOverrides`. It does not modify repository files, GitHub Pages secrets, or public runtime assets.
+
+Validation rules:
+
+- the URL must use `https`;
+- the path must include `/webhook/`;
+- invalid values are rejected before they can be used for a live probe.
+
+Use this path for quick UAT when a workflow URL should be tested before committing it or adding it as a GitHub Pages secret. After UAT approval, promote the URL through one of the durable paths:
+
+- GitHub Pages repository secret; or
+- `scripts/set-n8n-agent-url.cjs` for intentionally public staging assets; or
+- hosted backend secret injection for private production endpoints.
+
+Repeatable QA:
+
+```powershell
+$env:NODE_PATH="C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\node_modules"
+& "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\browser-chat-local-url-setup-qa.cjs frontend docs\visual-qa\chat-local-url-setup
+```
+
 ## Chat-Level Contract Actions
 
 The Chat interaction setup now exposes the active agent contract directly beside the mode selector:

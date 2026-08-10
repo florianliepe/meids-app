@@ -1,0 +1,44 @@
+{
+  "generated_at": "2026-08-10T21:36:50.808Z",
+  "frontend_root": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\frontend",
+  "out_dir": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\screenshots-20260810-chat-local-url-script",
+  "passed": true,
+  "cases": [
+    {
+      "name": "chat-local-url-desktop-dark",
+      "width": 1440,
+      "height": 1000,
+      "status": "passed",
+      "failures": [],
+      "metrics": {
+        "control_count": 2,
+        "labels": [
+          "Knowledge Fabric Agent public UAT URL",
+          "Agentic Butler public UAT URL"
+        ],
+        "invalid_url_rejected": true,
+        "valid_url_saved": true,
+        "health_text": "ASK\nActor Twin\nconfigured · URL · 4/6 gates\nSKILL\nAgentic Butler\nawaiting URL · fixture · 3/6 gates\nSOURCE\nKnowledge Fabric\nawaiting URL · fixture · 3/6 gates"
+      },
+      "screenshot": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\screenshots-20260810-chat-local-url-script\\chat-local-url-desktop-dark.png"
+    },
+    {
+      "name": "chat-local-url-mobile-dark",
+      "width": 390,
+      "height": 900,
+      "status": "passed",
+      "failures": [],
+      "metrics": {
+        "control_count": 2,
+        "labels": [
+          "Knowledge Fabric Agent public UAT URL",
+          "Agentic Butler public UAT URL"
+        ],
+        "invalid_url_rejected": true,
+        "valid_url_saved": true,
+        "health_text": "ASK\nActor Twin\nconfigured · URL · 4/6 gates\nSKILL\nAgentic Butler\nawaiting URL · fixture · 3/6 gates\nSOURCE\nKnowledge Fabric\nawaiting URL · fixture · 3/6 gates"
+      },
+      "screenshot": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\screenshots-20260810-chat-local-url-script\\chat-local-url-mobile-dark.png"
+    }
+  ]
+}
