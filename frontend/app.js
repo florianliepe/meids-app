@@ -12427,6 +12427,7 @@ function renderN8nRuntimeSetupActions(agents = [], contractByAgent = new Map()) 
           ${missingSnippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(missingSnippet)}">Copy missing config</button>` : ""}
         </div>
       </div>
+      ${missingAgents.length ? renderN8nCurrentSupportedConfigPath(missingSnippet) : ""}
       <div class="n8n-runtime-secret-grid">
         ${secretRows.map((row) => `
           <article class="${row.status === "configured" ? "ready" : "pending"}">
@@ -12449,6 +12450,25 @@ function renderN8nRuntimeSetupActions(agents = [], contractByAgent = new Map()) 
         </ol>
       </details>
     </section>
+  `;
+}
+
+function renderN8nCurrentSupportedConfigPath(snippet = "") {
+  const runtimeAssetPath = "frontend/assets/agent-runtime-config.json";
+  return `
+    <aside class="n8n-current-config-path">
+      <div>
+        <span class="badge">Current supported path</span>
+        <strong>Edit the public staging runtime asset for Knowledge Fabric and Agentic Butler URLs.</strong>
+        <p>GitHub workflow-secret injection is prepared as the future path, but the current OAuth credential cannot update workflow files because it lacks workflow scope. Use this asset for intentionally public UAT webhooks until a workflow-scope credential or hosted backend is available.</p>
+      </div>
+      <code>${escapeHtml(runtimeAssetPath)}</code>
+      <div class="button-row tight">
+        <a class="secondary small" href="${escapeHtml(githubBlobUrl(runtimeAssetPath))}" target="_blank" rel="noreferrer">Open asset</a>
+        ${snippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(snippet)}">Copy asset JSON</button>` : ""}
+        <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/n8n-live-url-configuration.md"))}" target="_blank" rel="noreferrer">Open guide</a>
+      </div>
+    </aside>
   `;
 }
 
@@ -24389,6 +24409,7 @@ function renderProductionAgentUrlReadiness(agents = []) {
         </div>
         ${missingConfig ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(missingConfig)}">Copy missing JSON</button>` : ""}
       </div>
+      ${missing.length ? renderN8nCurrentSupportedConfigPath(missingConfig) : ""}
       <div class="production-agent-url-grid">
         ${agents.map((agent) => `
           <article class="${escapeHtml(agent.className)}">
