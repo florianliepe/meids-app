@@ -13890,6 +13890,10 @@ function bindKnowledgeFabricQueueActions() {
       exportReviewedKnowledgeFabricBundle(button);
       return;
     }
+    if (action === "export-uat-checklist") {
+      exportKnowledgeFabricLocalUatChecklist(button);
+      return;
+    }
     if (["approve", "needs-rework", "reject"].includes(action)) {
       updateKnowledgeFabricQueueReview(queueId, action);
       return;
@@ -13909,6 +13913,107 @@ function bindKnowledgeFabricQueueActions() {
 function reviewedKnowledgeFabricQueueItems() {
   return (state.knowledgeFabricIngestQueue || [])
     .filter((item) => item.reviewed_at && ["approved", "needs-rework", "rejected"].includes(String(item.review_state || "")));
+}
+
+function knowledgeFabricLocalUatChecklistItems() {
+  const queue = state.knowledgeFabricIngestQueue || [];
+  const reviewed = reviewedKnowledgeFabricQueueItems();
+  const promotions = graphPromotionHistoryItems(120);
+  const traces = readComposedAgentTraces().filter((trace) => trace.agent_id === "knowledge_fabric_agent");
+  const approved = reviewed.filter((item) => item.review_state === "approved");
+  return [
+    {
+      id: "source_capture",
+      label: "Source captured",
+      ready: queue.length > 0,
+      detail: queue.length ? `${queue.length} OKF handoff${queue.length === 1 ? "" : "s"} in local queue` : "Paste text or upload a document.",
+    },
+    {
+      id: "pending_okf",
+      label: "Pending OKF created",
+      ready: queue.some((item) => item.concept_path || item.evidence_path),
+      detail: queue.some((item) => item.concept_path || item.evidence_path) ? "Concept/evidence targets are visible." : "No OKF target path recorded yet.",
+    },
+    {
+      id: "crud_audit",
+      label: "CRUD audit target",
+      ready: queue.some((item) => item.crud_log_path),
+      detail: queue.find((item) => item.crud_log_path)?.crud_log_path || "CRUD log path missing.",
+    },
+    {
+      id: "human_review",
+      label: "Human review decision",
+      ready: reviewed.length > 0,
+      detail: reviewed.length ? `${reviewed.length} reviewed · ${approved.length} approved` : "Approve, rework, or reject at least one handoff.",
+    },
+    {
+      id: "graph_promotion",
+      label: "Graph promotion history",
+      ready: promotions.length > 0,
+      detail: promotions.length ? `${promotions.length} promotion decision${promotions.length === 1 ? "" : "s"} available` : "Review a handoff or graph candidate.",
+    },
+    {
+      id: "vector_boundary",
+      label: "Vector boundary respected",
+      ready: queue.length > 0 && queue.every((item) => item.review_state === "approved" || String(item.vector_refresh || "").includes("hold") || String(item.vector_refresh || "").includes("deferred")),
+      detail: "No vector refresh is executed from static/local UAT.",
+    },
+    {
+      id: "trace_visible",
+      label: "Trace visible in cockpit",
+      ready: traces.length > 0,
+      detail: traces.length ? `${traces.length} Knowledge Fabric trace${traces.length === 1 ? "" : "s"} visible` : "Open Production or Review Cockpit after queue creation.",
+    },
+    {
+      id: "export_ready",
+      label: "Portable export ready",
+      ready: reviewed.length > 0 && promotions.length > 0,
+      detail: reviewed.length ? "Use reviewed bundle or graph promotion export." : "Review at least one handoff before export.",
+    },
+  ];
+}
+
+function exportKnowledgeFabricLocalUatChecklist(button) {
+  const checklist = knowledgeFabricLocalUatChecklistItems();
+  const readyCount = checklist.filter((item) => item.ready).length;
+  const artifact = {
+    schema: "meids.knowledge_fabric_local_uat_checklist.v1",
+    exported_at: new Date().toISOString(),
+    boundary: "Local/static UAT checklist only. Does not call n8n, GitHub, MCP, vector DB, graph DB, or hosted APIs.",
+    twin_id: state.activeTwin || "florian",
+    summary: {
+      ready: readyCount,
+      total: checklist.length,
+      status: readyCount === checklist.length ? "ready_for_live_n8n_uat" : "local_uat_incomplete",
+      queue_count: (state.knowledgeFabricIngestQueue || []).length,
+      reviewed_count: reviewedKnowledgeFabricQueueItems().length,
+      graph_promotion_count: graphPromotionHistoryItems(120).length,
+    },
+    steps: checklist,
+    repo_split_target: {
+      app_repo: "florianliepe/meids-app",
+      knowledge_repo: "meids-knowledge-fabric",
+      agent_config_repo: "meids-agent-configs",
+    },
+    evidence_actions: [
+      "Create source via Source Upload or Chat source context.",
+      "Confirm pending OKF handoff appears in queue and trace timeline.",
+      "Apply human review decision to the handoff.",
+      "Export reviewed bundle and graph promotion history.",
+      "Configure live Knowledge Fabric n8n URL before live UAT.",
+    ],
+  };
+  const filename = [
+    "meids-knowledge-fabric-local-uat",
+    safeGraphClass(state.activeTwin || "twin"),
+    new Date().toISOString().replace(/[:.]/g, "-"),
+  ].join("-") + ".json";
+  const blob = new Blob([JSON.stringify(artifact, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, filename);
+  URL.revokeObjectURL(url);
+  markButtonDone(button, "Exported");
+  showToast("Knowledge Fabric UAT checklist exported", `${readyCount}/${checklist.length} checks ready`, readyCount === checklist.length ? "success" : "warning");
 }
 
 function exportReviewedKnowledgeFabricBundle(button) {
@@ -14119,8 +14224,31 @@ function renderKnowledgeFabricQueuePanels() {
     if (!target) return;
     target.innerHTML = renderKnowledgeFabricQueue(state.knowledgeFabricIngestQueue || [], selector.includes("chat") ? 3 : 8);
   });
+  renderKnowledgeFabricLocalUatChecklist();
   renderAgentTraceHistoryPanel();
   renderDashboardAgentTraceHistory();
+}
+
+function renderKnowledgeFabricLocalUatChecklist() {
+  const target = $("#knowledgeFabricLocalUatChecklist");
+  if (!target) return;
+  const items = knowledgeFabricLocalUatChecklistItems();
+  const readyCount = items.filter((item) => item.ready).length;
+  target.innerHTML = `
+    <div class="knowledge-fabric-uat-head">
+      <span class="badge">Local UAT path</span>
+      <strong>${escapeHtml(`${readyCount}/${items.length} checks ready`)}</strong>
+      <small>${escapeHtml(readyCount === items.length ? "Ready to repeat against live n8n once URLs exist." : "Use this to prove local OKF flow before live n8n rollout.")}</small>
+    </div>
+    <div class="knowledge-fabric-uat-grid">
+      ${items.map((item) => `
+        <span class="${item.ready ? "ready" : "open"}">
+          <strong>${escapeHtml(item.label)}</strong>
+          <small>${escapeHtml(item.detail)}</small>
+        </span>
+      `).join("")}
+    </div>
+  `;
 }
 
 function renderKnowledgeFabricQueue(items = [], limit = 6) {
