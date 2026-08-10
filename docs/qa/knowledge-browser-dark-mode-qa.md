@@ -466,6 +466,20 @@ Latest local QA pass for Knowledge Graph selected-relation lifecycle:
 
 This pass adds a selected-relation lifecycle trace for graph edges. It shows `Captured`, `Evidence`, `Review`, and `Actor use` so reviewers can see whether a relation is ready for trusted Actor Twin reasoning, citation-only exploration, or governance before skill reuse. Screenshots are stored in `docs/visual-qa/screenshots-20260810-graph-selected-relation-lifecycle/`.
 
+Latest local QA pass for Chat agent route cards:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-chat-agent-route-cards`
+- Targeted Playwright assertion starts a local static server, opens `?view=chat`, injects public-safe fixture responses for Actor Twin, Knowledge Fabric Agent, and Agentic Butler, verifies three `.agent-response-route-card` elements, confirms the Agentic Butler approval-required route card, and checks zero text overflow.
+
+This pass clarifies Chat output cards for the three-agent model. Agent responses now show route purpose, interaction mode, knowledge-fabric use, governance boundary, next action, and contract stage chips directly inside the result card. This keeps Chat focused while still making agent behavior auditable. Screenshots are stored in `docs/visual-qa/screenshots-20260810-chat-agent-route-cards/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

@@ -30223,9 +30223,10 @@ function renderAgentContractChatCard(result = {}) {
   const trace = response.trace || {};
   const status = response.status || result.status || "completed";
   const isApproval = status === "approval_required";
-  const title = result.agent_name || response.agent_id || "Agent";
+  const agentId = response.agent_id || result.agent_id || "";
+  const title = result.agent_name || agentDisplayName(agentId) || "Agent";
   return `
-    <div class="skill-run-card agent-response-card ${escapeHtml(status)}">
+    <div class="skill-run-card agent-response-card ${escapeHtml(status)} ${safeGraphClass(agentId)}">
       <div class="skill-run-head">
         <div>
           <span class="badge">${escapeHtml(isApproval ? "Approval required" : "Agent response")}</span>
@@ -30237,6 +30238,7 @@ function renderAgentContractChatCard(result = {}) {
           <code>${escapeHtml(trace.trace_id || result.trace_id || response.request_id || "-")}</code>
         </div>
       </div>
+      ${renderAgentResponseRouteCard(result)}
       ${isApproval ? `
         <div class="approval-card agent-approval-gate" data-approval-summary="${escapeHtml(approval.summary || "")}" data-approval-action="${escapeHtml(approval.proposed_action || "")}">
           <strong>${escapeHtml(approval.gate || "human_gate")}</strong>
@@ -30258,6 +30260,84 @@ function renderAgentContractChatCard(result = {}) {
     </div>
   `;
   renderAgentTraceHistoryPanel();
+}
+
+function renderAgentResponseRouteCard(result = {}) {
+  const response = result.response || {};
+  const output = response.output || {};
+  const request = result.request || {};
+  const agentId = response.agent_id || result.agent_id || "";
+  const status = response.status || result.status || "completed";
+  const isApproval = status === "approval_required" || Boolean(response.approval?.required);
+  const sourceContext = request.context?.source_context || {};
+  const sourceCount = ["email_input", "calendar_input", "teams_input", "knowledge_context"]
+    .filter((key) => String(sourceContext[key] || request.input?.[key] || "").trim()).length;
+  const route = agentResponseRouteMeta(agentId, output, isApproval, sourceCount);
+  const stages = agentContractStatusesFor(agentId);
+  return `
+    <section class="agent-response-route-card ${safeGraphClass(agentId)} ${safeGraphClass(status)}">
+      <div class="agent-response-route-head">
+        <span class="badge">${escapeHtml(route.badge)}</span>
+        <strong>${escapeHtml(route.title)}</strong>
+        <small>${escapeHtml(route.detail)}</small>
+      </div>
+      <div class="agent-response-route-grid">
+        <span>
+          <strong>${escapeHtml(route.mode)}</strong>
+          <small>interaction mode</small>
+        </span>
+        <span>
+          <strong>${escapeHtml(route.knowledgeUse)}</strong>
+          <small>knowledge fabric use</small>
+        </span>
+        <span>
+          <strong>${escapeHtml(route.boundary)}</strong>
+          <small>governance boundary</small>
+        </span>
+        <span>
+          <strong>${escapeHtml(route.nextAction)}</strong>
+          <small>next action</small>
+        </span>
+      </div>
+      <div class="agent-response-route-stages">
+        ${stages.map((stage) => `<span>${escapeHtml(stage)}</span>`).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function agentResponseRouteMeta(agentId = "", output = {}, isApproval = false, sourceCount = 0) {
+  if (agentId === "knowledge_fabric_agent") {
+    return {
+      badge: "Knowledge Fabric route",
+      title: "Source context became pending OKF material",
+      detail: "The Knowledge Fabric Agent owns ingest, evidence storage, CRUD audit, graph curator trigger, and vector refresh boundary.",
+      mode: "Ingest",
+      knowledgeUse: output.concept_path ? "pending OKF concept" : "source handoff",
+      boundary: output.vector_refresh || "no vector refresh before approval",
+      nextAction: output.graph_curator_trigger ? "review graph candidates" : "review pending concept",
+    };
+  }
+  if (agentId === "agentic_butler") {
+    return {
+      badge: "Skill activation route",
+      title: "Agentic Butler activated an approved work capability",
+      detail: "Skill orchestration stays internal to Butler; Actor Twin steering is required before prioritization and risky actions.",
+      mode: "Skill execution",
+      knowledgeUse: sourceCount ? `${sourceCount} source lanes` : "approved skill context",
+      boundary: isApproval ? "human approval required" : "approval gates monitored",
+      nextAction: isApproval ? "resolve approval gate" : "review artifact and refine",
+    };
+  }
+  return {
+    badge: "Actor Twin route",
+    title: "Actor Twin answered from governed context",
+    detail: "The UI-facing actor interprets intent, applies persona and OKF context, and routes work only when execution is needed.",
+    mode: "Answer",
+    knowledgeUse: sourceCount ? `OKF + ${sourceCount} source lanes` : "approved-first OKF",
+    boundary: "no external write action",
+    nextAction: "ask follow-up or activate skill",
+  };
 }
 
 function acknowledgeAgentApproval(button) {
