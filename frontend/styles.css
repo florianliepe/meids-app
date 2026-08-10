@@ -27350,6 +27350,99 @@ body.cockpit-mode .workspace-signal {
   white-space: nowrap;
 }
 
+.knowledge-fabric-item-lifecycle {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-quiet) 70%, transparent);
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.knowledge-fabric-item-lifecycle-head {
+  display: grid;
+  gap: 3px;
+}
+
+.knowledge-fabric-item-lifecycle-head strong,
+.knowledge-fabric-item-lifecycle-head small {
+  overflow-wrap: anywhere;
+}
+
+.knowledge-fabric-item-lifecycle-head strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.knowledge-fabric-item-lifecycle-head small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.knowledge-fabric-item-lifecycle-flow {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.knowledge-fabric-item-lifecycle-flow > span {
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px;
+}
+
+.knowledge-fabric-item-lifecycle-flow > span.ready {
+  border-color: color-mix(in srgb, var(--success) 30%, var(--line));
+  background: color-mix(in srgb, var(--success) 7%, var(--surface));
+}
+
+.knowledge-fabric-item-lifecycle-flow > span.warning {
+  border-color: color-mix(in srgb, var(--warn) 34%, var(--line));
+  background: color-mix(in srgb, var(--warn) 8%, var(--surface));
+}
+
+.knowledge-fabric-item-lifecycle-flow > span.blocked {
+  border-color: color-mix(in srgb, var(--danger) 22%, var(--line));
+}
+
+.knowledge-fabric-item-lifecycle-flow i,
+.knowledge-fabric-item-lifecycle-flow em,
+.knowledge-fabric-item-lifecycle-flow small,
+.knowledge-fabric-item-lifecycle-flow strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-fabric-item-lifecycle-flow i {
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.knowledge-fabric-item-lifecycle-flow strong {
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.knowledge-fabric-item-lifecycle-flow em {
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.knowledge-fabric-item-lifecycle-flow small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
 .knowledge-fabric-artifact-list {
   display: grid;
   gap: 8px;
@@ -27687,24 +27780,49 @@ body.theme-dark .evidence-gap-card p {
 }
 
 body.theme-dark .knowledge-fabric-queue-card code,
+body.theme-dark .knowledge-fabric-item-lifecycle,
+body.theme-dark .knowledge-fabric-item-lifecycle-flow > span,
 body.theme-dark .knowledge-fabric-artifact-list a,
 body.theme-dark .knowledge-fabric-target-path {
   border-color: rgba(232, 226, 214, 0.12);
   background: rgba(16, 20, 17, 0.82);
 }
 
+body.theme-dark .knowledge-fabric-item-lifecycle-flow > span.ready {
+  border-color: rgba(122, 216, 191, 0.34);
+  background: rgba(122, 216, 191, 0.08);
+}
+
+body.theme-dark .knowledge-fabric-item-lifecycle-flow > span.warning {
+  border-color: rgba(241, 208, 140, 0.34);
+  background: rgba(241, 208, 140, 0.08);
+}
+
+body.theme-dark .knowledge-fabric-item-lifecycle-flow > span.blocked {
+  border-color: rgba(224, 111, 87, 0.26);
+}
+
 body.theme-dark .knowledge-fabric-artifact-list a:hover {
   border-color: rgba(122, 216, 191, 0.46);
 }
 
+body.theme-dark .knowledge-fabric-item-lifecycle-head strong,
+body.theme-dark .knowledge-fabric-item-lifecycle-flow strong,
 body.theme-dark .knowledge-fabric-artifact-list strong,
 body.theme-dark .knowledge-fabric-target-path strong {
   color: #fff8ea;
 }
 
+body.theme-dark .knowledge-fabric-item-lifecycle-head small,
+body.theme-dark .knowledge-fabric-item-lifecycle-flow i,
+body.theme-dark .knowledge-fabric-item-lifecycle-flow small,
 body.theme-dark .knowledge-fabric-artifact-list span span,
 body.theme-dark .knowledge-fabric-target-path span {
   color: #c9c0b3;
+}
+
+body.theme-dark .knowledge-fabric-item-lifecycle-flow em {
+  color: #9ce6d2;
 }
 
 body.theme-dark .knowledge-fabric-output {
@@ -28871,6 +28989,7 @@ body.theme-dark .graph-command-surface {
   .knowledge-fabric-path-flow,
   .knowledge-fabric-path-boundary,
   .knowledge-fabric-repo-sync-stats,
+  .knowledge-fabric-item-lifecycle-flow,
   .knowledge-fabric-artifact-list {
     grid-template-columns: 1fr;
   }

@@ -16218,6 +16218,7 @@ function renderKnowledgeFabricQueueCard(item = {}) {
         <span><strong>${escapeHtml(item.graph_curator_trigger || "not queued")}</strong><small>graph curator</small></span>
         <span><strong>${escapeHtml(item.vector_refresh || "deferred")}</strong><small>vector boundary</small></span>
       </div>
+      ${renderKnowledgeFabricQueueLifecyclePreview(item)}
       ${artifactRows.length ? `
         <div class="knowledge-fabric-artifact-list">
           ${artifactRows.map(([label, value]) => renderKnowledgeFabricArtifactLink(label, value)).join("")}
@@ -16241,6 +16242,82 @@ function renderKnowledgeFabricQueueCard(item = {}) {
         <button class="secondary small" type="button" data-kf-queue-action="export" data-queue-id="${escapeHtml(item.queue_id || "")}">Export artifact</button>
       </div>
     </article>
+  `;
+}
+
+function renderKnowledgeFabricQueueLifecyclePreview(item = {}) {
+  const reviewState = String(item.review_state || "pending-review");
+  const reviewed = Boolean(item.reviewed_at);
+  const approved = reviewState === "approved";
+  const rejected = reviewState === "rejected";
+  const needsRework = reviewState === "needs-rework";
+  const graphQueued = item.graph_curator_trigger && !String(item.graph_curator_trigger).includes("not");
+  const vectorHeld = String(item.vector_refresh || "").includes("deferred") || String(item.vector_refresh || "").includes("hold");
+  const steps = [
+    {
+      label: "Source",
+      state: item.source_type || "captured",
+      detail: item.source_name || item.source_type || "Source context captured.",
+      ready: true,
+    },
+    {
+      label: "Pending OKF",
+      state: item.concept_path ? "ready" : "missing",
+      detail: item.concept_path || "Concept Markdown/YAML target missing.",
+      ready: Boolean(item.concept_path),
+    },
+    {
+      label: "Evidence + CRUD",
+      state: item.evidence_path && item.crud_log_path ? "linked" : "partial",
+      detail: item.evidence_path && item.crud_log_path
+        ? "Evidence manifest and append-only audit target are present."
+        : "Evidence or audit target is incomplete.",
+      ready: Boolean(item.evidence_path && item.crud_log_path),
+    },
+    {
+      label: "Graph Curator",
+      state: graphQueued ? "queued" : "not queued",
+      detail: graphQueued ? item.graph_curator_trigger : "No candidate relation trigger recorded.",
+      ready: Boolean(graphQueued),
+    },
+    {
+      label: "Human Review",
+      state: reviewed ? labelizeGraph(reviewState) : "pending",
+      detail: reviewed
+        ? item.review_note || "Review decision saved."
+        : "Approve, reject, or mark needs-rework before trusted use.",
+      ready: reviewed && approved,
+      warning: needsRework || rejected,
+    },
+    {
+      label: "Repo + Vector",
+      state: approved ? "eligible" : vectorHeld ? "held" : "blocked",
+      detail: approved
+        ? "Eligible for reviewed knowledge-repo sync and approved-only vector refresh."
+        : "Held until human approval and repo merge.",
+      ready: approved,
+    },
+  ];
+  return `
+    <section class="knowledge-fabric-item-lifecycle" aria-label="Per-handoff Knowledge Fabric lifecycle">
+      <div class="knowledge-fabric-item-lifecycle-head">
+        <strong>${escapeHtml(approved ? "Approved handoff can enter repo sync." : "Handoff remains review-gated.")}</strong>
+        <small>${escapeHtml("Actor Twin may not treat this as trusted retrieval until review and repo-sync gates pass.")}</small>
+      </div>
+      <div class="knowledge-fabric-item-lifecycle-flow">
+        ${steps.map((step, index) => {
+          const stateClass = step.ready ? "ready" : step.warning ? "warning" : "blocked";
+          return `
+            <span class="${stateClass}">
+              <i>${escapeHtml(String(index + 1).padStart(2, "0"))}</i>
+              <strong>${escapeHtml(step.label)}</strong>
+              <em>${escapeHtml(step.state)}</em>
+              <small>${escapeHtml(step.detail)}</small>
+            </span>
+          `;
+        }).join("")}
+      </div>
+    </section>
   `;
 }
 

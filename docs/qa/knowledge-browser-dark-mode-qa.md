@@ -508,6 +508,20 @@ Latest local QA pass for probe evidence timestamps:
 
 This pass makes live probe evidence more auditable. Blocked, configured, fixture, connected, and failed probe results now carry `checked_at`, `trace_id` when available, `runtime`, and `last_error`. Chat cards and the cockpit probe strip render timestamp and failure evidence without inventing trace ids for blocked probes. Screenshots are stored in `docs/visual-qa/screenshots-20260810-probe-evidence-timestamps/`.
 
+Latest local QA pass for Knowledge Fabric item lifecycle preview:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-knowledge-fabric-item-lifecycle`
+- Targeted Playwright assertion starts a local static server, opens `?view=ingest`, verifies one visible `#ingest .knowledge-fabric-item-lifecycle`, confirms six lifecycle steps, dark mode, and zero horizontal overflow.
+
+This pass adds a per-handoff Knowledge Fabric lifecycle preview to pending OKF queue cards. Reviewers can see the path from `Source` to `Pending OKF`, `Evidence + CRUD`, `Graph Curator`, `Human Review`, and `Repo + Vector` before deciding whether a handoff can become trusted knowledge. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-fabric-item-lifecycle/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:
