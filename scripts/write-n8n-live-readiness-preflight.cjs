@@ -5,9 +5,21 @@ const root = path.resolve(__dirname, "..");
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
 const check = args.has("--check");
-const outputArg = process.argv.find((arg) => arg.startsWith("--output="));
+
+function argValue(name) {
+  const equalsArg = process.argv.find((arg) => arg.startsWith(`${name}=`));
+  if (equalsArg) return equalsArg.slice(name.length + 1);
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : "";
+}
+
+const outputArg = argValue("--output");
+const assetsDirArg = argValue("--assets-dir");
+const assetsDir = assetsDirArg
+  ? path.resolve(root, assetsDirArg)
+  : path.join(root, "frontend", "assets");
 const outputPath = outputArg
-  ? path.resolve(root, outputArg.slice("--output=".length))
+  ? path.resolve(root, outputArg)
   : path.join(root, "frontend", "assets", "n8n-live-readiness-preflight.json");
 
 const requiredAgents = [
@@ -34,6 +46,12 @@ function rel(file) {
 
 function readJson(relativePath, fallback = null) {
   const file = path.join(root, relativePath);
+  if (!fs.existsSync(file)) return fallback;
+  return JSON.parse(fs.readFileSync(file, "utf8"));
+}
+
+function readAssetJson(fileName, fallback = null) {
+  const file = path.join(assetsDir, fileName);
   if (!fs.existsSync(file)) return fallback;
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
@@ -100,10 +118,10 @@ function buildAgentRow(agent, runtime, replay, evidence) {
 }
 
 function main() {
-  const runtime = readJson("frontend/assets/n8n-runtime-readiness-status.json", {});
-  const replay = readJson("frontend/assets/n8n-contract-replay-status.json", {});
-  const evidence = readJson("frontend/assets/n8n-live-probe-evidence.json", {});
-  const zielmodus = readJson("frontend/assets/zielmodus-4-readiness-status.json", {});
+  const runtime = readAssetJson("n8n-runtime-readiness-status.json", {});
+  const replay = readAssetJson("n8n-contract-replay-status.json", {});
+  const evidence = readAssetJson("n8n-live-probe-evidence.json", {});
+  const zielmodus = readAssetJson("zielmodus-4-readiness-status.json", {});
   const agents = requiredAgents.map((agent) => buildAgentRow(agent, runtime, replay, evidence));
   const fixtureReady = agents.every((agent) => agent.fixture.status === "passed");
   const urlReady = agents.every((agent) => agent.runtime_url.configured);

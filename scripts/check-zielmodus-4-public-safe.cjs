@@ -1,0 +1,39 @@
+const { spawnSync } = require("node:child_process");
+
+const node = process.execPath;
+
+const checks = [
+  [node, ["--check", "frontend/app.js"]],
+  [node, ["scripts/validate-n8n-fixtures.cjs"]],
+  [node, ["scripts/validate-okf-fixtures.cjs"]],
+  [node, ["scripts/validate-graph-promotions.cjs"]],
+  [node, ["scripts/validate-vector-adapter.cjs"]],
+  [node, ["scripts/validate-postgres-graph-schema.cjs"]],
+  [node, ["scripts/write-n8n-runtime-readiness-status.cjs", "--check"]],
+  [node, ["scripts/write-n8n-live-readiness-preflight.cjs", "--check"]],
+  [node, ["scripts/write-zielmodus-4-live-completion-checklist.cjs", "--check"]],
+  [node, ["scripts/validate-zielmodus-4-readiness.cjs"]],
+  [node, ["scripts/pages-smoke-check.cjs", "frontend"]],
+];
+
+function run(command, args) {
+  const label = [command, ...args].join(" ");
+  console.log(`\n> ${label}`);
+  const result = spawnSync(command, args, {
+    stdio: "inherit",
+  });
+  if (result.status !== 0) {
+    throw new Error(`Public-safe gate failed: ${label}`);
+  }
+}
+
+try {
+  for (const [command, args] of checks) {
+    run(command, args);
+  }
+  console.log("\nZielmodus 4 public-safe gate passed.");
+  console.log("Live completion still requires configured n8n URLs and non-demo probe traces.");
+} catch (error) {
+  console.error(`\n${error.message}`);
+  process.exit(1);
+}
