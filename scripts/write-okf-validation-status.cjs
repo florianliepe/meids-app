@@ -114,7 +114,7 @@ function main() {
     status: failed.length ? "failed" : "passed",
     statuses: failed.length
       ? ["documented", "fixture ready", "validation failed"]
-      : ["documented", "fixture ready", "contract tested", "promotion tested", "vector boundary tested"],
+      : ["documented", "fixture ready", "contract tested", "promotion tested", "vector boundary tested", "evidence review gate tested"],
     summary: {
       example_fixture_count: examples.length,
       generated_ingest_file_count: generated.length,
@@ -122,6 +122,7 @@ function main() {
       vector_request_fixture_count: vectorRequests.length,
       negative_vector_fixture_count: negativeVectorRequests.length,
       negative_concept_fixture_count: negativeConcepts.length,
+      evidence_review_gate_fixture_count: negativeConcepts.filter((file) => file.includes("evidence-review") || file.includes("evidence")).length,
       check_count: checks.length,
       passed_check_count: checks.length - failed.length,
     },

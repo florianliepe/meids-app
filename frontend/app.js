@@ -3739,6 +3739,7 @@ function renderGraphReasoningPanel(edge, source = {}, target = {}) {
   const confidencePercent = graphEdgeConfidencePercent(edge);
   const confidenceLabel = confidencePercent ? `${confidencePercent}%` : "not scored";
   const explanation = graphRelationExplanation(edge, source, target, policy);
+  const eligibility = graphEdgeEvidenceEligibility(edge, source, target, explanation);
   const copyText = formatGraphRelationExplanation(edge, source, target, explanation);
   return `
     <section class="graph-reasoning-card ${safeGraphClass(edgeClass)} ${safeGraphClass(reviewState)}">
@@ -3774,6 +3775,7 @@ function renderGraphReasoningPanel(edge, source = {}, target = {}) {
         <span>${escapeHtml(explanation.reason)}</span>
       </div>
       ${renderGraphActorGovernanceDecision(edge, source, target, explanation)}
+      ${renderGraphEdgeEvidenceEligibility(eligibility)}
       <dl class="detail-list compact">
         ${detailRow("Relation", labelizeGraph(relation))}
         ${detailRow("Evidence class", labelizeGraph(edgeClass))}
@@ -3786,6 +3788,61 @@ function renderGraphReasoningPanel(edge, source = {}, target = {}) {
         <li><strong>When to use</strong><span>${escapeHtml(policy.use)}</span></li>
         <li><strong>Escalation</strong><span>${escapeHtml(policy.escalate)}</span></li>
       </ol>
+    </section>
+  `;
+}
+
+function graphEdgeEvidenceEligibility(edge = {}, source = {}, target = {}, explanation = graphRelationExplanation(edge, source, target)) {
+  const edgeClass = graphEdgeClass(edge);
+  const reviewState = edge.review_state || "unreviewed";
+  const confidence = graphEdgeConfidencePercent(edge);
+  const sourceState = source.review_state || "unknown";
+  const targetState = target.review_state || "unknown";
+  const sourceApproved = sourceState === "approved";
+  const targetApproved = targetState === "approved";
+  const hasEvidenceRef = Boolean(edge.evidence_path || edge.source_path || edge.source_deep_link || edge.evidence_ref || edge.source_ref);
+  const blocked = ["rejected", "needs-rework"].includes(reviewState)
+    || explanation.level === "blocked"
+    || String(edgeClass).includes("contradiction");
+  const candidate = String(edgeClass).includes("candidate") || ["draft", "unreviewed", "candidate"].includes(reviewState);
+  const trusted = !blocked && edgeClass === "explicit" && sourceApproved && targetApproved && hasEvidenceRef && confidence >= 70;
+  const selectedPending = !blocked && !trusted && (candidate || edgeClass === "inferred" || hasEvidenceRef);
+  const className = trusted ? "ready" : selectedPending ? "caution" : "blocked";
+  const retrievalPolicy = trusted ? "trusted-retrieval" : selectedPending ? "selected-pending" : "hold";
+  const label = trusted ? "Trusted relation evidence" : selectedPending ? "Candidate relation evidence" : "Relation held out";
+  const detail = trusted
+    ? "Relation is explicit, evidence-linked, sufficiently confident, and both endpoints are approved."
+    : selectedPending
+      ? "Relation can support exploration or selected context, but requires attribution or review before trusted retrieval."
+      : "Relation is blocked by governance, missing evidence, low confidence, or unapproved endpoints.";
+  return {
+    className,
+    label,
+    detail,
+    retrievalPolicy,
+    edgeClass,
+    reviewState,
+    confidence,
+    hasEvidenceRef,
+    sourceState,
+    targetState,
+  };
+}
+
+function renderGraphEdgeEvidenceEligibility(eligibility = {}) {
+  return `
+    <section class="graph-edge-evidence-eligibility ${safeGraphClass(eligibility.className || "blocked")}">
+      <div>
+        <span class="badge">Relation eligibility</span>
+        <strong>${escapeHtml(eligibility.label || "Relation held out")}</strong>
+        <p>${escapeHtml(eligibility.detail || "")}</p>
+      </div>
+      <div class="graph-edge-evidence-grid">
+        <span class="${safeGraphClass(eligibility.className || "blocked")}"><strong>${escapeHtml(eligibility.retrievalPolicy || "hold")}</strong><small>retrieval policy</small></span>
+        <span><strong>${escapeHtml(labelizeGraph(eligibility.edgeClass || "unknown"))}</strong><small>relation class</small></span>
+        <span class="${eligibility.hasEvidenceRef ? "ready" : "blocked"}"><strong>${escapeHtml(eligibility.hasEvidenceRef ? "linked" : "missing")}</strong><small>source evidence</small></span>
+        <span class="${eligibility.sourceState === "approved" && eligibility.targetState === "approved" ? "ready" : "caution"}"><strong>${escapeHtml(`${labelizeGraph(eligibility.sourceState || "unknown")} / ${labelizeGraph(eligibility.targetState || "unknown")}`)}</strong><small>endpoints</small></span>
+      </div>
     </section>
   `;
 }
@@ -5115,6 +5172,7 @@ function selectedGraphRelationContextPacket(edgeKey = state.selectedGraphEdgeKey
   const edgeClass = graphEdgeClass(edge);
   const confidence = graphEdgeConfidencePercent(edge);
   const policy = graphEdgeUsagePolicy(edge);
+  const eligibility = graphEdgeEvidenceEligibility(edge, source, target);
   const reviewHistory = graphEdgeReviewHistory(edge.edge_key).slice(0, 8);
   return {
     schema: "meids.okf.graph.selected_relation_context.v1",
@@ -5137,6 +5195,7 @@ function selectedGraphRelationContextPacket(edgeKey = state.selectedGraphEdgeKey
       confidence_band: graphEdgeConfidenceBand(edge).label,
       actor_use: policy.label,
       actor_use_detail: policy.detail || "",
+      evidence_eligibility: eligibility,
       provenance_verdict: graphProvenanceVerdict(edge),
       relation_meaning: graphRelationMeaning(edge, source, target),
       evidence_path: edge.evidence_path || edge.source_path || edge.source_deep_link || "",
@@ -12225,9 +12284,9 @@ function n8nFixtureLiveComparisonRow(agent = {}, readiness = null) {
   const nextAction = !fixtureReady
     ? "Fix fixture replay before wiring live workflow."
     : !runtimeReadiness.configured
-      ? "Add public UAT webhook URL or hosted secret, then probe live."
+      ? runtimeReadiness.nextAction || "Add public UAT webhook URL or hosted secret, then probe live."
       : probe.status !== "connected"
-        ? "Run live probe and capture trace evidence."
+        ? runtimeReadiness.nextAction || "Run live probe and capture trace evidence."
         : "Run UAT with approval gate and trace review.";
   return {
     id: agentId,
@@ -13504,6 +13563,7 @@ function agentRuntimeReadiness(agentId) {
   const webhookUrl = getAgentWebhook(agentId);
   const hasUrl = Boolean(webhookUrl);
   const probe = state.n8nLiveProbeResults?.[agentId];
+  const slot = n8nAgentProbeSlot(agentId);
   const envVar = {
     actor_twin: "N8N_ACTOR_TWIN_WEBHOOK_URL",
     knowledge_fabric_agent: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
@@ -13522,17 +13582,19 @@ function agentRuntimeReadiness(agentId) {
     return {
       status: "configured",
       label: "Webhook URL configured",
-      detail: staticPagesMode
+      detail: slot.probe_boundary || (staticPagesMode
         ? "Static Pages can hold the URL; production UAT still needs workflow confirmation."
-        : "Ready for backend/live probe.",
+        : "Ready for backend/live probe."),
+      nextAction: slot.next_action || "Run live probe and capture trace evidence.",
       configured: true,
       envVar,
     };
   }
   return {
-    status: "missing URL",
-    label: "Live URL missing",
-    detail: `${envVar} is empty in runtime config; fixture replay remains available.`,
+    status: slot.status === "awaiting_url" ? "awaiting URL" : "missing URL",
+    label: slot.status === "awaiting_url" ? "Probe slot ready" : "Live URL missing",
+    detail: slot.probe_boundary || `${envVar} is empty in runtime config; fixture replay remains available.`,
+    nextAction: slot.next_action || `Add ${envVar} when the n8n workflow is exposed.`,
     configured: false,
     envVar,
   };
@@ -13564,7 +13626,12 @@ function mergeAgentRuntimeConfig(config = {}) {
     ...(runtimeConfig.n8nAgentWebhooks || runtimeConfig.n8n_agent_webhooks || {}),
     ...(config.n8nAgentWebhooks || config.n8n_agent_webhooks || {}),
   };
+  const agentProbeSlots = {
+    ...(runtimeConfig.n8nAgentProbeSlots || runtimeConfig.n8n_agent_probe_slots || {}),
+    ...(config.n8nAgentProbeSlots || config.n8n_agent_probe_slots || {}),
+  };
   runtimeConfig.n8nAgentWebhooks = agentWebhooks;
+  runtimeConfig.n8nAgentProbeSlots = agentProbeSlots;
   runtimeConfig.n8nActorTwinWebhookUrl = runtimeConfig.n8nActorTwinWebhookUrl
     || config.n8nActorTwinWebhookUrl
     || agentWebhooks.actor_twin
@@ -13592,6 +13659,15 @@ function getAgentWebhook(agentId) {
   if (agentId === "agentic_butler") return runtimeConfig.n8nAgenticButlerWebhookUrl || "";
   if (agentId === "knowledge_fabric_agent") return runtimeConfig.n8nKnowledgeFabricWebhookUrl || "";
   return "";
+}
+
+function n8nAgentProbeSlots() {
+  return runtimeConfig.n8nAgentProbeSlots || runtimeConfig.n8n_agent_probe_slots || {};
+}
+
+function n8nAgentProbeSlot(agentId) {
+  const slots = n8nAgentProbeSlots();
+  return slots[agentId] || slots[agentId?.replaceAll("_", "-")] || {};
 }
 
 function hasAgentWebhook(agentId) {

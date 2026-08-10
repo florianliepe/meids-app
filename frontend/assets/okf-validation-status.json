@@ -1,13 +1,14 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-10T02:00:57.714Z",
+  "generated_at": "2026-08-10T02:10:47.696Z",
   "status": "passed",
   "statuses": [
     "documented",
     "fixture ready",
     "contract tested",
     "promotion tested",
-    "vector boundary tested"
+    "vector boundary tested",
+    "evidence review gate tested"
   ],
   "summary": {
     "example_fixture_count": 7,
@@ -16,6 +17,7 @@
     "vector_request_fixture_count": 2,
     "negative_vector_fixture_count": 2,
     "negative_concept_fixture_count": 1,
+    "evidence_review_gate_fixture_count": 1,
     "check_count": 3,
     "passed_check_count": 3
   },

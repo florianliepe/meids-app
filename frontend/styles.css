@@ -19472,7 +19472,22 @@ body.graph-presenting {
   padding: 12px;
 }
 
+.graph-edge-evidence-eligibility {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--surface) 94%, var(--accent) 6%), var(--surface));
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
 .graph-node-evidence-eligibility.ready {
+  border-left-color: #2f8f79;
+}
+
+.graph-edge-evidence-eligibility.ready {
   border-left-color: #2f8f79;
 }
 
@@ -19480,39 +19495,54 @@ body.graph-presenting {
   border-left-color: #c8a35d;
 }
 
+.graph-edge-evidence-eligibility.caution {
+  border-left-color: #c8a35d;
+}
+
 .graph-node-evidence-eligibility.blocked {
   border-left-color: #c84f3f;
 }
 
+.graph-edge-evidence-eligibility.blocked {
+  border-left-color: #c84f3f;
+}
+
 .graph-node-evidence-eligibility strong,
-.graph-node-evidence-eligibility p {
+.graph-node-evidence-eligibility p,
+.graph-edge-evidence-eligibility strong,
+.graph-edge-evidence-eligibility p {
   margin: 0;
 }
 
-.graph-node-evidence-eligibility > div:first-child {
+.graph-node-evidence-eligibility > div:first-child,
+.graph-edge-evidence-eligibility > div:first-child {
   display: grid;
   gap: 6px;
 }
 
-.graph-node-evidence-eligibility > div:first-child > strong {
+.graph-node-evidence-eligibility > div:first-child > strong,
+.graph-edge-evidence-eligibility > div:first-child > strong {
   color: var(--ink);
   font-size: 0.98rem;
 }
 
-.graph-node-evidence-eligibility > div:first-child > p {
+.graph-node-evidence-eligibility > div:first-child > p,
+.graph-edge-evidence-eligibility > div:first-child > p {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 680;
   line-height: 1.4;
 }
 
-.graph-node-evidence-grid {
+.graph-node-evidence-grid,
+.graph-edge-evidence-grid {
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.graph-node-evidence-grid span {
+.graph-node-evidence-grid span,
+.graph-edge-evidence-grid span {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface-quiet);
@@ -19522,26 +19552,31 @@ body.graph-presenting {
   padding: 8px 10px;
 }
 
-.graph-node-evidence-grid span.ready {
+.graph-node-evidence-grid span.ready,
+.graph-edge-evidence-grid span.ready {
   border-color: color-mix(in srgb, #2f8f79 34%, var(--line));
 }
 
-.graph-node-evidence-grid span.caution {
+.graph-node-evidence-grid span.caution,
+.graph-edge-evidence-grid span.caution {
   border-color: color-mix(in srgb, #c8a35d 38%, var(--line));
 }
 
-.graph-node-evidence-grid span.blocked {
+.graph-node-evidence-grid span.blocked,
+.graph-edge-evidence-grid span.blocked {
   border-color: color-mix(in srgb, #c84f3f 40%, var(--line));
 }
 
-.graph-node-evidence-grid strong {
+.graph-node-evidence-grid strong,
+.graph-edge-evidence-grid strong {
   color: var(--ink);
   font-size: 0.88rem;
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
-.graph-node-evidence-grid small {
+.graph-node-evidence-grid small,
+.graph-edge-evidence-grid small {
   color: var(--muted);
   font-size: 0.62rem;
   font-weight: 900;
@@ -21379,7 +21414,9 @@ body.theme-dark .graph-node-governance-item dl div,
 body.theme-dark .graph-node-readiness,
 body.theme-dark .graph-node-readiness-score,
 body.theme-dark .graph-node-evidence-eligibility,
-body.theme-dark .graph-node-evidence-grid span {
+body.theme-dark .graph-edge-evidence-eligibility,
+body.theme-dark .graph-node-evidence-grid span,
+body.theme-dark .graph-edge-evidence-grid span {
   background: #20271f;
   border-color: #3c463a;
 }
@@ -21485,7 +21522,17 @@ body.theme-dark .graph-node-evidence-eligibility.ready {
   border-left-color: #8ce2ca;
 }
 
+body.theme-dark .graph-edge-evidence-eligibility.ready {
+  background: linear-gradient(145deg, rgba(47, 143, 121, 0.12), #171c18);
+  border-left-color: #8ce2ca;
+}
+
 body.theme-dark .graph-node-evidence-eligibility.caution {
+  background: linear-gradient(145deg, rgba(200, 163, 93, 0.14), #171c18);
+  border-left-color: #f1d08c;
+}
+
+body.theme-dark .graph-edge-evidence-eligibility.caution {
   background: linear-gradient(145deg, rgba(200, 163, 93, 0.14), #171c18);
   border-left-color: #f1d08c;
 }
@@ -21495,15 +21542,23 @@ body.theme-dark .graph-node-evidence-eligibility.blocked {
   border-left-color: #f0a39a;
 }
 
-body.theme-dark .graph-node-evidence-grid span.ready {
+body.theme-dark .graph-edge-evidence-eligibility.blocked {
+  background: linear-gradient(145deg, rgba(200, 79, 63, 0.13), #171c18);
+  border-left-color: #f0a39a;
+}
+
+body.theme-dark .graph-node-evidence-grid span.ready,
+body.theme-dark .graph-edge-evidence-grid span.ready {
   border-color: rgba(140, 226, 202, 0.28);
 }
 
-body.theme-dark .graph-node-evidence-grid span.caution {
+body.theme-dark .graph-node-evidence-grid span.caution,
+body.theme-dark .graph-edge-evidence-grid span.caution {
   border-color: rgba(241, 208, 140, 0.32);
 }
 
-body.theme-dark .graph-node-evidence-grid span.blocked {
+body.theme-dark .graph-node-evidence-grid span.blocked,
+body.theme-dark .graph-edge-evidence-grid span.blocked {
   border-color: rgba(240, 163, 154, 0.34);
 }
 
@@ -22601,6 +22656,10 @@ body.theme-dark .kg-count {
   }
 
   .graph-node-evidence-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .graph-edge-evidence-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
