@@ -43,6 +43,30 @@ Use this only for intentionally public UAT endpoints:
 
 Do not put private credentials, API keys, bearer tokens, or internal-only URLs in this file. Private production URLs should move to the hosted backend or workflow-generated runtime config.
 
+## Current Missing Live Endpoints
+
+The Actor Twin is configured for public staging. The following live endpoints are still missing and remain fixture-only until real n8n webhook URLs are available:
+
+| Agent | Required public UAT key | UI setup action |
+|---|---|---|
+| Knowledge Fabric Agent | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` or `n8nAgentWebhooks.knowledge_fabric_agent` | Production/Review Cockpit -> Runtime setup actions -> Copy JSON |
+| Agentic Butler | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` or `n8nAgentWebhooks.agentic_butler` | Production/Review Cockpit -> Runtime setup actions -> Copy JSON |
+
+Minimal public staging JSON shape:
+
+```json
+{
+  "n8nAgentWebhooks": {
+    "knowledge_fabric_agent": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE",
+    "agentic_butler": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE"
+  },
+  "n8nKnowledgeFabricWebhookUrl": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE",
+  "n8nAgenticButlerWebhookUrl": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE"
+}
+```
+
+After adding a URL, the cockpit status should move from `missing URL` to `configured`. It only becomes `n8n connected` after the live probe reaches the workflow and records a trace.
+
 ## Current Static Fallback
 
 When a URL is missing, the frontend must stay usable:

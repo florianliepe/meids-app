@@ -5918,6 +5918,34 @@ body.theme-dark .repo-responsibility-lane {
   color: var(--muted);
 }
 
+.agent-missing-webhook-actions,
+.agent-runtime-missing-inline {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.agent-missing-webhook-actions {
+  grid-template-columns: repeat(3, minmax(0, auto));
+  justify-content: start;
+}
+
+.agent-runtime-missing-inline {
+  border: 1px solid color-mix(in srgb, var(--warn) 36%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warn) 7%, var(--surface));
+  padding: 10px;
+}
+
+.agent-runtime-missing-inline strong {
+  color: var(--ink);
+}
+
+.agent-runtime-missing-inline small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .n8n-runtime-setup-details {
   border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   padding-top: 10px;
@@ -8047,6 +8075,11 @@ body.theme-dark .n8n-runtime-secret-grid article.pending {
 
 body.theme-dark .n8n-runtime-secret-grid code {
   color: #d8d0c1;
+}
+
+body.theme-dark .agent-runtime-missing-inline {
+  border-color: rgba(240, 163, 154, 0.34);
+  background: rgba(52, 32, 28, 0.34);
 }
 
 body.theme-dark .n8n-runtime-setup-details {

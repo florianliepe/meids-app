@@ -12024,6 +12024,7 @@ function renderN8nRuntimeSetupActions(agents = [], contractByAgent = new Map()) 
             <strong>${escapeHtml(row.name)}</strong>
             <code>${escapeHtml(row.envVar)}</code>
             <small>${escapeHtml(row.detail)}</small>
+            ${row.status === "missing URL" ? renderAgentMissingWebhookActions(row.id, row.envVar) : ""}
           </article>
         `).join("")}
       </div>
@@ -12039,6 +12040,30 @@ function renderN8nRuntimeSetupActions(agents = [], contractByAgent = new Map()) 
       </details>
     </section>
   `;
+}
+
+function renderAgentMissingWebhookActions(agentId, envVar) {
+  const snippet = buildSingleAgentRuntimeConfigSnippet(agentId);
+  return `
+    <div class="agent-missing-webhook-actions">
+      <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(envVar)}">Copy key</button>
+      ${snippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(snippet)}">Copy JSON</button>` : ""}
+      <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/n8n-live-url-configuration.md"))}" target="_blank" rel="noreferrer">Setup guide</a>
+    </div>
+  `;
+}
+
+function buildSingleAgentRuntimeConfigSnippet(agentId) {
+  if (!agentId) return "";
+  const config = {
+    n8nAgentWebhooks: {
+      [agentId]: "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE",
+    },
+  };
+  if (agentId === "knowledge_fabric_agent") config.n8nKnowledgeFabricWebhookUrl = "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE";
+  if (agentId === "agentic_butler") config.n8nAgenticButlerWebhookUrl = "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE";
+  if (agentId === "actor_twin") config.n8nActorTwinWebhookUrl = "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE";
+  return JSON.stringify(config, null, 2);
 }
 
 function buildN8nRuntimeConfigSnippet(agents = []) {
@@ -12101,6 +12126,7 @@ function renderN8nContractReadiness(agent = {}, readiness = null) {
       ${readiness?.replay_case_count ? `<small>${escapeHtml(`${readiness.replay_case_count} contract cases replayed locally`)}</small>` : ""}
       ${probe ? `<small class="${escapeHtml(probe.status === "connected" ? "ready" : probe.status === "blocked" ? "warning-copy" : "muted-inline")}">${escapeHtml(`Live probe: ${probe.status} · ${probe.detail || ""}`)}</small>` : ""}
       ${readiness?.blocker ? `<small>${escapeHtml(readiness.blocker)}</small>` : ""}
+      ${configured ? "" : renderAgentMissingWebhookInline(agent.id || readiness?.agent_id || "", envVar)}
       <div class="button-row tight">
         <button class="secondary small" type="button" data-agent-contract-test="${escapeHtml(agent.id || "")}">Test contract</button>
         <button class="secondary small" type="button" data-agent-live-probe="${escapeHtml(agent.id || "")}">Probe live</button>
@@ -12112,6 +12138,21 @@ function renderN8nContractReadiness(agent = {}, readiness = null) {
         ` : ""}
       </div>
     </article>
+  `;
+}
+
+function renderAgentMissingWebhookInline(agentId, envVar) {
+  const snippet = buildSingleAgentRuntimeConfigSnippet(agentId);
+  return `
+    <div class="agent-runtime-missing-inline">
+      <strong>Next setup action</strong>
+      <small>Add the live n8n webhook URL for ${escapeHtml(agentDisplayName(agentId))}. Until then, only fixture replay and local dry runs are available.</small>
+      <div class="button-row tight">
+        <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(envVar)}">Copy env key</button>
+        ${snippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(snippet)}">Copy runtime JSON</button>` : ""}
+        <a class="secondary small" href="${escapeHtml(githubBlobUrl("frontend/assets/agent-runtime-config.json"))}" target="_blank" rel="noreferrer">Open runtime asset</a>
+      </div>
+    </div>
   `;
 }
 
@@ -12142,6 +12183,11 @@ function renderAgentContractActionResult() {
 }
 
 async function handleAgentOperatingModelClick(event) {
+  const copyButton = event.target.closest(".source-copy-btn");
+  if (copyButton) {
+    await handleSourceCopyButton(copyButton);
+    return;
+  }
   const testButton = event.target.closest("[data-agent-contract-test]");
   if (testButton) {
     await testAgentContract(testButton.dataset.agentContractTest || "");
