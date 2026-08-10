@@ -4789,6 +4789,7 @@ function renderGraphNodeDetail() {
   const reviewFeedback = renderGraphNodeReviewFeedback(node, detailNodeMap);
   const reviewHistory = renderGraphNodeReviewHistory(node, detailNodeMap);
   const relationLayerSummary = renderGraphNodeRelationLayerSummary(directEdges);
+  const evidenceEligibility = graphNodeEvidenceEligibility(node, evidenceCount, governanceEdges, directEdges);
   $("#graphNodeDetail").innerHTML = `
     <div class="graph-detail-card ${safeGraphClass(node.review_state || "unknown")}">
       <div class="graph-detail-hero">
@@ -4804,6 +4805,7 @@ function renderGraphNodeDetail() {
       </div>
       ${renderGraphConsumerBadges(node)}
       ${renderGraphNodeActorReadiness(readiness)}
+      ${renderGraphNodeEvidenceEligibility(evidenceEligibility)}
       ${relationLayerSummary}
       ${governanceQueue}
       ${reviewFeedback}
@@ -4846,6 +4848,53 @@ function renderGraphNodeDetail() {
     </div>
   `;
   renderGraphQualityActions();
+}
+
+function graphNodeEvidenceEligibility(node = {}, evidenceCount = 0, governanceEdges = [], directEdges = []) {
+  const reviewState = node.review_state || "unknown";
+  const candidateEdges = directEdges.filter((edge) => String(graphEdgeClass(edge)).includes("candidate"));
+  const blockedEdges = directEdges.filter((edge) => ["rejected", "needs-rework"].includes(String(edge.review_state || "")));
+  const approvedEvidence = reviewState === "approved" && evidenceCount > 0 && !governanceEdges.length && !blockedEdges.length;
+  const selectedPending = ["pending-review", "candidate", "draft", "unreviewed"].includes(reviewState) && evidenceCount > 0 && !blockedEdges.length;
+  const blocked = !evidenceCount || blockedEdges.length > 0 || reviewState === "rejected" || reviewState === "needs-rework";
+  const className = approvedEvidence ? "ready" : selectedPending && !blocked ? "caution" : "blocked";
+  const vectorPolicy = approvedEvidence ? "approved-only" : selectedPending && !blocked ? "selected-pending" : "hold";
+  const label = approvedEvidence ? "Trusted graph evidence" : selectedPending && !blocked ? "Candidate graph evidence" : "Evidence not eligible";
+  const detail = approvedEvidence
+    ? "Approved node with linked evidence can support trusted graph retrieval."
+    : selectedPending && !blocked
+      ? "Linked evidence can be tested as selected-pending context, but needs review before trusted retrieval."
+      : evidenceCount
+        ? "Review or relation blockers prevent this node from trusted graph/vector use."
+        : "No direct evidence is linked to this graph node yet.";
+  return {
+    className,
+    label,
+    detail,
+    vectorPolicy,
+    evidenceCount,
+    candidateCount: candidateEdges.length,
+    blockedCount: blockedEdges.length,
+    reviewState,
+  };
+}
+
+function renderGraphNodeEvidenceEligibility(eligibility = {}) {
+  return `
+    <section class="graph-node-evidence-eligibility ${safeGraphClass(eligibility.className || "blocked")}">
+      <div>
+        <span class="badge">Evidence eligibility</span>
+        <strong>${escapeHtml(eligibility.label || "Evidence not eligible")}</strong>
+        <p>${escapeHtml(eligibility.detail || "")}</p>
+      </div>
+      <div class="graph-node-evidence-grid">
+        <span class="${safeGraphClass(eligibility.className || "blocked")}"><strong>${escapeHtml(eligibility.vectorPolicy || "hold")}</strong><small>vector policy</small></span>
+        <span><strong>${escapeHtml(String(eligibility.evidenceCount ?? 0))}</strong><small>evidence links</small></span>
+        <span class="${Number(eligibility.candidateCount || 0) ? "caution" : "ready"}"><strong>${escapeHtml(String(eligibility.candidateCount ?? 0))}</strong><small>candidate gates</small></span>
+        <span class="${Number(eligibility.blockedCount || 0) ? "blocked" : "ready"}"><strong>${escapeHtml(String(eligibility.blockedCount ?? 0))}</strong><small>blocked relations</small></span>
+      </div>
+    </section>
+  `;
 }
 
 function renderGraphNodeRelationLayerSummary(edges = []) {
