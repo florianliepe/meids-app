@@ -2,6 +2,8 @@
 
 Date: 2026-08-09
 
+Latest update: 2026-08-10
+
 ## Scope
 
 Targeted QA for the Knowledge Browser dark-mode readability work in the MeIDs static frontend.
@@ -47,6 +49,13 @@ Static validation passed. Browser-level QA now also passes for:
 
 Screenshots and machine-readable QA output are stored in `docs/visual-qa/screenshots-20260809-browser/`.
 
+Additional deployed checks on 2026-08-10 confirmed:
+
+- Knowledge Browser actor-use badges render on GitHub Pages without overflow.
+- Review/Production cockpit loads live probe evidence and exposes Knowledge Fabric / Agentic Butler URL blockers.
+- Current deployed app URL: `https://florianliepe.github.io/meids-app/`
+- Latest verified deployment commit for credential-boundary documentation: `e5e2a92`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:
@@ -59,3 +68,5 @@ $env:NODE_PATH='C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dep
 ## Open Integration Dependency
 
 Live n8n URLs for `Knowledge Fabric Agent` and `Agentic Butler` are still required before the goal can be fully closed.
+
+GitHub Pages workflow-secret injection is prepared in `docs/production/github-pages-agent-runtime-workflow-patch.md`, but updating `.github/workflows/*` is currently blocked by the active GitHub credential lacking `workflow` scope. Until that credential boundary is resolved, use `frontend/assets/agent-runtime-config.json` for intentionally public UAT webhook URLs.
