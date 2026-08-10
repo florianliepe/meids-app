@@ -590,6 +590,11 @@ function bindGraph() {
     const step = event.target.closest("[data-graph-demo-step]");
     if (step) applyGraphDemoStep(step.dataset.graphDemoStep || "context");
   });
+  $("#graphTrustBoundary")?.addEventListener("click", (event) => {
+    const trustFilter = event.target.closest("[data-graph-trust-filter]");
+    if (!trustFilter) return;
+    applyGraphTrustFilter(trustFilter.dataset.graphTrustFilter || "all");
+  });
   $("#graphIncludeDrafts")?.addEventListener("change", async (event) => {
     state.graphReasoningPreset = "custom";
     state.graphIncludeDrafts = Boolean(event.target.checked);
@@ -2141,6 +2146,29 @@ function applyGraphDemoStep(stepId) {
   }, 0);
 }
 
+function applyGraphTrustFilter(filter) {
+  state.graphReasoningPreset = "custom";
+  state.graphEdgeTypeFilter = "all";
+  if (filter === "trusted") {
+    state.graphReviewFilter = "all";
+    state.graphEdgeClassFilter = "explicit";
+  } else if (filter === "exploratory") {
+    state.graphReviewFilter = "all";
+    state.graphEdgeClassFilter = "inferred";
+  } else if (filter === "candidate") {
+    state.graphReviewFilter = "all";
+    state.graphEdgeClassFilter = "candidate";
+  } else if (filter === "blocked") {
+    state.graphReviewFilter = "needs-rework";
+    state.graphEdgeClassFilter = "all";
+  } else {
+    state.graphReviewFilter = "all";
+    state.graphEdgeClassFilter = "all";
+  }
+  syncGraphControlValues();
+  renderGraphCockpit();
+}
+
 function setGraphZoom(nextZoom) {
   state.graphZoom = Math.max(0.65, Math.min(1.45, Number(nextZoom) || 1));
   renderGraphCockpit();
@@ -2163,6 +2191,7 @@ function renderGraphCockpit() {
   renderGraphPresetControls();
   if (!graph) {
     $("#graphSummary").innerHTML = "";
+    $("#graphTrustBoundary").innerHTML = "";
     $("#graphPresetSignal").innerHTML = "";
     $("#graphInterpretationPanel").innerHTML = "";
     $("#graphTraceabilityPanel").innerHTML = "";
@@ -2181,6 +2210,7 @@ function renderGraphCockpit() {
   const availableEdges = projection.edges;
   const edges = applyGraphEdgeFilters(availableEdges);
   renderGraphSummary(graph, nodes, edges);
+  renderGraphTrustBoundary(graph, nodes, edges, availableEdges);
   renderGraphPresetTransitionPanel(nodes, edges);
   renderGraphInferenceVisual(graph, nodes, edges);
   renderGraphInterpretationPanel(graph, nodes, edges);
@@ -2361,6 +2391,92 @@ function renderGraphSummary(graph, nodes, edges) {
     <div><strong>${escapeHtml(consumers.primary)}</strong><span>primary consumer</span></div>
     <div><strong>${state.okfGraphArtifact?.path ? "ready" : "local"}</strong><span>GitHub export</span></div>
   `;
+}
+
+function renderGraphTrustBoundary(graph, nodes = [], edges = [], availableEdges = edges) {
+  const target = $("#graphTrustBoundary");
+  if (!target) return;
+  const nodeStates = countBy(nodes, (node) => node.review_state || "unknown");
+  const edgeClasses = countBy(edges, (edge) => graphEdgeClass(edge));
+  const allEdgeClasses = countBy(availableEdges, (edge) => graphEdgeClass(edge));
+  const trustedEdges = edges.filter((edge) => graphRelationTrust(edge).className === "trusted");
+  const exploratoryEdges = edges.filter((edge) => graphRelationTrust(edge).className === "exploratory");
+  const blockedEdges = edges.filter((edge) => graphRelationTrust(edge).className === "blocked");
+  const promotionReady = edges.filter((edge) => graphRelationTrust(edge).className === "candidate");
+  const approvedNodeRatio = nodes.length ? Math.round(((nodeStates.approved || 0) / nodes.length) * 100) : 0;
+  const graphPath = graph?.artifact?.path || graph?.graph_artifact?.path || graph?.summary?.artifact_path || "";
+  const tiles = [
+    {
+      key: "trusted",
+      value: trustedEdges.length,
+      label: "trusted relations",
+      detail: "Actor Twin can use",
+      className: "trusted",
+    },
+    {
+      key: "exploratory",
+      value: exploratoryEdges.length,
+      label: "inferred bridges",
+      detail: "explain with caveat",
+      className: "exploratory",
+    },
+    {
+      key: "candidate",
+      value: promotionReady.length,
+      label: "promotion queue",
+      detail: `${(allEdgeClasses.candidate || 0) + (allEdgeClasses["duplicate-candidate"] || 0) + (allEdgeClasses["contradiction-candidate"] || 0)} available`,
+      className: "candidate",
+    },
+    {
+      key: "blocked",
+      value: blockedEdges.length + (nodeStates["needs-rework"] || 0) + (nodeStates.rejected || 0),
+      label: "blocked from trust",
+      detail: "needs decision",
+      className: "blocked",
+    },
+  ];
+  target.innerHTML = `
+    <div class="graph-trust-boundary-main">
+      <span class="badge">Trust boundary</span>
+      <strong>${escapeHtml(`${approvedNodeRatio}% approved node basis`)}</strong>
+      <small>${escapeHtml(`${nodes.length} visible nodes · ${edgeClasses.explicit || 0} explicit · ${edgeClasses.inferred || 0} inferred · ${graphPath ? "export ready" : "local snapshot"}`)}</small>
+    </div>
+    <div class="graph-trust-boundary-grid">
+      ${tiles.map((tile) => `
+        <button class="${escapeHtml(tile.className)} ${graphTrustFilterActive(tile.key) ? "active" : ""}" type="button" data-graph-trust-filter="${escapeHtml(tile.key)}">
+          <strong>${escapeHtml(String(tile.value))}</strong>
+          <small>${escapeHtml(tile.label)}</small>
+          <em>${escapeHtml(tile.detail)}</em>
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function graphTrustFilterActive(key) {
+  if (key === "trusted") return state.graphEdgeClassFilter === "explicit";
+  if (key === "exploratory") return state.graphEdgeClassFilter === "inferred";
+  if (key === "candidate") return state.graphEdgeClassFilter === "candidate";
+  if (key === "blocked") return state.graphReviewFilter === "needs-rework";
+  return false;
+}
+
+function graphRelationTrust(edge = {}) {
+  const reviewState = String(edge.review_state || "unreviewed");
+  const edgeClass = graphEdgeClass(edge);
+  if (reviewState === "approved" || reviewState === "accepted" || edgeClass === "explicit") {
+    return { className: "trusted", label: "trusted" };
+  }
+  if (edgeClass === "inferred") {
+    return { className: "exploratory", label: "exploratory" };
+  }
+  if (["candidate", "duplicate-candidate", "contradiction-candidate"].includes(edgeClass) || reviewState === "candidate" || reviewState === "unreviewed") {
+    return { className: "candidate", label: "promotion queue" };
+  }
+  if (["needs-rework", "rejected"].includes(reviewState) || edgeClass === "blocked") {
+    return { className: "blocked", label: "blocked" };
+  }
+  return { className: "candidate", label: "review needed" };
 }
 
 function graphConsumerSummary(nodes = [], edges = []) {

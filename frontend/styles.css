@@ -6975,6 +6975,8 @@ body.theme-dark .knowledge-browser-summary span {
 body.theme-dark .knowledge-health-row,
 body.theme-dark .knowledge-increment,
 body.theme-dark .graph-summary-strip div,
+body.theme-dark .graph-trust-boundary-main,
+body.theme-dark .graph-trust-boundary-grid button,
 body.theme-dark .graph-canvas-wrap,
 body.theme-dark .graph-detail-panel,
 body.theme-dark .graph-insight-grid > section,
@@ -15656,6 +15658,105 @@ body.theme-dark .compact-filterbar {
   margin-top: 7px;
 }
 
+.graph-trust-boundary-strip {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(230px, 0.8fr) minmax(0, 1.6fr);
+}
+
+.graph-trust-boundary-strip:empty {
+  display: none;
+}
+
+.graph-trust-boundary-main,
+.graph-trust-boundary-grid button {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.graph-trust-boundary-main {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.graph-trust-boundary-main strong {
+  display: block;
+  font-size: 1.08rem;
+  line-height: 1.15;
+}
+
+.graph-trust-boundary-main small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.graph-trust-boundary-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.graph-trust-boundary-grid button {
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  text-align: left;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.graph-trust-boundary-grid button:hover {
+  transform: translateY(-1px);
+}
+
+.graph-trust-boundary-grid button.active {
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 56%, var(--line));
+}
+
+.graph-trust-boundary-grid button.trusted {
+  border-left: 4px solid #65c8af;
+}
+
+.graph-trust-boundary-grid button.exploratory {
+  border-left: 4px solid #7f9fe8;
+}
+
+.graph-trust-boundary-grid button.candidate {
+  border-left: 4px solid #d4ad63;
+}
+
+.graph-trust-boundary-grid button.blocked {
+  border-left: 4px solid #dc887d;
+}
+
+.graph-trust-boundary-grid strong {
+  display: block;
+  font-size: 1.28rem;
+  line-height: 1;
+}
+
+.graph-trust-boundary-grid small,
+.graph-trust-boundary-grid em {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.graph-trust-boundary-grid small {
+  color: var(--text);
+  font-weight: 750;
+}
+
+.graph-trust-boundary-grid em {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  line-height: 1.25;
+}
+
 .graph-workspace {
   display: grid;
   gap: 14px;
@@ -23905,6 +24006,11 @@ body.theme-dark .graph-command-surface small {
   color: #c9c0b3;
 }
 
+body.theme-dark .graph-trust-boundary-grid button.active {
+  background: color-mix(in srgb, #88e5ce 12%, var(--meids-dark-surface-raised));
+  border-color: #8ce2ca;
+}
+
 /* Zielmodus 4 mobile layout final generated-layer guard. */
 @media (max-width: 900px) {
   body .shell {
@@ -23923,6 +24029,11 @@ body.theme-dark .graph-command-surface small {
     border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent) !important;
     padding: 12px !important;
     overflow: hidden !important;
+  }
+
+  body .graph-trust-boundary-strip,
+  body .graph-trust-boundary-grid {
+    grid-template-columns: 1fr !important;
   }
 
   body .sidebar .brand-row,
