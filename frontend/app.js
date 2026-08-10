@@ -10934,7 +10934,7 @@ async function safeRefreshReviewDashboard() {
     await refreshReviewDashboard();
   } catch (error) {
     $("#dashConceptStates").textContent = "Dashboard endpoint unavailable. Restart the local MVP server.";
-    ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashGraphPromotionHistory", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
+    ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashGraphPromotionHistory", "#dashOkfGraphPackage", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
       const node = $(selector);
       if (node) node.innerHTML = renderErrorState("Dashboard unavailable");
     });
@@ -10944,7 +10944,7 @@ async function safeRefreshReviewDashboard() {
 
 function setDashboardLoading() {
   $("#cockpitOverview").innerHTML = '<div class="skeleton-block"></div><div class="skeleton-block"></div>';
-  ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashGraphPromotionHistory", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
+  ["#dashPendingConcepts", "#dashReworkConcepts", "#dashRejectedConcepts", "#dashLatestTraces", "#dashAgentTraceHistory", "#dashGraphPromotionHistory", "#dashOkfGraphPackage", "#dashSkillQueue", "#dashRefinementQueue", "#dashVoiceProofChain", "#dashMcpQueue", "#dashActions"].forEach((selector) => {
     const node = $(selector);
     if (node) node.innerHTML = renderLoadingState("Loading cockpit data");
   });
@@ -10997,6 +10997,7 @@ function renderReviewDashboard(result) {
   renderDashboardTraces(trace.latest || []);
   renderDashboardAgentTraceHistory();
   renderDashboardGraphPromotionHistory();
+  renderDashboardOkfGraphPackage();
   renderDashboardSkillQueue(result.skills?.pending_approval || []);
   renderDashboardRefinementQueue(result.skills?.refinements || {}, result.skills?.runs || {});
   renderDashboardVoiceProofChain(result.mcp_tool_calls?.voice_proof_chain || {});
@@ -16046,6 +16047,43 @@ function renderDashboardGraphPromotionHistory() {
   if (exportButton) exportButton.onclick = exportGraphPromotionHistory;
 }
 
+function renderDashboardOkfGraphPackage() {
+  const target = $("#dashOkfGraphPackage");
+  if (!target) return;
+  const reviewed = reviewedKnowledgeFabricQueueItems();
+  const promotions = graphPromotionHistoryItems(120);
+  const links = reviewedOkfGraphPromotionLinks(reviewed, promotions);
+  const approvedLinks = links.filter((link) => link.review_state === "approved" || link.graph_decision === "approved" || link.graph_decision === "accepted");
+  target.innerHTML = `
+    <div class="okf-graph-package-summary">
+      <span><strong>${escapeHtml(reviewed.length)}</strong><small>reviewed handoffs</small></span>
+      <span><strong>${escapeHtml(promotions.length)}</strong><small>graph decisions</small></span>
+      <span><strong>${escapeHtml(links.length)}</strong><small>linked paths</small></span>
+      <span><strong>${escapeHtml(approvedLinks.length)}</strong><small>trusted candidates</small></span>
+    </div>
+    <p>${escapeHtml(links.length ? "Reviewed OKF handoffs can be exported with matching graph promotion decisions for knowledge-repo review." : "Review a Knowledge Fabric handoff or graph relation to create a portable package.")}</p>
+    ${links.length ? `
+      <div class="okf-graph-package-links">
+        ${links.slice(0, 5).map((link) => `
+          <article>
+            <strong>${escapeHtml(link.title || link.concept_path || "OKF handoff")}</strong>
+            <small>${escapeHtml(`${labelizeGraph(link.review_state)} · ${labelizeGraph(link.graph_decision || "no graph decision")}`)}</small>
+            <code>${escapeHtml(link.concept_path || link.evidence_path || link.queue_id || "")}</code>
+          </article>
+        `).join("")}
+      </div>
+    ` : ""}
+    <div class="queue-card-actions">
+      <button class="secondary small" type="button" data-dashboard-action="export-okf-graph-package-inline">Export OKF + graph package</button>
+      <button class="secondary small" type="button" data-cockpit-action="openGraph">Open graph</button>
+    </div>
+  `;
+  const exportButton = document.querySelector('[data-dashboard-action="export-okf-graph-package"]');
+  if (exportButton) exportButton.onclick = exportOkfGraphPromotionPackage;
+  target.querySelector('[data-dashboard-action="export-okf-graph-package-inline"]')?.addEventListener("click", exportOkfGraphPromotionPackage);
+  target.querySelector('[data-cockpit-action="openGraph"]')?.addEventListener("click", () => showView("graph"));
+}
+
 function exportGraphPromotionHistory() {
   const items = graphPromotionHistoryItems(120);
   if (!items.length) {
@@ -16063,6 +16101,93 @@ function exportGraphPromotionHistory() {
   triggerDownload(url, filename);
   URL.revokeObjectURL(url);
   showToast("Graph promotion history exported", `${items.length} decision${items.length === 1 ? "" : "s"}`, "success");
+}
+
+function exportOkfGraphPromotionPackage() {
+  const reviewed = reviewedKnowledgeFabricQueueItems();
+  const promotions = graphPromotionHistoryItems(120);
+  if (!reviewed.length && !promotions.length) {
+    showToast("OKF graph package", "No reviewed handoffs or graph promotion decisions to export yet.", "warning");
+    return;
+  }
+  const artifact = buildOkfGraphPromotionPackageArtifact(reviewed, promotions);
+  const filename = [
+    "meids-okf-graph-promotion-package",
+    safeGraphClass(state.activeTwin || "twin"),
+    new Date().toISOString().replace(/[:.]/g, "-"),
+  ].join("-") + ".json";
+  const blob = new Blob([JSON.stringify(artifact, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, filename);
+  URL.revokeObjectURL(url);
+  showToast("OKF graph package exported", `${artifact.summary.handoff_count} handoff${artifact.summary.handoff_count === 1 ? "" : "s"} · ${artifact.summary.promotion_count} graph decision${artifact.summary.promotion_count === 1 ? "" : "s"}`, "success");
+}
+
+function buildOkfGraphPromotionPackageArtifact(reviewedItems = [], promotionItems = []) {
+  const reviewedBundle = reviewedItems.length ? buildKnowledgeFabricReviewedBundle(reviewedItems) : null;
+  const graphBundle = promotionItems.length ? buildGraphPromotionHistoryArtifact(promotionItems) : null;
+  const links = reviewedOkfGraphPromotionLinks(reviewedItems, promotionItems);
+  const trusted = links.filter((link) => ["approved", "accepted"].includes(String(link.review_state || link.graph_decision || "")));
+  return {
+    schema: "meids.okf_graph_promotion_package.v1",
+    exported_at: new Date().toISOString(),
+    boundary: "Portable OKF handoff and graph promotion package only. Does not mutate OKF storage, graph store, vector index, GitHub, MCP, or n8n runtime.",
+    twin_id: state.activeTwin || reviewedItems[0]?.twin_id || "florian",
+    summary: {
+      handoff_count: reviewedItems.length,
+      promotion_count: promotionItems.length,
+      linked_path_count: links.length,
+      trusted_candidate_count: trusted.length,
+      ready_for_knowledge_repo_review: reviewedItems.length > 0 || promotionItems.length > 0,
+    },
+    repo_split_target: {
+      app_repo: "florianliepe/meids-app",
+      knowledge_repo: "meids-knowledge-fabric",
+      agent_config_repo: "meids-agent-configs",
+    },
+    review_sequence: [
+      "Inspect reviewed OKF handoffs and graph promotion decisions together.",
+      "Materialize approved handoffs as Markdown/YAML in the knowledge fabric repo.",
+      "Apply accepted graph promotions to graph edge YAML after source evidence exists.",
+      "Keep rejected and needs-rework items as audit-only evidence.",
+      "Queue vector adapter requests only after OKF and graph changes are approved and merged.",
+    ],
+    okf_reviewed_bundle: reviewedBundle,
+    graph_promotion_bundle: graphBundle,
+    handoff_graph_links: links,
+  };
+}
+
+function reviewedOkfGraphPromotionLinks(reviewedItems = [], promotionItems = []) {
+  return reviewedItems.map((item) => {
+    const conceptPath = item.concept_path || "";
+    const evidencePath = item.evidence_path || "";
+    const queueSlug = slugify(item.queue_id || item.request_id || item.title || "");
+    const matches = promotionItems.filter((promotion) => {
+      const promotionPath = promotion.source_path || promotion.path || "";
+      return (
+        (conceptPath && promotionPath === conceptPath) ||
+        (evidencePath && promotionPath === evidencePath) ||
+        (queueSlug && String(promotion.edge_key || "").includes(queueSlug))
+      );
+    });
+    const primary = matches[0] || {};
+    return {
+      queue_id: item.queue_id || "",
+      request_id: item.request_id || "",
+      title: item.title || item.intent || "",
+      review_state: item.review_state || "pending-review",
+      concept_path: conceptPath,
+      evidence_path: evidencePath,
+      transcript_path: item.transcript_path || "",
+      graph_decision: primary.review_state || primary.decision || "",
+      graph_edge_keys: matches.map((promotion) => promotion.edge_key).filter(Boolean),
+      graph_relation_types: Array.from(new Set(matches.map((promotion) => promotion.relation_type).filter(Boolean))),
+      vector_rule: item.review_state === "approved" && ["approved", "accepted"].includes(String(primary.review_state || primary.decision || ""))
+        ? "eligible_for_vector_adapter_after_knowledge_repo_merge"
+        : "hold_until_okf_and_graph_review_pass",
+    };
+  });
 }
 
 function buildGraphPromotionHistoryArtifact(items = []) {
