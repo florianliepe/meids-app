@@ -16,7 +16,13 @@ MeIDs can run in GitHub Pages fixture mode without live n8n workflows. For produ
 
 ## GitHub Pages Secrets
 
-The preferred production path is to let the Pages workflow generate `runtime-config.js` during deployment from repository secrets. The required workflow patch is prepared, but pushing changes under `.github/workflows/*` requires a GitHub credential with `workflow` scope:
+The preferred production path is to let the Pages workflow generate the public runtime assets during deployment from repository secrets:
+
+- `runtime-config.js`
+- `assets/agent-runtime-config.json`
+- `assets/n8n-runtime-readiness-status.json`
+
+This keeps Chat mode routing, cockpit status badges, and the public readiness summary aligned after repository secrets change.
 
 | Secret | Purpose |
 |---|---|
@@ -31,7 +37,7 @@ Secrets must be configured in GitHub at:
 
 `Settings -> Secrets and variables -> Actions -> Repository secrets`
 
-Current credential boundary: the public app can already use `frontend/assets/agent-runtime-config.json` for intentionally public UAT URLs. Workflow-secret injection is documented but blocked until a `workflow`-scope GitHub credential can update the Pages workflow. The missing live work remains to provide values for Knowledge Fabric Agent and Agentic Butler when those n8n workflows are ready.
+Current credential boundary: the public app can already use `frontend/assets/agent-runtime-config.json` for intentionally public UAT URLs. Workflow-secret injection is applied in `.github/workflows/intellectual-twin-pages.yml`. The missing live work remains to provide values for Knowledge Fabric Agent and Agentic Butler when those n8n workflows are ready.
 
 Runtime URL readiness is also exported to `frontend/assets/n8n-runtime-readiness-status.json`. This generated artifact is public-safe and validates:
 
@@ -60,7 +66,7 @@ After changing a secret later, trigger the Pages workflow again through a push t
 
 ## Current Public Staging Asset Path
 
-GitHub Pages also loads `frontend/assets/agent-runtime-config.json` in static mode. The workflow copies this asset unchanged, so it can expose non-secret staging webhook URLs when an Actions secret is not suitable or for local/static fallback testing.
+GitHub Pages also loads `frontend/assets/agent-runtime-config.json` in static mode for local/static fallback testing. During hosted Pages deployment, the workflow replaces this asset in `dist-pages/assets/agent-runtime-config.json` with the secret-derived public runtime values and regenerates `dist-pages/assets/n8n-runtime-readiness-status.json` from the same config.
 
 Use this only for intentionally public UAT endpoints:
 
