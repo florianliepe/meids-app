@@ -7814,6 +7814,25 @@ body.theme-dark .knowledge-source-readiness-grid span {
   color: var(--ink);
 }
 
+.agent-trace-artifact {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  padding-top: 8px;
+  min-width: 0;
+}
+
+.agent-trace-artifact code {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.agent-trace-artifact small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 body.theme-dark .chat-contract-badges span,
 body.theme-dark .chat-mode-readiness,
 body.theme-dark .chat-active-contract-badge,
@@ -7827,6 +7846,10 @@ body.theme-dark .agent-trace-filter button.active {
   border-color: rgba(122, 216, 191, 0.58);
   background: rgba(122, 216, 191, 0.14);
   color: #f1ebe0;
+}
+
+body.theme-dark .agent-trace-artifact {
+  border-top-color: rgba(241, 235, 224, 0.16);
 }
 
 body.theme-dark .agent-trace-setup-notice {

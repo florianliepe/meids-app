@@ -14119,6 +14119,8 @@ function renderKnowledgeFabricQueuePanels() {
     if (!target) return;
     target.innerHTML = renderKnowledgeFabricQueue(state.knowledgeFabricIngestQueue || [], selector.includes("chat") ? 3 : 8);
   });
+  renderAgentTraceHistoryPanel();
+  renderDashboardAgentTraceHistory();
 }
 
 function renderKnowledgeFabricQueue(items = [], limit = 6) {
@@ -14187,6 +14189,35 @@ function readAgentTraceLog() {
   } catch {
     return staticPagesMode ? buildStaticPagesAgentTraceLog() : [];
   }
+}
+
+function readComposedAgentTraces() {
+  const explicit = readAgentTraceLog();
+  const explicitKeys = new Set(explicit.map((trace) => trace.trace_id || trace.request_id).filter(Boolean));
+  const queueTraces = (state.knowledgeFabricIngestQueue || [])
+    .map(knowledgeFabricQueueTrace)
+    .filter((trace) => !explicitKeys.has(trace.trace_id) && !explicitKeys.has(trace.request_id));
+  return [...explicit, ...queueTraces]
+    .sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")))
+    .slice(0, 60);
+}
+
+function knowledgeFabricQueueTrace(item = {}) {
+  const reviewState = item.review_state || "pending-review";
+  return {
+    timestamp: item.reviewed_at || item.created_at || new Date().toISOString(),
+    twin: item.twin_id || state.activeTwin || "florian",
+    agent_id: "knowledge_fabric_agent",
+    agent_name: item.reviewed_at ? "Knowledge Fabric Review" : "Knowledge Fabric Ingest",
+    status: reviewState,
+    runtime: `${item.runtime || "local queue"} · ${item.source_type || "source"} · ${item.graph_curator_trigger || "graph pending"}`,
+    request_id: item.request_id || item.queue_id || "",
+    trace_id: item.trace_id || item.request_id || item.queue_id || "",
+    approval_required: !["approved", "rejected"].includes(String(reviewState)),
+    artifact_path: item.concept_path || item.evidence_path || "",
+    detail: item.review_note || item.vector_refresh || "Pending OKF handoff review.",
+    from_queue: true,
+  };
 }
 
 function buildStaticPagesAgentTraceLog() {
@@ -14295,7 +14326,7 @@ function renderAgentTraceFilterControls() {
 function renderAgentTraceHistoryPanel() {
   const target = $("#agentTraceHistoryPanel");
   if (!target) return;
-  const traces = readAgentTraceLog();
+  const traces = readComposedAgentTraces();
   const filtered = filteredAgentTraces(traces);
   renderAgentTraceSummary(traces, filtered);
   renderAgentTraceFilterControls();
@@ -14314,7 +14345,7 @@ function renderAgentTraceHistoryPanel() {
 function renderDashboardAgentTraceHistory() {
   const target = $("#dashAgentTraceHistory");
   if (!target) return;
-  const traces = readAgentTraceLog();
+  const traces = readComposedAgentTraces();
   if (!traces.length) {
     target.innerHTML = renderEmptyState("No local n8n handoffs yet.", "Open agent contracts", "openProductionCockpit");
     return;
@@ -14364,6 +14395,12 @@ function renderAgentTraceHistoryRows(traces = [], limit = 12) {
         <code>${escapeHtml(trace.trace_id || "trace pending")}</code>
         <small>${escapeHtml(trace.request_id || "")}</small>
       </div>
+      ${trace.artifact_path || trace.detail ? `
+        <div class="agent-trace-artifact">
+          ${trace.artifact_path ? `<code>${escapeHtml(trace.artifact_path)}</code>` : ""}
+          ${trace.detail ? `<small>${escapeHtml(trace.detail)}</small>` : ""}
+        </div>
+      ` : ""}
     </article>
   `;
   }).join("");
