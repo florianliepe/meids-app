@@ -1,7 +1,7 @@
 # GitHub Pages Agent Runtime Workflow Patch
 
 Date: 2026-08-10
-Status: applied to `.github/workflows/intellectual-twin-pages.yml`; awaiting live Knowledge Fabric Agent and Agentic Butler webhook secrets
+Status: partially applied. The workflow injects runtime agent URLs and regenerates runtime readiness, but the follow-up patch that regenerates live preflight and Zielmodus live completion checklist from the built `dist-pages/assets` is pending a GitHub token with `workflow` scope or a manual workflow edit.
 Owner: MeIDs production setup
 
 ## Purpose
@@ -11,6 +11,8 @@ This document records the GitHub Pages workflow update needed to inject all thre
 - `runtime-config.js`
 - `assets/agent-runtime-config.json`
 - `assets/n8n-runtime-readiness-status.json`
+- `assets/n8n-live-readiness-preflight.json`
+- `assets/zielmodus-4-live-completion-checklist.json`
 
 ## Current Supported Paths
 
@@ -50,9 +52,9 @@ Before using live n8n URLs through workflow-generated config:
 | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` | Knowledge Fabric Agent ingest / graph / vector handoff webhook. | Required for Knowledge Fabric live UAT |
 | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` | Agentic Butler approved skill activation webhook. | Required for Agentic Butler live UAT |
 
-## Applied Workflow Shape
+## Preferred Workflow Shape
 
-The workflow contains this runtime-config generation shape.
+The simplest target workflow shape is to call the versioned static build script instead of keeping the artifact build logic inline.
 
 ```diff
 diff --git a/.github/workflows/intellectual-twin-pages.yml b/.github/workflows/intellectual-twin-pages.yml
@@ -63,58 +65,13 @@ diff --git a/.github/workflows/intellectual-twin-pages.yml b/.github/workflows/i
          env:
            GH_PAGES_API_BASE_URL: ${{ secrets.GH_PAGES_API_BASE_URL }}
            GH_PAGES_N8N_CHAT_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_CHAT_WEBHOOK_URL }}
-+          GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL }}
-+          GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL }}
-+          GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL }}
-         run: |
-           rm -rf dist-pages
-           mkdir -p dist-pages
-           cp -R frontend/. dist-pages/
-+          ACTOR_TWIN_WEBHOOK_URL="${GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL:-$GH_PAGES_N8N_CHAT_WEBHOOK_URL}"
-+          actor_status="awaiting_url"
-+          knowledge_status="awaiting_url"
-+          butler_status="awaiting_url"
-+          if [ -n "$ACTOR_TWIN_WEBHOOK_URL" ]; then actor_status="configured"; fi
-+          if [ -n "$GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL" ]; then knowledge_status="configured"; fi
-+          if [ -n "$GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL" ]; then butler_status="configured"; fi
-          cat > dist-pages/runtime-config.js <<EOF
-           window.INTELLECTUAL_TWIN_CONFIG = {
-             apiBaseUrl: "$GH_PAGES_API_BASE_URL",
-             assetBaseUrl: "",
-             n8nChatWebhookUrl: "$GH_PAGES_N8N_CHAT_WEBHOOK_URL",
--            n8nChatEnabled: "$GH_PAGES_N8N_CHAT_WEBHOOK_URL" !== "",
-+            n8nActorTwinWebhookUrl: "$ACTOR_TWIN_WEBHOOK_URL",
-+            n8nKnowledgeFabricWebhookUrl: "$GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
-+            n8nAgenticButlerWebhookUrl: "$GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
-+            n8nAgentWebhooks: {
-+              actor_twin: "$ACTOR_TWIN_WEBHOOK_URL",
-+              knowledge_fabric_agent: "$GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
-+              agentic_butler: "$GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
-+            },
-+            n8nAgentProbeSlots: {
-+              actor_twin: {
-+                status: "$actor_status",
-+                probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
-+                next_action: "Run Actor Twin UAT and capture n8n trace evidence.",
-+              },
-+              knowledge_fabric_agent: {
-+                status: "$knowledge_status",
-+                probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
-+                next_action: "Run Knowledge Fabric Agent UAT with upload/transcript fixture.",
-+              },
-+              agentic_butler: {
-+                status: "$butler_status",
-+                probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
-+                next_action: "Run Agentic Butler UAT with approval-gated skill activation fixture.",
-+              },
-+            },
-+            n8nChatEnabled: "$GH_PAGES_N8N_CHAT_WEBHOOK_URL" !== "" || "$ACTOR_TWIN_WEBHOOK_URL" !== "",
-             staticPagesMode: "$GH_PAGES_API_BASE_URL" === ""
-          };
-          EOF
-          node scripts/write-pages-agent-runtime-config.cjs --output dist-pages/assets/agent-runtime-config.json
-          node scripts/write-n8n-runtime-readiness-status.cjs --config dist-pages/assets/agent-runtime-config.json --output dist-pages/assets/n8n-runtime-readiness-status.json
+           GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL }}
+           GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL }}
+           GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL }}
+         run: node scripts/build-pages-static.cjs --output dist-pages
 ```
+
+This command copies `frontend`, writes `runtime-config.js`, regenerates all public runtime/readiness assets against `dist-pages/assets`, and runs `scripts/pages-smoke-check.cjs dist-pages`.
 
 ## Runtime Config Shape After Patch
 
@@ -152,6 +109,7 @@ Run locally before pushing:
 ```powershell
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" --check frontend/app.js
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts/validate-n8n-fixtures.cjs
+& "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts/build-pages-static.cjs --output dist-pages
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts/pages-smoke-check.cjs frontend
 ```
 

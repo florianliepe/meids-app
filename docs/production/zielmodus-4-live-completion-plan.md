@@ -8,7 +8,9 @@ Machine-readable counterpart: `frontend/assets/zielmodus-4-live-completion-check
 
 Public-safe local gate: `node scripts/check-zielmodus-4-public-safe.cjs`.
 
-GitHub Pages build note: the helper scripts now support regenerating runtime readiness, live preflight, and live completion checklist inside `dist-pages/assets` from the runtime config produced during deployment. Applying that workflow patch requires a GitHub token with `workflow` scope or a manual workflow edit; the current push token cannot update `.github/workflows/*`.
+Reproducible static Pages build: `node scripts/build-pages-static.cjs --output dist-pages`. This copies `frontend`, writes `runtime-config.js`, regenerates public runtime readiness, live preflight, and live completion checklist inside `dist-pages/assets`, then runs the Pages smoke check.
+
+GitHub Pages build note: the helper scripts now support regenerating runtime readiness, live preflight, and live completion checklist inside `dist-pages/assets` from the runtime config produced during deployment. Applying the workflow patch requires a GitHub token with `workflow` scope or a manual workflow edit; the current push token cannot update `.github/workflows/*`.
 
 ## Current Verified State
 
