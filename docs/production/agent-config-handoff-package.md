@@ -24,6 +24,8 @@ Recommended default branch model:
 
 ## Folder Scaffold
 
+Detailed bootstrap scaffold: [`docs/production/agent-config-repo-scaffold.md`](agent-config-repo-scaffold.md)
+
 ```text
 meids-agent-configs/
   README.md
@@ -101,11 +103,12 @@ The private agent-config repository should keep:
 
 1. Keep public contract fixtures green in `meids-app`.
 2. Create `meids-agent-configs` as private.
-3. Copy the folder scaffold above.
-4. Move workflow exports, prompts, skill activation policies, and environment templates into the private repo.
-5. Configure public UAT webhook URLs through GitHub Pages secrets only if those URLs are intentionally public.
-6. Run live probes from the MeIDs Production/Review Cockpit.
-7. Promote an agent contract only after fixture replay, live probe, UAT, trace storage, and human approval all pass.
+3. Copy the folder scaffold from [`agent-config-repo-scaffold.md`](agent-config-repo-scaffold.md).
+4. Use [`contracts/n8n/agent-config-public-export.json`](../../contracts/n8n/agent-config-public-export.json) as the public-safe import manifest.
+5. Move workflow exports, prompts, skill activation policies, and environment templates into the private repo.
+6. Configure public UAT webhook URLs through GitHub Pages secrets only if those URLs are intentionally public.
+7. Run live probes from the MeIDs Production/Review Cockpit.
+8. Promote an agent contract only after fixture replay, live probe, UAT, trace storage, and human approval all pass.
 
 ## Current Known Gaps
 

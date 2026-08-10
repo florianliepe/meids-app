@@ -1,0 +1,115 @@
+{
+  "package_id": "meids-agent-config-public-export",
+  "package_version": "0.1.0",
+  "generated_at": "2026-08-10T00:00:00Z",
+  "visibility": "public-safe",
+  "purpose": "Bootstrap manifest for the private meids-agent-configs repository without exposing secrets, private webhook URLs, credentials, or private knowledge.",
+  "source_repository": "florianliepe/meids-app",
+  "target_repository": {
+    "name": "meids-agent-configs",
+    "recommended_visibility": "private",
+    "branch_model": ["main", "develop", "feature/<scope>", "release/<version>", "hotfix/<scope>"]
+  },
+  "top_level_agents": [
+    {
+      "agent_id": "actor_twin",
+      "agent_name": "Actor Twin",
+      "role": "User-facing decision and answer agent.",
+      "fixture_source": "contracts/n8n/fixtures/actor-twin.json",
+      "target_contract_path": "contracts/n8n/actor-twin.contract.json",
+      "target_workflow_path": "workflows/n8n/actor-twin.workflow.json",
+      "target_prompt_paths": [
+        "prompts/actor-twin/system.md",
+        "prompts/actor-twin/critic.md"
+      ],
+      "runtime_config_keys": [
+        "n8nActorTwinWebhookUrl",
+        "n8nAgentWebhooks.actor_twin"
+      ],
+      "github_pages_secret": "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
+      "production_secret": "N8N_ACTOR_TWIN_WEBHOOK_URL",
+      "approval_boundary": "Answer-only requests can complete without approval. External actions must be routed through Agentic Butler and human approval gates."
+    },
+    {
+      "agent_id": "knowledge_fabric_agent",
+      "agent_name": "Knowledge Fabric Agent",
+      "role": "Ingest, curate, audit, and route OKF knowledge fabric updates.",
+      "fixture_source": "contracts/n8n/fixtures/knowledge-fabric-agent.json",
+      "target_contract_path": "contracts/n8n/knowledge-fabric-agent.contract.json",
+      "target_workflow_path": "workflows/n8n/knowledge-fabric-agent.workflow.json",
+      "target_prompt_paths": [
+        "prompts/knowledge-fabric-agent/system.md",
+        "prompts/knowledge-fabric-agent/graph-curator.md",
+        "prompts/knowledge-fabric-agent/vector-refresh.md"
+      ],
+      "runtime_config_keys": [
+        "n8nKnowledgeFabricWebhookUrl",
+        "n8nAgentWebhooks.knowledge_fabric_agent"
+      ],
+      "github_pages_secret": "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+      "production_secret": "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+      "approval_boundary": "May create pending-review OKF concepts and candidate graph edges. Must not promote trusted knowledge or refresh trusted vector indexes without review policy approval."
+    },
+    {
+      "agent_id": "agentic_butler",
+      "agent_name": "Agentic Butler",
+      "role": "Work execution agent for approved skills with the Skill Orchestrator as an internal component.",
+      "fixture_source": "contracts/n8n/fixtures/agentic-butler.json",
+      "target_contract_path": "contracts/n8n/agentic-butler.contract.json",
+      "target_workflow_path": "workflows/n8n/agentic-butler.workflow.json",
+      "target_prompt_paths": [
+        "prompts/agentic-butler/system.md",
+        "prompts/agentic-butler/skill-orchestrator.md",
+        "prompts/agentic-butler/approval-gates.md"
+      ],
+      "runtime_config_keys": [
+        "n8nAgenticButlerWebhookUrl",
+        "n8nAgentWebhooks.agentic_butler"
+      ],
+      "github_pages_secret": "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+      "production_secret": "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+      "approval_boundary": "May activate approved skills and create draft work products. Must pause before sending emails, creating meetings, committing externally, or any action marked requires_human."
+    }
+  ],
+  "copy_plan": [
+    {
+      "step": 1,
+      "action": "Create private repository meids-agent-configs."
+    },
+    {
+      "step": 2,
+      "action": "Copy public fixture contracts into contracts/n8n as baseline contracts."
+    },
+    {
+      "step": 3,
+      "action": "Add n8n workflow exports under workflows/n8n after reviewing them for secrets."
+    },
+    {
+      "step": 4,
+      "action": "Add agent prompts and skill orchestration policies under prompts and skills."
+    },
+    {
+      "step": 5,
+      "action": "Configure public UAT URLs or private hosted backend secrets outside Git."
+    },
+    {
+      "step": 6,
+      "action": "Run fixture replay, live probes, UAT, and human approval gates before merging to main."
+    }
+  ],
+  "non_goals": [
+    "No live webhook URLs in this manifest.",
+    "No private knowledge payloads in this manifest.",
+    "No API keys, bearer tokens, Azure keys, or n8n credentials in this manifest.",
+    "No approval bypass for generated or refined skills."
+  ],
+  "readiness_requirements": [
+    "All three top-level agent fixtures validate locally.",
+    "All three top-level agent workflows return the envelope shape from their fixtures.",
+    "Approval-required fixture cases pause and emit human approval requests.",
+    "Failure fixture cases return structured recoverable errors.",
+    "The cockpit records trace IDs for live probes.",
+    "Knowledge Fabric Agent keeps unapproved knowledge in pending-review state.",
+    "Agentic Butler keeps Skill Orchestrator internal."
+  ]
+}
