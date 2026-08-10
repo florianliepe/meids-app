@@ -13245,6 +13245,7 @@ function renderZielmodus4ReadinessCard() {
         <div class="button-row tight">
           <a class="secondary small" href="${escapeHtml(githubBlobUrl("frontend/assets/zielmodus-4-readiness-status.json"))}" target="_blank" rel="noreferrer">Open artifact</a>
           <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/production/zielmodus-4-readiness-audit.md"))}" target="_blank" rel="noreferrer">Open audit</a>
+          <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/production/zielmodus-4-live-completion-plan.md"))}" target="_blank" rel="noreferrer">Completion plan</a>
         </div>
       </div>
       <div class="zielmodus-readiness-metrics">
@@ -13297,6 +13298,7 @@ function renderZielmodus4LiveHandoffGrid() {
           <a class="secondary small" href="${escapeHtml(readinessArtifact)}" target="_blank" rel="noreferrer">Runtime status</a>
           <a class="secondary small" href="${escapeHtml(probeArtifact)}" target="_blank" rel="noreferrer">Probe evidence</a>
           <a class="secondary small" href="${escapeHtml(preflightArtifact)}" target="_blank" rel="noreferrer">Preflight</a>
+          <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/production/zielmodus-4-live-completion-plan.md"))}" target="_blank" rel="noreferrer">Completion plan</a>
         </div>
       </div>
       ${preflight.schema_version ? `
