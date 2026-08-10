@@ -14648,7 +14648,7 @@ function chatAgentContractStatuses() {
     const webhookLabel = probe?.status === "connected"
       ? "live probe ok"
       : configured
-        ? "URL configured"
+        ? runtimeReadiness.urlSourceLabel || "URL configured"
         : runtimeState === "awaiting URL"
           ? "URL slot ready"
           : "fixture only";
@@ -14702,6 +14702,8 @@ function chatAgentContractStatuses() {
       contractTested,
       replayCaseCount,
       webhookLabel,
+      urlSource: runtimeReadiness.urlSource || "missing",
+      urlSourceLabel: runtimeReadiness.urlSourceLabel || "",
       probe,
       probeCheckedAt: probe?.checked_at || "",
       probeTraceId: probe?.trace_id || "",
@@ -15059,12 +15061,13 @@ function renderActiveChatContractBadge() {
   const gateLabel = `${active.readyGateCount ?? 0}/${active.totalGateCount ?? 6} gates`;
   const blockerLabel = active.openGates?.length ? `open: ${active.openGates.join(", ")}` : "all gates ready";
   const nextAction = active.nextAction || (active.configured ? "Run live probe." : "Add live URL when available.");
+  const sourceLabel = active.configured ? active.urlSourceLabel || active.webhookLabel || "URL configured" : "fixture only";
   target.className = `chat-active-contract-badge ${safeGraphClass(stateLabel)} ${active.configured ? "configured" : "fixture"}`;
   target.title = `${detail} ${nextAction}`;
   target.innerHTML = `
     <strong>${escapeHtml(active.label || agentDisplayName(activeAgentId))}</strong>
     <small>${escapeHtml(stateLabel)}</small>
-    <em>${escapeHtml(`${gateLabel} · ${configuredLabel} · ${replayLabel}`)}</em>
+    <em>${escapeHtml(`${gateLabel} · ${configuredLabel} · ${sourceLabel} · ${replayLabel}`)}</em>
     <span>${escapeHtml(`${blockerLabel}. ${nextAction}`)}</span>
     ${renderChatContractStageRow(active.stageItems, { compact: true })}
   `;
@@ -15073,6 +15076,7 @@ function renderActiveChatContractBadge() {
 function agentRuntimeReadiness(agentId) {
   const webhookUrl = getAgentWebhook(agentId);
   const hasUrl = Boolean(webhookUrl);
+  const urlSource = getAgentWebhookSource(agentId);
   const probe = state.n8nLiveProbeResults?.[agentId];
   const slot = n8nAgentProbeSlot(agentId);
   const runtimeStatus = n8nRuntimeReadinessFor(agentId);
@@ -15089,19 +15093,25 @@ function agentRuntimeReadiness(agentId) {
       configured: true,
       envVar,
       runtimeStatus,
+      urlSource,
+      urlSourceLabel: agentWebhookSourceLabel(urlSource),
     };
   }
   if (hasUrl) {
     return {
       status: "configured",
-      label: "Webhook URL configured",
-      detail: runtimeStatus?.detail || slot.probe_boundary || (staticPagesMode
-        ? "Static Pages can hold the URL; production UAT still needs workflow confirmation."
-        : "Ready for backend/live probe."),
+      label: urlSource === "browser-local" ? "Browser-local UAT URL configured" : "Webhook URL configured",
+      detail: urlSource === "browser-local"
+        ? "This browser uses a local public UAT webhook override. It is not committed and does not update the static readiness artifact."
+        : runtimeStatus?.detail || slot.probe_boundary || (staticPagesMode
+          ? "Static Pages can hold the URL; production UAT still needs workflow confirmation."
+          : "Ready for backend/live probe."),
       nextAction: runtimeStatus?.next_action || slot.next_action || "Run live probe and capture trace evidence.",
       configured: true,
       envVar,
       runtimeStatus,
+      urlSource,
+      urlSourceLabel: agentWebhookSourceLabel(urlSource),
     };
   }
   return {
@@ -15112,6 +15122,8 @@ function agentRuntimeReadiness(agentId) {
     configured: false,
     envVar,
     runtimeStatus,
+    urlSource: "missing",
+    urlSourceLabel: "missing URL",
   };
 }
 
@@ -15184,6 +15196,25 @@ function getAgentWebhook(agentId) {
   if (agentId === "agentic_butler") return runtimeConfig.n8nAgenticButlerWebhookUrl || "";
   if (agentId === "knowledge_fabric_agent") return runtimeConfig.n8nKnowledgeFabricWebhookUrl || "";
   return "";
+}
+
+function getAgentWebhookSource(agentId) {
+  const overrides = readAgentWebhookOverrides();
+  if (overrides[agentId] || overrides[agentId?.replaceAll("_", "-")]) return "browser-local";
+  const webhooks = n8nAgentWebhooks();
+  if (webhooks[agentId] || webhooks[agentId?.replaceAll("_", "-")]) return "runtime-asset";
+  if (agentId === "actor_twin" && (runtimeConfig.n8nActorTwinWebhookUrl || runtimeConfig.n8nChatWebhookUrl)) return "runtime-asset";
+  if (agentId === "agentic_butler" && runtimeConfig.n8nAgenticButlerWebhookUrl) return "runtime-asset";
+  if (agentId === "knowledge_fabric_agent" && runtimeConfig.n8nKnowledgeFabricWebhookUrl) return "runtime-asset";
+  return "missing";
+}
+
+function agentWebhookSourceLabel(source = "") {
+  return {
+    "browser-local": "browser-local UAT override",
+    "runtime-asset": "runtime asset",
+    missing: "missing URL",
+  }[source] || source || "missing URL";
 }
 
 function n8nAgentProbeSlots() {
@@ -19578,10 +19609,14 @@ function buildAgentProbeEvidenceArtifact(statuses = chatAgentContractStatuses())
       status: probe?.status || item.state || runtime.status || "documented",
       webhook_configured: Boolean(item.configured),
       webhook_label: item.webhookLabel || (item.configured ? "URL configured" : "fixture only"),
+      webhook_source: item.urlSource || runtime.urlSource || "missing",
+      webhook_source_label: item.urlSourceLabel || runtime.urlSourceLabel || "missing URL",
       runtime_readiness: {
         status: runtime.status,
         label: runtime.label,
         detail: runtime.detail,
+        url_source: runtime.urlSource || "missing",
+        url_source_label: runtime.urlSourceLabel || "missing URL",
       },
       fixture_replay: {
         status: item.replayStatus || state.n8nAgentContracts?.replay_status || "unknown",
@@ -27515,6 +27550,8 @@ function productionAgentUrlReadiness() {
       workflowUrl: contract.workflow_url || "",
       approvalBoundary: contract.approval_boundary || "",
       configured: readiness.configured,
+      urlSource: readiness.urlSource || "missing",
+      urlSourceLabel: readiness.urlSourceLabel || "missing URL",
       runtimeSnippet: buildSingleAgentRuntimeConfigSnippet(agentId),
       liveProbePayload: contract.live_probe_payload || agentLiveProbePayload(agentId),
     };
@@ -27560,7 +27597,7 @@ function productionAgentRolloutGates(agent = {}) {
       key: "url",
       label: "URL",
       ready: urlReady,
-      detail: urlReady ? "Runtime URL configured." : "Live URL missing.",
+      detail: urlReady ? `Runtime URL configured from ${agent.urlSourceLabel || "runtime config"}.` : "Live URL missing.",
     },
     {
       key: "probe",
@@ -27660,6 +27697,7 @@ function renderProductionAgentUrlReadiness(agents = []) {
             <p>${escapeHtml(agent.detail)}</p>
             <dl>
               <div><dt>Runtime key</dt><dd><code>${escapeHtml(agent.envVar)}</code></dd></div>
+              <div><dt>URL source</dt><dd>${escapeHtml(agent.urlSourceLabel || "missing URL")}</dd></div>
               <div><dt>GitHub secret</dt><dd><code>${escapeHtml(agent.githubSecret)}</code></dd></div>
               <div><dt>Fixture</dt><dd>${agent.fixtureUrl ? `<a href="${escapeHtml(agent.fixtureUrl)}" target="_blank" rel="noreferrer">${escapeHtml(agent.fixture)}</a>` : escapeHtml(agent.fixture)}</dd></div>
               <div><dt>Workflow target</dt><dd>${agent.workflowUrl ? `<a href="${escapeHtml(agent.workflowUrl)}" target="_blank" rel="noreferrer">${escapeHtml(agent.workflow)}</a>` : escapeHtml(agent.workflow || "missing")}</dd></div>

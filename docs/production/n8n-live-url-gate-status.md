@@ -19,6 +19,7 @@ The public GitHub Pages runtime has one of three top-level n8n agent URLs config
 - No secrets belong in `frontend/assets/agent-runtime-config.json`.
 - Fixture replay and contract validation prove contract readiness only; they do not prove live n8n connectivity.
 - The Production Cockpit also supports browser-local public UAT URL overrides. These are stored in local browser storage only and do not change the committed runtime asset.
+- Chat contract badges, Production URL cards, and exported probe evidence now label URL source explicitly as `runtime asset`, `browser-local UAT override`, or `missing URL`.
 
 ## Validation Commands
 
@@ -46,6 +47,7 @@ Rules:
 - The override affects only the current browser session/profile.
 - Clear the override to fall back to `frontend/assets/agent-runtime-config.json`.
 - Live production approval still requires a non-demo n8n trace and human review.
+- Use the `URL source` field in the Production Cockpit to confirm whether a configured agent URL came from the committed runtime asset or from the current browser's local UAT override.
 
 ## Files
 

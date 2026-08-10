@@ -4,6 +4,31 @@ Date: 2026-08-09
 
 Latest update: 2026-08-10
 
+## Latest Local QA Pass For n8n URL Source Labels
+
+- Added explicit n8n URL source labels to Chat contract badges, Production Cockpit URL readiness cards, and exported agent probe evidence.
+- Source labels distinguish:
+  - `runtime asset`
+  - `browser-local UAT override`
+  - `missing URL`
+- This prevents browser-local UAT overrides from being mistaken for committed runtime asset readiness.
+- Re-ran browser dark-mode QA after the label changes.
+- Result: all 6 cases passed.
+- Minimum measured contrast in this pass: `18.65`.
+- Screenshot evidence:
+  - `docs/visual-qa/screenshots-20260810-z4-url-source-labels/`
+
+Validation commands:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-z4-url-source-labels`
+
 ## Latest Local QA Pass For Browser-Local n8n URL Overrides
 
 - Added browser-local public UAT URL overrides for the three top-level agent runtime resolver.
