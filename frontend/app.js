@@ -2222,6 +2222,7 @@ function renderGraphCockpit() {
   const edges = applyGraphEdgeFilters(availableEdges);
   renderGraphSummary(graph, nodes, edges);
   renderGraphTrustBoundary(graph, nodes, edges, availableEdges);
+  renderGraphActorUseLanes(nodes, edges, availableEdges);
   renderGraphExportReadiness(graph, nodes, edges, availableEdges);
   renderGraphRetrievalContract(nodes, edges, availableEdges);
   renderGraphPresetTransitionPanel(nodes, edges);
@@ -2478,6 +2479,84 @@ function graphTrustLayerSummary(edges = []) {
     reviewable: 0,
     blocked: 0,
   });
+}
+
+function graphActorUseLaneSummary(nodes = [], edges = [], availableEdges = edges) {
+  const nodeStates = countBy(nodes, (node) => node.review_state || "unknown");
+  const edgeClasses = countBy(edges, (edge) => graphEdgeClass(edge));
+  const availableClasses = countBy(availableEdges, (edge) => graphEdgeClass(edge));
+  const approvedNodes = nodeStates.approved || 0;
+  const draftNodes = Math.max(0, nodes.length - approvedNodes);
+  const explicitEdges = edgeClasses.explicit || 0;
+  const acceptedEdges = edges.filter((edge) => ["approved", "accepted"].includes(edge.review_state || "")).length;
+  const inferredEdges = edgeClasses.inferred || 0;
+  const candidateEdges = (edgeClasses.candidate || 0)
+    + (edgeClasses["duplicate-candidate"] || 0)
+    + (edgeClasses["contradiction-candidate"] || 0);
+  const queuedCandidates = (availableClasses.candidate || 0)
+    + (availableClasses["duplicate-candidate"] || 0)
+    + (availableClasses["contradiction-candidate"] || 0);
+  const blockedEdges = edges.filter((edge) => graphRelationTrust(edge).className === "blocked").length;
+  const blockedNodes = (nodeStates["needs-rework"] || 0) + (nodeStates.rejected || 0);
+  return [
+    {
+      className: "answer",
+      label: "Answer",
+      value: approvedNodes + explicitEdges + acceptedEdges,
+      detail: `${approvedNodes} approved nodes · ${explicitEdges + acceptedEdges} trusted relations`,
+      action: "Safe for direct Actor Twin grounding when cited.",
+    },
+    {
+      className: "cite",
+      label: "Cite",
+      value: inferredEdges,
+      detail: `${inferredEdges} inferred relation${inferredEdges === 1 ? "" : "s"}`,
+      action: "Use as reasoning context with attribution and confidence.",
+    },
+    {
+      className: "review",
+      label: "Review",
+      value: draftNodes + candidateEdges + queuedCandidates,
+      detail: `${draftNodes} draft nodes · ${candidateEdges}/${queuedCandidates} candidate relations visible/queued`,
+      action: "Promote, rework, or reject before trusted retrieval.",
+    },
+    {
+      className: "block",
+      label: "Block",
+      value: blockedNodes + blockedEdges,
+      detail: `${blockedNodes} blocked nodes · ${blockedEdges} blocked relations`,
+      action: "Exclude from answers and skill context until resolved.",
+    },
+  ];
+}
+
+function renderGraphActorUseLanes(nodes = [], edges = [], availableEdges = edges) {
+  const target = $("#graphActorUseLanes");
+  if (!target) return;
+  const lanes = graphActorUseLaneSummary(nodes, edges, availableEdges);
+  const total = Math.max(1, lanes.reduce((sum, lane) => sum + Number(lane.value || 0), 0));
+  target.innerHTML = `
+    <div class="graph-actor-use-lanes-head">
+      <span class="badge">Actor graph use</span>
+      <strong>${escapeHtml(`${nodes.length} nodes · ${edges.length} active relations`)}</strong>
+      <small>Operational policy for how the Actor Twin may use this graph projection.</small>
+    </div>
+    <div class="graph-actor-use-lanes-grid">
+      ${lanes.map((lane) => {
+        const percent = Math.round((Number(lane.value || 0) / total) * 100);
+        return `
+          <article class="graph-actor-use-lane ${escapeHtml(lane.className)}">
+            <div>
+              <strong>${escapeHtml(String(lane.value))}</strong>
+              <span>${escapeHtml(lane.label)}</span>
+            </div>
+            <small>${escapeHtml(`${percent}% · ${lane.detail}`)}</small>
+            <em>${escapeHtml(lane.action)}</em>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
 }
 
 function renderGraphRetrievalContract(nodes = [], edges = [], availableEdges = edges) {
