@@ -12640,6 +12640,7 @@ function mergeStaticN8nReplayStatus(replayStatus = {}) {
         replay_status: replay.status || "unknown",
         replay_case_count: Number(replay.case_count || 0),
         tested_cases: replay.tested_cases || [],
+        live_probe_payload: replay.live_probe_payload || contract.live_probe_payload || null,
         live_status: configured ? runtimeReadiness.status : (replay.live_status || "not_configured"),
         statuses: [
           "documented",
@@ -12755,7 +12756,10 @@ function renderN8nFixtureLiveComparison(agents = [], contractByAgent = new Map()
             <span role="cell"><strong>${escapeHtml(String(row.caseCount))}</strong><small>${escapeHtml(row.caseCoverage)}</small></span>
             <span role="cell"><i class="${row.configured ? "ready" : "blocked"}">${escapeHtml(row.runtimeStatus)}</i><small>${escapeHtml(row.envVar)}</small></span>
             <span role="cell"><i class="${row.liveStatus === "connected" ? "ready" : row.liveStatus === "blocked" ? "blocked" : "pending"}">${escapeHtml(row.liveLabel)}</i><small>${escapeHtml(row.liveDetail)}</small></span>
-            <span role="cell"><small>${escapeHtml(row.nextAction)}</small></span>
+            <span role="cell">
+              <small>${escapeHtml(row.nextAction)}</small>
+              ${row.liveProbePayload ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(row.liveProbePayload, null, 2))}">Copy probe payload</button>` : ""}
+            </span>
           </div>
         `).join("")}
       </div>
@@ -12768,6 +12772,7 @@ function n8nFixtureLiveComparisonRow(agent = {}, readiness = null) {
   const runtimeReadiness = agentRuntimeReadiness(agentId);
   const probe = state.n8nLiveProbeResults?.[agentId] || {};
   const testedCases = Array.isArray(readiness?.tested_cases) ? readiness.tested_cases : [];
+  const liveProbePayload = readiness?.live_probe_payload || null;
   const fixtureReady = readiness?.replay_status === "passed" || readiness?.status === "passed";
   const caseCount = Number(readiness?.replay_case_count || readiness?.case_count || testedCases.length || 0);
   const requiredCases = ["request", "response", "approval_required", "failure"];
@@ -12805,6 +12810,7 @@ function n8nFixtureLiveComparisonRow(agent = {}, readiness = null) {
     liveStatus,
     liveLabel,
     liveDetail: probe.detail || runtimeReadiness.detail,
+    liveProbePayload,
     nextAction,
   };
 }
@@ -13417,6 +13423,9 @@ async function probeAgentContract(agentId) {
 }
 
 function buildAgentLiveProbeEnvelope(agentId) {
+  const fixtureProbe = agentLiveProbePayload(agentId);
+  if (fixtureProbe) return fixtureProbe;
+
   if (agentId === "knowledge_fabric_agent") {
     return buildAgentContractEnvelope(
       agentId,
@@ -13450,6 +13459,15 @@ function buildAgentLiveProbeEnvelope(agentId) {
     { probe: true, source_context: {} },
     { required: false, reason: "Readiness probe only." },
   );
+}
+
+function agentLiveProbePayload(agentId) {
+  const contract = (state.n8nAgentContracts?.contracts || [])
+    .find((item) => item.agent_id === agentId);
+  if (contract?.live_probe_payload && typeof contract.live_probe_payload === "object") {
+    return contract.live_probe_payload;
+  }
+  return null;
 }
 
 function showAgentUatPayload(agentId) {
@@ -15850,6 +15868,7 @@ function renderAgentProbeReplayComparison(agents = []) {
                 ${detailRow("Trace evidence", traceReady ? `${agent.trace_count} trace${agent.trace_count === 1 ? "" : "s"}` : "missing")}
               </dl>
               <p>${escapeHtml(nextAction)}</p>
+              ${agent.live_probe_payload ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(agent.live_probe_payload, null, 2))}">Copy probe payload</button>` : ""}
             </article>
           `;
         }).join("")}
@@ -18035,6 +18054,7 @@ function buildAgentProbeEvidenceArtifact(statuses = chatAgentContractStatuses())
       agent_name: item.label || agentDisplayName(item.agentId),
       contract_fixture: item.source || contract.source_url || contract.n8n_contract || "",
       workflow_blueprint: contract.workflow_blueprint || item.workflowBlueprint || "",
+      live_probe_payload: contract.live_probe_payload || null,
       status: probe?.status || item.state || runtime.status || "documented",
       webhook_configured: Boolean(item.configured),
       webhook_label: item.webhookLabel || (item.configured ? "URL configured" : "fixture only"),

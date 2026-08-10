@@ -132,6 +132,7 @@ function replayFixture(file) {
     live_status: "not_configured",
     live_status_label: "blocked",
     blocker: "Live n8n webhook is not configured in public fixture mode.",
+    live_probe_payload: fixture.live_probe || null,
     cases: results,
   };
 }

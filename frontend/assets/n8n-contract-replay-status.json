@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-10T07:38:28.614Z",
+  "generated_at": "2026-08-10T07:48:11.997Z",
   "status": "passed",
   "fixture_count": 3,
   "case_count": 15,
@@ -37,6 +37,53 @@
       "live_status": "not_configured",
       "live_status_label": "blocked",
       "blocker": "Live n8n webhook is not configured in public fixture mode.",
+      "live_probe_payload": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_actor_twin_live_probe_001",
+        "agent_id": "actor_twin",
+        "intent": "live_probe",
+        "principal": {
+          "twin_id": "florian",
+          "display_name": "Florian"
+        },
+        "input": {
+          "execute": false,
+          "query": "Public-safe Actor Twin readiness probe. Do not use private knowledge.",
+          "mode": "contract_probe"
+        },
+        "context": {
+          "expected_capabilities": [
+            "intent_interpretation",
+            "approved_first_retrieval_policy",
+            "citation_contract",
+            "approval_boundary_detection",
+            "trace_response"
+          ],
+          "side_effect_policy": "no_write_probe"
+        },
+        "approval": {
+          "required": false,
+          "reason": "Readiness probe only; no external action."
+        },
+        "expected_response": {
+          "status": "completed",
+          "output": {
+            "readiness": "connected",
+            "side_effects": "none",
+            "capabilities_checked": [
+              "intent_interpretation",
+              "approved_first_retrieval_policy",
+              "citation_contract",
+              "approval_boundary_detection",
+              "trace_response"
+            ]
+          },
+          "trace": {
+            "stored": true,
+            "trace_id_required": true
+          }
+        }
+      },
       "cases": [
         {
           "case": "request",
@@ -121,6 +168,55 @@
       "live_status": "not_configured",
       "live_status_label": "blocked",
       "blocker": "Live n8n webhook is not configured in public fixture mode.",
+      "live_probe_payload": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_agentic_butler_live_probe_001",
+        "agent_id": "agentic_butler",
+        "intent": "live_probe",
+        "principal": {
+          "twin_id": "florian",
+          "display_name": "Florian"
+        },
+        "input": {
+          "execute": false,
+          "skill_id": "project-management-support-steering",
+          "manual_trigger": true,
+          "source_summary": "Public-safe Agentic Butler readiness probe. Do not create meetings or send messages."
+        },
+        "context": {
+          "expected_capabilities": [
+            "approved_skill_validation",
+            "internal_skill_orchestrator_boundary",
+            "actor_twin_checkpoint",
+            "approval_gate_detection",
+            "trace_response"
+          ],
+          "skill_orchestrator": "internal_component",
+          "side_effect_policy": "no_write_probe"
+        },
+        "approval": {
+          "required": false,
+          "reason": "Readiness probe only; no durable action or external side effect."
+        },
+        "expected_response": {
+          "status": "completed",
+          "output": {
+            "readiness": "connected",
+            "side_effects": "none",
+            "capabilities_checked": [
+              "approved_skill_validation",
+              "internal_skill_orchestrator_boundary",
+              "actor_twin_checkpoint",
+              "approval_gate_detection",
+              "trace_response"
+            ]
+          },
+          "trace": {
+            "stored": true,
+            "trace_id_required": true
+          }
+        }
+      },
       "cases": [
         {
           "case": "request",
@@ -205,6 +301,53 @@
       "live_status": "not_configured",
       "live_status_label": "blocked",
       "blocker": "Live n8n webhook is not configured in public fixture mode.",
+      "live_probe_payload": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_knowledge_fabric_live_probe_001",
+        "agent_id": "knowledge_fabric_agent",
+        "intent": "live_probe",
+        "principal": {
+          "twin_id": "florian",
+          "display_name": "Florian"
+        },
+        "input": {
+          "execute": false,
+          "source_type": "probe",
+          "content": "Public-safe Knowledge Fabric readiness probe. Do not store as trusted knowledge."
+        },
+        "context": {
+          "expected_capabilities": [
+            "okf_pending_concept_contract",
+            "evidence_storage_contract",
+            "crud_audit_contract",
+            "graph_candidate_trigger_contract",
+            "vector_refresh_boundary"
+          ],
+          "side_effect_policy": "no_write_probe"
+        },
+        "approval": {
+          "required": false,
+          "reason": "Readiness probe only; no durable knowledge write."
+        },
+        "expected_response": {
+          "status": "completed",
+          "output": {
+            "readiness": "connected",
+            "side_effects": "none",
+            "capabilities_checked": [
+              "okf_pending_concept_contract",
+              "evidence_storage_contract",
+              "crud_audit_contract",
+              "graph_candidate_trigger_contract",
+              "vector_refresh_boundary"
+            ]
+          },
+          "trace": {
+            "stored": true,
+            "trace_id_required": true
+          }
+        }
+      },
       "cases": [
         {
           "case": "request",
