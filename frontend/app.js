@@ -12384,7 +12384,7 @@ function n8nFixtureLiveComparisonRow(agent = {}, readiness = null) {
         ? "request, response, approval, failure, live probe"
         : "request, response, approval, failure",
     configured: runtimeReadiness.configured,
-    runtimeStatus: runtimeReadiness.configured ? runtimeReadiness.status : "missing URL",
+    runtimeStatus: runtimeReadiness.configured ? runtimeReadiness.status : runtimeReadiness.status || "missing URL",
     envVar: runtimeReadiness.envVar || "N8N_WEBHOOK_URL",
     liveStatus,
     liveLabel,
@@ -13607,11 +13607,14 @@ function chatAgentContractStatuses() {
     const replayPassed = state.n8nAgentContracts?.replay_status === "passed" || contract.replay_status === "passed";
     const probe = state.n8nLiveProbeResults?.[agentId];
     const replayCaseCount = Number(contract.replay_case_count || contract.case_count || 0);
+    const runtimeState = runtimeReadiness.status || "";
     const webhookLabel = probe?.status === "connected"
       ? "live probe ok"
       : configured
         ? "URL configured"
-        : "fixture only";
+        : runtimeState === "awaiting URL"
+          ? "URL slot ready"
+          : "fixture only";
     return {
       agentId,
       label: agentDisplayName(agentId),
@@ -13619,7 +13622,9 @@ function chatAgentContractStatuses() {
         ? "n8n connected"
         : configured
           ? runtimeReadiness.status
-          : replayPassed
+          : runtimeState === "awaiting URL"
+            ? "awaiting URL"
+            : replayPassed
             ? "fixture ready"
             : "documented",
       detail: runtimeReadiness.detail,
@@ -24204,12 +24209,12 @@ function productionAgentUrlReadiness() {
       ? "n8n connected"
       : readiness.configured
         ? "configured"
-        : "missing URL";
+        : readiness.status || "missing URL";
     return {
       agentId,
       name: contract.agent_name || agentDisplayName(agentId),
       status,
-      className: status === "n8n connected" ? "ready" : readiness.configured ? "pending" : "blocked",
+      className: status === "n8n connected" ? "ready" : readiness.configured ? "pending" : status === "awaiting URL" ? "pending" : "blocked",
       detail: probe?.detail || readiness.detail || contract.blocker || "",
       envVar: contract.webhook_env_var || readiness.envVar || "N8N_WEBHOOK_URL",
       githubSecret: secretByAgent[agentId] || "GH_PAGES_N8N_WEBHOOK_URL",
