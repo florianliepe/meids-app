@@ -14423,6 +14423,10 @@ function bindKnowledgeFabricQueueActions() {
       exportKnowledgeFabricLocalUatChecklist(button);
       return;
     }
+    if (action === "copy-source-repo-sync") {
+      copyKnowledgeFabricSourceRepoSyncPreview(button);
+      return;
+    }
     if (["approve", "needs-rework", "reject"].includes(action)) {
       updateKnowledgeFabricQueueReview(queueId, action);
       return;
@@ -14595,6 +14599,77 @@ function buildKnowledgeFabricReviewedBundle(reviewedItems = []) {
       "Queue vector adapter payloads only after approved OKF storage merge.",
     ],
     handoffs: artifacts,
+  };
+}
+
+async function copyKnowledgeFabricSourceRepoSyncPreview(button) {
+  const items = state.knowledgeFabricIngestQueue || [];
+  if (!items.length) {
+    showToast("Source repo-sync preview", "No Knowledge Fabric handoffs to copy yet.", "warning");
+    return;
+  }
+  const artifact = buildKnowledgeFabricSourceRepoSyncPreviewArtifact(items);
+  const copied = await copyTextToClipboard(JSON.stringify(artifact, null, 2));
+  if (copied) markButtonDone(button, "Copied");
+  showToast(
+    copied ? "Source repo-sync preview copied" : "Source repo-sync copy failed",
+    copied ? `${artifact.summary.handoff_count} handoff${artifact.summary.handoff_count === 1 ? "" : "s"} · ${artifact.summary.pending_handoff_count} pending` : "Clipboard access failed.",
+    copied ? "success" : "warning",
+  );
+}
+
+function buildKnowledgeFabricSourceRepoSyncPreviewArtifact(items = []) {
+  const reviewedItems = items.filter((item) => item.reviewed_at && ["approved", "needs-rework", "rejected"].includes(String(item.review_state || "")));
+  const reviewedIds = new Set(reviewedItems.map((item) => item.queue_id).filter(Boolean));
+  const pendingItems = items.filter((item) => !reviewedIds.has(item.queue_id));
+  const approvedItems = reviewedItems.filter((item) => item.review_state === "approved");
+  const promotionItems = graphPromotionHistoryItems(120);
+  const previewLinks = reviewedOkfGraphPromotionLinks(reviewedItems, promotionItems);
+  return {
+    schema: "meids.okf_source_intake_repo_sync_preview.v1",
+    exported_at: new Date().toISOString(),
+    boundary: "Preview-only source intake repo-sync package. Does not mutate OKF storage, graph store, vector index, GitHub, MCP, n8n, or hosted runtime.",
+    twin_id: state.activeTwin || items[0]?.twin_id || "florian",
+    summary: {
+      handoff_count: items.length,
+      pending_handoff_count: pendingItems.length,
+      reviewed_handoff_count: reviewedItems.length,
+      approved_handoff_count: approvedItems.length,
+      promotion_count: promotionItems.length,
+      ready_for_knowledge_repo_review: approvedItems.length > 0,
+      trusted_retrieval_allowed: false,
+    },
+    repo_split_target: {
+      app_repo: "florianliepe/meids-app",
+      knowledge_repo: "meids-knowledge-fabric",
+      agent_config_repo: "meids-agent-configs",
+    },
+    knowledge_repo_sync_plan: {
+      target_branch_prefix: "knowledge-fabric/source-intake",
+      target_paths: {
+        concepts: "concepts/<twin>/<cluster>/<slug>.md",
+        evidence: "evidence/<twin>/<source>/<date>-<slug>.md",
+        transcripts: "transcripts/<twin>/<date>-<slug>.md",
+        graph_nodes: "graph/nodes/<twin>.yaml",
+        graph_edges: "graph/edges/<twin>.yaml",
+        crud_log: "audit/crud/<twin>/<date>.jsonl",
+      },
+      apply_rules: [
+        "Approved handoffs may be materialized as Markdown/YAML in the knowledge fabric repo review branch.",
+        "Pending handoffs are draft intake only and must not enter trusted retrieval.",
+        "Needs-rework and rejected handoffs remain audit evidence only.",
+        "Graph relation and vector adapter payloads stay queued until the knowledge repo PR is reviewed and merged.",
+      ],
+      approval_gate: "Human PR review is required before OKF storage promotion, graph relation promotion, or vector refresh.",
+    },
+    pending_handoffs: pendingItems.map((item) => buildKnowledgeFabricQueueArtifact(item)),
+    reviewed_handoffs: reviewedItems.map((item) => buildKnowledgeFabricQueueArtifact(item)),
+    handoff_graph_links: previewLinks,
+    vector_boundary: {
+      adapter: "prepared_not_connected",
+      refresh_policy: "approved_only_after_knowledge_repo_merge",
+      pending_rule: "hold_all_pending_handoffs",
+    },
   };
 }
 
@@ -14784,7 +14859,43 @@ function renderKnowledgeFabricQueue(items = [], limit = 6) {
   if (!items.length) {
     return renderEmptyState("No pending OKF source handoffs yet. Use Add source context in Chat or upload a source.");
   }
-  return items.slice(0, limit).map(renderKnowledgeFabricQueueCard).join("");
+  return `${renderKnowledgeFabricSourceRepoSyncPreview(items)}${items.slice(0, limit).map(renderKnowledgeFabricQueueCard).join("")}`;
+}
+
+function renderKnowledgeFabricSourceRepoSyncPreview(items = []) {
+  const reviewed = reviewedKnowledgeFabricQueueItems();
+  const approved = reviewed.filter((item) => item.review_state === "approved");
+  const pending = items.filter((item) => !item.reviewed_at || item.review_state === "pending-review");
+  const withEvidence = items.filter((item) => item.concept_path || item.evidence_path || item.transcript_path);
+  const graphCandidates = items.reduce((count, item) => count + (Array.isArray(item.candidate_edges) ? item.candidate_edges.length : 0), 0);
+  return `
+    <article class="knowledge-fabric-repo-sync-preview">
+      <div>
+        <span class="badge">OKF repo-sync preview</span>
+        <h3>Source intake package is ready for review, not trusted retrieval.</h3>
+        <p>${escapeHtml(`${items.length} handoff${items.length === 1 ? "" : "s"} · ${pending.length} pending · ${approved.length} approved · ${graphCandidates} candidate edge${graphCandidates === 1 ? "" : "s"}`)}</p>
+      </div>
+      <div class="knowledge-fabric-repo-sync-stats" aria-label="Knowledge repo-sync package readiness">
+        <span><strong>${escapeHtml(withEvidence.length)}</strong><small>OKF targets</small></span>
+        <span><strong>${escapeHtml(reviewed.length)}</strong><small>reviewed</small></span>
+        <span><strong>${escapeHtml(approved.length)}</strong><small>eligible</small></span>
+        <span><strong>hold</strong><small>vector rule</small></span>
+      </div>
+      <div class="okf-graph-repo-sync-plan compact">
+        <strong>Knowledge repo target</strong>
+        <ol>
+          <li>Materialize approved handoffs into OKF Markdown/YAML after human PR review.</li>
+          <li>Store pending, rejected, and needs-rework handoffs as audit evidence only.</li>
+          <li>Queue graph and vector updates only after the knowledge repo merge.</li>
+        </ol>
+      </div>
+      <div class="button-row tight">
+        <button class="secondary small" type="button" data-kf-queue-action="copy-source-repo-sync">Copy source repo-sync JSON</button>
+        <button class="secondary small" type="button" data-kf-queue-action="export-reviewed-bundle">Export reviewed bundle</button>
+        <button class="secondary small" type="button" data-kf-queue-action="export-uat-checklist">Export UAT checklist</button>
+      </div>
+    </article>
+  `;
 }
 
 function renderKnowledgeFabricQueueCard(item = {}) {
