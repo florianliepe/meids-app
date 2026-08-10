@@ -241,6 +241,20 @@ Latest local QA pass for GitHub Pages n8n runtime injection:
 
 This pass applies the GitHub Pages workflow runtime config boundary for all three top-level agents. Repository secrets can now populate Actor Twin, Knowledge Fabric Agent, and Agentic Butler webhook slots at deploy time, while the UI still reports `awaiting_url` until the corresponding public UAT URLs exist. Screenshots are stored in `docs/visual-qa/screenshots-20260810-pages-runtime-injection/`.
 
+Latest local QA pass for Knowledge Graph trust legend:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-agent-config-export.cjs`
+- `node scripts/replay-n8n-fixtures.cjs --write`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-graph-trust-legend`
+- Targeted Playwright assertions open `?view=graph` and verify the trust-boundary legend, five-step relation promotion lifecycle, relation review queue, dark mode, and zero horizontal overflow at `390px` and `1440px`.
+
+This pass makes graph use policy explicit: trusted edges are safe for Actor Twin reasoning, inferred edges are explainable-only, and candidate/duplicate/contradiction/rework edges remain review-gated. Screenshots are stored in `docs/visual-qa/screenshots-20260810-graph-trust-legend/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

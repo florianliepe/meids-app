@@ -3342,6 +3342,11 @@ function renderGraphSemanticLegend(nodes, edges, activePath = null) {
         ${items.map(renderGraphLegendItem).join("")}
       </div>
       <div class="graph-legend-bottom">
+        <div class="graph-legend-trust-row" aria-label="Graph trust boundary">
+          <span class="trusted"><strong>Trusted</strong><small>approved nodes + accepted or explicit source-backed edges</small></span>
+          <span class="explainable"><strong>Explainable</strong><small>inferred bridges may support exploration with citation</small></span>
+          <span class="review"><strong>Review first</strong><small>candidate, duplicate, contradiction, and rework edges stay gated</small></span>
+        </div>
         <div class="graph-legend-actor-rule">
           <span class="badge">Actor rule</span>
           <strong>${escapeHtml(candidateCount || draft ? "Governance-aware use" : "Production-first use")}</strong>
@@ -6550,6 +6555,13 @@ function renderGraphRelationReviewQueueHeader(summary = {}, candidates = []) {
         <span>${escapeHtml(String(contradictionCount))} contradiction</span>
         <span>${escapeHtml(String(duplicateCount))} duplicate</span>
         <span>${escapeHtml(String(inferredCount))} inferred</span>
+      </div>
+      <div class="graph-relation-review-guide" aria-label="Relation promotion lifecycle">
+        <span class="draft"><strong>Draft</strong><small>created from ingest, transcript, or graph curator signal</small></span>
+        <span class="candidate"><strong>Candidate</strong><small>visible for review, blocked from trusted retrieval</small></span>
+        <span class="accepted"><strong>Accepted</strong><small>can support Actor Twin reasoning with source evidence</small></span>
+        <span class="needs-rework"><strong>Needs rework</strong><small>requires clarification before graph promotion</small></span>
+        <span class="rejected"><strong>Rejected</strong><small>excluded from retrieval and future graph runs</small></span>
       </div>
     </div>
   `;
