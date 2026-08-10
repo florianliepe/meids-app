@@ -11791,6 +11791,7 @@ async function safeRefreshStaticOkfValidationStatus() {
   try {
     state.okfValidationStatus = await fetchFrontendAssetJson(OKF_VALIDATION_STATUS_PATH);
     renderOkfValidationStatusPanel();
+    renderKnowledgeFabricContractStrip(state.concepts || [], filteredConceptsForContractStrip());
   } catch (error) {
     state.okfValidationStatus = {
       status: "blocked",
@@ -11802,8 +11803,21 @@ async function safeRefreshStaticOkfValidationStatus() {
       error: compactError(error.message),
     };
     renderOkfValidationStatusPanel();
+    renderKnowledgeFabricContractStrip(state.concepts || [], filteredConceptsForContractStrip());
     console.warn("Static OKF validation status refresh failed", error);
   }
+}
+
+function filteredConceptsForContractStrip() {
+  const filter = ($("#conceptSearch")?.value || "").toLowerCase();
+  return (state.concepts || []).filter((concept) =>
+    conceptSearchText(concept).includes(filter)
+      && matchesConceptReviewFilter(concept)
+      && matchesConceptTypeFilter(concept)
+      && matchesConceptProfileFilter(concept)
+      && matchesConceptSourceFilter(concept)
+      && matchesConceptClusterFilter(concept),
+  );
 }
 
 function mergeStaticN8nReplayStatus(replayStatus = {}) {
@@ -16105,6 +16119,7 @@ function renderConcepts() {
   renderConceptHealthClusters(state.concepts);
   renderConceptOverview(concepts);
   renderKnowledgeSourceReadiness(state.concepts, concepts);
+  renderKnowledgeFabricContractStrip(state.concepts, concepts);
   if (!concepts.length) {
     list.innerHTML = renderEmptyState("No concepts match the current filters.");
     return;
@@ -16164,6 +16179,70 @@ function renderKnowledgeFabric(fabric) {
     <div class="knowledge-increment-fabric">
       <span>${escapeHtml(fabric.actor_signal || "domain-memory")}</span>
       <small>${escapeHtml(fabric.okf_maturity || "extracted")} · ${escapeHtml(fabric.evidence_strength || "unlinked")}</small>
+    </div>
+  `;
+}
+
+function renderKnowledgeFabricContractStrip(allConcepts = [], visibleConcepts = []) {
+  const target = $("#knowledgeFabricContractStrip");
+  if (!target) return;
+  const status = state.okfValidationStatus || {};
+  const summary = status.summary || {};
+  const paths = status.paths || {};
+  const totals = knowledgeSourceReadinessSummary(allConcepts);
+  const visible = knowledgeSourceReadinessSummary(visibleConcepts);
+  const vectorReady = Number(summary.vector_request_fixture_count || 0) > 0;
+  const promotionReady = Number(summary.promotion_fixture_count || 0) >= 3;
+  const ingestReady = Number(summary.generated_ingest_file_count || 0) > 0;
+  const schemaReady = Boolean(paths.schema_doc);
+  const statusClass = status.status === "passed" ? "ready" : status.status === "blocked" ? "blocked" : "pending";
+  const tiles = [
+    {
+      label: "OKF schema",
+      value: schemaReady ? "documented" : "missing",
+      detail: paths.schema_doc || "Schema doc unavailable",
+      className: schemaReady ? "ready" : "blocked",
+      href: paths.schema_doc ? githubBlobUrl(paths.schema_doc) : "",
+    },
+    {
+      label: "Ingest path",
+      value: ingestReady ? "fixture ready" : "pending",
+      detail: `${summary.generated_ingest_file_count || 0} generated files`,
+      className: ingestReady ? "ready" : "pending",
+      href: paths.generated_root ? githubBlobUrl(paths.generated_root) : "",
+    },
+    {
+      label: "Graph promotion",
+      value: promotionReady ? "reviewable" : "incomplete",
+      detail: `${summary.promotion_fixture_count || 0} decisions`,
+      className: promotionReady ? "ready" : "pending",
+      href: paths.promotion_root ? githubBlobUrl(paths.promotion_root) : "",
+    },
+    {
+      label: "Vector boundary",
+      value: vectorReady ? "adapter ready" : "deferred",
+      detail: vectorReady ? "No Azure secrets required" : "Waiting for adapter fixture",
+      className: vectorReady ? "ready" : "pending",
+      href: paths.vector_adapter_example ? githubBlobUrl(paths.vector_adapter_example) : "",
+    },
+  ];
+  target.innerHTML = `
+    <div class="knowledge-fabric-contract-main ${statusClass}">
+      <span class="badge">OKF contract</span>
+      <strong>${escapeHtml(status.status === "passed" ? "Knowledge fabric contract tested" : "Knowledge fabric contract pending")}</strong>
+      <small>${escapeHtml(`${visible.total}/${totals.total} visible concepts · ${totals.approved} approved · ${totals.pending} pending · ${totals.unlinked} source gaps`)}</small>
+    </div>
+    <div class="knowledge-fabric-contract-grid">
+      ${tiles.map((tile) => {
+        const content = `
+          <strong>${escapeHtml(tile.value)}</strong>
+          <small>${escapeHtml(tile.label)}</small>
+          <em>${escapeHtml(tile.detail)}</em>
+        `;
+        return tile.href
+          ? `<a class="${tile.className}" href="${escapeHtml(tile.href)}" target="_blank" rel="noreferrer">${content}</a>`
+          : `<span class="${tile.className}">${content}</span>`;
+      }).join("")}
     </div>
   `;
 }

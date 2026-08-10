@@ -7133,6 +7133,93 @@ body.theme-dark .knowledge-source-affordances button:hover {
   display: none;
 }
 
+.knowledge-fabric-contract-strip {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.6fr);
+  margin: 0 0 14px;
+}
+
+.knowledge-fabric-contract-strip:empty {
+  display: none;
+}
+
+.knowledge-fabric-contract-main,
+.knowledge-fabric-contract-grid a,
+.knowledge-fabric-contract-grid span {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 86%, transparent);
+  min-width: 0;
+  padding: 10px;
+}
+
+.knowledge-fabric-contract-main {
+  display: grid;
+  gap: 5px;
+}
+
+.knowledge-fabric-contract-main.ready {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+}
+
+.knowledge-fabric-contract-main.pending,
+.knowledge-fabric-contract-main.blocked {
+  border-color: color-mix(in srgb, var(--warn) 36%, var(--line));
+}
+
+.knowledge-fabric-contract-main strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.knowledge-fabric-contract-main small {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.knowledge-fabric-contract-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.knowledge-fabric-contract-grid a,
+.knowledge-fabric-contract-grid span {
+  color: inherit;
+  display: grid;
+  gap: 3px;
+  text-decoration: none;
+}
+
+.knowledge-fabric-contract-grid a.ready,
+.knowledge-fabric-contract-grid span.ready {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+}
+
+.knowledge-fabric-contract-grid a.pending,
+.knowledge-fabric-contract-grid span.pending,
+.knowledge-fabric-contract-grid a.blocked,
+.knowledge-fabric-contract-grid span.blocked {
+  border-color: color-mix(in srgb, var(--warn) 34%, var(--line));
+}
+
+.knowledge-fabric-contract-grid strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.knowledge-fabric-contract-grid small,
+.knowledge-fabric-contract-grid em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .knowledge-source-readiness-main {
   display: grid;
   gap: 4px;
@@ -7288,6 +7375,28 @@ body.theme-dark .knowledge-source-readiness {
   border-color: rgba(241, 235, 224, 0.14);
 }
 
+body.theme-dark .knowledge-fabric-contract-main,
+body.theme-dark .knowledge-fabric-contract-grid a,
+body.theme-dark .knowledge-fabric-contract-grid span {
+  background: rgba(17, 21, 17, 0.74);
+  border-color: rgba(241, 235, 224, 0.13);
+}
+
+body.theme-dark .knowledge-fabric-contract-main.ready,
+body.theme-dark .knowledge-fabric-contract-grid a.ready,
+body.theme-dark .knowledge-fabric-contract-grid span.ready {
+  border-color: rgba(122, 216, 191, 0.34);
+}
+
+body.theme-dark .knowledge-fabric-contract-main.pending,
+body.theme-dark .knowledge-fabric-contract-main.blocked,
+body.theme-dark .knowledge-fabric-contract-grid a.pending,
+body.theme-dark .knowledge-fabric-contract-grid span.pending,
+body.theme-dark .knowledge-fabric-contract-grid a.blocked,
+body.theme-dark .knowledge-fabric-contract-grid span.blocked {
+  border-color: rgba(240, 163, 154, 0.34);
+}
+
 body.theme-dark .knowledge-source-readiness-main strong,
 body.theme-dark .knowledge-source-readiness-grid strong {
   color: #fff8ea;
@@ -7305,8 +7414,13 @@ body.theme-dark .knowledge-source-readiness-grid span {
 
 @media (max-width: 900px) {
   .knowledge-source-readiness,
+  .knowledge-fabric-contract-strip,
   .knowledge-source-readiness-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knowledge-fabric-contract-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .knowledge-source-affordances {
