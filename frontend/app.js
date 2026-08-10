@@ -18073,11 +18073,34 @@ function renderKnowledgeSource(concept, sourceLabel) {
         <span>${escapeHtml(sourceLabel)}</span>
       </div>
       <code title="${escapeHtml(fullPath)}">${escapeHtml(shortPath || fullPath || "source pending")}</code>
+      ${renderKnowledgeSourceUseSummary(concept, evidence, sourceState)}
       ${renderKnowledgeEvidenceChips(evidence)}
       <div class="knowledge-source-affordances">
         ${fullPath ? `<button class="small secondary" type="button" data-concept-open="${escapeHtml(fullPath)}">Open</button>` : ""}
         ${sourceRef ? `<button class="small secondary source-copy-btn" type="button" data-copy-value="${escapeHtml(sourceRef)}">Copy ref</button>` : ""}
       </div>
+    </div>
+  `;
+}
+
+function renderKnowledgeSourceUseSummary(concept, evidence, sourceState) {
+  const reviewState = concept.review_state || "pending-review";
+  const refs = conceptSourceRefs(concept);
+  const trusted = reviewState === "approved" && evidence.className === "approved" && evidence.vectorClass === "approved";
+  const usablePending = refs.length > 0 && !["blocked", "missing"].includes(evidence.className);
+  const stateLabel = trusted ? "trusted" : usablePending ? "selected pending" : "audit only";
+  const stateClass = trusted ? "trusted" : usablePending ? "pending" : "blocked";
+  const actorUse = trusted
+    ? "Actor Twin may use this for grounded answers."
+    : usablePending
+      ? "Use with citation; human review before steering."
+      : "Attach source evidence before trusted retrieval.";
+  const profile = conceptFabric(concept).actor_signal || "domain-memory";
+  return `
+    <div class="knowledge-source-use ${stateClass}">
+      <span><strong>${escapeHtml(stateLabel)}</strong><small>${escapeHtml(actorUse)}</small></span>
+      <span><strong>${escapeHtml(String(refs.length))}</strong><small>${escapeHtml(sourceState === "linked" ? "source refs" : "refs missing")}</small></span>
+      <span><strong>${escapeHtml(labelizeGraph(profile))}</strong><small>actor lane</small></span>
     </div>
   `;
 }

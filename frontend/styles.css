@@ -26130,6 +26130,54 @@ body.theme-dark .graph-trust-boundary-grid button.active {
   white-space: nowrap;
 }
 
+.knowledge-source-use {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(64px, 0.42fr) minmax(86px, 0.72fr);
+  min-width: 0;
+}
+
+.knowledge-source-use span {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 7px;
+}
+
+.knowledge-source-use strong {
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.knowledge-source-use small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-source-use.trusted span:first-child {
+  border-color: color-mix(in srgb, #34c795 44%, var(--line));
+  background: color-mix(in srgb, #34c795 10%, var(--surface));
+}
+
+.knowledge-source-use.pending span:first-child {
+  border-color: color-mix(in srgb, #d7a84f 44%, var(--line));
+  background: color-mix(in srgb, #d7a84f 11%, var(--surface));
+}
+
+.knowledge-source-use.blocked span:first-child {
+  border-color: color-mix(in srgb, #d9826b 44%, var(--line));
+  background: color-mix(in srgb, #d9826b 10%, var(--surface));
+}
+
 .knowledge-evidence-state strong {
   color: var(--muted);
   font-size: 9px;
@@ -26191,6 +26239,34 @@ body.theme-dark .knowledge-evidence-state span {
 
 body.theme-dark .knowledge-evidence-state strong {
   color: #c9c0b3;
+}
+
+body.theme-dark .knowledge-source-use span {
+  background: rgba(24, 30, 25, 0.92);
+  border-color: rgba(241, 235, 224, 0.14);
+}
+
+body.theme-dark .knowledge-source-use strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-source-use small {
+  color: #c9c0b3;
+}
+
+body.theme-dark .knowledge-source-use.trusted span:first-child {
+  background: rgba(122, 216, 191, 0.12);
+  border-color: rgba(122, 216, 191, 0.38);
+}
+
+body.theme-dark .knowledge-source-use.pending span:first-child {
+  background: rgba(215, 179, 109, 0.13);
+  border-color: rgba(215, 179, 109, 0.4);
+}
+
+body.theme-dark .knowledge-source-use.blocked span:first-child {
+  background: rgba(226, 141, 118, 0.13);
+  border-color: rgba(226, 141, 118, 0.4);
 }
 
 body.theme-dark .knowledge-evidence-state .approved {
@@ -26615,6 +26691,10 @@ body.theme-dark .graph-relation-layer-summary small {
 
   .knowledge-evidence-state span {
     max-width: 100%;
+  }
+
+  .knowledge-source-use {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .knowledge-source-affordances {
