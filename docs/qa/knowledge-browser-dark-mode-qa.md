@@ -4,6 +4,23 @@ Date: 2026-08-09
 
 Latest update: 2026-08-10
 
+## Latest Runtime Artifact Refresh For n8n URL Gate
+
+- Refreshed public-safe runtime readiness artifacts against `frontend/assets/agent-runtime-config.json`.
+- Current n8n readiness remains `1/3` URLs configured:
+  - Actor Twin configured for public UAT
+  - Knowledge Fabric Agent awaiting live URL
+  - Agentic Butler awaiting live URL
+- Added an operator handoff document for the remaining live URL gate:
+  - `docs/production/n8n-live-url-gate-status.md`
+- OKF validation status remains passed.
+
+Validation commands:
+
+- `node scripts/write-n8n-runtime-readiness-status.cjs --write`
+- `node scripts/write-okf-validation-status.cjs --write`
+- `node --check frontend/app.js`
+
 ## Latest Local QA Pass For Graph Node Promotion Readiness
 
 - Added a selected-node `Relation promotion readiness` panel in the Knowledge Graph detail view.
