@@ -7516,6 +7516,42 @@ body.theme-dark .knowledge-source-readiness-grid span {
   border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
 }
 
+.chat-contract-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(260px, 1.2fr);
+  gap: 10px;
+  align-items: center;
+  margin-top: 8px;
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-quiet) 86%, transparent);
+  padding: 10px;
+}
+
+.chat-contract-actions > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.chat-contract-actions strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.chat-contract-actions span,
+.chat-contract-actions small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.chat-contract-action-output {
+  grid-column: 1 / -1;
+  max-height: 260px;
+  margin: 0;
+}
+
 .agent-trace-summary {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -8027,6 +8063,7 @@ body.theme-dark .knowledge-source-readiness-grid span {
 body.theme-dark .chat-contract-badges span,
 body.theme-dark .chat-mode-readiness,
 body.theme-dark .chat-active-contract-badge,
+body.theme-dark .chat-contract-actions,
 body.theme-dark .agent-trace-summary span,
 body.theme-dark .agent-trace-row {
   border-color: rgba(241, 235, 224, 0.18);
@@ -8318,6 +8355,7 @@ body.theme-dark .graph-svg-edge-label text {
 @media (max-width: 760px) {
   .chat-contract-badges,
   .chat-mode-readiness-rail,
+  .chat-contract-actions,
   .agent-trace-summary,
   .agent-trace-row {
     grid-template-columns: minmax(0, 1fr);

@@ -209,6 +209,7 @@
   agentOperatingModel: null,
   n8nAgentContracts: null,
   n8nContractTestResult: null,
+  chatContractActionResult: null,
   okfValidationStatus: null,
   n8nLiveProbeResults: {},
   knowledgeFabricDryRunResult: null,
@@ -7379,6 +7380,7 @@ function bindChat() {
   });
   $("#chatInteractionModeSelect")?.addEventListener("change", (event) => {
     state.activeChatInteractionMode = event.target.value || "actor_twin";
+    state.chatContractActionResult = null;
     if (state.activeChatInteractionMode === "source_context") {
       $("#chatSkillContext").open = true;
     }
@@ -7394,6 +7396,7 @@ function bindChat() {
     state.appliedChatSkillIds = $$(".applied-skill-filter:checked").map((input) => input.value);
     state.activeChatSkillId = state.appliedChatSkillIds[0] || N8N_CHAT_MODE;
     state.activeChatInteractionMode = state.appliedChatSkillIds.length ? "skill_activation" : "actor_twin";
+    state.chatContractActionResult = null;
     renderChatSkillMode();
     safeRefreshSkillInputPresets();
   });
@@ -13217,6 +13220,7 @@ function renderChatContractSurfaces() {
   renderActiveChatContractBadge();
   renderChatContractBadges();
   renderChatModeReadinessRail();
+  renderChatContractActions();
 }
 
 function chatInteractionModeLabel() {
@@ -13637,6 +13641,7 @@ function renderChatModeReadinessRail() {
   target.querySelectorAll("[data-chat-mode]").forEach((button) => {
     button.addEventListener("click", () => {
       state.activeChatInteractionMode = button.dataset.chatMode || "actor_twin";
+      state.chatContractActionResult = null;
       const select = $("#chatInteractionModeSelect");
       if (select) select.value = state.activeChatInteractionMode;
       if (state.activeChatInteractionMode === "source_context") {
@@ -13646,6 +13651,68 @@ function renderChatModeReadinessRail() {
         $("#chatInteractionSetup").open = true;
       }
       renderChatSkillMode();
+    });
+  });
+}
+
+function renderChatContractActions() {
+  const target = $("#chatContractActions");
+  if (!target) return;
+  const activeAgentId = chatModeAgentId();
+  const readiness = agentRuntimeReadiness(activeAgentId);
+  const result = state.chatContractActionResult;
+  const uatLabel = activeAgentId === "knowledge_fabric_agent"
+    ? "Show ingest payload"
+    : activeAgentId === "agentic_butler"
+      ? "Show skill payload"
+      : "Show answer payload";
+  const configSnippet = buildSingleAgentRuntimeConfigSnippet(activeAgentId);
+  target.innerHTML = `
+    <div>
+      <strong>${escapeHtml(agentDisplayName(activeAgentId))}</strong>
+      <span>${escapeHtml(readiness.label || readiness.status || "Contract status")}</span>
+      <small>${escapeHtml(readiness.nextAction || readiness.detail || "")}</small>
+    </div>
+    <div class="button-row tight">
+      <button class="secondary small" type="button" data-chat-contract-action="show-uat" data-agent-id="${escapeHtml(activeAgentId)}">${escapeHtml(uatLabel)}</button>
+      <button class="secondary small" type="button" data-chat-contract-action="probe-live" data-agent-id="${escapeHtml(activeAgentId)}">Probe live</button>
+      ${readiness.configured ? "" : `
+        <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(readiness.envVar || "N8N_WEBHOOK_URL")}">Copy key</button>
+        ${configSnippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(configSnippet)}">Copy JSON</button>` : ""}
+      `}
+      <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/n8n-live-url-configuration.md"))}" target="_blank" rel="noreferrer">Setup guide</a>
+    </div>
+    ${result ? `
+      <pre class="output compact-output chat-contract-action-output">${escapeHtml(JSON.stringify(result.payload || result, null, 2))}</pre>
+    ` : ""}
+  `;
+  target.querySelectorAll("[data-chat-contract-action]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const agentId = button.dataset.agentId || activeAgentId;
+      if (button.dataset.chatContractAction === "show-uat") {
+        state.chatContractActionResult = {
+          type: "uat_payload",
+          agent_id: agentId,
+          status: hasAgentWebhook(agentId) ? "webhook configured" : "fixture ready",
+          runtime: agentRuntimeReadiness(agentId),
+          payload: buildUatEnvelope(agentId),
+        };
+        renderChatContractActions();
+        showToast("UAT payload ready", agentDisplayName(agentId), "success");
+        return;
+      }
+      if (button.dataset.chatContractAction === "probe-live") {
+        await probeAgentContract(agentId);
+        state.chatContractActionResult = {
+          type: "live_probe",
+          agent_id: agentId,
+          status: state.n8nLiveProbeResults?.[agentId]?.status || "unknown",
+          detail: state.n8nLiveProbeResults?.[agentId]?.detail || "",
+          runtime: agentRuntimeReadiness(agentId),
+          payload: buildAgentLiveProbeEnvelope(agentId),
+        };
+        renderChatContractActions();
+      }
     });
   });
 }

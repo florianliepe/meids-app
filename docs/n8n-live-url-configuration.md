@@ -96,6 +96,18 @@ Minimal public staging JSON shape:
 
 After adding a URL, the cockpit status should move from `missing URL` to `configured`. It only becomes `n8n connected` after the live probe reaches the workflow and records a trace.
 
+## Chat-Level Contract Actions
+
+The Chat interaction setup now exposes the active agent contract directly beside the mode selector:
+
+- `Show answer payload` for Actor Twin.
+- `Show ingest payload` for Knowledge Fabric Agent.
+- `Show skill payload` for Agentic Butler.
+- `Probe live` for the selected mode.
+- `Copy key` / `Copy JSON` when the selected mode is missing a live URL.
+
+This keeps the primary workspace aligned with the Production/Review Cockpit: users can see whether the selected interaction is using a live n8n URL, a fixture fallback, or a missing URL slot before submitting work.
+
 ## Current Static Fallback
 
 When a URL is missing, the frontend must stay usable:
