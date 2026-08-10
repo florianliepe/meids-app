@@ -30453,3 +30453,268 @@ body.theme-dark .knowledge-card-state-ribbon em {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Zielmodus 4 final QA layer: dark-mode Knowledge Browser and Graph containment. */
+.knowledge-increment-list,
+.graph-canvas-wrap,
+.graph-topology-map,
+.graph-topology-shell {
+  min-width: 0;
+}
+
+.knowledge-increment-title,
+.knowledge-increment p,
+.knowledge-increment-source,
+.knowledge-increment-source code,
+.knowledge-card-state-ribbon strong,
+.graph-legend-item,
+.graph-legend-item strong,
+.graph-legend-item small,
+.graph-overview-panel,
+.graph-node-list-item,
+.graph-svg-edge-label text,
+.graph-svg-node text {
+  overflow-wrap: anywhere;
+}
+
+.knowledge-source-readiness,
+.knowledge-fabric-contract-strip,
+.knowledge-health-panel,
+.graph-legend,
+.graph-relation-layer-summary,
+.graph-overview-panel,
+.graph-canvas-commandbar,
+.graph-trust-boundary-main,
+.graph-trust-boundary-grid button {
+  box-shadow: none;
+}
+
+.knowledge-review-filter .filter-chip,
+.knowledge-overview span,
+.knowledge-signal-strip span,
+.knowledge-card-state-ribbon span,
+.graph-legend-item,
+.graph-overview-layers span,
+.graph-lane-dot,
+.graph-relation-chip {
+  min-height: 32px;
+}
+
+.knowledge-review-filter .filter-chip.active,
+.graph-legend-item.active,
+.graph-relation-chip.active {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+.graph-legend {
+  align-items: stretch;
+}
+
+.graph-legend-items {
+  align-items: stretch;
+}
+
+.graph-legend-item {
+  border-left-width: 4px;
+}
+
+.graph-legend-item.explicit {
+  border-left-color: #34c795;
+}
+
+.graph-legend-item.inferred {
+  border-left-color: #7aa7d8;
+}
+
+.graph-legend-item.candidate,
+.graph-legend-item.duplicate-candidate {
+  border-left-color: #d7b56d;
+}
+
+.graph-legend-item.contradiction-candidate,
+.graph-legend-item.rejected,
+.graph-legend-item.needs-rework {
+  border-left-color: #d9826b;
+}
+
+.graph-topology-shell {
+  max-width: 100%;
+  overscroll-behavior: contain;
+}
+
+.graph-topology-svg {
+  min-width: min(980px, 100%);
+}
+
+body.theme-dark .knowledge-source-readiness,
+body.theme-dark .knowledge-fabric-contract-strip,
+body.theme-dark .knowledge-health-panel,
+body.theme-dark .graph-legend,
+body.theme-dark .graph-relation-layer-summary,
+body.theme-dark .graph-overview-panel,
+body.theme-dark .graph-canvas-commandbar,
+body.theme-dark .graph-trust-boundary-main,
+body.theme-dark .graph-trust-boundary-grid button {
+  background: rgba(16, 20, 17, 0.94);
+  border-color: rgba(232, 226, 214, 0.16);
+}
+
+body.theme-dark .knowledge-review-filter .filter-chip,
+body.theme-dark .knowledge-overview span,
+body.theme-dark .knowledge-signal-strip span {
+  background: rgba(18, 22, 19, 0.92);
+  border-color: rgba(232, 226, 214, 0.14);
+  color: #d8cebd;
+}
+
+body.theme-dark .knowledge-review-filter .filter-chip.active {
+  background: rgba(122, 216, 191, 0.12);
+  border-color: rgba(122, 216, 191, 0.4);
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-result-count,
+body.theme-dark .knowledge-source-readiness-main strong,
+body.theme-dark .knowledge-fabric-contract-main strong,
+body.theme-dark .graph-legend-head strong,
+body.theme-dark .graph-legend-item strong,
+body.theme-dark .graph-overview-panel strong,
+body.theme-dark .graph-canvas-commandbar strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-source-readiness-main small,
+body.theme-dark .knowledge-fabric-contract-main small,
+body.theme-dark .knowledge-fabric-contract-grid small,
+body.theme-dark .knowledge-fabric-contract-grid em,
+body.theme-dark .graph-legend-head small,
+body.theme-dark .graph-legend-item small,
+body.theme-dark .graph-overview-panel small,
+body.theme-dark .graph-canvas-commandbar small {
+  color: #cfc5b7;
+}
+
+body.theme-dark .graph-legend-item {
+  background: rgba(18, 23, 19, 0.92);
+  border-color: rgba(232, 226, 214, 0.14);
+}
+
+body.theme-dark .graph-legend-item.explicit,
+body.theme-dark .graph-legend-item.explicit.active {
+  background: rgba(52, 199, 149, 0.09);
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .graph-legend-item.inferred,
+body.theme-dark .graph-legend-item.inferred.active {
+  background: rgba(122, 167, 216, 0.1);
+  border-left-color: #8bb6e8;
+}
+
+body.theme-dark .graph-legend-item.candidate,
+body.theme-dark .graph-legend-item.duplicate-candidate,
+body.theme-dark .graph-legend-item.candidate.active,
+body.theme-dark .graph-legend-item.duplicate-candidate.active {
+  background: rgba(215, 181, 109, 0.1);
+  border-left-color: #e0c28d;
+}
+
+body.theme-dark .graph-legend-item.contradiction-candidate,
+body.theme-dark .graph-legend-item.rejected,
+body.theme-dark .graph-legend-item.needs-rework,
+body.theme-dark .graph-legend-item.contradiction-candidate.active {
+  background: rgba(217, 130, 107, 0.1);
+  border-left-color: #f0a39a;
+}
+
+body.theme-dark .graph-topology-shell {
+  background:
+    radial-gradient(circle at 24% 18%, rgba(122, 216, 191, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(14, 18, 15, 0.98), rgba(10, 13, 11, 0.98));
+  border-color: rgba(232, 226, 214, 0.14);
+}
+
+body.theme-dark .graph-svg-label-wrap rect,
+body.theme-dark .graph-svg-edge-label rect {
+  fill: rgba(13, 17, 14, 0.94);
+  stroke: rgba(232, 226, 214, 0.18);
+}
+
+body.theme-dark .graph-svg-node text,
+body.theme-dark .graph-svg-edge-label text {
+  fill: #fff8ea;
+  paint-order: stroke;
+  stroke: rgba(10, 13, 11, 0.8);
+  stroke-width: 3px;
+}
+
+body.theme-dark .graph-svg-edge.explicit {
+  stroke: #7ad8bf;
+}
+
+body.theme-dark .graph-svg-edge.inferred {
+  stroke: #8bb6e8;
+}
+
+body.theme-dark .graph-svg-edge.candidate,
+body.theme-dark .graph-svg-edge.duplicate-candidate {
+  stroke: #e0c28d;
+}
+
+body.theme-dark .graph-svg-edge.contradiction-candidate,
+body.theme-dark .graph-svg-edge.rejected {
+  stroke: #f0a39a;
+}
+
+@media (max-width: 980px) {
+  .graph-canvas-commandbar,
+  .graph-trust-boundary-main,
+  .knowledge-source-readiness,
+  .knowledge-fabric-contract-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .graph-viewport-actions,
+  .graph-relation-strip,
+  .graph-lane-strip,
+  .graph-legend-items {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .graph-topology-shell {
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+}
+
+@media (max-width: 560px) {
+  .cockpit-view-rail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  .cockpit-view-rail button {
+    min-width: 0;
+    width: 100%;
+    white-space: normal;
+  }
+
+  .graph-viewport-actions,
+  .graph-relation-strip,
+  .graph-lane-strip,
+  .graph-legend-items,
+  .knowledge-card-state-ribbon,
+  .knowledge-source-affordances {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .graph-viewport-actions button,
+  .graph-relation-chip,
+  .graph-legend-item,
+  .knowledge-source-affordances button {
+    width: 100%;
+  }
+}
