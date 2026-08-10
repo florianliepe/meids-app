@@ -7762,6 +7762,39 @@ body.theme-dark .knowledge-source-readiness-grid span {
   border-left: 3px solid color-mix(in srgb, #7aa7d8 62%, var(--line));
 }
 
+.graph-decision-queue {
+  display: grid;
+  gap: 10px;
+}
+
+.graph-decision-queue-card {
+  border-left: 4px solid color-mix(in srgb, var(--warn) 56%, var(--line));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-strong) 94%, transparent), color-mix(in srgb, var(--surface-quiet) 78%, transparent));
+}
+
+.graph-decision-queue-card.approved,
+.graph-decision-queue-card.accepted {
+  border-left-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+}
+
+.graph-decision-queue-card.needs-rework {
+  border-left-color: color-mix(in srgb, var(--warn) 70%, var(--line));
+}
+
+.graph-decision-actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.graph-decision-queue-note {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 680;
+  line-height: 1.45;
+  margin: 8px 0 0;
+}
+
 .graph-promotion-summary-strip {
   display: grid;
   gap: 8px;
@@ -8642,6 +8675,17 @@ body.theme-dark .n8n-comparison-row i.blocked {
 body.theme-dark .production-graph-review-gates {
   border-color: rgba(232, 226, 214, 0.13);
   background: rgba(19, 24, 20, 0.78);
+}
+
+body.theme-dark .graph-decision-queue-card {
+  border-color: rgba(232, 226, 214, 0.13);
+  background:
+    linear-gradient(135deg, rgba(25, 31, 27, 0.96), rgba(16, 20, 17, 0.92));
+  box-shadow: inset 0 1px 0 rgba(255, 250, 240, 0.035);
+}
+
+body.theme-dark .graph-decision-queue-note {
+  color: #c9c0b2;
 }
 
 body.theme-dark .graph-actor-context-status {

@@ -1147,6 +1147,7 @@ async function safeRefreshGraph() {
     state.selectedGraphEdgeKey = "";
     renderGraphFilters();
     syncGraphControlValues();
+    renderDashboardGraphDecisionQueue();
     renderGraphCockpit();
     if (status) {
       const summary = graph.summary || {};
@@ -5950,6 +5951,8 @@ async function reviewGraphEdge(edgeKey, decision) {
     state.selectedGraphEdgeKey = edgeKey;
     state.graphEdgeSelectionSource = "review";
     renderGraphCockpit();
+    renderDashboardGraphDecisionQueue();
+    renderDashboardGraphPromotionHistory();
     if (selected) await openGraphNode(selected);
     await safeRefreshActivity();
     showToast("Graph edge reviewed", decision, "success");
@@ -6021,6 +6024,7 @@ function applyStaticGraphEdgeReview(edgeKey, decision) {
   state.selectedGraphEdgeKey = edgeKey;
   state.graphEdgeSelectionSource = "review";
   renderGraphCockpit();
+  renderDashboardGraphDecisionQueue();
   renderDashboardGraphPromotionHistory();
   if (state.selectedGraphNodeKey) {
     state.okfGraphNodeDetail = buildStaticGraphNodeDetail(state.selectedGraphNodeKey);
@@ -11253,6 +11257,7 @@ function renderReviewDashboard(result) {
   renderDashboardEvidenceStateGaps(result);
   renderDashboardTraces(trace.latest || []);
   renderDashboardAgentTraceHistory();
+  renderDashboardGraphDecisionQueue();
   renderDashboardGraphPromotionHistory();
   renderDashboardOkfGraphPackage();
   renderDashboardSkillQueue(result.skills?.pending_approval || []);
@@ -16597,6 +16602,92 @@ function renderGraphActorContextHandoffStatus() {
       <span>${escapeHtml(status.metric)}</span>
     </section>
   `;
+}
+
+function graphPromotionDecisionQueueItems(limit = 6) {
+  const graph = state.okfGraph || {};
+  const nodes = new Map((graph.nodes || []).map((node) => [node.node_key, node]));
+  const reviewByEdge = new Map((state.graphEdgeReviews || []).map((review) => [review.edge_key, review]));
+  return (graph.edges || [])
+    .map((edge) => {
+      const review = reviewByEdge.get(edge.edge_key) || {};
+      const merged = {
+        ...edge,
+        review_state: review.review_state || review.decision || edge.review_state,
+      };
+      const decision = graphPromotionDecision(merged);
+      const edgeClass = graphEdgeClass(merged);
+      const relation = merged.relation_type || merged.edge_type || "related";
+      const reviewState = String(merged.review_state || decision.label || "").toLowerCase();
+      const candidate =
+        String(edgeClass).includes("candidate") ||
+        String(relation).includes("candidate") ||
+        ["candidate", "draft", "unreviewed", "needs-rework", "needs rework", "inferred"].includes(reviewState);
+      const terminal = ["accepted", "approved", "rejected"].includes(reviewState);
+      const source = nodes.get(edge.source) || {};
+      const target = nodes.get(edge.target) || {};
+      return {
+        edge_key: edge.edge_key,
+        source_title: source.title || edge.source || "source",
+        target_title: target.title || edge.target || "target",
+        relation_type: relation,
+        review_state: review.review_state || edge.review_state || decision.label,
+        edge_class: edgeClass,
+        confidence: edge.confidence,
+        note: review.note || edge.review_note || decision.description,
+        risk_score: graphCandidateRiskScore(edge),
+        candidate,
+        terminal,
+      };
+    })
+    .filter((item) => item.edge_key && item.candidate && !item.terminal)
+    .sort((a, b) => (b.risk_score || 0) - (a.risk_score || 0))
+    .slice(0, limit);
+}
+
+function renderDashboardGraphDecisionQueue() {
+  const target = $("#dashGraphDecisionQueue");
+  if (!target) return;
+  const items = graphPromotionDecisionQueueItems();
+  const refreshButton = document.querySelector('[data-dashboard-action="refresh-graph-decisions"]');
+  if (refreshButton) refreshButton.onclick = () => {
+    renderDashboardGraphDecisionQueue();
+    const nextItems = graphPromotionDecisionQueueItems();
+    showToast("Graph decision queue refreshed", `${nextItems.length} relation${nextItems.length === 1 ? "" : "s"}`, "info");
+  };
+  if (!items.length) {
+    target.innerHTML = `
+      ${renderEmptyState("No candidate graph relations need review.", "Open Knowledge Graph", "openGraph")}
+      <p class="graph-decision-queue-note">Approved relations are eligible for trusted graph retrieval. Draft and inferred relations stay visible in the graph until promoted.</p>
+    `;
+    return;
+  }
+  target.innerHTML = items.map((item) => `
+    <article class="activity-row queue-card graph-decision-queue-card ${dashboardPriorityClass("graph", item.review_state)} ${safeGraphClass(item.review_state)}">
+      <div class="queue-card-head">
+        <span class="queue-kind">${escapeHtml(labelizeGraph(item.relation_type))}</span>
+        ${renderQueueMeta([
+          labelizeGraph(item.review_state),
+          labelizeGraph(item.edge_class),
+          item.confidence === undefined ? "" : `confidence ${item.confidence}`,
+        ])}
+      </div>
+      <h3>${escapeHtml(`${item.source_title} -> ${item.target_title}`)}</h3>
+      <p>${escapeHtml(item.note || "Candidate relation awaits human graph promotion review.")}</p>
+      <div class="queue-card-actions graph-decision-actions">
+        <button class="small secondary dashboard-graph-open" type="button" data-edge-key="${escapeHtml(item.edge_key)}">Open graph</button>
+        <button class="small secondary dashboard-graph-review" type="button" data-edge-key="${escapeHtml(item.edge_key)}" data-decision="accepted">Accept</button>
+        <button class="small secondary dashboard-graph-review" type="button" data-edge-key="${escapeHtml(item.edge_key)}" data-decision="needs-rework">Needs rework</button>
+        <button class="small danger dashboard-graph-review" type="button" data-edge-key="${escapeHtml(item.edge_key)}" data-decision="rejected">Reject</button>
+      </div>
+    </article>
+  `).join("");
+  target.querySelectorAll(".dashboard-graph-open").forEach((button) => {
+    button.addEventListener("click", () => openGraphPromotionFromDashboard(button.dataset.edgeKey || ""));
+  });
+  target.querySelectorAll(".dashboard-graph-review").forEach((button) => {
+    button.addEventListener("click", () => reviewGraphEdge(button.dataset.edgeKey || "", button.dataset.decision || ""));
+  });
 }
 
 function renderDashboardGraphPromotionHistory() {
