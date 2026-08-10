@@ -113,10 +113,12 @@ const requirements = [
       "scripts/set-n8n-agent-url.cjs",
       "scripts/record-n8n-live-probe-evidence.cjs",
       "scripts/write-n8n-live-readiness-preflight.cjs",
+      "scripts/write-zielmodus-4-live-completion-checklist.cjs",
       "frontend/assets/agent-runtime-config.json",
       "frontend/assets/n8n-runtime-readiness-status.json",
       "frontend/assets/n8n-live-probe-evidence.json",
       "frontend/assets/n8n-live-readiness-preflight.json",
+      "frontend/assets/zielmodus-4-live-completion-checklist.json",
     ],
   },
 ];
@@ -227,6 +229,45 @@ function liveProbeEvidenceStatus() {
   };
 }
 
+function liveCompletionChecklistStatus() {
+  const checklistPath = "frontend/assets/zielmodus-4-live-completion-checklist.json";
+  const required = ["actor_twin", "knowledge_fabric_agent", "agentic_butler"];
+  if (!exists(checklistPath)) {
+    return {
+      status: "missing",
+      path: checklistPath,
+      missing_live_url_count: required.length,
+      missing_probe_trace_count: required.length,
+      estimated_remaining_after_urls_exist: "unknown",
+      detail: "Live completion checklist artifact missing.",
+    };
+  }
+  const checklist = readJson(checklistPath);
+  const agents = Array.isArray(checklist.agents) ? checklist.agents : [];
+  const missingAgents = required.filter((agentId) => !agents.some((agent) => agent.agent_id === agentId));
+  const summary = checklist.summary || {};
+  const missingUrlCount = Number(summary.missing_live_url_count ?? agents.filter((agent) => agent.url_configured !== true).length);
+  const missingProbeCount = Number(summary.missing_probe_trace_count ?? agents.filter((agent) => agent.live_probe_connected !== true).length);
+  const status = missingAgents.length
+    ? "incomplete"
+    : missingUrlCount
+      ? "partial_live_url_blocked"
+      : missingProbeCount
+        ? "live_probe_evidence_pending"
+        : "ready_for_strict_gate";
+  return {
+    status,
+    path: checklistPath,
+    missing_live_url_count: missingUrlCount,
+    missing_probe_trace_count: missingProbeCount,
+    estimated_remaining_after_urls_exist: summary.estimated_remaining_after_urls_exist || "45-90 minutes",
+    missing_agents: missingAgents,
+    detail: missingAgents.length
+      ? `Completion checklist missing agent row(s): ${missingAgents.join(", ")}`
+      : `Completion checklist open work: ${missingUrlCount} URL(s), ${missingProbeCount} probe trace(s).`,
+  };
+}
+
 const requirementResults = requirements.map(evidenceState);
 const qaResults = [
   validateBrowserQa("docs/visual-qa/screenshots-20260810-z4-final-audit/browser-dark-mode-qa.json", 5),
@@ -234,11 +275,13 @@ const qaResults = [
 ];
 const live = liveAgentStatus();
 const liveProbeEvidence = liveProbeEvidenceStatus();
+const liveCompletionChecklist = liveCompletionChecklistStatus();
 const missingRequirements = requirementResults.filter((item) => item.status !== "ready");
 const failedQa = qaResults.filter((item) => !item.passed);
 const publicSafeReady = !missingRequirements.length && !failedQa.length;
 const liveReady = live.status === "configured";
 const liveProbeReady = liveProbeEvidence.status === "complete";
+const checklistReady = liveCompletionChecklist.status !== "missing" && liveCompletionChecklist.status !== "incomplete";
 const status = publicSafeReady && liveReady
   ? (liveProbeReady ? "complete" : "live_probe_evidence_pending")
   : publicSafeReady
@@ -263,6 +306,7 @@ const artifact = {
   qa: qaResults,
   live_n8n: live,
   live_probe_evidence: liveProbeEvidence,
+  live_completion_checklist: liveCompletionChecklist,
   next_actions: liveReady && !liveProbeReady
     ? [
         "Run cockpit live probes for all three agents.",
@@ -294,8 +338,9 @@ console.log(`Requirements: ${artifact.summary.ready_requirement_count}/${artifac
 console.log(`QA: ${artifact.summary.passed_qa_check_count}/${artifact.summary.qa_check_count} passed`);
 console.log(`Live n8n: ${live.detail}`);
 console.log(`Live probes: ${liveProbeEvidence.detail}`);
+console.log(`Live completion checklist: ${liveCompletionChecklist.detail}`);
 if (write) console.log(`Readiness artifact written: ${rel(outputPath)}`);
 
-if (!publicSafeReady) process.exit(1);
+if (!publicSafeReady || !checklistReady) process.exit(1);
 if (requireLive && !liveReady) process.exit(1);
 if (requireLiveProbes && (!liveReady || !liveProbeReady)) process.exit(1);

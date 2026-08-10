@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-10T22:35:15.578Z",
+  "generated_at": "2026-08-10T23:07:37.665Z",
   "status": "partial_live_url_blocked",
   "mode": "public_safe",
   "summary": {
@@ -131,10 +131,12 @@
         "scripts/set-n8n-agent-url.cjs",
         "scripts/record-n8n-live-probe-evidence.cjs",
         "scripts/write-n8n-live-readiness-preflight.cjs",
+        "scripts/write-zielmodus-4-live-completion-checklist.cjs",
         "frontend/assets/agent-runtime-config.json",
         "frontend/assets/n8n-runtime-readiness-status.json",
         "frontend/assets/n8n-live-probe-evidence.json",
-        "frontend/assets/n8n-live-readiness-preflight.json"
+        "frontend/assets/n8n-live-readiness-preflight.json",
+        "frontend/assets/zielmodus-4-live-completion-checklist.json"
       ],
       "missing": []
     }
@@ -182,6 +184,15 @@
       "agentic_butler"
     ],
     "detail": "Missing live probe evidence for: actor_twin, knowledge_fabric_agent, agentic_butler"
+  },
+  "live_completion_checklist": {
+    "status": "partial_live_url_blocked",
+    "path": "frontend/assets/zielmodus-4-live-completion-checklist.json",
+    "missing_live_url_count": 2,
+    "missing_probe_trace_count": 3,
+    "estimated_remaining_after_urls_exist": "45-90 minutes",
+    "missing_agents": [],
+    "detail": "Completion checklist open work: 2 URL(s), 3 probe trace(s)."
   },
   "next_actions": [
     "Configure GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL.",
