@@ -16,7 +16,7 @@ MeIDs can run in GitHub Pages fixture mode without live n8n workflows. For produ
 
 ## GitHub Pages Secrets
 
-The Pages workflow generates `runtime-config.js` during deployment. The current pushed workflow injects the chat webhook. The three top-level agent secrets below are the target production keys for the next workflow-scope update:
+The Pages workflow generates `runtime-config.js` during deployment. The currently deployed workflow injects the chat webhook. Explicit top-level agent webhook secrets are reserved for the next workflow-scope update:
 
 | Secret | Purpose |
 |---|---|
@@ -25,11 +25,19 @@ The Pages workflow generates `runtime-config.js` during deployment. The current 
 | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` | Knowledge Fabric Agent ingest / graph / vector handoff webhook |
 | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` | Agentic Butler approved skill activation webhook |
 
-Current access note: GitHub rejected workflow edits from the available OAuth credential because it lacks `workflow` scope. Until a workflow-scope credential is available, use the public staging asset below for intentionally public UAT webhook URLs.
+Target behavior after the workflow-scope update: if a secret is empty, the generated runtime config keeps that agent in `awaiting_url` state. The Actor Twin URL falls back to `GH_PAGES_N8N_CHAT_WEBHOOK_URL` when the explicit Actor Twin secret is empty.
+
+Secrets must be configured in GitHub at:
+
+`Settings -> Secrets and variables -> Actions -> Repository secrets`
+
+Current access note: GitHub rejects workflow edits from the available OAuth credential because it lacks `workflow` scope. Until a workflow-scope credential is available, configure public UAT endpoints through `frontend/assets/agent-runtime-config.json`.
+
+After changing a secret later, trigger the Pages workflow again through a push to `main` or `Actions -> Deploy MeIDs frontend to GitHub Pages -> Run workflow`.
 
 ## Public Staging Asset
 
-GitHub Pages also loads `frontend/assets/agent-runtime-config.json` in static mode. The workflow copies this asset unchanged, so it can expose non-secret staging webhook URLs without editing `.github/workflows/intellectual-twin-pages.yml`.
+GitHub Pages also loads `frontend/assets/agent-runtime-config.json` in static mode. The workflow copies this asset unchanged, so it can expose non-secret staging webhook URLs when an Actions secret is not suitable.
 
 Use this only for intentionally public UAT endpoints:
 
@@ -113,7 +121,7 @@ This keeps the primary workspace aligned with the Production/Review Cockpit: use
 When a URL is missing, the frontend must stay usable:
 
 - Chat uses fixture fallback for agent contract responses.
-- Production/Review Cockpit shows `missing URL`.
+- Production/Review Cockpit shows `awaiting URL` when a probe slot exists and `missing URL` only when the configuration shape is incomplete.
 - Production/Review Cockpit shows runtime setup actions with the exact missing
   config keys and a copyable public UAT config snippet.
 - The copied public UAT JSON includes both `n8nAgentWebhooks` and
