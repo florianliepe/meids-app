@@ -69,6 +69,8 @@ The current correct status is `partial_live_url_blocked`: all schema, fixture, g
 
 Live probe evidence is tracked in `frontend/assets/n8n-live-probe-evidence.json`. Keep placeholder entries in `awaiting_probe` until the corresponding n8n execution is visible and the response includes a non-demo `trace_id`.
 
+Use `node scripts/record-n8n-live-probe-evidence.cjs --agent <agent_id> --trace-id <trace_id> --execution-url <public_safe_execution_url>` to capture the evidence in the public readiness artifact after each successful UAT probe. The script validates the agent id, rejects demo/fixture trace ids, and prevents obvious secret-like URL values from being written.
+
 ## Live n8n Completion Gate
 
 Zielmodus 4 must remain open until these two live URL slots are provided and tested:

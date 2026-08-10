@@ -105,6 +105,7 @@ const requirements = [
       "workflows/n8n/agentic-butler.workflow.json",
       "scripts/validate-agent-config-export.cjs",
       "scripts/set-n8n-agent-url.cjs",
+      "scripts/record-n8n-live-probe-evidence.cjs",
       "frontend/assets/agent-runtime-config.json",
       "frontend/assets/n8n-runtime-readiness-status.json",
       "frontend/assets/n8n-live-probe-evidence.json",

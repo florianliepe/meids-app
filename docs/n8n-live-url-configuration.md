@@ -188,6 +188,30 @@ node scripts\validate-zielmodus-4-readiness.cjs --require-live-probes
 - `--require-live` fails until all top-level agent URL slots are configured.
 - `--require-live-probes` fails until all URLs are configured and `frontend/assets/n8n-live-probe-evidence.json` contains connected, non-demo trace evidence for Actor Twin, Knowledge Fabric Agent, and Agentic Butler.
 
+Record live probe evidence after a real n8n UAT execution:
+
+```powershell
+node scripts\record-n8n-live-probe-evidence.cjs `
+  --agent knowledge_fabric_agent `
+  --trace-id "TRACE_ID_FROM_N8N" `
+  --execution-url "https://YOUR-N8N-HOST/workflow/.../executions/..." `
+  --response-status completed `
+  --url-source github-pages-secret
+```
+
+For Agentic Butler approval-gate UAT, use:
+
+```powershell
+node scripts\record-n8n-live-probe-evidence.cjs `
+  --agent agentic_butler `
+  --trace-id "TRACE_ID_FROM_N8N" `
+  --execution-url "https://YOUR-N8N-HOST/workflow/.../executions/..." `
+  --response-status approval_required `
+  --url-source github-pages-secret
+```
+
+The recorder rejects empty trace ids, obvious demo/fixture placeholders, non-HTTPS execution URLs, and URL strings that look like they contain secrets. It only stores public-safe proof that a workflow was reached.
+
 ## Local Public UAT URL Helper
 
 For local UAT, use the checked-in helper to update the public staging runtime config and regenerate readiness artifacts in one step:

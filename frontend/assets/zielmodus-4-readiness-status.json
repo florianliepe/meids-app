@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-10T21:42:38.041Z",
+  "generated_at": "2026-08-10T21:50:10.202Z",
   "status": "partial_live_url_blocked",
   "mode": "public_safe",
   "summary": {
@@ -123,6 +123,7 @@
         "workflows/n8n/agentic-butler.workflow.json",
         "scripts/validate-agent-config-export.cjs",
         "scripts/set-n8n-agent-url.cjs",
+        "scripts/record-n8n-live-probe-evidence.cjs",
         "frontend/assets/agent-runtime-config.json",
         "frontend/assets/n8n-runtime-readiness-status.json",
         "frontend/assets/n8n-live-probe-evidence.json"
