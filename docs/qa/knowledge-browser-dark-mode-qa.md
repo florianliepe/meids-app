@@ -423,6 +423,20 @@ Latest local QA pass for Production n8n workflow handoff packet:
 
 This pass adds a copyable n8n workflow handoff packet to the Production Cockpit. It gives the n8n builder the missing workflow briefs, fixture contracts, runtime keys, GitHub secret names, probe payloads, and post-creation sequence required before Knowledge Fabric Agent and Agentic Butler can move from fixture-ready to live UAT. Screenshots are stored in `docs/visual-qa/screenshots-20260810-production-n8n-handoff-packet/`.
 
+Latest local QA pass for Knowledge source status polish:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-knowledge-source-status-polish`
+- Browser QA covers Knowledge Browser, Knowledge Graph, and trace dashboard in dark mode at `1440px` and `390px`; all six cases passed with no horizontal overflow.
+
+This pass tightens Knowledge Browser card density and source readability. Concept cards now carry a card-level source state, expose a compact `Source linked` / `Source needed` action status beside Open/Copy actions, and use stronger dark-mode source-state contrast. The same QA pass also fixed Graph demo-step label containment so desktop graph labels no longer overflow. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-source-status-polish/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

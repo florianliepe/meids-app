@@ -18974,8 +18974,17 @@ body.theme-dark .compact-filterbar {
   display: grid;
   gap: 5px;
   min-height: 106px;
+  min-width: 0;
   padding: 11px;
   text-align: left;
+}
+
+.graph-demo-flow-steps button > strong,
+.graph-demo-flow-steps button > small {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .graph-demo-flow-steps button:hover,
@@ -31305,10 +31314,12 @@ body.theme-dark .knowledge-fabric-lifecycle-flow em {
 /* Knowledge Browser compact review-state ribbon. */
 .knowledge-increment {
   grid-template-columns: minmax(0, 1.05fr) minmax(156px, 0.4fr) minmax(360px, 0.95fr) minmax(240px, 0.68fr) auto;
+  gap: 10px;
 }
 
 .knowledge-increment.compact {
   grid-template-columns: minmax(0, 1.08fr) minmax(142px, 0.36fr) minmax(330px, 0.9fr) minmax(220px, 0.62fr) auto;
+  gap: 8px;
 }
 
 .knowledge-card-state-ribbon {
@@ -31328,6 +31339,10 @@ body.theme-dark .knowledge-fabric-lifecycle-flow em {
   gap: 2px;
   min-width: 0;
   padding: 7px 8px;
+}
+
+.knowledge-increment.compact .knowledge-card-state-ribbon span {
+  padding: 6px 7px;
 }
 
 .knowledge-card-state-ribbon span.approved {
@@ -31384,6 +31399,32 @@ body.theme-dark .knowledge-fabric-lifecycle-flow em {
   display: none;
 }
 
+.knowledge-source-action-status {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 999px;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.62rem;
+  font-weight: 850;
+  justify-content: center;
+  line-height: 1;
+  min-height: 28px;
+  padding: 6px 9px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.knowledge-increment[data-source-state="linked"] .knowledge-source-action-status {
+  border-color: color-mix(in srgb, #34c795 42%, var(--line));
+  color: color-mix(in srgb, #11845d 84%, var(--ink));
+}
+
+.knowledge-increment[data-source-state="gap"] .knowledge-source-action-status {
+  border-color: color-mix(in srgb, #d9826b 44%, var(--line));
+  color: color-mix(in srgb, #9b3f2e 84%, var(--ink));
+}
+
 body.theme-dark .knowledge-card-state-ribbon span {
   background: rgba(16, 20, 17, 0.9);
   border-color: rgba(232, 226, 214, 0.13);
@@ -31417,6 +31458,32 @@ body.theme-dark .knowledge-card-state-ribbon em {
   color: #c9c0b3;
 }
 
+body.theme-dark .knowledge-increment[data-source-state="linked"] {
+  box-shadow: inset 0 1px 0 rgba(122, 216, 191, 0.08);
+}
+
+body.theme-dark .knowledge-increment[data-source-state="gap"] {
+  box-shadow: inset 0 1px 0 rgba(226, 141, 118, 0.08);
+}
+
+body.theme-dark .knowledge-source-action-status {
+  background: rgba(16, 20, 17, 0.8);
+  border-color: rgba(232, 226, 214, 0.14);
+  color: #c9c0b3;
+}
+
+body.theme-dark .knowledge-increment[data-source-state="linked"] .knowledge-source-action-status {
+  background: rgba(122, 216, 191, 0.1);
+  border-color: rgba(122, 216, 191, 0.36);
+  color: #9fe8d5;
+}
+
+body.theme-dark .knowledge-increment[data-source-state="gap"] .knowledge-source-action-status {
+  background: rgba(226, 141, 118, 0.1);
+  border-color: rgba(226, 141, 118, 0.36);
+  color: #f0b19f;
+}
+
 @media (max-width: 1320px) {
   .knowledge-increment,
   .knowledge-increment.compact {
@@ -31426,6 +31493,10 @@ body.theme-dark .knowledge-card-state-ribbon em {
   .knowledge-card-state-ribbon {
     grid-column: 1 / -1;
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .knowledge-increment-source {
+    grid-column: 1 / -1;
   }
 }
 
@@ -31437,6 +31508,13 @@ body.theme-dark .knowledge-card-state-ribbon em {
 
   .knowledge-card-state-ribbon {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .knowledge-source-action-status {
+    justify-content: flex-start;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 

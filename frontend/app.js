@@ -19607,8 +19607,9 @@ function renderKnowledgeCard(concept) {
   const cardDescription = compactText(concept.description || "No description stored yet.", state.conceptDensity === "compact" ? 110 : 150);
   const reviewState = concept.review_state || "pending-review";
   const actorUse = knowledgeActorUseState(concept);
+  const sourceState = conceptSourceState(concept);
   return `
-    <article class="knowledge-increment ${state.conceptDensity === "compact" ? "compact" : ""}" data-review-state="${escapeHtml(reviewState)}" data-actor-use="${escapeHtml(actorUse.className)}">
+    <article class="knowledge-increment ${state.conceptDensity === "compact" ? "compact" : ""}" data-review-state="${escapeHtml(reviewState)}" data-actor-use="${escapeHtml(actorUse.className)}" data-source-state="${escapeHtml(sourceState)}">
       <div class="knowledge-increment-main">
         ${renderKnowledgeTitleRow(concept, reviewState)}
         <p>${escapeHtml(cardDescription)}</p>
@@ -20081,6 +20082,7 @@ function renderKnowledgeSource(concept, sourceLabel) {
       ${renderKnowledgeSourceUseSummary(concept, evidence, sourceState)}
       ${renderKnowledgeEvidenceChips(evidence)}
       <div class="knowledge-source-affordances">
+        <span class="knowledge-source-action-status">${escapeHtml(sourceState === "linked" ? "Source linked" : "Source needed")}</span>
         ${fullPath ? `<button class="small secondary" type="button" data-concept-open="${escapeHtml(fullPath)}">Open</button>` : ""}
         ${sourceRef ? `<button class="small secondary source-copy-btn" type="button" data-copy-value="${escapeHtml(sourceRef)}">Copy ref</button>` : ""}
       </div>
