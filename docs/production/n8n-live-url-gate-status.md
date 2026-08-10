@@ -18,6 +18,7 @@ The public GitHub Pages runtime has one of three top-level n8n agent URLs config
 - Private production n8n endpoints should be called through a hosted backend proxy, not embedded directly in public frontend assets.
 - No secrets belong in `frontend/assets/agent-runtime-config.json`.
 - Fixture replay and contract validation prove contract readiness only; they do not prove live n8n connectivity.
+- The Production Cockpit also supports browser-local public UAT URL overrides. These are stored in local browser storage only and do not change the committed runtime asset.
 
 ## Validation Commands
 
@@ -33,6 +34,18 @@ Expected current runtime readiness until the two remaining URLs are configured:
 ```text
 n8n runtime readiness: 1/3 URLs configured
 ```
+
+## Browser-Local UAT Override
+
+Use the `Browser-local UAT URL` field in the Production Cockpit missing URL cards when a temporary public n8n webhook exists but should not be committed to the public runtime asset yet.
+
+Rules:
+
+- Use only public UAT webhook URLs.
+- Do not paste private production endpoints or credentials.
+- The override affects only the current browser session/profile.
+- Clear the override to fall back to `frontend/assets/agent-runtime-config.json`.
+- Live production approval still requires a non-demo n8n trace and human review.
 
 ## Files
 

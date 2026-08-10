@@ -4,6 +4,29 @@ Date: 2026-08-09
 
 Latest update: 2026-08-10
 
+## Latest Local QA Pass For Browser-Local n8n URL Overrides
+
+- Added browser-local public UAT URL overrides for the three top-level agent runtime resolver.
+- The override is stored under browser local storage and takes precedence over `frontend/assets/agent-runtime-config.json` for runtime routing in that browser only.
+- Added compact `Browser-local UAT URL` controls to the Production Cockpit missing live URL cards.
+- Preserved production boundary:
+  - public UAT URLs only in browser override
+  - private/production n8n endpoints must stay behind hosted backend secrets
+  - committed runtime artifact still reports static `1/3` URL readiness until real URLs are added to the asset/build config
+- Re-ran browser dark-mode QA after adding the controls.
+- Result: all 6 cases passed.
+- Screenshot evidence:
+  - `docs/visual-qa/screenshots-20260810-z4-local-n8n-url-overrides/`
+
+Validation commands:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-z4-local-n8n-url-overrides`
+
 ## Latest Browser QA Pass For Zielmodus 4 Dark Mode Surfaces
 
 - Re-ran browser-level dark-mode QA for the current GitHub Pages frontend source.

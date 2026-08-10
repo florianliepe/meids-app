@@ -271,6 +271,7 @@ const storageKeys = {
   approvalPrefix: "intellectualTwin.approval",
   agentTraceLog: "intellectualTwin.agentTraceLog",
   knowledgeFabricIngestQueue: "intellectualTwin.knowledgeFabricIngestQueue",
+  agentWebhookOverrides: "intellectualTwin.agentWebhookOverrides",
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -13611,6 +13612,11 @@ async function handleAgentOperatingModelClick(event) {
     await handleSourceCopyButton(copyButton);
     return;
   }
+  const webhookOverrideButton = event.target.closest("[data-agent-webhook-action]");
+  if (webhookOverrideButton) {
+    handleAgentWebhookOverrideAction(webhookOverrideButton);
+    return;
+  }
   const testButton = event.target.closest("[data-agent-contract-test]");
   if (testButton) {
     await testAgentContract(testButton.dataset.agentContractTest || "");
@@ -15168,6 +15174,9 @@ function n8nAgentWebhooks() {
 }
 
 function getAgentWebhook(agentId) {
+  const overrides = readAgentWebhookOverrides();
+  const override = overrides[agentId] || overrides[agentId?.replaceAll("_", "-")];
+  if (override) return override;
   const webhooks = n8nAgentWebhooks();
   const direct = webhooks[agentId] || webhooks[agentId?.replaceAll("_", "-")];
   if (direct) return direct;
@@ -15188,6 +15197,83 @@ function n8nAgentProbeSlot(agentId) {
 
 function hasAgentWebhook(agentId) {
   return Boolean(getAgentWebhook(agentId));
+}
+
+function readAgentWebhookOverrides() {
+  try {
+    const raw = window.localStorage.getItem(storageKeys.agentWebhookOverrides);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return Object.fromEntries(Object.entries(parsed).filter(([, value]) => typeof value === "string" && value.trim()));
+  } catch (_error) {
+    return {};
+  }
+}
+
+function writeAgentWebhookOverride(agentId, value) {
+  const next = readAgentWebhookOverrides();
+  const normalized = normalizeAgentWebhookUrl(value);
+  if (normalized) {
+    next[agentId] = normalized;
+  } else {
+    delete next[agentId];
+  }
+  window.localStorage.setItem(storageKeys.agentWebhookOverrides, JSON.stringify(next));
+  delete state.n8nLiveProbeResults[agentId];
+  return normalized;
+}
+
+function normalizeAgentWebhookUrl(value = "") {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  try {
+    const url = new URL(trimmed);
+    if (!["https:", "http:"].includes(url.protocol)) throw new Error("Unsupported protocol");
+    return url.toString();
+  } catch (_error) {
+    throw new Error("Use a valid http(s) public UAT webhook URL.");
+  }
+}
+
+function renderAgentWebhookOverrideControl(agentId) {
+  const overrides = readAgentWebhookOverrides();
+  const value = overrides[agentId] || "";
+  return `
+    <div class="agent-webhook-local-override" data-agent-webhook-override="${escapeHtml(agentId)}">
+      <label>
+        <span>Browser-local UAT URL</span>
+        <input type="url" value="${escapeHtml(value)}" placeholder="https://.../webhook/...">
+      </label>
+      <div class="button-row tight">
+        <button class="secondary small" type="button" data-agent-webhook-action="save" data-agent-id="${escapeHtml(agentId)}">Use locally</button>
+        <button class="secondary small" type="button" data-agent-webhook-action="clear" data-agent-id="${escapeHtml(agentId)}">Clear</button>
+      </div>
+      <small>Local browser override only. Use public UAT URLs here; production/private endpoints still belong behind backend secrets.</small>
+    </div>
+  `;
+}
+
+function handleAgentWebhookOverrideAction(button) {
+  const agentId = button.dataset.agentId || "";
+  if (!agentId) return;
+  try {
+    const wrap = button.closest("[data-agent-webhook-override]");
+    const input = wrap?.querySelector("input");
+    const value = button.dataset.agentWebhookAction === "clear" ? "" : input?.value || "";
+    const normalized = writeAgentWebhookOverride(agentId, value);
+    renderAgentOperatingModelPanel();
+    renderProductionKnowledgeRepoReadiness();
+    renderProductionProgressHeader();
+    renderChatContractBadges();
+    renderActiveChatContractBadge();
+    renderChatContractActions();
+    showToast(
+      normalized ? "Local n8n URL override saved" : "Local n8n URL override cleared",
+      normalized ? `${agentDisplayName(agentId)} will use this browser-local UAT URL.` : `${agentDisplayName(agentId)} falls back to runtime asset config.`,
+      "success",
+    );
+  } catch (error) {
+    showToast("Local n8n URL override rejected", error.message, "error");
+  }
 }
 
 function chatSourceContext() {
@@ -27246,6 +27332,9 @@ function renderProductionKnowledgeRepoReadiness() {
   `;
   bindConceptSourceActions(target);
   target.querySelector("[data-production-action='copyTrustedRetrievalPacket']")?.addEventListener("click", copyTrustedRetrievalReadinessPacket);
+  target.querySelectorAll("[data-agent-webhook-action]").forEach((button) => {
+    button.addEventListener("click", () => handleAgentWebhookOverrideAction(button));
+  });
 }
 
 function productionTrustedRetrievalReadiness() {
@@ -27771,6 +27860,7 @@ function renderProductionAgentMissingUrlSetup(missing = []) {
                 <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(row.runtime_config_snippet, null, 2))}">Copy JSON</button>
                 <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(row.probe_payload, null, 2))}">Copy probe</button>
               </div>
+              ${renderAgentWebhookOverrideControl(row.agent_id)}
             </article>
           `;
         }).join("")}
