@@ -1,9 +1,14 @@
 const { spawnSync } = require("node:child_process");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 
 const node = process.execPath;
+const artifactCheckDir = path.join(os.tmpdir(), `meids-pages-public-safe-${process.pid}`);
 
 const checks = [
   [node, ["--check", "frontend/app.js"]],
+  [node, ["--check", "scripts/build-pages-static.cjs"]],
   [node, ["scripts/validate-n8n-fixtures.cjs"]],
   [node, ["scripts/validate-okf-fixtures.cjs"]],
   [node, ["scripts/validate-graph-promotions.cjs"]],
@@ -14,6 +19,7 @@ const checks = [
   [node, ["scripts/write-zielmodus-4-live-completion-checklist.cjs", "--check"]],
   [node, ["scripts/validate-zielmodus-4-readiness.cjs"]],
   [node, ["scripts/pages-smoke-check.cjs", "frontend"]],
+  [node, ["scripts/build-pages-static.cjs", "--output", artifactCheckDir]],
 ];
 
 function run(command, args) {
@@ -36,4 +42,6 @@ try {
 } catch (error) {
   console.error(`\n${error.message}`);
   process.exit(1);
+} finally {
+  fs.rmSync(artifactCheckDir, { recursive: true, force: true });
 }
