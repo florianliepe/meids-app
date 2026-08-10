@@ -14260,6 +14260,22 @@ body.theme-dark .setup-step-detail {
   font-size: 15px;
 }
 
+#dashboard .operations-board .dashboard-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+#dashboard .operations-board .dashboard-section-head h2 {
+  margin: 0;
+}
+
+#dashboard .operations-board .dashboard-section-head h2::after {
+  content: none;
+}
+
 #dashboard .operations-board h2::after {
   content: "Queue";
   border: 1px solid var(--line);

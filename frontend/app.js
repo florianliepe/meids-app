@@ -15801,7 +15801,7 @@ function renderDashboardTraces(traces) {
   });
 }
 
-function graphPromotionHistoryItems() {
+function graphPromotionHistoryItems(limit = 8) {
   const graph = state.okfGraph || {};
   const nodes = new Map((graph.nodes || []).map((node) => [node.node_key, node]));
   const reviewByEdge = new Map((state.graphEdgeReviews || []).map((review) => [review.edge_key, review]));
@@ -15853,7 +15853,7 @@ function graphPromotionHistoryItems() {
   });
   return items
     .sort((a, b) => String(b.reviewed_at || "").localeCompare(String(a.reviewed_at || "")))
-    .slice(0, 8);
+    .slice(0, limit);
 }
 
 function knowledgeFabricQueuePromotionHistoryItems() {
@@ -15914,6 +15914,74 @@ function renderDashboardGraphPromotionHistory() {
   target.querySelectorAll(".dashboard-graph-open").forEach((button) => {
     button.addEventListener("click", () => openGraphPromotionFromDashboard(button.dataset.edgeKey || ""));
   });
+  const exportButton = document.querySelector('[data-dashboard-action="export-graph-promotions"]');
+  if (exportButton) exportButton.onclick = exportGraphPromotionHistory;
+}
+
+function exportGraphPromotionHistory() {
+  const items = graphPromotionHistoryItems(120);
+  if (!items.length) {
+    showToast("Graph promotion export", "No graph promotion decisions to export yet.", "warning");
+    return;
+  }
+  const artifact = buildGraphPromotionHistoryArtifact(items);
+  const filename = [
+    "meids-graph-promotion-history",
+    safeGraphClass(state.activeTwin || "twin"),
+    new Date().toISOString().replace(/[:.]/g, "-"),
+  ].join("-") + ".json";
+  const blob = new Blob([JSON.stringify(artifact, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, filename);
+  URL.revokeObjectURL(url);
+  showToast("Graph promotion history exported", `${items.length} decision${items.length === 1 ? "" : "s"}`, "success");
+}
+
+function buildGraphPromotionHistoryArtifact(items = []) {
+  const counts = countBy(items, (item) => item.review_state || item.decision || "unknown");
+  const reviewed = items.filter((item) => item.reviewed_at);
+  return {
+    schema: "okf.graph_promotion_history_export.v1",
+    exported_at: new Date().toISOString(),
+    boundary: "Portable graph promotion history only. Does not mutate OKF storage, graph store, vector index, or n8n runtime.",
+    twin_id: state.activeTwin || "florian",
+    summary: {
+      promotion_count: items.length,
+      reviewed_count: reviewed.length,
+      approved: counts.approved || counts.accepted || 0,
+      needs_rework: counts["needs-rework"] || counts.needs_rework || 0,
+      rejected: counts.rejected || 0,
+      candidate: counts.candidate || counts.pending_review || counts["pending-review"] || 0,
+    },
+    repo_split_target: {
+      app_repo: "florianliepe/meids-app",
+      knowledge_repo: "meids-knowledge-fabric",
+      agent_config_repo: "meids-agent-configs",
+    },
+    sync_plan: [
+      "Store this artifact in the knowledge fabric repo review branch.",
+      "Apply approved or accepted decisions to graph/edges YAML review_state and edge_class.",
+      "Keep needs-rework and rejected decisions as audit evidence only.",
+      "Refresh vector adapter payloads only for approved graph relations after OKF merge.",
+    ],
+    promotions: items.map((item) => ({
+      edge_key: item.edge_key || "",
+      decision: item.decision || item.review_state || "candidate",
+      review_state: item.review_state || "",
+      reviewed_at: item.reviewed_at || "",
+      reviewer: item.reviewer || item.review_actor || "local-human-review",
+      relation_type: item.relation_type || "related",
+      confidence: item.confidence ?? null,
+      edge_class: item.edge_class || "",
+      source: item.source_title || item.source || "",
+      target: item.target_title || item.target || "",
+      source_path: item.source_path || item.path || "",
+      note: item.note || "",
+      retrieval_rule: ["approved", "accepted"].includes(String(item.review_state || item.decision))
+        ? "eligible_for_trusted_retrieval_after_okf_merge"
+        : "not_eligible_for_trusted_retrieval",
+    })),
+  };
 }
 
 function openGraphPromotionFromDashboard(edgeKey) {
