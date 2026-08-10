@@ -4,6 +4,29 @@ Date: 2026-08-09
 
 Latest update: 2026-08-10
 
+## Latest Local QA Pass For Chat-To-Trace Cockpit Link
+
+- Added an `Open trace cockpit` action to external agent Chat result cards.
+- The action opens the Production Cockpit, switches the trace filter to the relevant top-level agent, and highlights the selected trace row.
+- Removed an unreachable trace-history refresh call from the result-card renderer path.
+- Added selected trace row styling for light and dark mode.
+- Re-ran browser dark-mode QA after the trace link and selected-row changes.
+- Result: all 6 cases passed.
+- Minimum measured contrast in this pass: `18.65`.
+- Screenshot evidence:
+  - `docs/visual-qa/screenshots-20260810-z4-chat-trace-cockpit-link/`
+
+Validation commands:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-z4-chat-trace-cockpit-link`
+
 ## Latest Local QA Pass For Runtime Asset vs Browser-Local Readiness
 
 - Added a compact Production Cockpit source comparison for n8n URL readiness.

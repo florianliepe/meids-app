@@ -8573,6 +8573,13 @@ body.theme-dark .knowledge-source-readiness-grid span {
   padding: 12px;
 }
 
+.agent-trace-row.selected {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, var(--surface-strong)), color-mix(in srgb, var(--surface-strong) 90%, transparent));
+}
+
 .graph-promotion-history-card {
   border-left: 3px solid color-mix(in srgb, #7aa7d8 62%, var(--line));
 }
@@ -9651,6 +9658,13 @@ body.theme-dark .agent-trace-handoff-timeline {
   background:
     linear-gradient(145deg, rgba(122, 216, 191, 0.08), #151a16);
   border-color: color-mix(in srgb, #7ad8bf 28%, rgba(241, 235, 224, 0.18));
+}
+
+body.theme-dark .agent-trace-row.selected {
+  background:
+    linear-gradient(135deg, rgba(122, 216, 191, 0.13), #171d18);
+  border-color: rgba(122, 216, 191, 0.42);
+  box-shadow: 0 0 0 3px rgba(122, 216, 191, 0.12);
 }
 
 body.theme-dark .agent-trace-handoff-index {

@@ -4,6 +4,7 @@
   concepts: [],
   openAIConfigured: false,
   agentTraceFilter: "all",
+  selectedAgentTraceId: "",
   mediaRecorder: null,
   audioChunks: [],
   recordedBlob: null,
@@ -8152,6 +8153,10 @@ function bindChat() {
     }
     if (action.dataset.chatAction === "copy-agent-approval") {
       copyAgentApproval(action);
+      return;
+    }
+    if (action.dataset.chatAction === "open-agent-trace") {
+      openAgentTraceFromChat(action.dataset.traceId || action.dataset.requestId || "");
     }
   });
   $("#riskPostureSelect").addEventListener("change", (event) => {
@@ -8539,6 +8544,20 @@ function bindQuality() {
   $("#promotePersonaDraftBtn").addEventListener("click", promotePersonaDraft);
   const initialQualityGroup = new URLSearchParams(window.location.search).get("quality") || "persona";
   setQualityGroup(initialQualityGroup);
+}
+
+function openAgentTraceFromChat(traceId = "") {
+  const traceKey = String(traceId || "").trim();
+  if (traceKey) state.selectedAgentTraceId = traceKey;
+  const trace = readComposedAgentTraces().find((item) => [item.trace_id, item.request_id].includes(traceKey));
+  if (trace?.agent_id) state.agentTraceFilter = String(trace.agent_id || "").toLowerCase();
+  setView("quality");
+  setQualityGroup("production");
+  renderAgentTraceHistoryPanel();
+  const target = traceKey
+    ? document.querySelector(`[data-agent-trace-key="${cssEscape(traceKey)}"]`)
+    : $("#agentTraceHistoryPanel");
+  (target || $("#agentTraceHistoryPanel") || $("#qualityPanelGrid"))?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
 function setQualityGroup(group) {
@@ -17450,10 +17469,12 @@ function renderAgentTraceHistoryRows(traces = [], limit = 12) {
     const agentId = String(trace.agent_id || "unknown").toLowerCase();
     const agentClass = safeGraphClass(agentId);
     const statusClass = trace.approval_required ? "approval" : safeGraphClass(trace.status || "completed");
+    const traceKey = trace.trace_id || trace.request_id || "";
+    const selected = traceKey && state.selectedAgentTraceId === traceKey;
     return `
-    <article class="agent-trace-row ${statusClass} ${agentClass}">
+    <article class="agent-trace-row ${statusClass} ${agentClass}${selected ? " selected" : ""}" data-agent-trace-key="${escapeHtml(traceKey)}">
       <div>
-        <span class="badge">${escapeHtml(trace.demo ? "staging trace" : trace.approval_required ? "approval gate" : trace.status || "trace")}</span>
+        <span class="badge">${escapeHtml(selected ? "selected trace" : trace.demo ? "staging trace" : trace.approval_required ? "approval gate" : trace.status || "trace")}</span>
         <span class="agent-trace-agent-chip ${agentClass}">${escapeHtml(agentDisplayName(agentId))}</span>
         <strong>${escapeHtml(trace.agent_name || agentDisplayName(trace.agent_id || ""))}</strong>
         <p>${escapeHtml(`${trace.runtime || "fixture/local"} · ${trace.twin || "active twin"} · ${formatShortDate(trace.timestamp)}`)}</p>
@@ -30962,6 +30983,7 @@ function renderAgentContractChatCard(result = {}) {
   const isApproval = status === "approval_required";
   const agentId = response.agent_id || result.agent_id || "";
   const title = result.agent_name || agentDisplayName(agentId) || "Agent";
+  const traceKey = trace.trace_id || result.trace_id || response.request_id || result.request?.request_id || "";
   return `
     <div class="skill-run-card agent-response-card ${escapeHtml(status)} ${safeGraphClass(agentId)}">
       <div class="skill-run-head">
@@ -30972,7 +30994,7 @@ function renderAgentContractChatCard(result = {}) {
         </div>
         <div class="run-id-block">
           <span>Trace</span>
-          <code>${escapeHtml(trace.trace_id || result.trace_id || response.request_id || "-")}</code>
+          <code>${escapeHtml(traceKey || "-")}</code>
         </div>
       </div>
       ${renderAgentResponseRouteCard(result)}
@@ -30993,10 +31015,12 @@ function renderAgentContractChatCard(result = {}) {
         <span>${escapeHtml(status)}</span>
         <span>${escapeHtml(response.agent_id || result.agent_id || "")}</span>
       </div>
-      <div class="message-actions"><button class="secondary small speak-message-btn" type="button">Play voice</button></div>
+      <div class="message-actions">
+        ${traceKey ? `<button class="secondary small" type="button" data-chat-action="open-agent-trace" data-trace-id="${escapeHtml(traceKey)}">Open trace cockpit</button>` : ""}
+        <button class="secondary small speak-message-btn" type="button">Play voice</button>
+      </div>
     </div>
   `;
-  renderAgentTraceHistoryPanel();
 }
 
 function renderAgentResponseRouteCard(result = {}) {
