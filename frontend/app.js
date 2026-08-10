@@ -498,6 +498,7 @@ function renderWorkspaceMode(viewId) {
     mode.classList.toggle("cockpit", isCockpit);
   }
   renderProductionProgressHeader();
+  renderProductionKnowledgeRepoReadiness();
 }
 
 function handleCockpitAction(action) {
@@ -7565,7 +7566,8 @@ function bindQuality() {
   $("#saveGuardrailPolicyBtn").addEventListener("click", saveGuardrailPolicy);
   $("#loadPersonaDraftBtn").addEventListener("click", loadPersonaDraft);
   $("#promotePersonaDraftBtn").addEventListener("click", promotePersonaDraft);
-  setQualityGroup("persona");
+  const initialQualityGroup = new URLSearchParams(window.location.search).get("quality") || "persona";
+  setQualityGroup(initialQualityGroup);
 }
 
 function setQualityGroup(group) {
@@ -9675,6 +9677,7 @@ function refreshStaticPagesWorkspace() {
   const graphStatus = $("#graphStatus");
   if (graphStatus) graphStatus.textContent = "Static staging graph loaded: 4 nodes, 4 relations.";
   renderProductionProgressHeader();
+  renderProductionKnowledgeRepoReadiness();
 }
 
 function buildStaticPagesStatus() {
@@ -11986,6 +11989,7 @@ async function safeRefreshStaticOkfValidationStatus() {
     state.okfValidationStatus = await fetchFrontendAssetJson(OKF_VALIDATION_STATUS_PATH);
     renderOkfValidationStatusPanel();
     renderKnowledgeFabricContractStrip(state.concepts || [], filteredConceptsForContractStrip());
+    renderProductionKnowledgeRepoReadiness();
   } catch (error) {
     state.okfValidationStatus = {
       status: "blocked",
@@ -11998,6 +12002,7 @@ async function safeRefreshStaticOkfValidationStatus() {
     };
     renderOkfValidationStatusPanel();
     renderKnowledgeFabricContractStrip(state.concepts || [], filteredConceptsForContractStrip());
+    renderProductionKnowledgeRepoReadiness();
     console.warn("Static OKF validation status refresh failed", error);
   }
 }
@@ -20178,6 +20183,7 @@ async function safeRefreshProductionStatus() {
     if (goNoGoTarget) goNoGoTarget.innerHTML = "";
     const githubSyncTarget = $("#productionGithubSync");
     if (githubSyncTarget) githubSyncTarget.innerHTML = "";
+    renderProductionKnowledgeRepoReadiness();
     const productionReadinessLanes = $("#productionReadinessLanes");
     if (productionReadinessLanes) productionReadinessLanes.innerHTML = "";
     const productionStageSummary = $("#productionStageSummary");
@@ -21550,6 +21556,7 @@ function renderProductionCockpit() {
   renderProductionGoNoGo();
   renderProductionConfigureNext(readiness);
   renderProductionGithubSync();
+  renderProductionKnowledgeRepoReadiness();
   renderProductionLaunchChecklist(readiness, storage, migration, governance);
   renderProductionMcpStage(readiness, governance);
   renderProductionHandoff(readiness, storage, migration, governance);
@@ -23068,6 +23075,101 @@ function renderProductionGithubSync() {
     button.addEventListener("click", () => openGithubPrStatusArtifact(button.dataset.path));
   });
   bindConceptSourceActions(target);
+}
+
+function renderProductionKnowledgeRepoReadiness() {
+  const target = $("#productionKnowledgeRepoReadiness");
+  if (!target) return;
+  const okf = state.okfValidationStatus || {};
+  const okfSummary = okf.summary || {};
+  const bridge = state.productionGithubKnowledgeBridge || {};
+  const bridgeRepo = bridge.repository || {};
+  const bridgeLocal = bridge.local_repo || {};
+  const bridgePayload = bridge.sync_payload || {};
+  const repoSplit = state.repoSplitGuidance || {};
+  const repos = Array.isArray(repoSplit.repositories) ? repoSplit.repositories : [];
+  const knowledgeRepo = repos.find((repo) => String(repo.name || "").includes("knowledge")) || {};
+  const agentConfigRepo = repos.find((repo) => String(repo.name || "").includes("agent")) || {};
+  const repoReady = Boolean(bridgeLocal.status === "git_repo" || bridgeLocal.branch || bridgeRepo.configured_path);
+  const payloadReady = Boolean(bridgePayload.latest_path || bridgePayload.payload_hash);
+  const okfReady = okf.status === "passed";
+  const splitReady = repos.length >= 3;
+  const branchReady = Boolean(bridge.expected_branch && bridgeLocal.branch === bridge.expected_branch);
+  const checks = [
+    {
+      key: "okf",
+      label: "OKF contract",
+      ready: okfReady,
+      metric: `${okfSummary.passed_check_count ?? 0}/${okfSummary.check_count ?? 0}`,
+      detail: okfReady ? "Schema, ingest, promotion, and vector fixture gates passed." : "Run OKF fixture validators before syncing knowledge.",
+    },
+    {
+      key: "repo",
+      label: "Knowledge repo",
+      ready: repoReady,
+      metric: bridgeLocal.branch || bridgeLocal.status || "not cloned",
+      detail: repoReady ? bridgeRepo.configured_path || bridgeLocal.path || "Local knowledge repo configured." : "Clone/configure the private knowledge fabric repository.",
+    },
+    {
+      key: "payload",
+      label: "Sync payload",
+      ready: payloadReady,
+      metric: String(bridgePayload.payload_hash || "").slice(0, 12) || "missing",
+      detail: payloadReady ? bridgePayload.latest_path || "Latest payload available." : "Export a GitHub sync payload from local reviewed knowledge.",
+    },
+    {
+      key: "branch",
+      label: "Sync branch",
+      ready: branchReady,
+      metric: bridge.expected_branch || "pending",
+      detail: branchReady ? "Local branch matches expected payload branch." : "Apply payload to expected branch before PR review.",
+    },
+    {
+      key: "split",
+      label: "Repo split",
+      ready: splitReady,
+      metric: `${repos.length}/3`,
+      detail: splitReady ? "App, knowledge, and agent-config boundaries are documented." : "Refresh repo split guidance or use the handoff checklist.",
+    },
+  ];
+  const readyCount = checks.filter((check) => check.ready).length;
+  const next = checks.find((check) => !check.ready);
+  const statusClass = readyCount === checks.length ? "ready" : payloadReady || okfReady ? "pending" : "blocked";
+  const docsUrl = "https://github.com/florianliepe/meids-app/blob/main/docs/knowledge-fabric-okf-schema.md";
+  const handoffUrl = "https://github.com/florianliepe/meids-app/blob/main/docs/production/repo-split-handoff-checklist.md";
+  target.innerHTML = `
+    <section class="production-knowledge-repo-card ${statusClass}">
+      <div class="production-knowledge-repo-head">
+        <div>
+          <span class="badge">Knowledge repo sync readiness</span>
+          <strong>${escapeHtml(readyCount)}/${escapeHtml(checks.length)} gates ready</strong>
+          <p>${escapeHtml(next?.detail || "Knowledge fabric handoff is ready for reviewed PR sync.")}</p>
+        </div>
+        <span>${escapeHtml(statusClass.replace("-", " "))}</span>
+      </div>
+      <div class="production-knowledge-repo-grid" aria-label="Knowledge repository sync gates">
+        ${checks.map((check) => `
+          <article class="${check.ready ? "ready" : "blocked"}">
+            <span>${escapeHtml(check.ready ? "ready" : "open")}</span>
+            <strong>${escapeHtml(check.label)}</strong>
+            <p>${escapeHtml(check.metric)}</p>
+            <small>${escapeHtml(check.detail)}</small>
+          </article>
+        `).join("")}
+      </div>
+      <div class="production-knowledge-repo-map">
+        <span><strong>App repo</strong>Static UI, fixtures, public docs</span>
+        <span><strong>Knowledge repo</strong>${escapeHtml(knowledgeRepo.name || "meids-knowledge-fabric")} · private OKF concepts, evidence, graph, audit</span>
+        <span><strong>Agent config repo</strong>${escapeHtml(agentConfigRepo.name || "meids-agent-configs")} · n8n contracts, prompts, skill specs</span>
+      </div>
+      <div class="production-knowledge-repo-actions">
+        <a class="secondary small" href="${docsUrl}" target="_blank" rel="noreferrer">Open OKF schema</a>
+        <a class="secondary small" href="${handoffUrl}" target="_blank" rel="noreferrer">Open handoff checklist</a>
+        ${bridge.compare_url ? `<a class="secondary small" href="${escapeHtml(bridge.compare_url)}" target="_blank" rel="noreferrer">Open knowledge compare</a>` : ""}
+      </div>
+      <small>Production rule: only approved or explicitly selected pending OKF material can move into trusted retrieval. Merge remains human-reviewed.</small>
+    </section>
+  `;
 }
 
 function githubBranchReviewEvidence(bridge = {}, reviewArtifacts = []) {
