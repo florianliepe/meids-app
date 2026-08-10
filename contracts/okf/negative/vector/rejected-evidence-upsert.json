@@ -1,0 +1,26 @@
+{
+  "expected_failure": "invalid vector evidence review state rejected",
+  "request": {
+    "operation": "upsert",
+    "twin_id": "florian",
+    "source_policy": "selected_pending",
+    "documents": [
+      {
+        "concept_id": "cpt_negative_rejected_evidence",
+        "repo_path": "concepts/florian/client-delivery/2026-08-09-rejected-evidence.md",
+        "review_state": "pending-review",
+        "text": "This fixture must be rejected because its evidence state is rejected.",
+        "metadata": {
+          "cluster": "client-delivery",
+          "type": "Decision Principle",
+          "evidence_refs": [
+            "evidence/florian/uploads/2026-08-09-rejected-source.yaml#source-claim"
+          ],
+          "evidence_review_states": [
+            "rejected"
+          ]
+        }
+      }
+    ]
+  }
+}

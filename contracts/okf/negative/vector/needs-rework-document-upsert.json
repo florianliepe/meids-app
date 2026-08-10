@@ -1,0 +1,26 @@
+{
+  "expected_failure": "invalid vector review_state needs-rework",
+  "request": {
+    "operation": "upsert",
+    "twin_id": "florian",
+    "source_policy": "selected_pending",
+    "documents": [
+      {
+        "concept_id": "cpt_negative_needs_rework_document",
+        "repo_path": "concepts/florian/client-delivery/2026-08-09-needs-rework.md",
+        "review_state": "needs-rework",
+        "text": "This fixture must be rejected because the document state needs rework.",
+        "metadata": {
+          "cluster": "client-delivery",
+          "type": "Decision Principle",
+          "evidence_refs": [
+            "evidence/florian/uploads/2026-08-09-source-001.yaml#page-2-paragraph-4"
+          ],
+          "evidence_review_states": [
+            "pending-review"
+          ]
+        }
+      }
+    ]
+  }
+}

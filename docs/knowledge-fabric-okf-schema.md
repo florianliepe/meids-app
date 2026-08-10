@@ -285,6 +285,10 @@ Validate the boundary with:
 node scripts\validate-vector-adapter.cjs
 ```
 
+Negative vector fixtures live in `contracts/okf/negative/vector`. They are valid
+test artifacts only when the validator rejects them for the declared reason, for
+example rejected evidence or needs-rework concepts being sent to vector refresh.
+
 ## Human Approval Boundary
 
 The Knowledge Fabric Agent may create drafts and candidates. It must not mark concepts, edges, skills, or high-risk memory as `approved` without an explicit human review event.
