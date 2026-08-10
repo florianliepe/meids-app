@@ -1,0 +1,23 @@
+{
+  "operation": "upsert",
+  "twin_id": "florian",
+  "source_policy": "approved_only",
+  "documents": [
+    {
+      "concept_id": "cpt_approved_example_001",
+      "repo_path": "concepts/florian/client-delivery/2026-08-09-client-delivery-steering.md",
+      "review_state": "approved",
+      "text": "Client delivery steering decisions should be grounded in approved source evidence before they enter trusted retrieval.",
+      "metadata": {
+        "cluster": "client-delivery",
+        "type": "Decision Principle",
+        "evidence_refs": [
+          "evidence/florian/uploads/2026-08-09/source-001.yaml#source-claim"
+        ],
+        "evidence_review_states": [
+          "approved"
+        ]
+      }
+    }
+  ]
+}

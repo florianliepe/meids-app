@@ -9,6 +9,7 @@ These examples are intentionally synthetic. They prove the file shape for:
 - transcripts
 - graph nodes
 - graph edges
+- Postgres graph projection schema
 - CRUD/audit events
 - vector adapter requests
 - OKF + graph repo-sync packages
@@ -35,6 +36,12 @@ Validate vector adapter request fixtures with:
 
 ```powershell
 node scripts\validate-vector-adapter.cjs
+```
+
+Validate the hosted graph projection schema boundary with:
+
+```powershell
+node scripts\validate-postgres-graph-schema.cjs
 ```
 
 The vector adapter validator also checks negative fixtures in

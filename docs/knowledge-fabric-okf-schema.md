@@ -234,6 +234,44 @@ Human promotion decisions are represented as `okf.graph_promotion.v1` JSON files
 in `contracts/okf/promotions`. Validate candidate-to-approved/rejected/rework
 transitions with `node scripts\validate-graph-promotions.cjs`.
 
+## Postgres Graph Projection
+
+OKF Markdown/YAML remains the authoring source of truth. Postgres is a hosted
+query projection for the Actor Twin, Knowledge Fabric Agent, graph cockpit, and
+retrieval services.
+
+The public-safe projection design is stored in:
+
+```text
+contracts/okf/postgres/graph-projection-schema.sql
+```
+
+Projection rules:
+
+- `meids_okf.graph_nodes` mirrors `okf.graph_node.v1` YAML files.
+- `meids_okf.graph_edges` mirrors `okf.graph_edge.v1` YAML files.
+- `meids_okf.graph_promotions` stores human promotion decisions from
+  `okf.graph_promotion.v1` JSON files.
+- `meids_okf.graph_projection_runs` records sync provenance: source repo,
+  branch, commit SHA, operation, status, counts, and errors.
+- `source_path` and `source_hash` are mandatory on projected nodes and edges so
+  every graph item can be traced back to the knowledge fabric repo.
+- Trusted retrieval must use `meids_okf.trusted_graph_edges`, which includes
+  only `approved` explicit/inferred edges with evidence references.
+- Draft, candidate, pending-review, and needs-rework relations are exposed
+  through `meids_okf.reviewable_graph_edges` for cockpit review, not trusted
+  answer generation.
+
+Validate the projection contract with:
+
+```powershell
+node scripts\validate-postgres-graph-schema.cjs
+```
+
+This validator is static. It does not connect to a database and does not require
+Azure or Postgres credentials. When hosted Postgres is available, the same SQL
+file can become the basis for an Alembic migration or migration seed.
+
 ## Vector DB Adapter Boundary
 
 No Azure/vector credentials are required for this repo. The adapter boundary is a

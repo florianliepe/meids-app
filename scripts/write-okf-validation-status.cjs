@@ -100,6 +100,7 @@ function main() {
     runCheck("scripts/validate-okf-fixtures.cjs", []),
     runCheck("scripts/validate-graph-promotions.cjs", []),
     runCheck("scripts/validate-vector-adapter.cjs", []),
+    runCheck("scripts/validate-postgres-graph-schema.cjs", []),
   ];
   const failed = checks.filter((check) => check.status !== "passed");
   const examples = listFiles(path.join(root, "contracts", "okf", "examples"), (file) => /\.(md|yaml|json|jsonl)$/.test(file));
@@ -109,13 +110,14 @@ function main() {
   const vectorRequests = listFiles(path.join(root, "contracts", "okf"), (file) => file.includes(`${path.sep}vector${path.sep}`) && !file.includes(`${path.sep}negative${path.sep}`) && file.endsWith(".json"));
   const negativeVectorRequests = listFiles(path.join(root, "contracts", "okf", "negative", "vector"), (file) => file.endsWith(".json"));
   const negativeConcepts = listFiles(path.join(root, "contracts", "okf", "negative", "concepts"), (file) => file.endsWith(".md"));
+  const postgresGraphSchema = path.join(root, "contracts", "okf", "postgres", "graph-projection-schema.sql");
   const artifact = {
     schema_version: "0.1.0",
     generated_at: new Date().toISOString(),
     status: failed.length ? "failed" : "passed",
     statuses: failed.length
       ? ["documented", "fixture ready", "validation failed"]
-      : ["documented", "fixture ready", "contract tested", "promotion tested", "vector boundary tested", "evidence review gate tested"],
+      : ["documented", "fixture ready", "contract tested", "promotion tested", "vector boundary tested", "postgres graph projection tested", "evidence review gate tested"],
     summary: {
       example_fixture_count: examples.length,
       generated_ingest_file_count: generated.length,
@@ -124,6 +126,7 @@ function main() {
       vector_request_fixture_count: vectorRequests.length,
       negative_vector_fixture_count: negativeVectorRequests.length,
       negative_concept_fixture_count: negativeConcepts.length,
+      postgres_graph_schema_count: fs.existsSync(postgresGraphSchema) ? 1 : 0,
       evidence_review_gate_fixture_count: negativeConcepts.filter((file) => file.includes("evidence-review") || file.includes("evidence")).length,
       check_count: checks.length,
       passed_check_count: checks.length - failed.length,
@@ -136,6 +139,7 @@ function main() {
       generated_root: "contracts/okf/generated",
       promotion_root: "contracts/okf/promotions",
       repo_sync_root: "contracts/okf/repo-sync",
+      postgres_graph_schema: "contracts/okf/postgres/graph-projection-schema.sql",
       vector_adapter_example: "contracts/okf/generated/vector/ing_example_001-upsert-request.json",
     },
     checks,
@@ -147,6 +151,7 @@ function main() {
       vector_requests: vectorRequests.map(rel),
       negative_vector_requests: negativeVectorRequests.map(rel),
       negative_concepts: negativeConcepts.map(rel),
+      postgres_graph_schema: fs.existsSync(postgresGraphSchema) ? [rel(postgresGraphSchema)] : [],
     },
   };
   if (args.write) {
