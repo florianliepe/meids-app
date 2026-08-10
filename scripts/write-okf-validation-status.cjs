@@ -29,9 +29,10 @@ function runCheck(command, args) {
 }
 
 function parseArgs(argv) {
-  const args = { write: false, output: defaultOutputPath };
+  const args = { check: false, write: false, output: defaultOutputPath };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
+    if (arg === "--check") args.check = true;
     if (arg === "--write") args.write = true;
     if (arg === "--output") {
       args.output = path.resolve(argv[index + 1] || "");
@@ -47,6 +48,17 @@ function rel(file) {
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
+}
+
+function stableArtifact(artifact) {
+  return {
+    ...artifact,
+    generated_at: "<ignored>",
+    checks: artifact.checks.map((check) => ({
+      ...check,
+      stdout: String(check.stdout || "").replace(/passed: \d+ files across \d+ fixture groups/g, "passed: <count> files across <count> fixture groups"),
+    })),
+  };
 }
 
 function vectorEligibilitySummary(vectorRequests) {
@@ -157,6 +169,20 @@ function main() {
   if (args.write) {
     fs.mkdirSync(path.dirname(args.output), { recursive: true });
     fs.writeFileSync(args.output, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
+  }
+  if (args.check) {
+    if (!fs.existsSync(args.output)) {
+      console.error(`OKF validation status artifact missing: ${rel(args.output)}`);
+      process.exit(1);
+    }
+    const current = readJson(args.output);
+    const expected = stableArtifact(artifact);
+    const actual = stableArtifact(current);
+    if (JSON.stringify(actual, null, 2) !== JSON.stringify(expected, null, 2)) {
+      console.error(`OKF validation status artifact is stale: ${rel(args.output)}`);
+      console.error("Run: node scripts/write-okf-validation-status.cjs --write");
+      process.exit(1);
+    }
   }
   console.log(`OKF validation status ${artifact.status}: ${artifact.summary.passed_check_count}/${artifact.summary.check_count} checks passed`);
   if (args.write) console.log(`OKF validation status written: ${rel(args.output)}`);
