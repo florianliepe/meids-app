@@ -29778,6 +29778,18 @@ body.theme-dark .agent-runtime-boundary-grid > article > small {
   line-height: 1.35;
 }
 
+.knowledge-fabric-lifecycle-actions {
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding-top: 9px;
+}
+
+.knowledge-fabric-lifecycle-actions .secondary {
+  min-height: 34px;
+}
+
 body.theme-dark .knowledge-fabric-lifecycle-trace {
   background:
     linear-gradient(135deg, rgba(123, 225, 199, 0.07), rgba(18, 23, 19, 0.96));
@@ -29794,6 +29806,10 @@ body.theme-dark .knowledge-fabric-lifecycle-boundary small {
 body.theme-dark .knowledge-fabric-lifecycle-head > span,
 body.theme-dark .knowledge-fabric-lifecycle-flow > span {
   background: rgba(16, 20, 17, 0.92);
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .knowledge-fabric-lifecycle-actions {
   border-color: rgba(232, 226, 214, 0.13);
 }
 
@@ -29820,6 +29836,10 @@ body.theme-dark .knowledge-fabric-lifecycle-flow em {
   .knowledge-fabric-lifecycle-head,
   .knowledge-fabric-lifecycle-flow {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knowledge-fabric-lifecycle-actions .secondary {
+    flex: 1 1 100%;
   }
 }
 

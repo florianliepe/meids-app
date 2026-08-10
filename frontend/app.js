@@ -572,6 +572,9 @@ function handleCockpitAction(action) {
     openChat: () => showView("chat"),
     openKnowledge: () => showView("concepts"),
     openGraph: () => showView("graph"),
+    exportGraphPromotionHistory: exportGraphPromotionHistory,
+    exportOkfGraphPackage: exportOkfGraphPromotionPackage,
+    copyOkfGraphRepoSync: copyOkfGraphPromotionRepoSyncPackage,
     openVoice: () => showView("voice"),
   };
   routes[action]?.();
@@ -16348,6 +16351,12 @@ function renderKnowledgeFabricLifecycleTracePanel(options = {}) {
           <span><strong>Runtime</strong><small>Live ingestion remains gated until Knowledge Fabric Agent and Agentic Butler URLs exist.</small></span>
         </div>
       `}
+      <div class="knowledge-fabric-lifecycle-actions">
+        <button class="secondary small" type="button" data-cockpit-action="openGraph">Open graph</button>
+        <button class="secondary small" type="button" data-cockpit-action="exportGraphPromotionHistory">Export graph history</button>
+        <button class="secondary small" type="button" data-cockpit-action="exportOkfGraphPackage">Export OKF + graph package</button>
+        <button class="secondary small" type="button" data-cockpit-action="copyOkfGraphRepoSync">Copy repo sync JSON</button>
+      </div>
     </article>
   `;
 }

@@ -311,6 +311,21 @@ Latest local QA pass for Knowledge Browser card state ribbon:
 
 This pass adds a compact review-state ribbon to every Knowledge Browser concept card. It makes review status, evidence readiness, Actor Twin use policy, and vector readiness scannable without relying on the larger source panel. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-card-state-ribbon/`.
 
+Latest local QA pass for lifecycle graph handoff actions:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-agent-config-export.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/replay-n8n-fixtures.cjs --write`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-lifecycle-graph-handoff-actions`
+- Targeted Playwright assertions open `?view=dashboard&dashboard=traces` and verify visible `.knowledge-fabric-lifecycle-actions`, Open graph, Export graph history, Export OKF + graph package, Copy repo sync JSON, dark mode, and zero horizontal overflow at `390px` and `1440px`.
+
+This pass adds graph-curator handoff actions directly to the Knowledge Fabric lifecycle trace. Reviewers can now move from lifecycle evidence to graph inspection, graph promotion history export, OKF+graph package export, or repo-sync JSON without hunting through lower dashboard panels. Screenshots are stored in `docs/visual-qa/screenshots-20260810-lifecycle-graph-handoff-actions/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:
