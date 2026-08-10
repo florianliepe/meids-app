@@ -1,7 +1,7 @@
 # GitHub Pages Agent Runtime Workflow Patch
 
 Date: 2026-08-10
-Status: prepared; applying requires a GitHub credential with `workflow` scope
+Status: prepared; remote workflow update is blocked until the GitHub credential has `workflow` scope
 Owner: MeIDs production setup
 
 ## Purpose
@@ -10,7 +10,7 @@ This document records the GitHub Pages workflow update needed to inject all thre
 
 ## Current Supported Paths
 
-Preferred production path: apply this workflow patch, configure GitHub repository secrets, and rerun the Pages workflow.
+Preferred production path after credential upgrade: apply this workflow patch, configure GitHub repository secrets, and rerun the Pages workflow.
 
 Fallback path for local/static public UAT testing: configure intentionally public webhook URLs through:
 
@@ -31,11 +31,12 @@ Do not place secrets, bearer tokens, private n8n URLs, Azure keys, or internal e
 
 Before using live n8n URLs through workflow-generated config:
 
-1. Apply this patch with a credential that can update `.github/workflows/*` files.
-2. Confirm the workflow on `main` includes the three top-level webhook secret slots.
+1. Provide or install a GitHub credential with `workflow` scope.
+2. Apply this patch to `.github/workflows/intellectual-twin-pages.yml`.
 3. Confirm all webhook URLs are safe to expose to GitHub Pages users, or proxy private endpoints through a hosted backend.
 4. Configure the required secrets in `Settings -> Secrets and variables -> Actions -> Repository secrets`.
-5. Keep `frontend/assets/agent-runtime-config.json` as fallback for public UAT setup and local static testing.
+5. Rerun the Pages workflow after secret updates.
+6. Keep `frontend/assets/agent-runtime-config.json` as fallback for public UAT setup and local static testing.
 
 ## Required Secrets
 
@@ -49,7 +50,7 @@ Before using live n8n URLs through workflow-generated config:
 
 ## Required Workflow Shape
 
-The workflow should contain this runtime-config generation shape.
+The workflow should contain this runtime-config generation shape after the credential boundary is resolved.
 
 ```diff
 diff --git a/.github/workflows/intellectual-twin-pages.yml b/.github/workflows/intellectual-twin-pages.yml

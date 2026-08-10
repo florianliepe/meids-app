@@ -16,7 +16,7 @@ MeIDs can run in GitHub Pages fixture mode without live n8n workflows. For produ
 
 ## GitHub Pages Secrets
 
-The preferred production path is to let the Pages workflow generate `runtime-config.js` during deployment from repository secrets. This requires a workflow update that adds explicit top-level agent webhook secret slots:
+The preferred production path is to let the Pages workflow generate `runtime-config.js` during deployment from repository secrets. The required workflow patch is prepared, but pushing changes under `.github/workflows/*` requires a GitHub credential with `workflow` scope:
 
 | Secret | Purpose |
 |---|---|
@@ -31,7 +31,7 @@ Secrets must be configured in GitHub at:
 
 `Settings -> Secrets and variables -> Actions -> Repository secrets`
 
-Current credential boundary: the repository workflow patch is documented, but pushing workflow file changes requires a GitHub credential with `workflow` scope.
+Current credential boundary: the public app can already use `frontend/assets/agent-runtime-config.json` for intentionally public UAT URLs. Workflow-secret injection is documented but blocked until a `workflow`-scope GitHub credential can update the Pages workflow. The missing live work remains to provide values for Knowledge Fabric Agent and Agentic Butler when those n8n workflows are ready.
 
 Current workflow: [`.github/workflows/intellectual-twin-pages.yml`](../.github/workflows/intellectual-twin-pages.yml).
 
