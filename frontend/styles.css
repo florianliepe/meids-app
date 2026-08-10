@@ -5941,6 +5941,64 @@ body.theme-dark .repo-responsibility-lane {
   padding: 12px;
 }
 
+.workflow-scope-blocker {
+  border: 1px solid color-mix(in srgb, var(--warn) 36%, var(--line));
+  border-left: 4px solid color-mix(in srgb, var(--warn) 74%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 86%, var(--warn) 7%);
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.workflow-scope-blocker strong {
+  color: var(--ink);
+  display: block;
+  margin: 6px 0 4px;
+}
+
+.workflow-scope-blocker p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.workflow-scope-blocker code {
+  color: inherit;
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+.workflow-scope-blocker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.workflow-scope-blocker-grid span {
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-quiet) 82%, transparent);
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px;
+}
+
+.workflow-scope-blocker-grid strong {
+  margin: 0;
+}
+
+.workflow-scope-blocker-grid small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .n8n-current-config-path strong {
   color: var(--ink);
   display: block;
@@ -9444,6 +9502,26 @@ body.theme-dark .n8n-current-config-path code {
   border-color: rgba(255, 255, 255, 0.1);
 }
 
+body.theme-dark .workflow-scope-blocker {
+  border-color: rgba(215, 181, 109, 0.36);
+  background: rgba(45, 38, 23, 0.32);
+}
+
+body.theme-dark .workflow-scope-blocker strong,
+body.theme-dark .workflow-scope-blocker-grid strong {
+  color: rgba(255, 252, 244, 0.95);
+}
+
+body.theme-dark .workflow-scope-blocker p,
+body.theme-dark .workflow-scope-blocker-grid small {
+  color: rgba(244, 240, 231, 0.74);
+}
+
+body.theme-dark .workflow-scope-blocker-grid span {
+  border-color: rgba(241, 235, 224, 0.13);
+  background: rgba(17, 21, 17, 0.58);
+}
+
 body.theme-dark .agent-runtime-missing-inline {
   border-color: rgba(240, 163, 154, 0.34);
   background: rgba(52, 32, 28, 0.34);
@@ -9633,6 +9711,10 @@ body.theme-dark .agent-response-card .todo-table article {
   }
 
   .n8n-runtime-secret-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workflow-scope-blocker-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 

@@ -7931,7 +7931,12 @@ function bindQuality() {
     await refreshAgentOperatingModel();
     await refreshN8nAgentContracts();
   });
+  $("#refreshProductionAgentRuntimeBtn")?.addEventListener("click", async () => {
+    await refreshAgentOperatingModel();
+    await refreshN8nAgentContracts();
+  });
   $("#agentOperatingModelPanel")?.addEventListener("click", handleAgentOperatingModelClick);
+  $("#productionAgentRuntimeBoundaryPanel")?.addEventListener("click", handleAgentOperatingModelClick);
   $("#refreshAgentTraceHistoryBtn")?.addEventListener("click", renderAgentTraceHistoryPanel);
   $("#clearAgentTraceHistoryBtn")?.addEventListener("click", clearAgentTraceHistory);
   $$("[data-agent-trace-filter]").forEach((button) => {
@@ -12489,33 +12494,40 @@ function mergeStaticN8nReplayStatus(replayStatus = {}) {
 
 function renderAgentOperatingModelPanel() {
   const target = $("#agentOperatingModelPanel");
-  if (!target) return;
+  const productionTarget = $("#productionAgentRuntimeBoundaryPanel");
   const model = state.agentOperatingModel || {};
   const agents = Array.isArray(model.top_level_agents) ? model.top_level_agents : [];
   if (!agents.length) {
-    target.innerHTML = renderEmptyState("No top-level agent model loaded.");
+    if (target) target.innerHTML = renderEmptyState("No top-level agent model loaded.");
+    if (productionTarget) productionTarget.innerHTML = renderEmptyState("No top-level agent runtime model loaded.");
     return;
   }
-  target.innerHTML = `
-    <div class="agent-model-grid top-level-agent-grid">
-      ${agents.map((agent) => `
-        <article class="top-level-agent-card ${safeGraphClass(agent.id || "agent")}">
-          <div class="activity-meta">
-            <span class="badge">${escapeHtml(agent.group || "agent")}</span>
-            <small>${escapeHtml(agent.n8n_contract || "no contract")}</small>
-          </div>
-          <h3>${escapeHtml(agent.name || agent.id || "Agent")}</h3>
-          <p>${escapeHtml(agent.purpose || "")}</p>
-          <div class="agent-consumer-list">
-            ${(agent.owns || []).slice(0, 5).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
-          </div>
-          ${renderInternalAgentComponents(agent)}
-          <small>${escapeHtml((agent.subagents || []).length)} subagents · approval remains human-gated</small>
-        </article>
-      `).join("")}
-    </div>
-    ${renderN8nContractReadinessPanel(agents)}
-  `;
+  const readinessPanel = renderN8nContractReadinessPanel(agents);
+  if (target) {
+    target.innerHTML = `
+      <div class="agent-model-grid top-level-agent-grid">
+        ${agents.map((agent) => `
+          <article class="top-level-agent-card ${safeGraphClass(agent.id || "agent")}">
+            <div class="activity-meta">
+              <span class="badge">${escapeHtml(agent.group || "agent")}</span>
+              <small>${escapeHtml(agent.n8n_contract || "no contract")}</small>
+            </div>
+            <h3>${escapeHtml(agent.name || agent.id || "Agent")}</h3>
+            <p>${escapeHtml(agent.purpose || "")}</p>
+            <div class="agent-consumer-list">
+              ${(agent.owns || []).slice(0, 5).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+            </div>
+            ${renderInternalAgentComponents(agent)}
+            <small>${escapeHtml((agent.subagents || []).length)} subagents · approval remains human-gated</small>
+          </article>
+        `).join("")}
+      </div>
+      ${readinessPanel}
+    `;
+  }
+  if (productionTarget) {
+    productionTarget.innerHTML = readinessPanel;
+  }
 }
 
 function renderInternalAgentComponents(agent = {}) {
@@ -12672,6 +12684,7 @@ function renderN8nRuntimeSetupActions(agents = [], contractByAgent = new Map()) 
         </div>
       </div>
       ${missingAgents.length ? renderN8nCurrentSupportedConfigPath(missingSnippet) : ""}
+      ${renderWorkflowScopeCredentialBlocker(missingAgents)}
       <div class="n8n-runtime-secret-grid">
         ${secretRows.map((row) => `
           <article class="${row.status === "configured" ? "ready" : "pending"}">
@@ -12694,6 +12707,59 @@ function renderN8nRuntimeSetupActions(agents = [], contractByAgent = new Map()) 
         </ol>
       </details>
     </section>
+  `;
+}
+
+function renderWorkflowScopeCredentialBlocker(missingAgents = []) {
+  const missingNames = missingAgents.length
+    ? missingAgents.map((agent) => agent.name || agentDisplayName(agent.id || "")).join(", ")
+    : "No missing live agent URLs";
+  const workflowPatch = githubBlobUrl("docs/production/github-pages-agent-runtime-workflow-patch.md");
+  const runtimeAsset = githubBlobUrl("frontend/assets/agent-runtime-config.json");
+  const guide = githubBlobUrl("docs/n8n-live-url-configuration.md");
+  const scopePacket = {
+    blocker: "github_workflow_scope_required",
+    current_supported_path: "frontend/assets/agent-runtime-config.json for intentionally public UAT webhook URLs",
+    blocked_path: ".github/workflows/intellectual-twin-pages.yml secret injection",
+    required_capability: "GitHub credential or app token with workflow scope",
+    missing_live_agents: missingAgents.map((agent) => ({
+      agent_id: agent.id || "",
+      agent_name: agent.name || agentDisplayName(agent.id || ""),
+      next_action: "Create/publish public UAT n8n webhook URL, then add it via runtime asset or workflow-secret path.",
+    })),
+    docs: [
+      "docs/n8n-live-url-configuration.md",
+      "docs/production/github-pages-agent-runtime-workflow-patch.md",
+    ],
+  };
+  return `
+    <aside class="workflow-scope-blocker">
+      <div>
+        <span class="badge">Credential boundary</span>
+        <strong>Workflow-secret deployment is prepared, but blocked by missing GitHub <code>workflow</code> scope.</strong>
+        <p>Use the public runtime asset for UAT now. Apply the workflow patch only after the GitHub credential can update <code>.github/workflows/*</code>.</p>
+      </div>
+      <div class="workflow-scope-blocker-grid">
+        <span>
+          <strong>Current path</strong>
+          <small>Public UAT URLs in <code>frontend/assets/agent-runtime-config.json</code></small>
+        </span>
+        <span>
+          <strong>Blocked path</strong>
+          <small>Repository-secret injection into GitHub Pages runtime config</small>
+        </span>
+        <span>
+          <strong>Missing live agents</strong>
+          <small>${escapeHtml(missingNames)}</small>
+        </span>
+      </div>
+      <div class="button-row tight">
+        <a class="secondary small" href="${escapeHtml(runtimeAsset)}" target="_blank" rel="noreferrer">Open runtime asset</a>
+        <a class="secondary small" href="${escapeHtml(workflowPatch)}" target="_blank" rel="noreferrer">Open workflow patch</a>
+        <a class="secondary small" href="${escapeHtml(guide)}" target="_blank" rel="noreferrer">Open live URL guide</a>
+        <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(scopePacket, null, 2))}">Copy blocker packet</button>
+      </div>
+    </aside>
   `;
 }
 
