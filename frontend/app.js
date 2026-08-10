@@ -12798,11 +12798,14 @@ function renderKnowledgeFabricArtifactLink(label, value) {
 async function probeAgentContract(agentId) {
   if (!agentId) return;
   const webhookUrl = getAgentWebhook(agentId);
+  const envelope = buildAgentLiveProbeEnvelope(agentId);
   if (!webhookUrl) {
+    const probeResult = { status: "blocked", detail: "No runtime webhook configured." };
     state.n8nLiveProbeResults = {
       ...state.n8nLiveProbeResults,
-      [agentId]: { status: "blocked", detail: "No runtime webhook configured." },
+      [agentId]: probeResult,
     };
+    persistAgentProbeTrace(agentId, envelope, probeResult);
     renderAgentOperatingModelPanel();
     renderChatContractSurfaces();
     renderProductionKnowledgeRepoReadiness();
@@ -12810,36 +12813,42 @@ async function probeAgentContract(agentId) {
     return;
   }
   if (staticPagesMode && !isN8nChatWebhook(webhookUrl)) {
+    const probeResult = { status: "configured", detail: "Webhook URL exists; live POST is disabled in static probe mode." };
     state.n8nLiveProbeResults = {
       ...state.n8nLiveProbeResults,
-      [agentId]: { status: "configured", detail: "Webhook URL exists; live POST is disabled in static probe mode." },
+      [agentId]: probeResult,
     };
+    persistAgentProbeTrace(agentId, envelope, probeResult);
     renderAgentOperatingModelPanel();
     renderChatContractSurfaces();
     renderProductionKnowledgeRepoReadiness();
     showToast("Live probe configured", `${agentDisplayName(agentId)} has a webhook URL.`, "success");
     return;
   }
-  const envelope = buildAgentLiveProbeEnvelope(agentId);
   try {
     const result = await postAgentContractEnvelope(agentId, envelope, (fallbackEnvelope) => normalizeAgentContractResponse(agentId, {
       status: "completed",
       output: { answer: "Fixture probe completed." },
       trace: { trace_id: `trace_${fallbackEnvelope.request_id}`, stored: false },
     }, fallbackEnvelope, "fixture fallback"));
+    const probeResult = { status: result.runtime === "n8n connected" ? "connected" : "fixture", detail: result.trace_id || result.response?.request_id || "" };
     state.n8nLiveProbeResults = {
       ...state.n8nLiveProbeResults,
-      [agentId]: { status: result.runtime === "n8n connected" ? "connected" : "fixture", detail: result.trace_id || result.response?.request_id || "" },
+      [agentId]: probeResult,
     };
+    persistAgentTrace(result);
+    persistAgentProbeTrace(agentId, envelope, probeResult, { trace_id: result.trace_id, runtime: result.runtime });
     renderAgentOperatingModelPanel();
     renderChatContractSurfaces();
     renderProductionKnowledgeRepoReadiness();
     showToast("Live probe completed", `${agentDisplayName(agentId)}: ${state.n8nLiveProbeResults[agentId].status}`, "success");
   } catch (error) {
+    const probeResult = { status: "failed", detail: compactError(error.message) };
     state.n8nLiveProbeResults = {
       ...state.n8nLiveProbeResults,
-      [agentId]: { status: "failed", detail: compactError(error.message) },
+      [agentId]: probeResult,
     };
+    persistAgentProbeTrace(agentId, envelope, probeResult);
     renderAgentOperatingModelPanel();
     renderChatContractSurfaces();
     renderProductionKnowledgeRepoReadiness();
@@ -14191,6 +14200,44 @@ function persistAgentTrace(result = {}) {
     renderDashboardAgentTraceHistory();
   } catch (error) {
     console.warn("Agent trace persistence failed", error);
+  }
+}
+
+function persistAgentProbeTrace(agentId, envelope = {}, probe = {}, options = {}) {
+  const status = probe.status || "unknown";
+  const traceId = options.trace_id || `probe_${agentId}_${Date.now().toString(36)}`;
+  const runtime = options.runtime || (
+    status === "connected"
+      ? "n8n connected · live probe"
+      : status === "configured"
+        ? "webhook configured · probe pending"
+        : status === "fixture"
+          ? "fixture fallback · probe"
+          : "fixture replay · live URL missing"
+  );
+  const entry = {
+    timestamp: new Date().toISOString(),
+    twin: state.activeTwin || "",
+    agent_id: agentId,
+    agent_name: agentDisplayName(agentId),
+    status: status === "connected" ? "completed" : status,
+    runtime,
+    request_id: envelope.request_id || "",
+    trace_id: traceId,
+    approval_required: false,
+    artifact_path: envelope.intent || "live_probe",
+    detail: probe.detail || agentRuntimeReadiness(agentId).detail || "",
+    probe_trace: true,
+  };
+  try {
+    const current = JSON.parse(window.localStorage.getItem(storageKeys.agentTraceLog) || "[]");
+    const existing = Array.isArray(current) ? current : [];
+    const deduped = existing.filter((trace) => trace.trace_id !== entry.trace_id && trace.request_id !== entry.request_id);
+    window.localStorage.setItem(storageKeys.agentTraceLog, JSON.stringify([entry, ...deduped].slice(0, 50)));
+    renderAgentTraceHistoryPanel();
+    renderDashboardAgentTraceHistory();
+  } catch (error) {
+    console.warn("Agent probe trace persistence failed", error);
   }
 }
 
