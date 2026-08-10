@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-10T21:36:27.671Z",
+  "generated_at": "2026-08-10T21:42:38.041Z",
   "status": "partial_live_url_blocked",
   "mode": "public_safe",
   "summary": {
@@ -9,7 +9,8 @@
     "qa_check_count": 2,
     "passed_qa_check_count": 2,
     "public_safe_ready": true,
-    "live_ready": false
+    "live_ready": false,
+    "live_probe_ready": false
   },
   "requirements": [
     {
@@ -123,7 +124,8 @@
         "scripts/validate-agent-config-export.cjs",
         "scripts/set-n8n-agent-url.cjs",
         "frontend/assets/agent-runtime-config.json",
-        "frontend/assets/n8n-runtime-readiness-status.json"
+        "frontend/assets/n8n-runtime-readiness-status.json",
+        "frontend/assets/n8n-live-probe-evidence.json"
       ],
       "missing": []
     }
@@ -159,6 +161,18 @@
     ],
     "artifact_status": "partial",
     "detail": "Missing live URL(s): knowledge_fabric_agent, agentic_butler"
+  },
+  "live_probe_evidence": {
+    "status": "partial",
+    "path": "frontend/assets/n8n-live-probe-evidence.json",
+    "connected_count": 0,
+    "required_count": 3,
+    "missing_probe_agents": [
+      "actor_twin",
+      "knowledge_fabric_agent",
+      "agentic_butler"
+    ],
+    "detail": "Missing live probe evidence for: actor_twin, knowledge_fabric_agent, agentic_butler"
   },
   "next_actions": [
     "Configure GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL.",

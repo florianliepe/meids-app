@@ -1,0 +1,31 @@
+{
+  "schema_version": "0.1.0",
+  "status": "awaiting_live_probe_evidence",
+  "boundary": "Public-safe live probe evidence placeholder. Replace awaiting entries only after public UAT probes reach n8n and return non-demo trace ids.",
+  "agents": [
+    {
+      "agent_id": "actor_twin",
+      "agent_name": "Actor Twin",
+      "status": "awaiting_probe",
+      "trace_id": "",
+      "demo": false,
+      "next_action": "Run Actor Twin live probe and record returned trace id."
+    },
+    {
+      "agent_id": "knowledge_fabric_agent",
+      "agent_name": "Knowledge Fabric Agent",
+      "status": "awaiting_probe",
+      "trace_id": "",
+      "demo": false,
+      "next_action": "Configure public UAT URL, run no-write ingest probe, and record returned trace id."
+    },
+    {
+      "agent_id": "agentic_butler",
+      "agent_name": "Agentic Butler",
+      "status": "awaiting_probe",
+      "trace_id": "",
+      "demo": false,
+      "next_action": "Configure public UAT URL, run approval-gated skill probe, and record returned trace id."
+    }
+  ]
+}

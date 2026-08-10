@@ -154,6 +154,40 @@ Minimal public staging JSON shape:
 
 After adding a URL, the cockpit status should move from `missing URL` to `configured`. It only becomes `n8n connected` after the live probe reaches the workflow and records a trace.
 
+## Live Probe Evidence Artifact
+
+Final readiness requires proof that the workflows were reached, not only that URLs were pasted. The public-safe evidence location is:
+
+`frontend/assets/n8n-live-probe-evidence.json`
+
+Expected agent entry after a successful UAT probe:
+
+```json
+{
+  "agent_id": "knowledge_fabric_agent",
+  "agent_name": "Knowledge Fabric Agent",
+  "status": "connected",
+  "checked_at": "2026-08-10T20:00:00.000Z",
+  "trace_id": "trace_from_n8n_execution",
+  "demo": false,
+  "url_source": "runtime-asset or browser-local",
+  "evidence": {
+    "n8n_execution_url": "https://YOUR-N8N-HOST/workflow/.../executions/...",
+    "response_status": "completed"
+  }
+}
+```
+
+Strict gates:
+
+```powershell
+node scripts\validate-zielmodus-4-readiness.cjs --require-live
+node scripts\validate-zielmodus-4-readiness.cjs --require-live-probes
+```
+
+- `--require-live` fails until all top-level agent URL slots are configured.
+- `--require-live-probes` fails until all URLs are configured and `frontend/assets/n8n-live-probe-evidence.json` contains connected, non-demo trace evidence for Actor Twin, Knowledge Fabric Agent, and Agentic Butler.
+
 ## Local Public UAT URL Helper
 
 For local UAT, use the checked-in helper to update the public staging runtime config and regenerate readiness artifacts in one step:

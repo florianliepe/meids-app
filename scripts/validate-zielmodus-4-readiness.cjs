@@ -4,6 +4,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const args = new Set(process.argv.slice(2));
 const requireLive = args.has("--require-live");
+const requireLiveProbes = args.has("--require-live-probes");
 const write = args.has("--write");
 const outputArg = process.argv.find((arg) => arg.startsWith("--output="));
 const outputPath = outputArg
@@ -106,6 +107,7 @@ const requirements = [
       "scripts/set-n8n-agent-url.cjs",
       "frontend/assets/agent-runtime-config.json",
       "frontend/assets/n8n-runtime-readiness-status.json",
+      "frontend/assets/n8n-live-probe-evidence.json",
     ],
   },
 ];
@@ -181,18 +183,55 @@ function liveAgentStatus() {
   };
 }
 
+function liveProbeEvidenceStatus() {
+  const evidencePath = "frontend/assets/n8n-live-probe-evidence.json";
+  const required = ["actor_twin", "knowledge_fabric_agent", "agentic_butler"];
+  if (!exists(evidencePath)) {
+    return {
+      status: "missing",
+      path: evidencePath,
+      connected_count: 0,
+      required_count: required.length,
+      missing_probe_agents: required,
+      detail: "Live probe evidence artifact missing.",
+    };
+  }
+  const evidence = readJson(evidencePath);
+  const agents = Array.isArray(evidence.agents) ? evidence.agents : [];
+  const missingProbeAgents = required.filter((agentId) => {
+    const agent = agents.find((item) => item.agent_id === agentId);
+    if (!agent) return true;
+    if (!["connected", "n8n connected"].includes(String(agent.status || "").toLowerCase())) return true;
+    if (!agent.trace_id) return true;
+    if (agent.demo === true) return true;
+    return false;
+  });
+  return {
+    status: missingProbeAgents.length ? "partial" : "complete",
+    path: evidencePath,
+    connected_count: required.length - missingProbeAgents.length,
+    required_count: required.length,
+    missing_probe_agents: missingProbeAgents,
+    detail: missingProbeAgents.length
+      ? `Missing live probe evidence for: ${missingProbeAgents.join(", ")}`
+      : "All top-level agents have connected, non-demo live probe evidence.",
+  };
+}
+
 const requirementResults = requirements.map(evidenceState);
 const qaResults = [
   validateBrowserQa("docs/visual-qa/screenshots-20260810-z4-final-audit/browser-dark-mode-qa.json", 5),
   validateBrowserQa("docs/visual-qa/screenshots-20260810-z4-chat-latest-agent-traces/chat-latest-agent-traces-qa.json", 2),
 ];
 const live = liveAgentStatus();
+const liveProbeEvidence = liveProbeEvidenceStatus();
 const missingRequirements = requirementResults.filter((item) => item.status !== "ready");
 const failedQa = qaResults.filter((item) => !item.passed);
 const publicSafeReady = !missingRequirements.length && !failedQa.length;
 const liveReady = live.status === "configured";
+const liveProbeReady = liveProbeEvidence.status === "complete";
 const status = publicSafeReady && liveReady
-  ? "complete"
+  ? (liveProbeReady ? "complete" : "live_probe_evidence_pending")
   : publicSafeReady
     ? "partial_live_url_blocked"
     : "incomplete";
@@ -201,7 +240,7 @@ const artifact = {
   schema_version: "0.1.0",
   generated_at: new Date().toISOString(),
   status,
-  mode: requireLive ? "require_live" : "public_safe",
+  mode: requireLiveProbes ? "require_live_probes" : requireLive ? "require_live" : "public_safe",
   summary: {
     requirement_count: requirementResults.length,
     ready_requirement_count: requirementResults.filter((item) => item.status === "ready").length,
@@ -209,11 +248,20 @@ const artifact = {
     passed_qa_check_count: qaResults.filter((item) => item.passed).length,
     public_safe_ready: publicSafeReady,
     live_ready: liveReady,
+    live_probe_ready: liveProbeReady,
   },
   requirements: requirementResults,
   qa: qaResults,
   live_n8n: live,
-  next_actions: liveReady
+  live_probe_evidence: liveProbeEvidence,
+  next_actions: liveReady && !liveProbeReady
+    ? [
+        "Run cockpit live probes for all three agents.",
+        "Export live probe evidence to frontend/assets/n8n-live-probe-evidence.json.",
+        "Capture n8n execution trace evidence.",
+        "Confirm human approval gate behavior for Agentic Butler.",
+      ]
+    : liveReady
     ? [
         "Run cockpit live probes for all three agents.",
         "Capture n8n execution trace evidence.",
@@ -236,7 +284,9 @@ console.log(`Zielmodus 4 readiness: ${artifact.status}`);
 console.log(`Requirements: ${artifact.summary.ready_requirement_count}/${artifact.summary.requirement_count} ready`);
 console.log(`QA: ${artifact.summary.passed_qa_check_count}/${artifact.summary.qa_check_count} passed`);
 console.log(`Live n8n: ${live.detail}`);
+console.log(`Live probes: ${liveProbeEvidence.detail}`);
 if (write) console.log(`Readiness artifact written: ${rel(outputPath)}`);
 
 if (!publicSafeReady) process.exit(1);
 if (requireLive && !liveReady) process.exit(1);
+if (requireLiveProbes && (!liveReady || !liveProbeReady)) process.exit(1);

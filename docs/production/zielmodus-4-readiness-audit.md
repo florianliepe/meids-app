@@ -63,8 +63,11 @@ The same status is surfaced in the Production Cockpit as a `Zielmodus gate` card
 | `node scripts/validate-zielmodus-4-readiness.cjs` | Exit `0`, status `partial_live_url_blocked` | Confirms all public-safe evidence and QA are ready while live n8n URLs are still missing |
 | `node scripts/validate-zielmodus-4-readiness.cjs --write` | Exit `0`, writes `frontend/assets/zielmodus-4-readiness-status.json` | Publishes a static readiness artifact for GitHub Pages and operator review |
 | `node scripts/validate-zielmodus-4-readiness.cjs --require-live` | Exit `1` until both missing live URLs exist | Strict production/live gate for final Zielmodus closure |
+| `node scripts/validate-zielmodus-4-readiness.cjs --require-live-probes` | Exit `1` until live URLs and non-demo probe trace evidence exist | Strict final gate for URL plus workflow-reached proof |
 
-The current correct status is `partial_live_url_blocked`: all schema, fixture, graph, vector-boundary, trace, and dark-mode evidence is present; Knowledge Fabric Agent and Agentic Butler remain blocked on live webhook URLs.
+The current correct status is `partial_live_url_blocked`: all schema, fixture, graph, vector-boundary, trace, and dark-mode evidence is present; Knowledge Fabric Agent and Agentic Butler remain blocked on live webhook URLs. After URLs are configured, the status may advance to `live_probe_evidence_pending` until public UAT probes reach the workflows and return trace ids.
+
+Live probe evidence is tracked in `frontend/assets/n8n-live-probe-evidence.json`. Keep placeholder entries in `awaiting_probe` until the corresponding n8n execution is visible and the response includes a non-demo `trace_id`.
 
 ## Live n8n Completion Gate
 
