@@ -6221,6 +6221,7 @@ function renderGraphSelectedEdgeActions(edge, source = {}, targetNode = {}) {
       </dl>
       ${renderGraphPromotionChips(edge)}
       ${renderGraphEdgeProvenancePanel(edge, source, targetNode)}
+      ${renderGraphSelectedEdgeLifecycle(edge)}
       ${pending ? renderGraphPromotionDecisionShortcuts(edge) : renderGraphPromotionDecisionOutcome(edge)}
       <div class="graph-selected-edge-actions">
         <div>
@@ -6246,6 +6247,65 @@ function renderGraphSelectedEdgeActions(edge, source = {}, targetNode = {}) {
         </div>
       </div>
       ${renderGraphPromotionFixtureLinks(edge)}
+    </section>
+  `;
+}
+
+function renderGraphSelectedEdgeLifecycle(edge = {}) {
+  const decision = graphPromotionDecision(edge);
+  const policy = graphEdgeUsagePolicy(edge);
+  const relationClass = graphEdgeClass(edge);
+  const reviewState = edge.review_state || "unreviewed";
+  const confidence = graphEdgeConfidencePercent(edge);
+  const steps = [
+    {
+      key: "captured",
+      label: "Captured",
+      detail: "source or inference produced relation",
+      ready: true,
+    },
+    {
+      key: "evidence",
+      label: "Evidence",
+      detail: relationClass === "explicit" ? "source-backed" : relationClass === "inferred" ? "inferred bridge" : "candidate signal",
+      ready: relationClass === "explicit" || Boolean(confidence),
+    },
+    {
+      key: "review",
+      label: "Review",
+      detail: labelizeGraph(reviewState),
+      ready: ["accepted", "approved"].includes(String(reviewState)),
+      caution: ["unreviewed", "needs-rework"].includes(String(reviewState)),
+      blocked: String(reviewState) === "rejected",
+    },
+    {
+      key: "actor-use",
+      label: "Actor use",
+      detail: policy.label,
+      ready: ["trusted", "source-backed"].includes(decision.trust),
+      caution: decision.className === "inferred" || decision.className === "candidate" || decision.className === "needs-rework",
+      blocked: decision.className === "rejected",
+    },
+  ];
+  return `
+    <section class="graph-selected-edge-lifecycle ${safeGraphClass(decision.className)}" aria-label="Selected relation lifecycle trace">
+      <div class="graph-selected-edge-lifecycle-head">
+        <span class="badge">Relation trace</span>
+        <strong>${escapeHtml(decision.trust)}</strong>
+        <small>${escapeHtml(decision.description)}</small>
+      </div>
+      <div class="graph-selected-edge-lifecycle-steps">
+        ${steps.map((step, index) => {
+          const stateClass = step.blocked ? "blocked" : step.ready ? "ready" : step.caution ? "caution" : "pending";
+          return `
+            <span class="${safeGraphClass(stateClass)}">
+              <em>${escapeHtml(String(index + 1))}</em>
+              <strong>${escapeHtml(step.label)}</strong>
+              <small>${escapeHtml(step.detail)}</small>
+            </span>
+          `;
+        }).join("")}
+      </div>
     </section>
   `;
 }

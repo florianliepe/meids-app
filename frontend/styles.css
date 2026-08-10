@@ -31010,18 +31010,128 @@ body.theme-dark .graph-retrieval-contract-flow article {
   overflow-wrap: anywhere;
 }
 
+.graph-selected-edge-lifecycle {
+  background: color-mix(in srgb, var(--surface-quiet) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--accent) 58%, var(--line));
+  border-radius: 10px;
+  display: grid;
+  gap: 9px;
+  margin: 9px 0;
+  min-width: 0;
+  padding: 10px;
+}
+
+.graph-selected-edge-lifecycle.candidate,
+.graph-selected-edge-lifecycle.needs-rework {
+  border-left-color: color-mix(in srgb, var(--warn) 78%, var(--line));
+}
+
+.graph-selected-edge-lifecycle.rejected {
+  border-left-color: color-mix(in srgb, #c84f3f 72%, var(--line));
+}
+
+.graph-selected-edge-lifecycle-head {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.graph-selected-edge-lifecycle-head strong {
+  color: var(--ink);
+  font-size: 0.84rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  text-transform: capitalize;
+}
+
+.graph-selected-edge-lifecycle-head small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.graph-selected-edge-lifecycle-steps {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.graph-selected-edge-lifecycle-steps span {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 9px;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px;
+}
+
+.graph-selected-edge-lifecycle-steps em {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  display: inline-flex;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 900;
+  height: 20px;
+  justify-content: center;
+  width: 20px;
+}
+
+.graph-selected-edge-lifecycle-steps strong {
+  color: var(--ink);
+  font-size: 0.72rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.graph-selected-edge-lifecycle-steps small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 750;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.graph-selected-edge-lifecycle-steps span.ready em {
+  background: color-mix(in srgb, #34c795 16%, var(--surface));
+  border-color: color-mix(in srgb, #34c795 42%, var(--line));
+}
+
+.graph-selected-edge-lifecycle-steps span.caution em,
+.graph-selected-edge-lifecycle-steps span.pending em {
+  background: color-mix(in srgb, var(--warn) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--warn) 44%, var(--line));
+}
+
+.graph-selected-edge-lifecycle-steps span.blocked em {
+  background: color-mix(in srgb, #c84f3f 14%, var(--surface));
+  border-color: color-mix(in srgb, #c84f3f 44%, var(--line));
+}
+
 body.theme-dark .graph-selected-edge-brief span,
-body.theme-dark .graph-selected-edge-actions > div {
+body.theme-dark .graph-selected-edge-actions > div,
+body.theme-dark .graph-selected-edge-lifecycle,
+body.theme-dark .graph-selected-edge-lifecycle-steps span {
   background: rgba(18, 23, 19, 0.9);
   border-color: rgba(232, 226, 214, 0.13);
 }
 
-body.theme-dark .graph-selected-edge-brief strong {
+body.theme-dark .graph-selected-edge-brief strong,
+body.theme-dark .graph-selected-edge-lifecycle-head strong,
+body.theme-dark .graph-selected-edge-lifecycle-steps strong {
   color: #fff8ea;
 }
 
 body.theme-dark .graph-selected-edge-brief small,
-body.theme-dark .graph-selected-edge-actions small {
+body.theme-dark .graph-selected-edge-actions small,
+body.theme-dark .graph-selected-edge-lifecycle-head small,
+body.theme-dark .graph-selected-edge-lifecycle-steps small {
   color: #c9c0b3;
 }
 
@@ -31039,9 +31149,38 @@ body.theme-dark .graph-selected-edge-brief.blocked span {
   border-top-color: rgba(221, 102, 81, 0.9);
 }
 
+body.theme-dark .graph-selected-edge-lifecycle.candidate,
+body.theme-dark .graph-selected-edge-lifecycle.needs-rework {
+  border-left-color: rgba(241, 208, 140, 0.9);
+}
+
+body.theme-dark .graph-selected-edge-lifecycle.rejected {
+  border-left-color: rgba(221, 102, 81, 0.9);
+}
+
+body.theme-dark .graph-selected-edge-lifecycle-steps span.ready em {
+  background: rgba(52, 199, 149, 0.11);
+  border-color: rgba(122, 216, 191, 0.36);
+  color: #9fe8d5;
+}
+
+body.theme-dark .graph-selected-edge-lifecycle-steps span.caution em,
+body.theme-dark .graph-selected-edge-lifecycle-steps span.pending em {
+  background: rgba(241, 208, 140, 0.11);
+  border-color: rgba(241, 208, 140, 0.38);
+  color: #f1d08c;
+}
+
+body.theme-dark .graph-selected-edge-lifecycle-steps span.blocked em {
+  background: rgba(221, 102, 81, 0.11);
+  border-color: rgba(221, 102, 81, 0.38);
+  color: #e28d76;
+}
+
 @media (max-width: 720px) {
   .graph-selected-edge-brief,
-  .graph-selected-edge-actions {
+  .graph-selected-edge-actions,
+  .graph-selected-edge-lifecycle-steps {
     grid-template-columns: minmax(0, 1fr);
   }
 }

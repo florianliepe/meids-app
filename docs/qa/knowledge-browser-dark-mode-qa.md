@@ -451,6 +451,21 @@ Latest local QA pass for Knowledge Graph legend/detail polish:
 
 This pass adds a compact Graph legend use-policy strip for `Answer`, `Explore`, and `Gate`. It makes Actor Twin graph behavior explicit: approved/explicit fabric can ground answers, inferred relations remain exploration context with citation, and draft/candidate relations stay review-gated. Dark-mode styling was added for the new policy strip and verified in the graph cockpit. Screenshots are stored in `docs/visual-qa/screenshots-20260810-graph-legend-detail-polish/`.
 
+Latest local QA pass for Knowledge Graph selected-relation lifecycle:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-graph-selected-relation-lifecycle`
+- Targeted Playwright assertion opens `?view=graph`, selects a graph edge, verifies visible `.graph-selected-edge-lifecycle`, confirms four lifecycle steps, dark mode, and zero horizontal overflow.
+- Browser QA covers Knowledge Browser, Knowledge Graph, and trace dashboard in dark mode at `1440px` and `390px`; all six cases passed with no horizontal overflow.
+
+This pass adds a selected-relation lifecycle trace for graph edges. It shows `Captured`, `Evidence`, `Review`, and `Actor use` so reviewers can see whether a relation is ready for trusted Actor Twin reasoning, citation-only exploration, or governance before skill reuse. Screenshots are stored in `docs/visual-qa/screenshots-20260810-graph-selected-relation-lifecycle/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:
