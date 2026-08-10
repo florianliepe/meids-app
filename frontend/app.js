@@ -2403,40 +2403,37 @@ function renderGraphTrustBoundary(graph, nodes = [], edges = [], availableEdges 
   if (!target) return;
   const nodeStates = countBy(nodes, (node) => node.review_state || "unknown");
   const edgeClasses = countBy(edges, (edge) => graphEdgeClass(edge));
-  const allEdgeClasses = countBy(availableEdges, (edge) => graphEdgeClass(edge));
-  const trustedEdges = edges.filter((edge) => graphRelationTrust(edge).className === "trusted");
-  const exploratoryEdges = edges.filter((edge) => graphRelationTrust(edge).className === "exploratory");
-  const blockedEdges = edges.filter((edge) => graphRelationTrust(edge).className === "blocked");
-  const promotionReady = edges.filter((edge) => graphRelationTrust(edge).className === "candidate");
+  const trustLayers = graphTrustLayerSummary(edges);
+  const availableTrustLayers = graphTrustLayerSummary(availableEdges);
   const approvedNodeRatio = nodes.length ? Math.round(((nodeStates.approved || 0) / nodes.length) * 100) : 0;
   const graphPath = graph?.artifact?.path || graph?.graph_artifact?.path || graph?.summary?.artifact_path || "";
   const tiles = [
     {
       key: "trusted",
-      value: trustedEdges.length,
-      label: "trusted relations",
-      detail: "Actor Twin can use",
+      value: trustLayers.trusted,
+      label: "trusted retrieval",
+      detail: "approved or explicit evidence",
       className: "trusted",
     },
     {
       key: "exploratory",
-      value: exploratoryEdges.length,
-      label: "inferred bridges",
-      detail: "explain with caveat",
-      className: "exploratory",
+      value: trustLayers.inferred,
+      label: "inferred with caveat",
+      detail: "attributed, not source fact",
+      className: "inferred",
     },
     {
       key: "candidate",
-      value: promotionReady.length,
-      label: "promotion queue",
-      detail: `${(allEdgeClasses.candidate || 0) + (allEdgeClasses["duplicate-candidate"] || 0) + (allEdgeClasses["contradiction-candidate"] || 0)} available`,
+      value: trustLayers.reviewable,
+      label: "reviewable before use",
+      detail: `${availableTrustLayers.reviewable} available in queue`,
       className: "candidate",
     },
     {
       key: "blocked",
-      value: blockedEdges.length + (nodeStates["needs-rework"] || 0) + (nodeStates.rejected || 0),
-      label: "blocked from trust",
-      detail: "needs decision",
+      value: trustLayers.blocked + (nodeStates["needs-rework"] || 0) + (nodeStates.rejected || 0),
+      label: "excluded until resolved",
+      detail: "rejected, rework, or conflict",
       className: "blocked",
     },
   ];
@@ -2445,6 +2442,7 @@ function renderGraphTrustBoundary(graph, nodes = [], edges = [], availableEdges 
       <span class="badge">Trust boundary</span>
       <strong>${escapeHtml(`${approvedNodeRatio}% approved node basis`)}</strong>
       <small>${escapeHtml(`${nodes.length} visible nodes · ${edgeClasses.explicit || 0} explicit · ${edgeClasses.inferred || 0} inferred · ${graphPath ? "export ready" : "local snapshot"}`)}</small>
+      <em>Only trusted retrieval is safe for direct Actor Twin answers. Inferred and reviewable layers need attribution or approval.</em>
     </div>
     <div class="graph-trust-boundary-grid">
       ${tiles.map((tile) => `
@@ -2456,6 +2454,22 @@ function renderGraphTrustBoundary(graph, nodes = [], edges = [], availableEdges 
       `).join("")}
     </div>
   `;
+}
+
+function graphTrustLayerSummary(edges = []) {
+  return edges.reduce((summary, edge) => {
+    const trust = graphRelationTrust(edge).className;
+    if (trust === "trusted") summary.trusted += 1;
+    else if (trust === "exploratory") summary.inferred += 1;
+    else if (trust === "blocked") summary.blocked += 1;
+    else summary.reviewable += 1;
+    return summary;
+  }, {
+    trusted: 0,
+    inferred: 0,
+    reviewable: 0,
+    blocked: 0,
+  });
 }
 
 function renderGraphExportReadiness(graph, nodes = [], edges = [], availableEdges = edges) {

@@ -16851,6 +16851,13 @@ body.theme-dark .compact-filterbar {
   line-height: 1.35;
 }
 
+.graph-trust-boundary-main em {
+  color: color-mix(in srgb, var(--muted) 86%, var(--accent));
+  font-size: 0.78rem;
+  font-style: normal;
+  line-height: 1.35;
+}
+
 .graph-trust-boundary-grid {
   display: grid;
   gap: 8px;
@@ -16880,6 +16887,10 @@ body.theme-dark .compact-filterbar {
 }
 
 .graph-trust-boundary-grid button.exploratory {
+  border-left: 4px solid #7f9fe8;
+}
+
+.graph-trust-boundary-grid button.inferred {
   border-left: 4px solid #7f9fe8;
 }
 
