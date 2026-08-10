@@ -480,6 +480,20 @@ Latest local QA pass for Chat agent route cards:
 
 This pass clarifies Chat output cards for the three-agent model. Agent responses now show route purpose, interaction mode, knowledge-fabric use, governance boundary, next action, and contract stage chips directly inside the result card. This keeps Chat focused while still making agent behavior auditable. Screenshots are stored in `docs/visual-qa/screenshots-20260810-chat-agent-route-cards/`.
 
+Latest local QA pass for Chat contract-health cards:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-chat-contract-health-cards`
+- Targeted Playwright assertion starts a local static server, opens `?view=chat`, injects public-safe fixture responses for Actor Twin, Knowledge Fabric Agent, and Agentic Butler, verifies three `.agent-response-contract-health` blocks, verifies stage rows are visible, and checks zero text overflow.
+
+This pass adds active contract health directly inside Chat agent result cards. Each result now carries the same contract state model as the mode badges: stage readiness, runtime boundary, gate count, fixture/live state, and next action. Screenshots are stored in `docs/visual-qa/screenshots-20260810-chat-contract-health-cards/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

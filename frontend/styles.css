@@ -10726,6 +10726,59 @@ body.theme-dark .graph-actor-context-status > span {
   font-size: 12px;
 }
 
+.agent-response-contract-health {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+}
+
+.agent-response-contract-health > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.agent-response-contract-health span,
+.agent-response-contract-health strong,
+.agent-response-contract-health small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.agent-response-contract-health > div > span {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.agent-response-contract-health > div > strong {
+  font-size: 13px;
+}
+
+.agent-response-contract-health > div > small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.agent-response-contract-health.configured,
+.agent-response-contract-health.n8n-connected {
+  border-color: color-mix(in srgb, var(--success) 28%, var(--line));
+  background: color-mix(in srgb, var(--success) 7%, var(--surface));
+}
+
+.agent-response-contract-health.missing-url,
+.agent-response-contract-health.awaiting-url,
+.agent-response-contract-health.blocked {
+  border-color: color-mix(in srgb, var(--warn) 28%, var(--line));
+  background: color-mix(in srgb, var(--warn) 7%, var(--surface));
+}
+
 .agent-approval-gate {
   margin: 12px 0;
 }
@@ -10768,9 +10821,23 @@ body.theme-dark .agent-response-route-card.approval-required {
 }
 
 body.theme-dark .agent-response-route-grid span,
-body.theme-dark .agent-response-route-stages span {
+body.theme-dark .agent-response-route-stages span,
+body.theme-dark .agent-response-contract-health {
   border-color: rgba(232, 226, 214, 0.13);
   background: rgba(14, 18, 15, 0.72);
+}
+
+body.theme-dark .agent-response-contract-health.configured,
+body.theme-dark .agent-response-contract-health.n8n-connected {
+  border-color: rgba(114, 215, 188, 0.32);
+  background: rgba(22, 47, 39, 0.74);
+}
+
+body.theme-dark .agent-response-contract-health.missing-url,
+body.theme-dark .agent-response-contract-health.awaiting-url,
+body.theme-dark .agent-response-contract-health.blocked {
+  border-color: rgba(215, 181, 109, 0.34);
+  background: rgba(48, 40, 24, 0.76);
 }
 
 @media (max-width: 900px) {
@@ -10867,6 +10934,11 @@ body.theme-dark .agent-response-route-stages span {
 
   .agent-response-route-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agent-response-contract-health {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

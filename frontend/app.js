@@ -30274,6 +30274,7 @@ function renderAgentResponseRouteCard(result = {}) {
     .filter((key) => String(sourceContext[key] || request.input?.[key] || "").trim()).length;
   const route = agentResponseRouteMeta(agentId, output, isApproval, sourceCount);
   const stages = agentContractStatusesFor(agentId);
+  const contract = chatAgentContractStatusFor(agentId);
   return `
     <section class="agent-response-route-card ${safeGraphClass(agentId)} ${safeGraphClass(status)}">
       <div class="agent-response-route-head">
@@ -30302,7 +30303,45 @@ function renderAgentResponseRouteCard(result = {}) {
       <div class="agent-response-route-stages">
         ${stages.map((stage) => `<span>${escapeHtml(stage)}</span>`).join("")}
       </div>
+      ${renderAgentResponseContractHealth(contract)}
     </section>
+  `;
+}
+
+function chatAgentContractStatusFor(agentId = "") {
+  return chatAgentContractStatuses().find((item) => item.agentId === agentId) || {
+    agentId,
+    label: agentDisplayName(agentId),
+    state: "documented",
+    detail: "Contract status is not loaded yet.",
+    nextAction: "Load contract fixtures and runtime config.",
+    configured: false,
+    webhookLabel: "fixture only",
+    readyGateCount: 0,
+    totalGateCount: 4,
+    stageItems: agentContractStatusesFor(agentId).map((label, index) => ({
+      key: safeGraphClass(label),
+      label: labelizeGraph(label),
+      ready: index < 3,
+      detail: label,
+    })),
+  };
+}
+
+function renderAgentResponseContractHealth(contract = {}) {
+  const stateLabel = contract.state || "documented";
+  const gateLabel = `${contract.readyGateCount ?? 0}/${contract.totalGateCount ?? 4} gates`;
+  const runtimeLabel = contract.webhookLabel || (contract.configured ? "URL configured" : "fixture only");
+  const nextAction = contract.nextAction || contract.detail || "";
+  return `
+    <div class="agent-response-contract-health ${contract.configured ? "configured" : "fixture"} ${safeGraphClass(stateLabel)}">
+      <div>
+        <span>Contract health</span>
+        <strong>${escapeHtml(`${stateLabel} · ${runtimeLabel}`)}</strong>
+        <small>${escapeHtml(`${gateLabel}${nextAction ? ` · ${nextAction}` : ""}`)}</small>
+      </div>
+      ${renderChatContractStageRow(contract.stageItems || [], { compact: true })}
+    </div>
   `;
 }
 
