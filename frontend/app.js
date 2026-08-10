@@ -16240,11 +16240,7 @@ function renderKnowledgeFabricQueueCard(item = {}) {
           ${artifactRows.map(([label, value]) => renderKnowledgeFabricArtifactLink(label, value)).join("")}
         </div>
       ` : ""}
-      ${edges.length ? `
-        <div class="agent-consumer-list">
-          ${edges.slice(0, 4).map((edge) => `<span>${escapeHtml(`${edge.relation_type || "candidate edge"} · ${edge.confidence ?? "-"} confidence`)}</span>`).join("")}
-        </div>
-      ` : ""}
+      ${renderKnowledgeFabricCandidateEdgePreview(item)}
       ${item.reviewed_at ? `
         <p class="knowledge-fabric-review-note">${escapeHtml(`${formatShortDate(item.reviewed_at)} · ${item.review_note || "Review decision saved."}`)}</p>
       ` : ""}
@@ -16258,6 +16254,56 @@ function renderKnowledgeFabricQueueCard(item = {}) {
         <button class="secondary small" type="button" data-kf-queue-action="export" data-queue-id="${escapeHtml(item.queue_id || "")}">Export artifact</button>
       </div>
     </article>
+  `;
+}
+
+function renderKnowledgeFabricCandidateEdgePreview(item = {}) {
+  const edges = Array.isArray(item.candidate_edges) ? item.candidate_edges : [];
+  const reviewState = String(item.review_state || "pending-review");
+  const reviewed = Boolean(item.reviewed_at);
+  const graphState = reviewed
+    ? reviewState === "approved"
+      ? "accepted after OKF approval"
+      : reviewState === "needs-rework"
+        ? "returned to curator"
+        : "rejected from graph"
+    : "candidate until curator review";
+  if (!edges.length) {
+    return `
+      <section class="knowledge-fabric-candidate-preview empty" aria-label="Graph Curator candidate preview">
+        <div class="knowledge-fabric-candidate-preview-head">
+          <span class="badge">Graph Curator preview</span>
+          <strong>No candidate edge emitted yet.</strong>
+          <small>${escapeHtml("The handoff can still be reviewed as OKF evidence, but graph promotion is not ready.")}</small>
+        </div>
+      </section>
+    `;
+  }
+  return `
+    <section class="knowledge-fabric-candidate-preview ${safeGraphClass(reviewState)}" aria-label="Graph Curator candidate preview">
+      <div class="knowledge-fabric-candidate-preview-head">
+        <span class="badge">Graph Curator preview</span>
+        <strong>${escapeHtml(`${edges.length} candidate relation${edges.length === 1 ? "" : "s"} from this handoff`)}</strong>
+        <small>${escapeHtml(`${labelizeGraph(graphState)} · ${item.graph_curator_trigger || "graph_curator_pending"} · trusted use waits for OKF approval and graph decision`)}</small>
+      </div>
+      <div class="knowledge-fabric-candidate-grid">
+        ${edges.slice(0, 6).map((edge, index) => {
+          const relation = edge.relation_type || edge.edge_type || "related";
+          const confidence = edge.confidence ?? "unscored";
+          const source = edge.source || item.concept_path || item.title || "source";
+          const target = edge.target || edge.target_path || "target";
+          return `
+            <article class="${safeGraphClass(reviewState)}">
+              <span>${escapeHtml(String(index + 1).padStart(2, "0"))}</span>
+              <strong>${escapeHtml(labelizeGraph(relation))}</strong>
+              <small>${escapeHtml(`${source} → ${target}`)}</small>
+              <em>${escapeHtml(`confidence ${confidence}`)}</em>
+            </article>
+          `;
+        }).join("")}
+      </div>
+      ${edges.length > 6 ? `<small class="knowledge-fabric-candidate-overflow">${escapeHtml(`${edges.length - 6} additional candidate relation${edges.length - 6 === 1 ? "" : "s"} included in exported artifact.`)}</small>` : ""}
+    </section>
   `;
 }
 

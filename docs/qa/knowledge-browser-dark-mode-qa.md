@@ -536,6 +536,20 @@ Latest local QA pass for Knowledge Fabric repo-sync eligibility:
 
 This pass adds a repo-sync eligibility strip to the Knowledge Fabric queue preview. Operators can see approved handoffs eligible for knowledge-repo PR, pending handoffs, needs-rework items, rejected audit-only items, candidate graph edges, and the vector refresh boundary before exporting reviewed bundles. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-fabric-repo-sync-eligibility/`.
 
+Latest local QA pass for Knowledge Fabric candidate graph preview:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-knowledge-fabric-candidate-preview`
+- Targeted Playwright assertion starts a local static server, opens `?view=ingest`, verifies visible `#ingest .knowledge-fabric-candidate-preview`, confirms candidate relation cards, confirms Graph Curator and confidence language, dark mode, and zero horizontal overflow.
+
+This pass promotes candidate graph relations from a compact tag list into a visible per-handoff Graph Curator preview. Queue reviewers can inspect relation type, source-target direction, confidence, review implication, and graph-curator state before opening the graph cockpit or exporting a reviewed artifact. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-fabric-candidate-preview/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:
