@@ -14,6 +14,13 @@ Recommended repository: `meids-agent-configs`
 
 Recommended visibility: private
 
+Current repository status:
+
+- GitHub repository exists: `florianliepe/meids-agent-configs`
+- Bootstrap PR: `https://github.com/florianliepe/meids-agent-configs/pull/2`
+- Branch: `feature/bootstrap-agent-config-scaffold`
+- Current state: scaffold proposed, pending human review/merge
+
 Recommended default branch model:
 
 - `main`: approved production-ready configs only.
