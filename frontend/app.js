@@ -11113,6 +11113,7 @@ function renderReviewDashboard(result) {
   renderDashboardVoiceConcepts(concept.voice_created || []);
   renderDashboardConcepts("#dashReworkConcepts", concept.needs_rework || [], "No concepts need rework.");
   renderDashboardConcepts("#dashRejectedConcepts", concept.rejected || [], "No rejected concepts.");
+  renderDashboardEvidenceStateGaps(result);
   renderDashboardTraces(trace.latest || []);
   renderDashboardAgentTraceHistory();
   renderDashboardGraphPromotionHistory();
@@ -16026,6 +16027,72 @@ function renderDashboardConcepts(selector, concepts, emptyText) {
   target.querySelectorAll(".dashboard-concept-review").forEach((button) => {
     button.addEventListener("click", () => openConceptDrawer(button.dataset.path));
   });
+}
+
+function dashboardEvidenceStateGapConcepts(result = state.reviewDashboard || {}) {
+  const dashboardConcepts = dashboardAllConcepts(result.concept_review || {});
+  const currentConcepts = Array.isArray(state.concepts) ? state.concepts : [];
+  const byPath = new Map([...dashboardConcepts, ...currentConcepts].map((concept) => [concept.path || concept.concept_id || concept.title, concept]));
+  return Array.from(byPath.values())
+    .filter((concept) => {
+      const refs = conceptSourceRefs(concept);
+      if (!refs.length) return false;
+      const states = Array.isArray(concept.evidence_review_states)
+        ? concept.evidence_review_states.map((item) => String(item || "").trim()).filter(Boolean)
+        : [];
+      return !states.length || states.length !== refs.length;
+    })
+    .sort((a, b) => String(a.review_state || "").localeCompare(String(b.review_state || "")) || String(a.title || a.path || "").localeCompare(String(b.title || b.path || "")));
+}
+
+function renderDashboardEvidenceStateGaps(result = state.reviewDashboard || {}) {
+  const target = $("#dashEvidenceStateGaps");
+  if (!target) return;
+  const gaps = dashboardEvidenceStateGapConcepts(result);
+  const filtered = filterDashboardConcepts(gaps);
+  const openFilterButton = $("#openEvidenceGapFilterBtn");
+  if (openFilterButton) {
+    openFilterButton.disabled = !gaps.length;
+    openFilterButton.onclick = openEvidenceGapKnowledgeFilter;
+  }
+  if (!filtered.length) {
+    target.innerHTML = renderEmptyState("No evidence review-state gaps.", "Open Knowledge Browser", "openKnowledge");
+    return;
+  }
+  target.innerHTML = filtered.slice(0, 8).map((concept) => {
+    const refs = conceptSourceRefs(concept);
+    const states = Array.isArray(concept.evidence_review_states) ? concept.evidence_review_states : [];
+    const missing = Math.max(0, refs.length - states.length);
+    return `
+      <article class="activity-row queue-card warning evidence-gap-card">
+        <div class="queue-card-head">
+          <span class="queue-kind">Evidence gate</span>
+          ${renderQueueMeta([concept.review_state || "pending-review", `${refs.length} source refs`, `${missing} missing states`])}
+        </div>
+        <h3>${escapeHtml(concept.title || concept.path || "Concept")}</h3>
+        <p>${escapeHtml("Add aligned evidence_review_states before trusted retrieval or vector refresh.")}</p>
+        <code>${escapeHtml(concept.path || "")}</code>
+        <div class="queue-card-actions">
+          <button class="secondary small dashboard-concept-review" type="button" data-path="${escapeHtml(concept.path || "")}">Review</button>
+          <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(refs.join("\n"))}">Copy refs</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+  target.querySelectorAll(".dashboard-concept-review").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (button.dataset.path) openConceptDrawer(button.dataset.path);
+      else openEvidenceGapKnowledgeFilter();
+    });
+  });
+}
+
+function openEvidenceGapKnowledgeFilter() {
+  state.conceptSourceFilter = "vector-blocked";
+  const select = $("#conceptSourceFilter");
+  if (select) select.value = state.conceptSourceFilter;
+  showView("concepts");
+  renderConcepts();
 }
 
 function renderDashboardVoiceConcepts(concepts) {

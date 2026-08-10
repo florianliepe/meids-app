@@ -23151,6 +23151,18 @@ body.cockpit-mode .workspace-signal {
   border-left-color: #b85c55;
 }
 
+.evidence-gap-card {
+  border-left-color: #d7a84f;
+}
+
+.evidence-gap-card p {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 0;
+}
+
 .knowledge-fabric-queue-card-head {
   align-items: start;
   display: grid;
@@ -23437,6 +23449,16 @@ body.theme-dark .knowledge-fabric-queue-card.needs-rework {
 
 body.theme-dark .knowledge-fabric-queue-card.rejected {
   border-left-color: #d98578;
+}
+
+body.theme-dark .evidence-gap-card {
+  background: rgba(215, 168, 79, 0.08);
+  border-color: rgba(241, 208, 140, 0.28);
+  border-left-color: #f1d08c;
+}
+
+body.theme-dark .evidence-gap-card p {
+  color: #d7cebf;
 }
 
 body.theme-dark .knowledge-fabric-queue-card code,
