@@ -71,6 +71,8 @@ Live probe evidence is tracked in `frontend/assets/n8n-live-probe-evidence.json`
 
 Use `node scripts/record-n8n-live-probe-evidence.cjs --agent <agent_id> --trace-id <trace_id> --execution-url <public_safe_execution_url>` to capture the evidence in the public readiness artifact after each successful UAT probe. The script validates the agent id, rejects demo/fixture trace ids, and prevents obvious secret-like URL values from being written.
 
+The remaining live completion sequence and time estimate are tracked in `docs/production/zielmodus-4-live-completion-plan.md`.
+
 ## Live n8n Completion Gate
 
 Zielmodus 4 must remain open until these two live URL slots are provided and tested:

@@ -1,0 +1,106 @@
+# Zielmodus 4 Live Completion Plan
+
+Date: 2026-08-11
+
+Purpose: define the remaining work to close Zielmodus 4 after public-safe OKF, graph, vector-boundary, dark-mode QA, and contract fixture work has already passed.
+
+## Current Verified State
+
+| Gate | State | Evidence |
+| --- | --- | --- |
+| OKF markdown/YAML schema | Ready | `docs/knowledge-fabric-okf-schema.md`, `contracts/okf/schemas/`, `frontend/assets/okf-validation-status.json` |
+| Knowledge repo split target | Ready as handoff design | `docs/production/repo-split-handoff-checklist.md`, `docs/production/agent-config-repo-scaffold.md` |
+| Knowledge Fabric ingest path | Fixture-backed | `contracts/okf/ingest/sample-ingest-request.json`, `scripts/mock-okf-ingest.cjs`, `contracts/okf/generated/` |
+| Graph relation promotion workflow | Ready for MVP review | `contracts/okf/promotions/`, `scripts/validate-graph-promotions.cjs`, Knowledge Graph review UI |
+| Vector DB boundary | Ready without secrets | `contracts/okf/examples/vector/`, `contracts/okf/negative/vector/`, `scripts/validate-vector-adapter.cjs` |
+| Dark-mode Knowledge Browser and Graph QA | Passed | `docs/qa/knowledge-browser-dark-mode-qa.md` |
+| n8n contract fixtures | Ready | `contracts/n8n/fixtures/`, `scripts/validate-n8n-fixtures.cjs` |
+| Pages deploy smoke gate | Ready | `scripts/pages-smoke-check.cjs` validates static assets plus contract/readiness artifacts |
+
+Current machine status: `partial_live_url_blocked`.
+
+## Remaining Blockers
+
+| Priority | Blocker | Required input | Owner | Estimated integration time after input exists |
+| ---: | --- | --- | --- | --- |
+| 1 | Knowledge Fabric Agent live URL missing | Public UAT webhook or hosted backend URL for `knowledge_fabric_agent` | n8n workflow owner / integration | 15-30 min |
+| 2 | Agentic Butler live URL missing | Public UAT webhook or hosted backend URL for `agentic_butler` | n8n workflow owner / integration | 15-30 min |
+| 3 | Actor Twin live probe evidence missing | Non-demo n8n execution trace id from Actor Twin UAT | integration | 10-15 min |
+| 4 | Knowledge Fabric Agent live probe evidence missing | Non-demo n8n execution trace id from no-write ingest probe | integration | 10-20 min |
+| 5 | Agentic Butler approval-gate probe evidence missing | Non-demo n8n execution trace id from approval-required skill activation probe | integration | 15-25 min |
+
+Practical remaining estimate once both missing URLs are available: **45-90 minutes** for configuration, probes, artifact regeneration, deploy, and final verification.
+
+Without the two missing URLs, Zielmodus 4 can remain public-safe ready but cannot be closed as live integrated.
+
+## Exact Completion Sequence
+
+1. Configure live URLs through GitHub Pages secrets, or use browser-local UAT overrides first:
+   - `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL`
+   - `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL`
+2. Trigger GitHub Pages redeploy.
+3. Confirm runtime URL readiness:
+
+```powershell
+node scripts\write-n8n-live-readiness-preflight.cjs --check
+node scripts\validate-zielmodus-4-readiness.cjs --require-live
+```
+
+4. Run live probes:
+   - Actor Twin: answer-only query with trace response.
+   - Knowledge Fabric Agent: no-write upload/transcript ingest fixture.
+   - Agentic Butler: approval-required skill activation fixture.
+5. Record public-safe live evidence:
+
+```powershell
+node scripts\record-n8n-live-probe-evidence.cjs `
+  --agent actor_twin `
+  --trace-id "TRACE_ID_FROM_N8N" `
+  --execution-url "https://YOUR-N8N-HOST/workflow/.../executions/..." `
+  --response-status completed `
+  --url-source github-pages-secret
+
+node scripts\record-n8n-live-probe-evidence.cjs `
+  --agent knowledge_fabric_agent `
+  --trace-id "TRACE_ID_FROM_N8N" `
+  --execution-url "https://YOUR-N8N-HOST/workflow/.../executions/..." `
+  --response-status completed `
+  --url-source github-pages-secret
+
+node scripts\record-n8n-live-probe-evidence.cjs `
+  --agent agentic_butler `
+  --trace-id "TRACE_ID_FROM_N8N" `
+  --execution-url "https://YOUR-N8N-HOST/workflow/.../executions/..." `
+  --response-status approval_required `
+  --url-source github-pages-secret
+```
+
+6. Regenerate readiness artifacts:
+
+```powershell
+node scripts\write-n8n-live-readiness-preflight.cjs --write
+node scripts\validate-zielmodus-4-readiness.cjs --write
+```
+
+7. Run final strict gates:
+
+```powershell
+node scripts\write-n8n-live-readiness-preflight.cjs --check
+node scripts\validate-zielmodus-4-readiness.cjs --require-live
+node scripts\validate-zielmodus-4-readiness.cjs --require-live-probes
+node scripts\pages-smoke-check.cjs frontend
+```
+
+8. Commit, push, and verify GitHub Pages deploy.
+
+## Completion Criteria
+
+Zielmodus 4 is complete only when all of the following are true:
+
+- `frontend/assets/n8n-live-readiness-preflight.json` reports all three URLs configured.
+- `frontend/assets/n8n-live-probe-evidence.json` contains connected, non-demo evidence for all three top-level agents.
+- `scripts/validate-zielmodus-4-readiness.cjs --require-live-probes` exits `0`.
+- GitHub Pages workflow succeeds.
+- The deployed Production/Review Cockpit shows no remaining live URL blocker for Actor Twin, Knowledge Fabric Agent, or Agentic Butler.
+
+Do not close Zielmodus 4 based on fixture replay alone.
