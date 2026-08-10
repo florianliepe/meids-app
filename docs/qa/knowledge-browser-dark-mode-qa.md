@@ -4,6 +4,23 @@ Date: 2026-08-09
 
 Latest update: 2026-08-10
 
+## Latest Browser QA Pass For Zielmodus 4 Dark Mode Surfaces
+
+- Re-ran browser-level dark-mode QA for the current GitHub Pages frontend source.
+- Covered desktop and mobile widths for:
+  - Knowledge Browser
+  - Knowledge Graph
+  - Review/trace dashboard
+- Result: all 6 cases passed.
+- Minimum measured contrast in this pass: `18.65`.
+- No new targeted CSS patch was required from this pass.
+- Screenshot evidence:
+  - `docs/visual-qa/screenshots-20260810-z4-followup-dark-qa/`
+
+Validation command:
+
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-z4-followup-dark-qa`
+
 ## Latest Runtime Artifact Refresh For n8n URL Gate
 
 - Refreshed public-safe runtime readiness artifacts against `frontend/assets/agent-runtime-config.json`.
