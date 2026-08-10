@@ -17477,6 +17477,8 @@ function renderDashboardKnowledgeGraphHandoff() {
   target.querySelectorAll("[data-dashboard-agent-probe]").forEach((button) => {
     button.addEventListener("click", () => probeAgentContract(button.dataset.dashboardAgentProbe || ""));
   });
+  target.querySelector('[data-dashboard-agent-evidence="copy"]')?.addEventListener("click", copyAgentProbeEvidencePacket);
+  target.querySelector('[data-dashboard-agent-evidence="export"]')?.addEventListener("click", exportAgentProbeEvidencePacket);
   document.querySelector('[data-dashboard-action="open-knowledge-graph"]')?.addEventListener("click", () => showView("graph"));
 }
 
@@ -17499,6 +17501,8 @@ function renderDashboardAgentProbeStrip(statuses = chatAgentContractStatuses()) 
         </div>
         <div class="button-row tight">
           <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/n8n-live-url-configuration.md"))}" target="_blank" rel="noreferrer">Open guide</a>
+          <button class="secondary small" type="button" data-dashboard-agent-evidence="copy">Copy evidence packet</button>
+          <button class="secondary small" type="button" data-dashboard-agent-evidence="export">Export evidence packet</button>
           ${setupPacket ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(setupPacket)}">Copy setup packet</button>` : ""}
           ${missingConfig ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(missingConfig)}">Copy runtime JSON</button>` : ""}
         </div>
@@ -17533,6 +17537,114 @@ function renderDashboardAgentProbeStrip(statuses = chatAgentContractStatuses()) 
       </div>
     </div>
   `;
+}
+
+async function copyAgentProbeEvidencePacket() {
+  const artifact = buildAgentProbeEvidenceArtifact();
+  const copied = await copyTextToClipboard(JSON.stringify(artifact, null, 2));
+  showToast(
+    copied ? "Agent probe evidence copied" : "Evidence copy failed",
+    copied ? `${artifact.summary.connected_agent_count}/${artifact.summary.agent_count} connected · ${artifact.summary.trace_count} traces` : "Clipboard access failed.",
+    copied ? "success" : "warning",
+  );
+}
+
+function exportAgentProbeEvidencePacket() {
+  const artifact = buildAgentProbeEvidenceArtifact();
+  const filename = [
+    "meids-agent-probe-evidence",
+    safeGraphClass(state.activeTwin || "twin"),
+    new Date().toISOString().replace(/[:.]/g, "-"),
+  ].join("-") + ".json";
+  const blob = new Blob([JSON.stringify(artifact, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, filename);
+  URL.revokeObjectURL(url);
+  showToast("Agent probe evidence exported", `${artifact.summary.connected_agent_count}/${artifact.summary.agent_count} connected · ${artifact.summary.trace_count} traces`, "success");
+}
+
+function buildAgentProbeEvidenceArtifact(statuses = chatAgentContractStatuses()) {
+  const traces = readComposedAgentTraces();
+  const agentIds = new Set(statuses.map((item) => item.agentId).filter(Boolean));
+  const agentTraces = traces.filter((trace) => agentIds.has(String(trace.agent_id || "")));
+  const source = knowledgeFabricSourceTraceSummary();
+  const promotions = graphPromotionHistoryItems(120);
+  const contracts = new Map((state.n8nAgentContracts?.contracts || []).map((contract) => [contract.agent_id, contract]));
+  const agents = statuses.map((item) => {
+    const probe = state.n8nLiveProbeResults?.[item.agentId] || null;
+    const contract = contracts.get(item.agentId) || {};
+    const runtime = agentRuntimeReadiness(item.agentId);
+    const tracesForAgent = agentTraces.filter((trace) => String(trace.agent_id || "") === item.agentId);
+    return {
+      agent_id: item.agentId,
+      agent_name: item.label || agentDisplayName(item.agentId),
+      contract_fixture: item.source || contract.source_url || contract.n8n_contract || "",
+      workflow_blueprint: contract.workflow_blueprint || item.workflowBlueprint || "",
+      status: probe?.status || item.state || runtime.status || "documented",
+      webhook_configured: Boolean(item.configured),
+      webhook_label: item.webhookLabel || (item.configured ? "URL configured" : "fixture only"),
+      runtime_readiness: {
+        status: runtime.status,
+        label: runtime.label,
+        detail: runtime.detail,
+      },
+      fixture_replay: {
+        status: item.replayStatus || state.n8nAgentContracts?.replay_status || "unknown",
+        passed: Boolean(item.replayPassed || state.n8nAgentContracts?.replay_status === "passed"),
+        case_count: item.replayCaseCount || state.n8nAgentContracts?.replay_case_count || 0,
+      },
+      latest_probe: probe,
+      trace_count: tracesForAgent.length,
+      latest_trace: tracesForAgent[0] || null,
+      production_gate: probe?.status === "connected"
+        ? "ready_for_trace_review"
+        : item.configured
+          ? "run_live_probe"
+          : "configure_live_webhook_url",
+    };
+  });
+  const connected = agents.filter((agent) => agent.latest_probe?.status === "connected");
+  const configured = agents.filter((agent) => agent.webhook_configured);
+  const blocked = agents.filter((agent) => !agent.webhook_configured);
+  return {
+    schema: "meids.agent_probe_evidence_packet.v1",
+    exported_at: new Date().toISOString(),
+    boundary: "Portable Review/Production Cockpit evidence packet. It documents contract, fixture, URL, probe, and trace readiness. It does not mutate n8n, OKF storage, graph storage, vector indexes, or GitHub.",
+    twin_id: state.activeTwin || "florian",
+    source: {
+      app_repo: "florianliepe/meids-app",
+      deployed_url: "https://florianliepe.github.io/meids-app/",
+      runtime_mode: staticPagesMode ? "static_pages" : "backend_connected",
+    },
+    summary: {
+      agent_count: agents.length,
+      configured_agent_count: configured.length,
+      connected_agent_count: connected.length,
+      blocked_agent_count: blocked.length,
+      trace_count: agentTraces.length,
+      replay_status: state.n8nAgentContracts?.replay_status || "unknown",
+      replay_case_count: state.n8nAgentContracts?.replay_case_count || 0,
+      knowledge_handoff_count: source.queueCount,
+      graph_promotion_count: promotions.length,
+    },
+    agents,
+    recent_traces: agentTraces.slice(0, 20),
+    knowledge_graph_handoff: {
+      source_intake: source,
+      graph_promotions: promotions.slice(0, 20),
+      trusted_retrieval_allowed: source.trustedRetrievalAllowed,
+      vector_boundary: "deferred_until_knowledge_repo_merge_and_vector_credentials",
+    },
+    required_next_actions: agents
+      .filter((agent) => agent.production_gate !== "ready_for_trace_review")
+      .map((agent) => ({
+        agent_id: agent.agent_id,
+        gate: agent.production_gate,
+        action: agent.webhook_configured
+          ? "Run live probe and capture n8n execution trace."
+          : "Configure a public UAT webhook URL through runtime asset or workflow-generated runtime config.",
+      })),
+  };
 }
 
 function exportGraphPromotionHistory() {
