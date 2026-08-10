@@ -226,6 +226,7 @@
   n8nChatLoading: false,
   n8nSessionId: `meids-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
   knowledgeFabricIngestQueue: [],
+  knowledgeFabricQueueFilter: "all",
   twins: [],
   selectedTwinId: "florian",
   twinActivity: [],
@@ -15574,6 +15575,11 @@ function bindKnowledgeFabricQueueActions() {
     if (!button) return;
     const action = button.dataset.kfQueueAction || "";
     const queueId = button.dataset.queueId || "";
+    if (action === "filter") {
+      state.knowledgeFabricQueueFilter = button.dataset.kfQueueFilter || "all";
+      renderKnowledgeFabricQueuePanels();
+      return;
+    }
     if (action === "open-ingest") {
       showView("ingest");
       $("#ingest")?.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -15617,6 +15623,10 @@ function bindKnowledgeFabricQueueActions() {
     }
     if (action === "copy-source-repo-sync") {
       copyKnowledgeFabricSourceRepoSyncPreview(button);
+      return;
+    }
+    if (action === "copy-approved-pr-handoff") {
+      copyApprovedKnowledgeFabricPrHandoff(button);
       return;
     }
     if (["approve", "needs-rework", "reject"].includes(action)) {
@@ -15808,6 +15818,67 @@ async function copyKnowledgeFabricSourceRepoSyncPreview(button) {
     copied ? `${artifact.summary.handoff_count} handoff${artifact.summary.handoff_count === 1 ? "" : "s"} · ${artifact.summary.pending_handoff_count} pending` : "Clipboard access failed.",
     copied ? "success" : "warning",
   );
+}
+
+async function copyApprovedKnowledgeFabricPrHandoff(button) {
+  const approvedItems = (state.knowledgeFabricIngestQueue || []).filter((item) => item.review_state === "approved");
+  if (!approvedItems.length) {
+    showToast("Approved PR handoff", "No approved Knowledge Fabric handoff is ready for repo PR preparation.", "warning");
+    return;
+  }
+  const artifact = buildApprovedKnowledgeFabricPrHandoffArtifact(approvedItems);
+  const copied = await copyTextToClipboard(JSON.stringify(artifact, null, 2));
+  if (copied) markButtonDone(button, "Copied");
+  showToast(
+    copied ? "Approved PR handoff copied" : "Approved PR handoff copy failed",
+    copied ? `${artifact.summary.approved_handoff_count} approved handoff${artifact.summary.approved_handoff_count === 1 ? "" : "s"} · ${artifact.summary.target_path_count} target path${artifact.summary.target_path_count === 1 ? "" : "s"}` : "Clipboard access failed.",
+    copied ? "success" : "warning",
+  );
+}
+
+function buildApprovedKnowledgeFabricPrHandoffArtifact(approvedItems = []) {
+  const targetPaths = approvedItems.flatMap((item) => [
+    { kind: "concept", path: item.concept_path },
+    { kind: "evidence", path: item.evidence_path },
+    { kind: "transcript", path: item.transcript_path },
+    { kind: "crud_log", path: item.crud_log_path },
+  ].filter((entry) => entry.path));
+  const graphCandidates = approvedItems.flatMap((item) => (Array.isArray(item.candidate_edges) ? item.candidate_edges : [])
+    .map((edge, index) => ({
+      ...edge,
+      queue_id: item.queue_id,
+      source_handoff: item.concept_path || item.evidence_path || item.title || "",
+      promotion_gate: "candidate_until_graph_curator_accepts",
+      edge_key: edge.edge_key || `${slugify(item.queue_id || item.request_id || item.title || "handoff")}-${slugify(edge.relation_type || edge.edge_type || "edge")}-${index}`,
+    })));
+  return {
+    schema: "meids.approved_okf_pr_handoff.v1",
+    exported_at: new Date().toISOString(),
+    boundary: "Approved source-handoff checklist for knowledge repo PR preparation. It does not mutate the knowledge repo, graph store, vector DB, n8n, or hosted runtime.",
+    twin_id: state.activeTwin || approvedItems[0]?.twin_id || "florian",
+    branch_suggestion: `knowledge-fabric/approved-okf-${new Date().toISOString().slice(0, 10)}`,
+    repo_split_target: {
+      app_repo: "florianliepe/meids-app",
+      knowledge_repo: "meids-knowledge-fabric",
+      agent_config_repo: "meids-agent-configs",
+    },
+    summary: {
+      approved_handoff_count: approvedItems.length,
+      target_path_count: targetPaths.length,
+      graph_candidate_count: graphCandidates.length,
+      vector_refresh_policy: "approved_only_after_knowledge_repo_merge",
+    },
+    apply_rules: [
+      "Create a knowledge repo feature branch before materializing files.",
+      "Apply approved concept, evidence, transcript, and audit paths only.",
+      "Keep graph candidates as candidate YAML until Graph Curator review accepts them.",
+      "Do not refresh vector indexes until the knowledge repo PR is approved and merged.",
+      "Reference this artifact in the PR description as review evidence.",
+    ],
+    target_paths: targetPaths,
+    graph_candidates: graphCandidates,
+    approved_handoffs: approvedItems.map((item) => buildKnowledgeFabricQueueArtifact(item)),
+  };
 }
 
 function buildKnowledgeFabricSourceRepoSyncPreviewArtifact(items = []) {
@@ -16080,7 +16151,8 @@ function renderKnowledgeFabricQueuePanels() {
   ["#chatKnowledgeFabricQueue", "#ingestKnowledgeFabricQueue"].forEach((selector) => {
     const target = $(selector);
     if (!target) return;
-    target.innerHTML = renderKnowledgeFabricQueue(state.knowledgeFabricIngestQueue || [], selector.includes("chat") ? 3 : 8);
+    const compact = selector.includes("chat");
+    target.innerHTML = renderKnowledgeFabricQueue(state.knowledgeFabricIngestQueue || [], compact ? 3 : 8, { compact });
   });
   renderKnowledgeFabricLocalUatChecklist();
   renderKnowledgeFabricIngestPathStatus();
@@ -16216,14 +16288,73 @@ function renderKnowledgeFabricIngestPathStatus() {
   `;
 }
 
-function renderKnowledgeFabricQueue(items = [], limit = 6) {
+function renderKnowledgeFabricQueue(items = [], limit = 6, options = {}) {
   if (!items.length) {
     return renderEmptyState("No pending OKF source handoffs yet. Use Add source context in Chat or upload a source.");
   }
-  return `${renderKnowledgeFabricSourceRepoSyncPreview(items)}${items.slice(0, limit).map(renderKnowledgeFabricQueueCard).join("")}`;
+  const compact = Boolean(options.compact);
+  const activeFilter = compact ? "all" : state.knowledgeFabricQueueFilter || "all";
+  const filteredItems = filterKnowledgeFabricQueueItems(items, activeFilter);
+  const visibleItems = filteredItems.slice(0, limit);
+  return `
+    ${renderKnowledgeFabricSourceRepoSyncPreview(items, { compact })}
+    ${compact ? "" : renderKnowledgeFabricQueueFilterBar(items, activeFilter)}
+    ${visibleItems.length
+      ? visibleItems.map(renderKnowledgeFabricQueueCard).join("")
+      : renderEmptyState(`No Knowledge Fabric handoffs match ${labelizeGraph(activeFilter)}.`)}
+  `;
 }
 
-function renderKnowledgeFabricSourceRepoSyncPreview(items = []) {
+function filterKnowledgeFabricQueueItems(items = [], filter = "all") {
+  if (filter === "all") return items;
+  if (filter === "pending-review") return items.filter((item) => !item.reviewed_at || item.review_state === "pending-review");
+  if (filter === "reviewed") return items.filter((item) => item.reviewed_at && ["approved", "needs-rework", "rejected"].includes(String(item.review_state || "")));
+  if (filter === "graph-candidates") return items.filter((item) => Array.isArray(item.candidate_edges) && item.candidate_edges.length);
+  if (filter === "repo-ready") return items.filter((item) => item.review_state === "approved");
+  return items.filter((item) => String(item.review_state || "pending-review") === filter);
+}
+
+function knowledgeFabricQueueFilterCounts(items = []) {
+  const reviewed = items.filter((item) => item.reviewed_at && ["approved", "needs-rework", "rejected"].includes(String(item.review_state || "")));
+  return {
+    all: items.length,
+    "pending-review": items.filter((item) => !item.reviewed_at || item.review_state === "pending-review").length,
+    reviewed: reviewed.length,
+    approved: reviewed.filter((item) => item.review_state === "approved").length,
+    "needs-rework": reviewed.filter((item) => item.review_state === "needs-rework").length,
+    rejected: reviewed.filter((item) => item.review_state === "rejected").length,
+    "graph-candidates": items.filter((item) => Array.isArray(item.candidate_edges) && item.candidate_edges.length).length,
+    "repo-ready": reviewed.filter((item) => item.review_state === "approved").length,
+  };
+}
+
+function renderKnowledgeFabricQueueFilterBar(items = [], activeFilter = "all") {
+  const counts = knowledgeFabricQueueFilterCounts(items);
+  const filters = [
+    ["all", "All"],
+    ["pending-review", "Pending"],
+    ["reviewed", "Reviewed"],
+    ["approved", "Approved"],
+    ["needs-rework", "Rework"],
+    ["rejected", "Rejected"],
+    ["graph-candidates", "Graph"],
+    ["repo-ready", "Repo ready"],
+  ];
+  return `
+    <div class="knowledge-fabric-queue-filter" aria-label="Knowledge Fabric queue filter">
+      <strong>${escapeHtml(`${filterKnowledgeFabricQueueItems(items, activeFilter).length}/${items.length} visible`)}</strong>
+      <div class="filter-chip-row">
+        ${filters.map(([value, label]) => `
+          <button class="filter-chip ${activeFilter === value ? "active" : ""}" type="button" data-kf-queue-action="filter" data-kf-queue-filter="${escapeHtml(value)}" aria-pressed="${activeFilter === value ? "true" : "false"}">
+            ${escapeHtml(label)} <span>${escapeHtml(String(counts[value] || 0))}</span>
+          </button>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderKnowledgeFabricSourceRepoSyncPreview(items = [], options = {}) {
   const reviewed = reviewedKnowledgeFabricQueueItems();
   const approved = reviewed.filter((item) => item.review_state === "approved");
   const pending = items.filter((item) => !item.reviewed_at || item.review_state === "pending-review");
@@ -16237,6 +16368,7 @@ function renderKnowledgeFabricSourceRepoSyncPreview(items = []) {
   const vectorState = approved.length
     ? "Vector refresh can be queued only after knowledge repo merge."
     : "Vector refresh remains blocked until approval and repo merge.";
+  const compact = Boolean(options.compact);
   return `
     <article class="knowledge-fabric-repo-sync-preview">
       <div>
@@ -16266,12 +16398,38 @@ function renderKnowledgeFabricSourceRepoSyncPreview(items = []) {
           <li>Queue graph and vector updates only after the knowledge repo merge.</li>
         </ol>
       </div>
+      ${compact || !approved.length ? "" : renderKnowledgeFabricApprovedPrHandoffPreview(approved)}
       <div class="button-row tight">
         <button class="secondary small" type="button" data-kf-queue-action="copy-source-repo-sync">Copy source repo-sync JSON</button>
+        ${compact ? "" : `<button class="secondary small" type="button" data-kf-queue-action="copy-approved-pr-handoff" ${approved.length ? "" : "disabled"} title="${escapeHtml(approved.length ? "Copy approved handoffs as a knowledge-repo PR checklist." : "Approve at least one handoff before creating a PR handoff.")}">Copy approved PR handoff</button>`}
         <button class="secondary small" type="button" data-kf-queue-action="export-reviewed-bundle">Export reviewed bundle</button>
         <button class="secondary small" type="button" data-kf-queue-action="export-uat-checklist">Export UAT checklist</button>
       </div>
     </article>
+  `;
+}
+
+function renderKnowledgeFabricApprovedPrHandoffPreview(approvedItems = []) {
+  const graphCount = approvedItems.reduce((count, item) => count + (Array.isArray(item.candidate_edges) ? item.candidate_edges.length : 0), 0);
+  const pathCount = approvedItems.reduce((count, item) => count + [
+    item.concept_path,
+    item.evidence_path,
+    item.transcript_path,
+    item.crud_log_path,
+  ].filter(Boolean).length, 0);
+  return `
+    <div class="knowledge-fabric-approved-pr-preview" aria-label="Approved knowledge repo PR handoff">
+      <div>
+        <span class="badge">PR handoff candidate</span>
+        <strong>${escapeHtml(`${approvedItems.length} approved OKF handoff${approvedItems.length === 1 ? "" : "s"}`)}</strong>
+        <small>${escapeHtml(`${pathCount} target path${pathCount === 1 ? "" : "s"} · ${graphCount} graph candidate${graphCount === 1 ? "" : "s"} · vector refresh after merge`)}</small>
+      </div>
+      <ol>
+        <li>Create a knowledge repo branch from the copied handoff.</li>
+        <li>Materialize only approved concept/evidence/transcript files.</li>
+        <li>Keep graph and vector updates gated until PR approval.</li>
+      </ol>
+    </div>
   `;
 }
 

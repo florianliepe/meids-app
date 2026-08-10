@@ -4,6 +4,40 @@ Date: 2026-08-09
 
 Latest update: 2026-08-10
 
+## Latest Local QA Pass For Knowledge Fabric Queue Filters And PR Handoff
+
+- Added review-state filtering for the Knowledge Fabric queue:
+  - all
+  - pending
+  - reviewed
+  - approved
+  - needs rework
+  - rejected
+  - graph candidates
+  - repo ready
+- Added an approved PR handoff preview for approved OKF source handoffs.
+- Added `Copy approved PR handoff`, producing `meids.approved_okf_pr_handoff.v1` JSON for knowledge repo PR preparation.
+- Verified the PR handoff remains non-mutating and keeps graph/vector promotion gated after knowledge repo merge.
+- Verified desktop and mobile dark-mode rendering with Playwright.
+- Verified targeted behavior:
+  - approving one queue item creates at least one repo-ready handoff
+  - repo-ready filter shows only approved handoffs
+  - copied PR handoff includes schema, summary, target paths, graph candidates, and apply rules
+  - queue filter does not overflow the viewport
+- Screenshot and machine-readable QA output:
+  - `docs/visual-qa/screenshots-20260810-knowledge-fabric-queue-filter-pr-handoff/`
+
+Validation commands:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-knowledge-fabric-queue-filter-pr-handoff`
+
 ## Latest Local QA Pass For Knowledge Fabric Review Transitions
 
 - Added an explicit review transition strip to each Knowledge Fabric queue card.
