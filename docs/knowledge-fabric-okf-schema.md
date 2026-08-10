@@ -28,6 +28,19 @@ The deterministic local ingest mock is `node scripts\mock-okf-ingest.cjs`; it
 converts `contracts/okf/ingest/sample-ingest-request.json` into generated OKF
 concept, evidence, transcript, graph, audit, and vector-adapter payloads.
 
+Portable JSON Schema artifacts live in `contracts/okf/schemas`:
+
+| Schema file | Contract |
+| --- | --- |
+| `shared-definitions.schema.json` | Review states, source types, graph relations, edge classes, node types |
+| `concept.schema.json` | `okf.concept.v1` Markdown frontmatter |
+| `evidence.schema.json` | `okf.evidence.v1` YAML source manifest |
+| `transcript.schema.json` | `okf.transcript.v1` Markdown frontmatter |
+| `graph-node.schema.json` | `okf.graph_node.v1` graph node YAML |
+| `graph-edge.schema.json` | `okf.graph_edge.v1` graph edge YAML |
+
+The current validator checks both the schema artifacts and the example/generated fixtures. This makes the OKF contract portable to the future knowledge fabric repository, n8n validation steps, hosted backend validation, and GitLab/GitHub CI without depending on frontend runtime code.
+
 ## Review States
 
 Use one shared lifecycle across concepts, evidence, graph nodes, graph edges, and transcripts:

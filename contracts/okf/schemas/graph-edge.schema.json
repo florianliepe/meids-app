@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meids.local/schemas/okf/graph-edge.schema.json",
+  "title": "OKF Graph Edge",
+  "type": "object",
+  "required": [
+    "schema",
+    "edge_key",
+    "twin_id",
+    "from",
+    "to",
+    "relation",
+    "edge_class",
+    "review_state",
+    "confidence"
+  ],
+  "properties": {
+    "schema": { "const": "okf.graph_edge.v1" },
+    "edge_key": { "type": "string", "minLength": 1 },
+    "twin_id": { "type": "string", "minLength": 1 },
+    "from": { "type": "string", "minLength": 1 },
+    "to": { "type": "string", "minLength": 1 },
+    "relation": { "$ref": "shared-definitions.schema.json#/$defs/graph_relation" },
+    "edge_class": { "$ref": "shared-definitions.schema.json#/$defs/edge_class" },
+    "review_state": { "$ref": "shared-definitions.schema.json#/$defs/review_state" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "promotion": { "type": "object" }
+  },
+  "additionalProperties": true
+}

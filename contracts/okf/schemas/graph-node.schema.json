@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meids.local/schemas/okf/graph-node.schema.json",
+  "title": "OKF Graph Node",
+  "type": "object",
+  "required": [
+    "schema",
+    "node_key",
+    "twin_id",
+    "label",
+    "node_type",
+    "review_state"
+  ],
+  "properties": {
+    "schema": { "const": "okf.graph_node.v1" },
+    "node_key": { "type": "string", "minLength": 1 },
+    "twin_id": { "type": "string", "minLength": 1 },
+    "label": { "type": "string", "minLength": 1 },
+    "node_type": { "$ref": "shared-definitions.schema.json#/$defs/node_type" },
+    "review_state": { "$ref": "shared-definitions.schema.json#/$defs/review_state" },
+    "concept_refs": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meids.local/schemas/okf/evidence.schema.json",
+  "title": "OKF Evidence Manifest",
+  "type": "object",
+  "required": [
+    "schema",
+    "evidence_id",
+    "twin_id",
+    "source_type",
+    "review_state",
+    "created_at"
+  ],
+  "properties": {
+    "schema": { "const": "okf.evidence.v1" },
+    "evidence_id": { "type": "string", "minLength": 1 },
+    "twin_id": { "type": "string", "minLength": 1 },
+    "source_type": { "$ref": "shared-definitions.schema.json#/$defs/source_type" },
+    "review_state": { "$ref": "shared-definitions.schema.json#/$defs/review_state" },
+    "storage": { "type": "object" },
+    "anchors": { "type": "array", "items": { "type": "object" } },
+    "privacy": { "type": "object" },
+    "created_at": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": true
+}

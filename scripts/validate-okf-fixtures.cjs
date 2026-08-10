@@ -3,6 +3,7 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const contractRoot = path.join(root, "contracts", "okf");
+const schemaRoot = path.join(contractRoot, "schemas");
 const fixtureRoots = ["examples", "generated"].map((name) => path.join(contractRoot, name));
 const reviewStates = new Set(["draft", "candidate", "pending-review", "approved", "needs-rework", "rejected", "retired"]);
 const vectorTrustedStates = new Set(["approved"]);
@@ -284,8 +285,33 @@ function validateNegativeConcept(file) {
   fail(`${file}: negative concept fixture unexpectedly passed`);
 }
 
+function validateSchemaArtifacts() {
+  const expectedSchemas = [
+    "shared-definitions.schema.json",
+    "concept.schema.json",
+    "evidence.schema.json",
+    "transcript.schema.json",
+    "graph-node.schema.json",
+    "graph-edge.schema.json",
+  ];
+  for (const schemaFile of expectedSchemas) {
+    const file = path.join(schemaRoot, schemaFile);
+    if (!fs.existsSync(file)) fail(`Missing OKF schema artifact ${path.relative(root, file)}`);
+    const schema = JSON.parse(read(file));
+    assertRequired(schema, file, ["$schema", "$id", "title"]);
+    if (schema.$schema !== "https://json-schema.org/draft/2020-12/schema") {
+      fail(`${file}: $schema must be JSON Schema draft 2020-12`);
+    }
+    if (!String(schema.$id || "").startsWith("https://meids.local/schemas/okf/")) {
+      fail(`${file}: $id must use the MeIDs OKF schema namespace`);
+    }
+  }
+}
+
+validateSchemaArtifacts();
+
 let total = 0;
-let groupCount = 0;
+let groupCount = 1;
 for (const fixtureRoot of fixtureRoots) {
   if (!fs.existsSync(fixtureRoot)) continue;
   const checks = [

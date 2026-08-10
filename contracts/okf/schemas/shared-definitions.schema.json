@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meids.local/schemas/okf/shared-definitions.schema.json",
+  "title": "OKF Shared Definitions",
+  "$defs": {
+    "review_state": {
+      "enum": [
+        "draft",
+        "candidate",
+        "pending-review",
+        "approved",
+        "needs-rework",
+        "rejected",
+        "retired"
+      ]
+    },
+    "source_type": {
+      "enum": [
+        "upload",
+        "transcript",
+        "email_export",
+        "calendar_export",
+        "teams_export",
+        "agent_output",
+        "voice_capture"
+      ]
+    },
+    "edge_class": {
+      "enum": [
+        "explicit",
+        "inferred",
+        "candidate",
+        "duplicate-candidate",
+        "contradiction-candidate"
+      ]
+    },
+    "graph_relation": {
+      "enum": [
+        "supports",
+        "contradicts",
+        "requires",
+        "similar_to",
+        "causes",
+        "evidence_for",
+        "uses_skill"
+      ]
+    },
+    "node_type": {
+      "enum": [
+        "cluster",
+        "concept",
+        "skill",
+        "task",
+        "person",
+        "project",
+        "risk",
+        "decision"
+      ]
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meids.local/schemas/okf/transcript.schema.json",
+  "title": "OKF Transcript Frontmatter",
+  "type": "object",
+  "required": [
+    "schema",
+    "transcript_id",
+    "twin_id",
+    "source_type",
+    "transcription_provider",
+    "review_state",
+    "created_at"
+  ],
+  "properties": {
+    "schema": { "const": "okf.transcript.v1" },
+    "transcript_id": { "type": "string", "minLength": 1 },
+    "twin_id": { "type": "string", "minLength": 1 },
+    "source_type": { "$ref": "shared-definitions.schema.json#/$defs/source_type" },
+    "transcription_provider": { "enum": ["openai", "n8n", "manual"] },
+    "review_state": { "$ref": "shared-definitions.schema.json#/$defs/review_state" },
+    "linked_concepts": { "type": "array", "items": { "type": "string" } },
+    "evidence_ref": { "type": "string" },
+    "created_at": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": true
+}

@@ -17,6 +17,12 @@ const requirements = [
     label: "OKF markdown/YAML schema",
     evidence: [
       "docs/knowledge-fabric-okf-schema.md",
+      "contracts/okf/schemas/shared-definitions.schema.json",
+      "contracts/okf/schemas/concept.schema.json",
+      "contracts/okf/schemas/evidence.schema.json",
+      "contracts/okf/schemas/transcript.schema.json",
+      "contracts/okf/schemas/graph-node.schema.json",
+      "contracts/okf/schemas/graph-edge.schema.json",
       "contracts/okf/examples/concepts",
       "contracts/okf/examples/evidence",
       "contracts/okf/examples/transcripts",

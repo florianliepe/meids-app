@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meids.local/schemas/okf/concept.schema.json",
+  "title": "OKF Concept Frontmatter",
+  "type": "object",
+  "required": [
+    "schema",
+    "concept_id",
+    "twin_id",
+    "title",
+    "type",
+    "cluster",
+    "review_state",
+    "risk_class"
+  ],
+  "properties": {
+    "schema": { "const": "okf.concept.v1" },
+    "concept_id": { "type": "string", "minLength": 1 },
+    "twin_id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "type": { "type": "string", "minLength": 1 },
+    "cluster": { "type": "string", "minLength": 1 },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "review_state": { "$ref": "shared-definitions.schema.json#/$defs/review_state" },
+    "risk_class": { "enum": ["low", "medium", "high"] },
+    "source_refs": { "type": "array", "items": { "type": "string" } },
+    "evidence_review_states": {
+      "type": "array",
+      "items": { "$ref": "shared-definitions.schema.json#/$defs/review_state" }
+    },
+    "graph_refs": { "type": "object" },
+    "vector_policy": { "type": "object" },
+    "provenance": { "type": "object" },
+    "review": { "type": "object" },
+    "audit": { "type": "object" }
+  },
+  "additionalProperties": true
+}
