@@ -14074,6 +14074,56 @@ body.theme-dark .graph-promotion-flow small {
   line-height: 1.3;
 }
 
+.production-agent-url-source-comparison {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.production-agent-url-source-comparison article {
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.production-agent-url-source-comparison article.ready {
+  border-color: color-mix(in srgb, var(--ok) 30%, var(--line));
+}
+
+.production-agent-url-source-comparison article.partial {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+
+.production-agent-url-source-comparison article.blocked {
+  border-color: color-mix(in srgb, var(--warn) 38%, var(--line));
+  background: color-mix(in srgb, var(--warn) 7%, var(--surface));
+}
+
+.production-agent-url-source-comparison span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.production-agent-url-source-comparison strong {
+  color: var(--ink);
+  font-size: 1.05rem;
+  line-height: 1.1;
+}
+
+.production-agent-url-source-comparison p {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
 .production-agent-url-resolution-checklist {
   border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   border-radius: 12px;
@@ -30766,6 +30816,34 @@ body.theme-dark .production-agent-runtime-artifact span {
   color: #7ad8bf;
 }
 
+body.theme-dark .production-agent-url-source-comparison article {
+  background: rgba(18, 23, 19, 0.76);
+  border-color: rgba(232, 226, 214, 0.14);
+}
+
+body.theme-dark .production-agent-url-source-comparison article.ready {
+  border-color: rgba(122, 216, 191, 0.32);
+}
+
+body.theme-dark .production-agent-url-source-comparison article.partial {
+  background: rgba(122, 216, 191, 0.07);
+  border-color: rgba(122, 216, 191, 0.3);
+}
+
+body.theme-dark .production-agent-url-source-comparison article.blocked {
+  background: rgba(215, 179, 109, 0.09);
+  border-color: rgba(215, 179, 109, 0.3);
+}
+
+body.theme-dark .production-agent-url-source-comparison strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .production-agent-url-source-comparison span,
+body.theme-dark .production-agent-url-source-comparison p {
+  color: #c9c0b3;
+}
+
 body.theme-dark .production-agent-url-resolution-checklist {
   background: #1a211c;
   border-color: rgba(232, 226, 214, 0.13);
@@ -31865,6 +31943,7 @@ body.theme-dark .graph-retrieval-contract-flow article {
 
   .production-knowledge-repo-grid,
   .trusted-retrieval-grid,
+  .production-agent-url-source-comparison,
   .production-agent-url-grid,
   .production-agent-missing-url-grid,
   .production-n8n-handoff-grid,

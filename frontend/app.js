@@ -27685,6 +27685,7 @@ function renderProductionAgentUrlReadiness(agents = []) {
           <a class="secondary small" href="${escapeHtml(runtimeStatusAsset)}" target="_blank" rel="noreferrer">Open readiness artifact</a>
         </div>
       ` : ""}
+      ${renderProductionAgentUrlSourceComparison(agents, runtimeSummary)}
       ${renderProductionAgentUrlResolutionChecklist(agents)}
       ${missing.length ? renderN8nCurrentSupportedConfigPath(missingConfig) : ""}
       ${missing.length ? renderProductionAgentMissingUrlSetup(missing) : ""}
@@ -27716,6 +27717,47 @@ function renderProductionAgentUrlReadiness(agents = []) {
       ${renderProductionAgentRolloutChecklist(agents)}
       <small>Public GitHub Pages can only use public UAT webhook URLs. Private production endpoints should move behind the hosted backend or a workflow-generated runtime config.</small>
     </section>
+  `;
+}
+
+function renderProductionAgentUrlSourceComparison(agents = [], runtimeSummary = {}) {
+  if (!agents.length) return "";
+  const runtimeAssetCount = agents.filter((agent) => agent.urlSource === "runtime-asset").length;
+  const browserLocalCount = agents.filter((agent) => agent.urlSource === "browser-local").length;
+  const missingCount = agents.filter((agent) => agent.urlSource === "missing" || !agent.configured).length;
+  const committedCount = Number.isFinite(runtimeSummary.configured_count)
+    ? runtimeSummary.configured_count
+    : runtimeAssetCount;
+  const rows = [
+    {
+      label: "Committed runtime asset",
+      value: `${committedCount}/${agents.length}`,
+      detail: "`frontend/assets/agent-runtime-config.json`; used by every browser and GitHub Pages deploy.",
+      state: committedCount === agents.length ? "ready" : committedCount ? "partial" : "blocked",
+    },
+    {
+      label: "Browser-local UAT override",
+      value: `${browserLocalCount}/${agents.length}`,
+      detail: "Stored only in this browser profile for temporary public UAT webhook tests.",
+      state: browserLocalCount ? "partial" : "neutral",
+    },
+    {
+      label: "Still missing URL",
+      value: `${missingCount}/${agents.length}`,
+      detail: "Agents without runtime asset URL or local override remain fixture-only.",
+      state: missingCount ? "blocked" : "ready",
+    },
+  ];
+  return `
+    <div class="production-agent-url-source-comparison" aria-label="n8n URL source comparison">
+      ${rows.map((row) => `
+        <article class="${escapeHtml(row.state)}">
+          <span>${escapeHtml(row.label)}</span>
+          <strong>${escapeHtml(row.value)}</strong>
+          <p>${escapeHtml(row.detail)}</p>
+        </article>
+      `).join("")}
+    </div>
   `;
 }
 

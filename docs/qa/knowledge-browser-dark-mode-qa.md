@@ -4,6 +4,31 @@ Date: 2026-08-09
 
 Latest update: 2026-08-10
 
+## Latest Local QA Pass For Runtime Asset vs Browser-Local Readiness
+
+- Added a compact Production Cockpit source comparison for n8n URL readiness.
+- The comparison separates:
+  - committed runtime asset URLs
+  - browser-local UAT overrides
+  - still-missing agent URLs
+- This preserves the production boundary while making browser-local UAT readiness visible to operators.
+- Re-ran browser dark-mode QA after the comparison panel and mobile layout changes.
+- Result: all 6 cases passed.
+- Minimum measured contrast in this pass: `18.65`.
+- Screenshot evidence:
+  - `docs/visual-qa/screenshots-20260810-z4-runtime-vs-local-readiness/`
+
+Validation commands:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-z4-runtime-vs-local-readiness`
+
 ## Latest Local QA Pass For n8n URL Source Labels
 
 - Added explicit n8n URL source labels to Chat contract badges, Production Cockpit URL readiness cards, and exported agent probe evidence.
