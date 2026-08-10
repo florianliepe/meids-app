@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-10T22:23:23.204Z",
+  "generated_at": "2026-08-10T22:29:13.038Z",
   "status": "partial_live_url_blocked",
   "boundary": "Public-safe preflight only. It validates local artifacts, URL slot status, and recorded probe evidence; it does not call n8n and does not contain secrets.",
   "summary": {

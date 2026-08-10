@@ -5981,6 +5981,45 @@ body.theme-dark .repo-responsibility-lane {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.zielmodus-preflight-summary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.zielmodus-preflight-summary span {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-quiet) 82%, transparent);
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+}
+
+.zielmodus-preflight-summary strong {
+  color: var(--ink);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.zielmodus-preflight-summary small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.zielmodus-preflight-summary.partial-live-url-blocked span,
+.zielmodus-preflight-summary.live-probe-evidence-pending span,
+.zielmodus-preflight-summary.fixture-replay-blocked span {
+  border-color: color-mix(in srgb, var(--warn) 34%, var(--line));
+}
+
+.zielmodus-preflight-summary.ready-for-production-review span {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+}
+
 .zielmodus-live-handoff-grid article {
   border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
   border-radius: 8px;
@@ -6048,6 +6087,7 @@ body.theme-dark .repo-responsibility-lane {
   }
 
   .zielmodus-readiness-metrics,
+  .zielmodus-preflight-summary,
   .zielmodus-live-handoff-grid {
     grid-template-columns: 1fr;
   }

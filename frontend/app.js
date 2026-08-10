@@ -211,6 +211,7 @@
   n8nAgentContracts: null,
   n8nRuntimeReadinessStatus: null,
   n8nLiveProbeEvidenceStatus: null,
+  n8nLiveReadinessPreflight: null,
   zielmodus4ReadinessStatus: null,
   n8nContractTestResult: null,
   chatContractActionResult: null,
@@ -268,6 +269,7 @@ const N8N_CONTRACT_REPLAY_STATUS_PATH = "assets/n8n-contract-replay-status.json"
 const N8N_AGENT_RUNTIME_CONFIG_PATH = "assets/agent-runtime-config.json";
 const N8N_RUNTIME_READINESS_STATUS_PATH = "assets/n8n-runtime-readiness-status.json";
 const N8N_LIVE_PROBE_EVIDENCE_STATUS_PATH = "assets/n8n-live-probe-evidence.json";
+const N8N_LIVE_READINESS_PREFLIGHT_PATH = "assets/n8n-live-readiness-preflight.json";
 const ZIELMODUS_4_READINESS_STATUS_PATH = "assets/zielmodus-4-readiness-status.json";
 const OKF_VALIDATION_STATUS_PATH = "assets/okf-validation-status.json";
 const storageKeys = {
@@ -8506,6 +8508,7 @@ function bindQuality() {
     if (staticPagesMode) {
       await safeRefreshStaticN8nRuntimeReadinessStatus();
       await safeRefreshStaticN8nLiveProbeEvidenceStatus();
+      await safeRefreshStaticN8nLiveReadinessPreflight();
       await safeRefreshStaticZielmodus4ReadinessStatus();
       await safeRefreshStaticN8nReplayStatus();
       return;
@@ -10671,6 +10674,7 @@ function refreshStaticPagesWorkspace() {
   renderKnowledgeFabricQueuePanels();
   safeRefreshStaticN8nRuntimeReadinessStatus();
   safeRefreshStaticN8nLiveProbeEvidenceStatus();
+  safeRefreshStaticN8nLiveReadinessPreflight();
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticZielmodus4ReadinessStatus();
   safeRefreshStaticOkfValidationStatus();
@@ -13046,6 +13050,19 @@ async function safeRefreshStaticN8nLiveProbeEvidenceStatus() {
   }
 }
 
+async function safeRefreshStaticN8nLiveReadinessPreflight() {
+  if (!staticPagesMode) return;
+  try {
+    state.n8nLiveReadinessPreflight = await fetchFrontendAssetJson(N8N_LIVE_READINESS_PREFLIGHT_PATH, { optional: true });
+    renderAgentOperatingModelPanel();
+    renderProductionProgressHeader();
+  } catch (error) {
+    state.n8nLiveReadinessPreflight = null;
+    renderAgentOperatingModelPanel();
+    console.warn("Static n8n live readiness preflight refresh failed", error);
+  }
+}
+
 async function safeRefreshStaticZielmodus4ReadinessStatus() {
   if (!staticPagesMode) return;
   try {
@@ -13256,9 +13273,18 @@ function renderZielmodus4LiveHandoffGrid() {
   const probeAgents = Array.isArray(state.n8nLiveProbeEvidenceStatus?.agents)
     ? state.n8nLiveProbeEvidenceStatus.agents
     : [];
+  const preflight = state.n8nLiveReadinessPreflight || {};
+  const preflightSummary = preflight.summary || {};
+  const preflightActions = Array.isArray(preflight.next_actions) ? preflight.next_actions : [];
   const readinessArtifact = githubBlobUrl("frontend/assets/n8n-runtime-readiness-status.json");
   const probeArtifact = githubBlobUrl("frontend/assets/n8n-live-probe-evidence.json");
   const preflightArtifact = githubBlobUrl("frontend/assets/n8n-live-readiness-preflight.json");
+  const blockerSummary = preflightActions
+    .flatMap((action) => Array.isArray(action.blockers) ? action.blockers : [])
+    .reduce((acc, blocker) => {
+      acc[blocker] = (acc[blocker] || 0) + 1;
+      return acc;
+    }, {});
   return `
     <div class="zielmodus-live-handoff">
       <div class="zielmodus-live-handoff-head">
@@ -13273,6 +13299,14 @@ function renderZielmodus4LiveHandoffGrid() {
           <a class="secondary small" href="${escapeHtml(preflightArtifact)}" target="_blank" rel="noreferrer">Preflight</a>
         </div>
       </div>
+      ${preflight.schema_version ? `
+        <div class="zielmodus-preflight-summary ${escapeHtml(safeGraphClass(preflight.status || "unknown"))}">
+          <span><strong>${escapeHtml(String(preflightSummary.fixture_ready_count ?? 0))}/${escapeHtml(String(preflightSummary.agent_count ?? agentIds.length))}</strong><small>fixtures</small></span>
+          <span><strong>${escapeHtml(String(preflightSummary.url_ready_count ?? 0))}/${escapeHtml(String(preflightSummary.agent_count ?? agentIds.length))}</strong><small>live URLs</small></span>
+          <span><strong>${escapeHtml(String(preflightSummary.live_probe_ready_count ?? 0))}/${escapeHtml(String(preflightSummary.agent_count ?? agentIds.length))}</strong><small>probe traces</small></span>
+          <span><strong>${escapeHtml(preflight.status || "unknown")}</strong><small>${escapeHtml(Object.keys(blockerSummary).length ? Object.entries(blockerSummary).map(([key, count]) => `${key}: ${count}`).join(" · ") : "no blockers")}</small></span>
+        </div>
+      ` : ""}
       <div class="zielmodus-live-handoff-grid">
         ${agentIds.map((agentId) => {
           const runtime = agentRuntimeReadiness(agentId);
