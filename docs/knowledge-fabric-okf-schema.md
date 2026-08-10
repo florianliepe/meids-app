@@ -124,6 +124,7 @@ schema: okf.evidence.v1
 evidence_id: ev_20260809_001
 twin_id: florian
 source_type: upload|transcript|email_export|calendar_export|teams_export|agent_output
+review_state: pending-review
 storage:
   repo_path: evidence/florian/uploads/2026-08-09/source-001.pdf
   mime_type: application/pdf
@@ -138,6 +139,13 @@ privacy:
   retention: review_required
 created_at: "2026-08-09T10:00:00Z"
 ```
+
+Evidence `review_state` controls whether a source can support trusted answers:
+
+- `draft` evidence can only support local review.
+- `candidate` and `pending-review` evidence may appear as untrusted context.
+- `approved` evidence can support trusted retrieval, graph promotion, and vector refresh.
+- `needs-rework`, `rejected`, and `retired` evidence must not feed trusted answer generation.
 
 ## Transcript Markdown
 

@@ -81,9 +81,10 @@ function validateConcept(file) {
 
 function validateEvidence(file) {
   const data = parseFlatYaml(read(file));
-  assertRequired(data, file, ["schema", "evidence_id", "twin_id", "source_type", "created_at"]);
+  assertRequired(data, file, ["schema", "evidence_id", "twin_id", "source_type", "review_state", "created_at"]);
   if (data.schema !== "okf.evidence.v1") fail(`${file}: schema must be okf.evidence.v1`);
   if (!sourceTypes.has(data.source_type)) fail(`${file}: invalid source_type ${data.source_type}`);
+  assertReviewState(data, file);
 }
 
 function validateTranscript(file) {

@@ -2,6 +2,7 @@ schema: okf.evidence.v1
 evidence_id: ev_example_001
 twin_id: florian
 source_type: upload
+review_state: pending-review
 storage:
   repo_path: evidence/florian/uploads/2026-08-09-source-001.pdf
   mime_type: application/pdf
