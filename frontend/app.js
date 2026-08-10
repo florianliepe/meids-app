@@ -5921,6 +5921,7 @@ function renderGraphSelectedEdgeActions(edge, source = {}, targetNode = {}) {
       </dl>
       ${renderGraphPromotionChips(edge)}
       ${renderGraphEdgeProvenancePanel(edge, source, targetNode)}
+      ${pending ? renderGraphPromotionDecisionShortcuts(edge) : renderGraphPromotionDecisionOutcome(edge)}
       <div class="graph-quality-action-row">
         <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.source)}">Source</button>
         <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.target)}">Target</button>
@@ -5935,6 +5936,69 @@ function renderGraphSelectedEdgeActions(edge, source = {}, targetNode = {}) {
         ` : `<small>Governance decision recorded: ${escapeHtml(reviewState)}</small>`}
       </div>
       ${renderGraphPromotionFixtureLinks(edge)}
+    </section>
+  `;
+}
+
+function renderGraphPromotionDecisionShortcuts(edge = {}) {
+  const relation = edge.relation_type || edge.edge_type || "related";
+  const actions = [
+    {
+      decision: "accepted",
+      label: "Accept",
+      className: "approved",
+      outcome: "Trusted retrieval",
+      detail: "Actor Twin and skill packets may use this relation as governed graph context.",
+    },
+    {
+      decision: "needs-rework",
+      label: "Needs rework",
+      className: "needs-rework",
+      outcome: "Cockpit only",
+      detail: "Keep it visible for curator repair; block trusted retrieval and vector promotion.",
+    },
+    {
+      decision: "rejected",
+      label: "Reject",
+      className: "rejected",
+      outcome: "Excluded",
+      detail: "Remove from actor reliance; retain the decision as audit and learning signal.",
+    },
+  ];
+  return `
+    <section class="graph-promotion-decision-panel ${safeGraphClass(relation)}">
+      <div class="graph-promotion-decision-head">
+        <span class="badge">Promotion decision</span>
+        <p>Choose how this candidate relation enters the compound knowledge fabric.</p>
+      </div>
+      <div class="graph-promotion-decision-grid">
+        ${actions.map((action) => `
+          <button class="${escapeHtml(action.className)}" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="${escapeHtml(action.decision)}">
+            <strong>${escapeHtml(action.label)}</strong>
+            <span>${escapeHtml(action.outcome)}</span>
+            <small>${escapeHtml(action.detail)}</small>
+          </button>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderGraphPromotionDecisionOutcome(edge = {}) {
+  const decision = graphPromotionDecision(edge);
+  return `
+    <section class="graph-promotion-decision-panel readonly ${safeGraphClass(decision.className)}">
+      <div class="graph-promotion-decision-head">
+        <span class="badge">Promotion state</span>
+        <p>${escapeHtml(decision.description)}</p>
+      </div>
+      <div class="graph-promotion-decision-grid readonly">
+        <span class="${safeGraphClass(decision.className)}">
+          <strong>${escapeHtml(labelizeGraph(decision.label))}</strong>
+          <em>${escapeHtml(decision.trust)}</em>
+          <small>${escapeHtml(graphEdgeUsagePolicy(edge).detail || graphEdgeUsagePolicy(edge).label)}</small>
+        </span>
+      </div>
     </section>
   `;
 }

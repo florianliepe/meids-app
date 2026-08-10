@@ -21159,6 +21159,92 @@ body.graph-presenting {
   color: var(--accent-strong);
 }
 
+.graph-promotion-decision-panel {
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 84%, transparent);
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.graph-promotion-decision-head {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.graph-promotion-decision-head p {
+  color: var(--muted);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.graph-promotion-decision-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.graph-promotion-decision-grid button,
+.graph-promotion-decision-grid span {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  text-align: left;
+}
+
+.graph-promotion-decision-grid button.approved,
+.graph-promotion-decision-grid span.approved {
+  border-left-color: #34c795;
+}
+
+.graph-promotion-decision-grid button.needs-rework,
+.graph-promotion-decision-grid span.needs-rework {
+  border-left-color: #d7a84f;
+}
+
+.graph-promotion-decision-grid button.rejected,
+.graph-promotion-decision-grid span.rejected {
+  border-left-color: #d06e68;
+}
+
+.graph-promotion-decision-grid button:hover {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  transform: translateY(-1px);
+}
+
+.graph-promotion-decision-grid strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.graph-promotion-decision-grid span span,
+.graph-promotion-decision-grid em {
+  color: var(--accent-strong);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.graph-promotion-decision-grid small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.graph-promotion-decision-grid.readonly {
+  grid-template-columns: 1fr;
+}
+
 .graph-label-review-prompt {
   background: color-mix(in srgb, var(--surface-quiet) 88%, var(--accent) 12%);
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
@@ -23081,6 +23167,39 @@ body.theme-dark .graph-promotion-fixtures a.active {
   color: #b9f3e6;
 }
 
+body.theme-dark .graph-promotion-decision-panel {
+  background: rgba(23, 28, 24, 0.92);
+  border-color: rgba(232, 226, 214, 0.12);
+}
+
+body.theme-dark .graph-promotion-decision-head p {
+  color: #cfc6b8;
+}
+
+body.theme-dark .graph-promotion-decision-grid button,
+body.theme-dark .graph-promotion-decision-grid span {
+  background: #101411;
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .graph-promotion-decision-grid button:hover {
+  background: rgba(122, 216, 191, 0.08);
+  border-color: rgba(122, 216, 191, 0.3);
+}
+
+body.theme-dark .graph-promotion-decision-grid strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .graph-promotion-decision-grid span span,
+body.theme-dark .graph-promotion-decision-grid em {
+  color: #9fe8d5;
+}
+
+body.theme-dark .graph-promotion-decision-grid small {
+  color: #cfc6b8;
+}
+
 body.theme-dark .graph-path-explainer article,
 body.theme-dark .graph-path-verdict,
 body.theme-dark .graph-actor-governance,
@@ -23880,6 +23999,7 @@ body.theme-dark .kg-count {
   .graph-actor-use-map,
   .graph-preset-signal,
   .graph-replay-signal,
+  .graph-promotion-decision-grid,
   .graph-preset-bar,
   .graph-summary-strip,
   .graph-demo-flow-panel,
