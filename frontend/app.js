@@ -794,7 +794,7 @@ function bindGraph() {
     if (!relationApplyAction || !$("#graph")?.contains(relationApplyAction)) return;
     event.preventDefault();
     event.stopPropagation();
-    applySelectedGraphRelationContext(relationApplyAction.dataset.graphSelectedRelationAction || "chat");
+    handleSelectedGraphRelationAction(relationApplyAction.dataset.graphSelectedRelationAction || "chat");
   }, true);
   document.addEventListener("click", handleGraphEdgeLabelDocumentClick, true);
   $("#graphCanvas")?.addEventListener("mouseover", (event) => {
@@ -841,7 +841,7 @@ function bindGraph() {
     }
     const relationApplyAction = event.target.closest("[data-graph-selected-relation-action]");
     if (relationApplyAction) {
-      applySelectedGraphRelationContext(relationApplyAction.dataset.graphSelectedRelationAction || "chat");
+      handleSelectedGraphRelationAction(relationApplyAction.dataset.graphSelectedRelationAction || "chat");
       return;
     }
     const edgeClassFilter = event.target.closest("[data-graph-edge-class-filter]");
@@ -892,7 +892,7 @@ function bindGraph() {
     }
     const relationApplyAction = event.target.closest("[data-graph-selected-relation-action]");
     if (relationApplyAction) {
-      applySelectedGraphRelationContext(relationApplyAction.dataset.graphSelectedRelationAction || "chat");
+      handleSelectedGraphRelationAction(relationApplyAction.dataset.graphSelectedRelationAction || "chat");
       return;
     }
     const node = event.target.closest("[data-graph-node]");
@@ -5321,6 +5321,40 @@ function applySelectedGraphRelationContext(surface = "chat") {
   );
 }
 
+function handleSelectedGraphRelationAction(action = "chat") {
+  if (action === "actor-twin") {
+    prepareSelectedGraphRelationForActorTwin();
+    return;
+  }
+  applySelectedGraphRelationContext(action || "chat");
+}
+
+function prepareSelectedGraphRelationForActorTwin() {
+  const packet = selectedGraphRelationContextPacket();
+  if (!packet) {
+    showToast("No graph relation selected", "Select a graph edge before asking the Actor Twin.", "error");
+    return;
+  }
+  applySelectedGraphRelationContext("chat");
+  state.activeChatInteractionMode = "actor_twin";
+  const select = $("#chatInteractionModeSelect");
+  if (select) select.value = "actor_twin";
+  const query = $("#queryInput");
+  const relation = packet.selected_relation || {};
+  const source = packet.source_node || {};
+  const target = packet.target_node || {};
+  if (query) {
+    query.value = [
+      "Use the selected OKF graph relation to answer as the Actor Twin.",
+      `Explain what can be trusted, what is inferred, and what needs human review for: ${source.title || source.node_key || "source"} ${relation.relation_type || "related"} ${target.title || target.node_key || "target"}.`,
+    ].join(" ");
+    query.dispatchEvent(new Event("input", { bubbles: true }));
+    query.focus();
+  }
+  renderChatSkillMode();
+  showToast("Actor Twin prompt prepared", "Selected graph relation is attached as structured context.", "success");
+}
+
 function renderGraphNodeActorReadiness(readiness = {}) {
   return `
     <section class="graph-node-readiness ${safeGraphClass(readiness.className || "caution")}">
@@ -5704,6 +5738,7 @@ function renderGraphSelectedEdgeActions(edge, source = {}, targetNode = {}) {
       <div class="graph-quality-action-row">
         <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.source)}">Source</button>
         <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.target)}">Target</button>
+        <button class="small primary graph-actor-action" type="button" data-graph-selected-relation-action="actor-twin">Ask Actor Twin</button>
         <button class="small secondary" type="button" data-graph-selected-relation-action="chat">Apply relation to chat</button>
         <button class="small secondary" type="button" data-graph-selected-relation-action="runner">Apply relation to skill</button>
         ${candidate ? renderGraphProposalButton(edge) : ""}
@@ -13269,6 +13304,7 @@ async function askTwinViaN8n(query) {
         teams_input: $("#chatSkillTeams")?.value || "",
         knowledge_context: $("#chatSkillKnowledge")?.value || "",
       },
+      graphContext: state.graphSkillContextPacket || null,
     },
   };
   const response = await fetch(webhookUrl, {
@@ -13297,6 +13333,7 @@ async function askTwinViaN8n(query) {
         riskPosture: state.riskPosture,
         websearch: state.webSearchEnabled,
         appliedSkills: appliedSkills.map((skill) => skill.name),
+        graphContextAttached: Boolean(state.graphSkillContextPacket),
       },
     },
   };
@@ -23597,6 +23634,14 @@ function renderProductionKnowledgeRepoReadiness() {
         <a class="secondary small" href="${agentConfigUrl}" target="_blank" rel="noreferrer">Open agent-config handoff</a>
         ${bridge.compare_url ? `<a class="secondary small" href="${escapeHtml(bridge.compare_url)}" target="_blank" rel="noreferrer">Open knowledge compare</a>` : ""}
       </div>
+      <div class="production-graph-review-gates">
+        <div class="production-graph-review-head">
+          <span class="badge">Graph review gates</span>
+          <strong>Relation promotion controls trusted retrieval.</strong>
+          <p>Accepted relations can support Actor Twin reasoning. Candidate, inferred, rejected, and needs-rework edges remain attributed or blocked until reviewed.</p>
+        </div>
+        ${renderGraphPromotionSummary()}
+      </div>
       ${renderProductionAgentUrlReadiness(agentUrlReadiness)}
       <details class="production-knowledge-operator" open>
         <summary>Repo split operator sequence</summary>
@@ -23654,6 +23699,8 @@ function renderProductionAgentUrlReadiness(agents = []) {
   const configuredCount = agents.filter((agent) => agent.configured).length;
   const missing = agents.filter((agent) => !agent.configured);
   const missingConfig = buildN8nRuntimeConfigSnippet(missing.map((agent) => ({ id: agent.agentId })));
+  const liveUrlGuide = githubBlobUrl("docs/n8n-live-url-configuration.md");
+  const runtimeAsset = githubBlobUrl("frontend/assets/agent-runtime-config.json");
   return `
     <section class="production-agent-url-readiness">
       <div class="production-agent-url-head">
@@ -23680,6 +23727,8 @@ function renderProductionAgentUrlReadiness(agents = []) {
             <div class="button-row tight">
               <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(agent.githubSecret)}">Copy secret</button>
               ${agent.runtimeSnippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(agent.runtimeSnippet)}">Copy JSON</button>` : ""}
+              <a class="secondary small" href="${escapeHtml(liveUrlGuide)}" target="_blank" rel="noreferrer">Live URL guide</a>
+              <a class="secondary small" href="${escapeHtml(runtimeAsset)}" target="_blank" rel="noreferrer">Runtime asset</a>
             </div>
           </article>
         `).join("")}

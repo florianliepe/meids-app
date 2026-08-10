@@ -7744,6 +7744,43 @@ body.theme-dark .knowledge-source-readiness-grid span {
   padding: 10px;
 }
 
+.production-graph-review-gates {
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-quiet) 82%, transparent);
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.production-graph-review-head {
+  display: grid;
+  gap: 4px;
+}
+
+.production-graph-review-head strong,
+.production-graph-review-head p {
+  margin: 0;
+}
+
+.production-graph-review-head strong {
+  color: var(--ink);
+  font-size: 0.98rem;
+}
+
+.production-graph-review-head p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 720;
+  line-height: 1.45;
+}
+
+.graph-actor-action {
+  border-color: color-mix(in srgb, var(--accent) 54%, var(--line));
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+}
+
 .graph-promotion-summary-strip article.approved {
   border-left-color: color-mix(in srgb, var(--accent) 64%, var(--line));
 }
@@ -8519,6 +8556,11 @@ body.theme-dark .n8n-comparison-row i.pending {
 body.theme-dark .n8n-comparison-row i.blocked {
   border-color: rgba(240, 163, 154, 0.48);
   color: #f0a39a;
+}
+
+body.theme-dark .production-graph-review-gates {
+  border-color: rgba(232, 226, 214, 0.13);
+  background: rgba(19, 24, 20, 0.78);
 }
 
 .agent-contract-message {
