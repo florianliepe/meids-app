@@ -19,8 +19,9 @@ Current repository status:
 - GitHub repository exists: `florianliepe/meids-agent-configs`
 - Bootstrap PR: `https://github.com/florianliepe/meids-agent-configs/pull/2`
 - Branch: `feature/bootstrap-agent-config-scaffold`
-- Current state: scaffold proposed, local validation script added, pending human review/merge
+- Current state: scaffold proposed, local validation script added, UAT gate artifacts added, pending human review/merge
 - Validation command in private repo: `node scripts/validate-agent-configs.cjs`
+- UAT gate artifacts: live-probe and approval-gate checklists added for Actor Twin, Knowledge Fabric Agent, and Agentic Butler
 - Workflow automation status: blocked until a GitHub credential with `workflow` scope is available
 
 Recommended default branch model:
