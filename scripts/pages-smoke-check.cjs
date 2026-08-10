@@ -16,6 +16,7 @@ const requiredPaths = [
   "assets/n8n-live-readiness-preflight.json",
   "assets/okf-validation-status.json",
   "assets/zielmodus-4-readiness-status.json",
+  "assets/zielmodus-4-live-completion-checklist.json",
 ];
 
 const requiredN8nAgents = ["actor_twin", "knowledge_fabric_agent", "agentic_butler"];
@@ -54,6 +55,7 @@ function checkContractArtifacts(root) {
   const preflight = readJson(path.join(assetsRoot, "n8n-live-readiness-preflight.json"));
   const okfStatus = readJson(path.join(assetsRoot, "okf-validation-status.json"));
   const zielmodus = readJson(path.join(assetsRoot, "zielmodus-4-readiness-status.json"));
+  const completionChecklist = readJson(path.join(assetsRoot, "zielmodus-4-live-completion-checklist.json"));
 
   requireObject(runtime.n8nAgentWebhooks, "agent-runtime-config.json n8nAgentWebhooks");
   requireArray(runtimeReadiness.agents, "n8n-runtime-readiness-status.json agents");
@@ -61,11 +63,14 @@ function checkContractArtifacts(root) {
   requireObject(preflight.summary, "n8n-live-readiness-preflight.json summary");
   requireObject(okfStatus.summary, "okf-validation-status.json summary");
   requireObject(zielmodus.summary, "zielmodus-4-readiness-status.json summary");
+  requireObject(completionChecklist.summary, "zielmodus-4-live-completion-checklist.json summary");
+  requireArray(completionChecklist.agents, "zielmodus-4-live-completion-checklist.json agents");
 
   for (const agentId of requiredN8nAgents) {
     if (!hasAgent(runtime.n8nAgentWebhooks, agentId)) throw new Error(`agent-runtime-config.json missing ${agentId}`);
     if (!hasAgent(runtimeReadiness.agents, agentId)) throw new Error(`n8n-runtime-readiness-status.json missing ${agentId}`);
     if (!hasAgent(probeEvidence.agents, agentId)) throw new Error(`n8n-live-probe-evidence.json missing ${agentId}`);
+    if (!hasAgent(completionChecklist.agents, agentId)) throw new Error(`zielmodus-4-live-completion-checklist.json missing ${agentId}`);
   }
 
   if (!Array.isArray(preflight.agents) || preflight.agents.length !== requiredN8nAgents.length) {
@@ -90,6 +95,10 @@ function checkContractArtifacts(root) {
 
   if (zielmodus.status === "ready_for_production_review" && !zielmodus.summary.live_ready) {
     throw new Error("Zielmodus 4 status cannot be production-ready while live_ready is false");
+  }
+
+  if (completionChecklist.status === "ready_for_strict_gate" && zielmodus.status !== "complete") {
+    throw new Error("Zielmodus live completion checklist cannot be ready while Zielmodus status is not complete");
   }
 
   if (okfStatus.status && !["passed", "ready", "partial", "warning"].includes(okfStatus.status)) {
