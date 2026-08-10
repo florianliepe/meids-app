@@ -5868,6 +5868,95 @@ body.theme-dark .repo-responsibility-lane {
   grid-template-columns: repeat(3, minmax(180px, 1fr));
 }
 
+.zielmodus-readiness-card {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--surface-quiet) 88%, transparent));
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.zielmodus-readiness-card.partial-live-url-blocked,
+.zielmodus-readiness-card.incomplete {
+  border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--surface) 92%, var(--warn) 8%), var(--surface));
+}
+
+.zielmodus-readiness-card.complete {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+}
+
+.zielmodus-readiness-head {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.zielmodus-readiness-head strong {
+  color: var(--ink);
+  display: block;
+  font-size: 16px;
+  margin-top: 5px;
+  text-transform: capitalize;
+}
+
+.zielmodus-readiness-head p,
+.zielmodus-readiness-blocker p {
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 3px 0 0;
+}
+
+.zielmodus-readiness-metrics {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.zielmodus-readiness-metrics span,
+.zielmodus-readiness-blocker {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-quiet) 82%, transparent);
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+}
+
+.zielmodus-readiness-metrics strong,
+.zielmodus-readiness-blocker strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.zielmodus-readiness-metrics small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.zielmodus-readiness-actions {
+  color: var(--muted);
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+@media (max-width: 720px) {
+  .zielmodus-readiness-head {
+    display: grid;
+  }
+
+  .zielmodus-readiness-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
 .top-level-agent-card,
 .agent-contract-card {
   border: 1px solid var(--line);

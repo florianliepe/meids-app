@@ -55,6 +55,8 @@ $env:NODE_PATH="C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dep
 
 `scripts/validate-zielmodus-4-readiness.cjs` is the machine-checkable gate for this audit.
 
+The same status is surfaced in the Production Cockpit as a `Zielmodus gate` card next to the n8n runtime boundary. This keeps the closure state visible in the operator UI and links directly to the static readiness artifact and this audit.
+
 | Command | Expected result now | Purpose |
 | --- | --- | --- |
 | `node scripts/validate-zielmodus-4-readiness.cjs` | Exit `0`, status `partial_live_url_blocked` | Confirms all public-safe evidence and QA are ready while live n8n URLs are still missing |

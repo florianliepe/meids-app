@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-08-10T20:59:13.640Z",
+  "results": [
+    {
+      "viewport": "desktop",
+      "metrics": {
+        "found": true,
+        "text": "Zielmodus gate\nPartial Live Url Blocked\n\n9/9 requirements · 2/2 QA · live URL blocked\n\nOpen artifact\nOpen audit\n9/9 requirements\npublic-safe evidence\n2/2 QA\nbrowser and trace checks\n1/3 agents\nMissing live URL(s): knowledge_fabric_agent, agentic_butler\nBlocked live agents\n\nKnowledge Fabric Agent, Agentic Butler\n\nConfigure GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL.\nConfigure GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL.\nRegenerate runtime readiness artifacts and redeploy GitHub Pages.\nRun cockpit live probes and capture n8n execution trace evidence.",
+        "cardWidth": 560,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "overflowX": false,
+        "statusClass": "zielmodus-readiness-card partial-live-url-blocked"
+      },
+      "failures": [],
+      "status": "passed"
+    },
+    {
+      "viewport": "mobile",
+      "metrics": {
+        "found": true,
+        "text": "Zielmodus gate\nPartial Live Url Blocked\n\n9/9 requirements · 2/2 QA · live URL blocked\n\nOpen artifact\nOpen audit\n9/9 requirements\npublic-safe evidence\n2/2 QA\nbrowser and trace checks\n1/3 agents\nMissing live URL(s): knowledge_fabric_agent, agentic_butler\nBlocked live agents\n\nKnowledge Fabric Agent, Agentic Butler\n\nConfigure GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL.\nConfigure GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL.\nRegenerate runtime readiness artifacts and redeploy GitHub Pages.\nRun cockpit live probes and capture n8n execution trace evidence.",
+        "cardWidth": 560,
+        "viewportWidth": 390,
+        "scrollWidth": 390,
+        "overflowX": false,
+        "statusClass": "zielmodus-readiness-card partial-live-url-blocked"
+      },
+      "failures": [],
+      "status": "passed"
+    }
+  ]
+}

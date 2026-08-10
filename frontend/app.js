@@ -210,6 +210,7 @@
   agentOperatingModel: null,
   n8nAgentContracts: null,
   n8nRuntimeReadinessStatus: null,
+  zielmodus4ReadinessStatus: null,
   n8nContractTestResult: null,
   chatContractActionResult: null,
   okfValidationStatus: null,
@@ -265,6 +266,7 @@ const N8N_CHAT_MODULE_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bu
 const N8N_CONTRACT_REPLAY_STATUS_PATH = "assets/n8n-contract-replay-status.json";
 const N8N_AGENT_RUNTIME_CONFIG_PATH = "assets/agent-runtime-config.json";
 const N8N_RUNTIME_READINESS_STATUS_PATH = "assets/n8n-runtime-readiness-status.json";
+const ZIELMODUS_4_READINESS_STATUS_PATH = "assets/zielmodus-4-readiness-status.json";
 const OKF_VALIDATION_STATUS_PATH = "assets/okf-validation-status.json";
 const storageKeys = {
   theme: "intellectualTwin.theme",
@@ -8499,6 +8501,12 @@ function bindQuality() {
     await refreshN8nAgentContracts();
   });
   $("#refreshProductionAgentRuntimeBtn")?.addEventListener("click", async () => {
+    if (staticPagesMode) {
+      await safeRefreshStaticN8nRuntimeReadinessStatus();
+      await safeRefreshStaticZielmodus4ReadinessStatus();
+      await safeRefreshStaticN8nReplayStatus();
+      return;
+    }
     await refreshAgentOperatingModel();
     await refreshN8nAgentContracts();
   });
@@ -10660,6 +10668,7 @@ function refreshStaticPagesWorkspace() {
   renderKnowledgeFabricQueuePanels();
   safeRefreshStaticN8nRuntimeReadinessStatus();
   safeRefreshStaticN8nReplayStatus();
+  safeRefreshStaticZielmodus4ReadinessStatus();
   safeRefreshStaticOkfValidationStatus();
   renderAgentTraceHistoryPanel();
   renderChatLatestAgentTraces();
@@ -13020,6 +13029,19 @@ async function safeRefreshStaticN8nRuntimeReadinessStatus() {
   }
 }
 
+async function safeRefreshStaticZielmodus4ReadinessStatus() {
+  if (!staticPagesMode) return;
+  try {
+    state.zielmodus4ReadinessStatus = await fetchFrontendAssetJson(ZIELMODUS_4_READINESS_STATUS_PATH, { optional: true });
+    renderAgentOperatingModelPanel();
+    renderProductionProgressHeader();
+  } catch (error) {
+    state.zielmodus4ReadinessStatus = null;
+    renderAgentOperatingModelPanel();
+    console.warn("Static Zielmodus readiness status refresh failed", error);
+  }
+}
+
 async function safeRefreshStaticOkfValidationStatus() {
   if (!staticPagesMode) {
     renderOkfValidationStatusPanel();
@@ -13157,12 +13179,57 @@ function renderN8nContractReadinessPanel(agents = []) {
       <span class="badge">n8n runtime boundary</span>
       <small>${escapeHtml(`${state.n8nAgentContracts?.configured_count ?? 0}/${state.n8nAgentContracts?.contract_count ?? agents.length} webhooks configured${replaySummary}`)}</small>
     </div>
+    ${renderZielmodus4ReadinessCard()}
     <div class="agent-contract-readiness">
       ${agents.map((agent) => renderN8nContractReadiness(agent, contractByAgent.get(agent.id))).join("")}
     </div>
     ${renderN8nRuntimeSetupActions(agents, contractByAgent)}
     ${renderN8nFixtureLiveComparison(agents, contractByAgent)}
     ${renderAgentContractActionResult()}
+  `;
+}
+
+function renderZielmodus4ReadinessCard() {
+  const readiness = state.zielmodus4ReadinessStatus;
+  if (!readiness) return "";
+  const status = readiness.status || "unknown";
+  const summary = readiness.summary || {};
+  const live = readiness.live_n8n || {};
+  const missingAgents = Array.isArray(live.missing_live_agents) ? live.missing_live_agents : [];
+  const nextActions = Array.isArray(readiness.next_actions) ? readiness.next_actions : [];
+  const requirementLabel = `${summary.ready_requirement_count ?? 0}/${summary.requirement_count ?? 0} requirements`;
+  const qaLabel = `${summary.passed_qa_check_count ?? 0}/${summary.qa_check_count ?? 0} QA`;
+  const liveLabel = summary.live_ready ? "live-ready" : "live URL blocked";
+  return `
+    <section class="zielmodus-readiness-card ${safeGraphClass(status)}" aria-label="Zielmodus 4 readiness gate">
+      <div class="zielmodus-readiness-head">
+        <div>
+          <span class="badge">Zielmodus gate</span>
+          <strong>${escapeHtml(status.replaceAll("_", " "))}</strong>
+          <p>${escapeHtml(`${requirementLabel} · ${qaLabel} · ${liveLabel}`)}</p>
+        </div>
+        <div class="button-row tight">
+          <a class="secondary small" href="${escapeHtml(githubBlobUrl("frontend/assets/zielmodus-4-readiness-status.json"))}" target="_blank" rel="noreferrer">Open artifact</a>
+          <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/production/zielmodus-4-readiness-audit.md"))}" target="_blank" rel="noreferrer">Open audit</a>
+        </div>
+      </div>
+      <div class="zielmodus-readiness-metrics">
+        <span><strong>${escapeHtml(requirementLabel)}</strong><small>public-safe evidence</small></span>
+        <span><strong>${escapeHtml(qaLabel)}</strong><small>browser and trace checks</small></span>
+        <span><strong>${escapeHtml(String(live.configured_count ?? 0))}/${escapeHtml(String((live.required_agents || []).length || 3))} agents</strong><small>${escapeHtml(live.detail || "Runtime URL status unknown.")}</small></span>
+      </div>
+      ${missingAgents.length ? `
+        <div class="zielmodus-readiness-blocker">
+          <strong>Blocked live agents</strong>
+          <p>${missingAgents.map(agentDisplayName).map(escapeHtml).join(", ")}</p>
+        </div>
+      ` : ""}
+      ${nextActions.length ? `
+        <ol class="zielmodus-readiness-actions">
+          ${nextActions.slice(0, 4).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+        </ol>
+      ` : ""}
+    </section>
   `;
 }
 
