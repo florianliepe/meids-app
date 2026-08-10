@@ -29398,3 +29398,121 @@ body.theme-dark .graph-retrieval-contract-flow article {
     grid-row: 3;
   }
 }
+
+/* Selected graph edge action panel. Late cascade keeps this stable over legacy graph layers. */
+.graph-selected-edge-brief {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 9px 0;
+}
+
+.graph-selected-edge-brief span {
+  background: color-mix(in srgb, var(--surface-quiet) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 10px;
+  border-top: 3px solid color-mix(in srgb, var(--accent) 64%, var(--line));
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 9px;
+}
+
+.graph-selected-edge-brief.candidate span,
+.graph-selected-edge-brief.unreviewed span {
+  border-top-color: color-mix(in srgb, var(--warn) 70%, var(--line));
+}
+
+.graph-selected-edge-brief.needs-rework span {
+  border-top-color: color-mix(in srgb, #c8a35d 76%, var(--line));
+}
+
+.graph-selected-edge-brief.rejected span,
+.graph-selected-edge-brief.blocked span {
+  border-top-color: color-mix(in srgb, #c84f3f 72%, var(--line));
+}
+
+.graph-selected-edge-brief strong {
+  color: var(--ink);
+  font-size: 0.76rem;
+  line-height: 1.14;
+  overflow-wrap: anywhere;
+}
+
+.graph-selected-edge-brief small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.graph-selected-edge-actions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 9px;
+}
+
+.graph-selected-edge-actions > div {
+  background: color-mix(in srgb, var(--surface-quiet) 84%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 10px;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 9px;
+}
+
+.graph-selected-edge-actions .badge {
+  justify-self: flex-start;
+}
+
+.graph-selected-edge-actions .graph-quality-action-row {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.graph-selected-edge-actions small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+body.theme-dark .graph-selected-edge-brief span,
+body.theme-dark .graph-selected-edge-actions > div {
+  background: rgba(18, 23, 19, 0.9);
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .graph-selected-edge-brief strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .graph-selected-edge-brief small,
+body.theme-dark .graph-selected-edge-actions small {
+  color: #c9c0b3;
+}
+
+body.theme-dark .graph-selected-edge-brief.candidate span,
+body.theme-dark .graph-selected-edge-brief.unreviewed span {
+  border-top-color: rgba(241, 208, 140, 0.86);
+}
+
+body.theme-dark .graph-selected-edge-brief.needs-rework span {
+  border-top-color: rgba(216, 177, 99, 0.9);
+}
+
+body.theme-dark .graph-selected-edge-brief.rejected span,
+body.theme-dark .graph-selected-edge-brief.blocked span {
+  border-top-color: rgba(221, 102, 81, 0.9);
+}
+
+@media (max-width: 720px) {
+  .graph-selected-edge-brief,
+  .graph-selected-edge-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

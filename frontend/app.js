@@ -6039,11 +6039,18 @@ function renderGraphSelectedEdgeActions(edge, source = {}, targetNode = {}) {
   const pending = candidate && reviewState === "unreviewed";
   const policy = graphEdgeUsagePolicy(edge);
   const labelTriggered = state.graphEdgeSelectionSource === "label" && state.selectedGraphEdgeKey === edge.edge_key;
+  const confidence = graphEdgeConfidencePercent(edge);
+  const decision = graphPromotionDecision(edge);
   return `
     <section class="graph-quality-card ${safeGraphClass(relation)} ${safeGraphClass(reviewState)} ${labelTriggered ? "label-triggered" : ""}">
       <span class="badge">${labelTriggered ? "Label-triggered review" : "Selected edge quality"}</span>
       <h4>${escapeHtml(labelizeGraph(relation))}</h4>
       <p>${escapeHtml(source.title || edge.source)} → ${escapeHtml(targetNode.title || edge.target)}</p>
+      <div class="graph-selected-edge-brief ${safeGraphClass(decision.className)}">
+        <span><strong>${escapeHtml(labelizeGraph(decision.label))}</strong><small>promotion state</small></span>
+        <span><strong>${escapeHtml(policy.label)}</strong><small>actor use</small></span>
+        <span><strong>${escapeHtml(confidence ? `${confidence}%` : (edge.confidence ?? "-"))}</strong><small>confidence</small></span>
+      </div>
       ${labelTriggered ? `
         <div class="graph-label-review-prompt">
           <strong>${escapeHtml(candidate ? "Govern this candidate before actor reliance." : "Inspect this scored relation before reuse.")}</strong>
@@ -6053,23 +6060,33 @@ function renderGraphSelectedEdgeActions(edge, source = {}, targetNode = {}) {
       <dl class="detail-list compact">
         ${detailRow("Recommended use", policy.label)}
         ${detailRow("Decision", graphQueueRecommendation(relation, reviewState))}
-        ${detailRow("Confidence", graphEdgeConfidencePercent(edge) ? `${graphEdgeConfidencePercent(edge)}%` : edge.confidence ?? "-")}
+        ${detailRow("Confidence", confidence ? `${confidence}%` : (edge.confidence ?? "-"))}
       </dl>
       ${renderGraphPromotionChips(edge)}
       ${renderGraphEdgeProvenancePanel(edge, source, targetNode)}
       ${pending ? renderGraphPromotionDecisionShortcuts(edge) : renderGraphPromotionDecisionOutcome(edge)}
-      <div class="graph-quality-action-row">
-        <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.source)}">Source</button>
-        <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.target)}">Target</button>
-        <button class="small primary graph-actor-action" type="button" data-graph-selected-relation-action="actor-twin">Ask Actor Twin</button>
-        <button class="small secondary" type="button" data-graph-selected-relation-action="chat">Apply relation to chat</button>
-        <button class="small secondary" type="button" data-graph-selected-relation-action="runner">Apply relation to skill</button>
-        ${candidate ? renderGraphProposalButton(edge) : ""}
-        ${pending ? `
-          <button class="small secondary" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="accepted">Accept</button>
-          <button class="small danger" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="rejected">Reject</button>
-          <button class="small secondary" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="needs-rework">Needs rework</button>
-        ` : `<small>Governance decision recorded: ${escapeHtml(reviewState)}</small>`}
+      <div class="graph-selected-edge-actions">
+        <div>
+          <span class="badge">Use relation</span>
+          <div class="graph-quality-action-row">
+            <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.source)}">Source</button>
+            <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.target)}">Target</button>
+            <button class="small primary graph-actor-action" type="button" data-graph-selected-relation-action="actor-twin">Ask Actor Twin</button>
+            <button class="small secondary" type="button" data-graph-selected-relation-action="chat">Apply relation to chat</button>
+            <button class="small secondary" type="button" data-graph-selected-relation-action="runner">Apply relation to skill</button>
+          </div>
+        </div>
+        <div>
+          <span class="badge">Govern relation</span>
+          <div class="graph-quality-action-row">
+            ${candidate ? renderGraphProposalButton(edge) : ""}
+            ${pending ? `
+              <button class="small secondary" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="accepted">Accept</button>
+              <button class="small danger" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="rejected">Reject</button>
+              <button class="small secondary" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="needs-rework">Needs rework</button>
+            ` : `<small>Governance decision recorded: ${escapeHtml(reviewState)}</small>`}
+          </div>
+        </div>
       </div>
       ${renderGraphPromotionFixtureLinks(edge)}
     </section>

@@ -255,6 +255,20 @@ Latest local QA pass for Knowledge Graph trust legend:
 
 This pass makes graph use policy explicit: trusted edges are safe for Actor Twin reasoning, inferred edges are explainable-only, and candidate/duplicate/contradiction/rework edges remain review-gated. Screenshots are stored in `docs/visual-qa/screenshots-20260810-graph-trust-legend/`.
 
+Latest local QA pass for Knowledge Graph selected-edge actions:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-agent-config-export.cjs`
+- `node scripts/replay-n8n-fixtures.cjs --write`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-graph-selected-edge-actions`
+- Targeted Playwright assertions open `?view=graph`, select a graph edge, and verify `.graph-selected-edge-brief`, `.graph-selected-edge-actions`, `Use relation`, `Govern relation`, dark mode, and zero horizontal overflow at `390px` and `1440px`.
+
+This pass separates selected-edge actions into usage and governance groups so users can distinguish actor/skill reuse from relation promotion decisions before relying on inferred graph context. Screenshots are stored in `docs/visual-qa/screenshots-20260810-graph-selected-edge-actions/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:
@@ -268,4 +282,4 @@ $env:NODE_PATH='C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dep
 
 Live n8n URLs for `Knowledge Fabric Agent` and `Agentic Butler` are still required before the goal can be fully closed.
 
-GitHub Pages workflow-secret injection is prepared in `docs/production/github-pages-agent-runtime-workflow-patch.md`, but updating `.github/workflows/*` is currently blocked by the active GitHub credential lacking `workflow` scope. Until that credential boundary is resolved, use `frontend/assets/agent-runtime-config.json` for intentionally public UAT webhook URLs.
+GitHub Pages workflow-secret injection is active for all three top-level agents. Actor Twin is configured in the deployed runtime config; Knowledge Fabric Agent and Agentic Butler remain `awaiting_url` until their live n8n webhook/status URLs are available as repository secrets.
