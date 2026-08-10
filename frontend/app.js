@@ -4931,6 +4931,7 @@ function renderGraphNodeDetail() {
   const reviewHistory = renderGraphNodeReviewHistory(node, detailNodeMap);
   const relationLayerSummary = renderGraphNodeRelationLayerSummary(directEdges);
   const evidenceEligibility = graphNodeEvidenceEligibility(node, evidenceCount, governanceEdges, directEdges);
+  const actorUse = graphNodeActorUseClassification(node, readiness, evidenceEligibility, governanceEdges, directEdges);
   $("#graphNodeDetail").innerHTML = `
     <div class="graph-detail-card ${safeGraphClass(node.review_state || "unknown")}">
       <div class="graph-detail-hero">
@@ -4938,6 +4939,7 @@ function renderGraphNodeDetail() {
         <h4>${escapeHtml(node.title || node.node_key)}</h4>
         <p>${escapeHtml(node.summary || node.description || "No summary available.")}</p>
       </div>
+      ${renderGraphNodeActorUseClassification(actorUse)}
       ${renderGraphNodeInsightPanel(insight)}
       <div class="graph-detail-health">
         <strong>${nodeDegree}<span>relations</span></strong>
@@ -4989,6 +4991,65 @@ function renderGraphNodeDetail() {
     </div>
   `;
   renderGraphQualityActions();
+}
+
+function graphNodeActorUseClassification(node = {}, readiness = {}, evidenceEligibility = {}, governanceEdges = [], directEdges = []) {
+  const reviewState = node.review_state || "unknown";
+  const blockedEdges = directEdges.filter((edge) => ["rejected", "needs-rework"].includes(String(edge.review_state || "")));
+  const hasInferredEdges = directEdges.some((edge) => graphEdgeClass(edge) === "inferred");
+  const hasExplicitEdges = directEdges.some((edge) => graphEdgeClass(edge) === "explicit");
+  const approvedDirectUse = reviewState === "approved"
+    && readiness.className === "ready"
+    && evidenceEligibility.className === "ready"
+    && !governanceEdges.length
+    && !blockedEdges.length;
+  const citeOnly = !approvedDirectUse
+    && evidenceEligibility.className !== "blocked"
+    && !blockedEdges.length
+    && (reviewState === "approved" || readiness.className === "caution" || hasInferredEdges || hasExplicitEdges);
+  const className = approvedDirectUse ? "answer" : citeOnly ? "cite" : "blocked";
+  const label = approvedDirectUse ? "Use for answer" : citeOnly ? "Cite only" : "Review blocked";
+  const detail = approvedDirectUse
+    ? "Actor Twin may use this node as grounded answer context with source citation."
+    : citeOnly
+      ? "Actor Twin may mention this as bounded context, but should cite evidence and avoid autonomous steering."
+      : "Keep this node out of trusted retrieval until evidence, review state, or relation blockers are resolved.";
+  const gates = [
+    { label: "review", value: labelizeGraph(reviewState), ready: reviewState === "approved" },
+    { label: "evidence", value: labelizeGraph(evidenceEligibility.vectorPolicy || "hold"), ready: evidenceEligibility.className === "ready" },
+    { label: "relations", value: governanceEdges.length ? `${governanceEdges.length} gate${governanceEdges.length === 1 ? "" : "s"}` : "clear", ready: !governanceEdges.length && !blockedEdges.length },
+  ];
+  return {
+    className,
+    label,
+    detail,
+    gates,
+    readinessScore: readiness.score ?? 0,
+  };
+}
+
+function renderGraphNodeActorUseClassification(actorUse = {}) {
+  return `
+    <section class="graph-node-actor-use ${safeGraphClass(actorUse.className || "blocked")}">
+      <div>
+        <span class="badge">Actor use</span>
+        <strong>${escapeHtml(actorUse.label || "Review blocked")}</strong>
+        <p>${escapeHtml(actorUse.detail || "")}</p>
+      </div>
+      <div class="graph-node-actor-use-gates">
+        ${(actorUse.gates || []).map((gate) => `
+          <span class="${gate.ready ? "ready" : "pending"}">
+            <strong>${escapeHtml(gate.value || "-")}</strong>
+            <small>${escapeHtml(gate.label || "gate")}</small>
+          </span>
+        `).join("")}
+        <span class="score">
+          <strong>${escapeHtml(String(actorUse.readinessScore ?? 0))}%</strong>
+          <small>readiness</small>
+        </span>
+      </div>
+    </section>
+  `;
 }
 
 function graphNodeEvidenceEligibility(node = {}, evidenceCount = 0, governanceEdges = [], directEdges = []) {
