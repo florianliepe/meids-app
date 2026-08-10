@@ -15104,26 +15104,94 @@ function renderAgentTraceHistoryPanel() {
   renderAgentTraceSummary(traces, filtered);
   renderAgentTraceFilterControls();
   const setupNotice = renderAgentTraceSetupNotice();
+  const sourceTraceSummary = renderKnowledgeFabricSourceTraceSummary();
   if (!traces.length) {
-    target.innerHTML = `${setupNotice}<p class="empty">No local agent handoffs yet. Run Actor Twin, Knowledge Fabric, or Agentic Butler from Chat to populate this trace history.</p>`;
+    target.innerHTML = `${setupNotice}${sourceTraceSummary}<p class="empty">No local agent handoffs yet. Run Actor Twin, Knowledge Fabric, or Agentic Butler from Chat to populate this trace history.</p>`;
     return;
   }
   if (!filtered.length) {
-    target.innerHTML = `${setupNotice}<p class="empty">No traces match this filter.</p>`;
+    target.innerHTML = `${setupNotice}${sourceTraceSummary}<p class="empty">No traces match this filter.</p>`;
     return;
   }
-  target.innerHTML = `${setupNotice}${renderAgentTraceHistoryRows(filtered, 12)}`;
+  target.innerHTML = `${setupNotice}${sourceTraceSummary}${renderAgentTraceHistoryRows(filtered, 12)}`;
 }
 
 function renderDashboardAgentTraceHistory() {
   const target = $("#dashAgentTraceHistory");
   if (!target) return;
   const traces = readComposedAgentTraces();
+  const sourceTraceSummary = renderKnowledgeFabricSourceTraceSummary({ compact: true });
   if (!traces.length) {
-    target.innerHTML = renderEmptyState("No local n8n handoffs yet.", "Open agent contracts", "openProductionCockpit");
+    target.innerHTML = `${sourceTraceSummary}${renderEmptyState("No local n8n handoffs yet.", "Open agent contracts", "openProductionCockpit")}`;
     return;
   }
-  target.innerHTML = `${renderAgentTraceSetupNotice({ compact: true })}${renderAgentTraceHistoryRows(traces, 8)}`;
+  target.innerHTML = `${renderAgentTraceSetupNotice({ compact: true })}${sourceTraceSummary}${renderAgentTraceHistoryRows(traces, 8)}`;
+}
+
+function knowledgeFabricSourceTraceSummary() {
+  const queue = state.knowledgeFabricIngestQueue || [];
+  const reviewed = reviewedKnowledgeFabricQueueItems();
+  const approved = reviewed.filter((item) => item.review_state === "approved");
+  const pending = queue.filter((item) => !item.reviewed_at || item.review_state === "pending-review");
+  const needsRework = reviewed.filter((item) => item.review_state === "needs-rework");
+  const rejected = reviewed.filter((item) => item.review_state === "rejected");
+  const withTargets = queue.filter((item) => item.concept_path || item.evidence_path || item.transcript_path);
+  const graphCandidates = queue.reduce((count, item) => count + (Array.isArray(item.candidate_edges) ? item.candidate_edges.length : 0), 0);
+  const graphPromotions = graphPromotionHistoryItems(120);
+  const latest = queue
+    .slice()
+    .sort((a, b) => String(b.reviewed_at || b.created_at || "").localeCompare(String(a.reviewed_at || a.created_at || "")))[0] || null;
+  const repoSyncPreview = queue.length ? buildKnowledgeFabricSourceRepoSyncPreviewArtifact(queue) : null;
+  return {
+    queueCount: queue.length,
+    reviewedCount: reviewed.length,
+    approvedCount: approved.length,
+    pendingCount: pending.length,
+    needsReworkCount: needsRework.length,
+    rejectedCount: rejected.length,
+    okfTargetCount: withTargets.length,
+    graphCandidateCount: graphCandidates,
+    graphPromotionCount: graphPromotions.length,
+    latestTitle: latest?.title || latest?.intent || "No source intake yet",
+    latestPath: latest?.concept_path || latest?.evidence_path || latest?.transcript_path || "",
+    repoSyncReady: Boolean(repoSyncPreview?.summary?.ready_for_knowledge_repo_review),
+    trustedRetrievalAllowed: Boolean(repoSyncPreview?.summary?.trusted_retrieval_allowed),
+    targetBranchPrefix: repoSyncPreview?.knowledge_repo_sync_plan?.target_branch_prefix || "knowledge-fabric/source-intake",
+  };
+}
+
+function renderKnowledgeFabricSourceTraceSummary(options = {}) {
+  const summary = knowledgeFabricSourceTraceSummary();
+  if (!summary.queueCount && !options.compact) return "";
+  const compact = Boolean(options.compact);
+  return `
+    <article class="knowledge-fabric-trace-summary ${compact ? "compact" : ""}">
+      <div class="knowledge-fabric-trace-summary-head">
+        <div>
+          <span class="badge">Source-intake trace</span>
+          <strong>${escapeHtml(summary.queueCount ? `${summary.queueCount} OKF handoff${summary.queueCount === 1 ? "" : "s"} in review memory` : "No source-intake handoffs yet")}</strong>
+          <p>${escapeHtml(summary.queueCount
+            ? `${summary.latestTitle} · ${summary.repoSyncReady ? "repo review eligible" : "human review required"}`
+            : "Add source context or upload a source to create a Knowledge Fabric trace.")}</p>
+        </div>
+        <span class="${summary.repoSyncReady ? "ready" : "pending"}">${escapeHtml(summary.repoSyncReady ? "repo-review ready" : "review gated")}</span>
+      </div>
+      <div class="knowledge-fabric-trace-grid">
+        <span><strong>${escapeHtml(String(summary.okfTargetCount))}</strong><small>OKF targets</small></span>
+        <span><strong>${escapeHtml(String(summary.pendingCount))}</strong><small>pending</small></span>
+        <span><strong>${escapeHtml(String(summary.approvedCount))}</strong><small>approved</small></span>
+        <span><strong>${escapeHtml(String(summary.graphCandidateCount))}</strong><small>candidate edges</small></span>
+        <span><strong>${escapeHtml(String(summary.graphPromotionCount))}</strong><small>graph decisions</small></span>
+        <span><strong>${escapeHtml(summary.trustedRetrievalAllowed ? "yes" : "no")}</strong><small>trusted retrieval</small></span>
+      </div>
+      ${compact ? "" : `
+        <div class="knowledge-fabric-trace-boundary">
+          <code>${escapeHtml(summary.latestPath || summary.targetBranchPrefix)}</code>
+          <small>${escapeHtml("Pending, rejected, and needs-rework handoffs stay audit-only. Vector refresh remains held until knowledge repo PR approval.")}</small>
+        </div>
+      `}
+    </article>
+  `;
 }
 
 function renderAgentTraceSetupNotice(options = {}) {
