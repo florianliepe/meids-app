@@ -22990,6 +22990,151 @@ body.graph-presenting {
   white-space: nowrap;
 }
 
+.graph-node-promotion-readiness {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-left: 4px solid var(--muted);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface-quiet) 86%, transparent);
+  display: grid;
+  gap: 12px;
+  padding: 13px;
+}
+
+.graph-node-promotion-readiness.ready {
+  border-left-color: #34c795;
+}
+
+.graph-node-promotion-readiness.caution {
+  border-left-color: #d7a84f;
+}
+
+.graph-node-promotion-readiness.blocked {
+  border-left-color: #d9826b;
+}
+
+.graph-node-promotion-readiness-head {
+  align-items: start;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.graph-node-promotion-readiness-head > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.graph-node-promotion-readiness-head strong,
+.graph-node-promotion-readiness-head p,
+.graph-node-promotion-readiness-head > span {
+  overflow-wrap: anywhere;
+}
+
+.graph-node-promotion-readiness-head strong {
+  color: var(--ink);
+  font-size: 0.96rem;
+  line-height: 1.22;
+}
+
+.graph-node-promotion-readiness-head p {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 680;
+  line-height: 1.38;
+  margin: 0;
+}
+
+.graph-node-promotion-readiness-head > span {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 900;
+  padding: 5px 8px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.graph-node-promotion-grid {
+  display: grid;
+  gap: 7px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.graph-node-promotion-grid span {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 9px;
+  background: var(--surface);
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px;
+}
+
+.graph-node-promotion-grid span.ready {
+  border-color: color-mix(in srgb, #34c795 38%, var(--line));
+  background: color-mix(in srgb, #34c795 8%, var(--surface));
+}
+
+.graph-node-promotion-grid span.caution {
+  border-color: color-mix(in srgb, #d7a84f 38%, var(--line));
+  background: color-mix(in srgb, #d7a84f 8%, var(--surface));
+}
+
+.graph-node-promotion-grid span.blocked {
+  border-color: color-mix(in srgb, #d9826b 34%, var(--line));
+  background: color-mix(in srgb, #d9826b 7%, var(--surface));
+}
+
+.graph-node-promotion-grid strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.graph-node-promotion-grid small {
+  color: var(--muted);
+  font-size: 0.6rem;
+  font-weight: 850;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.graph-node-promotion-handoffs {
+  display: grid;
+  gap: 7px;
+}
+
+.graph-node-promotion-handoffs article {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px;
+}
+
+.graph-node-promotion-handoffs strong,
+.graph-node-promotion-handoffs small {
+  overflow-wrap: anywhere;
+}
+
+.graph-node-promotion-handoffs strong {
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+.graph-node-promotion-handoffs small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.3;
+}
+
 .graph-evidence-list,
 .graph-relation-list,
 .graph-neighbor-list {
@@ -25074,6 +25219,9 @@ body.theme-dark .graph-node-evidence-eligibility,
 body.theme-dark .graph-edge-evidence-eligibility,
 body.theme-dark .graph-node-evidence-grid span,
 body.theme-dark .graph-edge-evidence-grid span,
+body.theme-dark .graph-node-promotion-readiness,
+body.theme-dark .graph-node-promotion-grid span,
+body.theme-dark .graph-node-promotion-handoffs article,
 body.theme-dark .graph-node-source-contract,
 body.theme-dark .graph-node-source-contract-grid span,
 body.theme-dark .graph-node-source-contract-path {
@@ -25129,6 +25277,49 @@ body.theme-dark .graph-node-actor-use-gates span.ready {
 body.theme-dark .graph-node-actor-use-gates span.pending {
   background: rgba(241, 208, 140, 0.1);
   border-color: color-mix(in srgb, #f1d08c 34%, #3c463a);
+}
+
+body.theme-dark .graph-node-promotion-readiness.ready {
+  background: linear-gradient(145deg, rgba(47, 143, 121, 0.14), #171c18);
+  border-left-color: #8ce2ca;
+}
+
+body.theme-dark .graph-node-promotion-readiness.caution {
+  background: linear-gradient(145deg, rgba(241, 208, 140, 0.11), #171c18);
+  border-left-color: #f1d08c;
+}
+
+body.theme-dark .graph-node-promotion-readiness.blocked {
+  background: linear-gradient(145deg, rgba(200, 79, 63, 0.12), #171c18);
+  border-left-color: #f0a39a;
+}
+
+body.theme-dark .graph-node-promotion-readiness-head strong,
+body.theme-dark .graph-node-promotion-grid strong,
+body.theme-dark .graph-node-promotion-handoffs strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .graph-node-promotion-readiness-head p,
+body.theme-dark .graph-node-promotion-readiness-head > span,
+body.theme-dark .graph-node-promotion-grid small,
+body.theme-dark .graph-node-promotion-handoffs small {
+  color: #c9c0b3;
+}
+
+body.theme-dark .graph-node-promotion-grid span.ready {
+  background: rgba(123, 225, 199, 0.1);
+  border-color: color-mix(in srgb, #8ce2ca 34%, #3c463a);
+}
+
+body.theme-dark .graph-node-promotion-grid span.caution {
+  background: rgba(241, 208, 140, 0.1);
+  border-color: color-mix(in srgb, #f1d08c 34%, #3c463a);
+}
+
+body.theme-dark .graph-node-promotion-grid span.blocked {
+  background: rgba(240, 163, 154, 0.1);
+  border-color: color-mix(in srgb, #f0a39a 34%, #3c463a);
 }
 
 body.theme-dark .graph-node-source-contract.ready {
@@ -26341,11 +26532,13 @@ body.theme-dark .kg-count {
   }
 
   .graph-node-source-contract-head,
+  .graph-node-promotion-readiness-head,
   .graph-node-source-contract-grid {
     grid-template-columns: 1fr;
   }
 
-  .graph-node-source-contract-head > span {
+  .graph-node-source-contract-head > span,
+  .graph-node-promotion-readiness-head > span {
     justify-self: start;
     white-space: normal;
   }
@@ -26529,6 +26722,10 @@ body.theme-dark .kg-count {
   }
 
   .graph-edge-evidence-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .graph-node-promotion-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

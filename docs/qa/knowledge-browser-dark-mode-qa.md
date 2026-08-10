@@ -4,6 +4,37 @@ Date: 2026-08-09
 
 Latest update: 2026-08-10
 
+## Latest Local QA Pass For Graph Node Promotion Readiness
+
+- Added a selected-node `Relation promotion readiness` panel in the Knowledge Graph detail view.
+- The panel separates:
+  - explicit relations
+  - inferred relations
+  - candidate relations
+  - accepted relations
+  - blocked relations
+  - approved Knowledge Fabric handoffs linked to the node
+- Added graph-to-Knowledge-Fabric handoff awareness so approved queue items can surface as promotion evidence.
+- Preserved the rule that graph and vector promotion remain gated until knowledge repo PR approval and merge.
+- Verified desktop and mobile dark-mode rendering with Playwright.
+- Verified targeted behavior:
+  - selecting a graph node renders the readiness panel
+  - the panel includes explicit/inferred/candidate/approved-handoff counts
+  - the panel stays within the graph detail width
+- Screenshot and machine-readable QA output:
+  - `docs/visual-qa/screenshots-20260810-graph-node-promotion-readiness/`
+
+Validation commands:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-graph-node-promotion-readiness`
+
 ## Latest Local QA Pass For Knowledge Fabric Queue Filters And PR Handoff
 
 - Added review-state filtering for the Knowledge Fabric queue:

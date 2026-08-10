@@ -5176,6 +5176,7 @@ function renderGraphNodeDetail() {
   const reviewFeedback = renderGraphNodeReviewFeedback(node, detailNodeMap);
   const reviewHistory = renderGraphNodeReviewHistory(node, detailNodeMap);
   const relationLayerSummary = renderGraphNodeRelationLayerSummary(directEdges);
+  const promotionReadiness = graphNodePromotionReadiness(node, directEdges);
   const evidenceEligibility = graphNodeEvidenceEligibility(node, evidenceCount, governanceEdges, directEdges);
   const actorUse = graphNodeActorUseClassification(node, readiness, evidenceEligibility, governanceEdges, directEdges);
   const sourceEvidenceContract = renderGraphNodeSourceEvidenceContract(node, provenance, evidenceEligibility, evidenceCount, governanceEdges, directEdges);
@@ -5201,6 +5202,7 @@ function renderGraphNodeDetail() {
       ${governanceQueue}
       ${reviewFeedback}
       ${reviewHistory}
+      ${renderGraphNodePromotionReadiness(promotionReadiness)}
       <section class="graph-detail-section">
         <div class="graph-detail-section-head">
           <h5>Source and governance</h5>
@@ -5241,6 +5243,92 @@ function renderGraphNodeDetail() {
   bindGraphRelationLayerControls($("#graphNodeDetail"));
   bindGraphEdgeReviewControls($("#graphNodeDetail"));
   renderGraphQualityActions();
+}
+
+function graphNodePromotionReadiness(node = {}, directEdges = []) {
+  const nodePath = node.path || node.okf_path || "";
+  const nodeKey = node.node_key || "";
+  const approvedHandoffs = (state.knowledgeFabricIngestQueue || []).filter((item) => {
+    if (item.review_state !== "approved") return false;
+    const paths = [item.concept_path, item.evidence_path, item.transcript_path].filter(Boolean);
+    const pathMatch = nodePath && paths.includes(nodePath);
+    const edgeMatch = (Array.isArray(item.candidate_edges) ? item.candidate_edges : []).some((edge) => {
+      const values = [edge.source, edge.target, edge.source_path, edge.target_path, edge.path].filter(Boolean).map(String);
+      return values.includes(nodeKey) || (nodePath && values.includes(nodePath));
+    });
+    return pathMatch || edgeMatch;
+  });
+  const classCounts = directEdges.reduce((counts, edge) => {
+    const edgeClass = graphEdgeClass(edge);
+    counts[edgeClass] = (counts[edgeClass] || 0) + 1;
+    return counts;
+  }, {});
+  const accepted = directEdges.filter((edge) => ["approved", "accepted"].includes(String(edge.review_state || ""))).length;
+  const blocked = directEdges.filter((edge) => ["rejected", "needs-rework"].includes(String(edge.review_state || ""))).length;
+  const candidate = directEdges.filter((edge) => String(graphEdgeClass(edge)).includes("candidate") || String(edge.review_state || "").includes("candidate")).length;
+  const explicit = classCounts.explicit || 0;
+  const inferred = classCounts.inferred || 0;
+  const queueCandidateEdges = approvedHandoffs.reduce((count, item) => count + (Array.isArray(item.candidate_edges) ? item.candidate_edges.length : 0), 0);
+  const readyForPr = approvedHandoffs.length > 0 && blocked === 0;
+  const status = readyForPr && candidate === 0
+    ? "ready"
+    : approvedHandoffs.length || accepted || candidate
+      ? "caution"
+      : "blocked";
+  const summary = status === "ready"
+    ? "Relations are ready for knowledge-repo graph promotion after PR review."
+    : status === "caution"
+      ? "Some relation evidence exists, but candidate or queue gates still need curator review."
+      : "No approved handoff is linked to this node yet; keep relations out of trusted graph promotion.";
+  return {
+    status,
+    summary,
+    approvedHandoffs,
+    queueCandidateEdges,
+    explicit,
+    inferred,
+    candidate,
+    accepted,
+    blocked,
+    nextAction: status === "ready"
+      ? "Use approved PR handoff, then apply accepted graph edges after merge."
+      : status === "caution"
+        ? "Review candidate edges and resolve blocked relations before vector refresh."
+        : "Approve a Knowledge Fabric handoff or attach source evidence first.",
+  };
+}
+
+function renderGraphNodePromotionReadiness(readiness = {}) {
+  return `
+    <section class="graph-node-promotion-readiness ${safeGraphClass(readiness.status || "blocked")}">
+      <div class="graph-node-promotion-readiness-head">
+        <div>
+          <span class="badge">Relation promotion readiness</span>
+          <strong>${escapeHtml(readiness.summary || "Relation promotion state unavailable.")}</strong>
+          <p>${escapeHtml(readiness.nextAction || "Inspect source evidence and graph governance before promotion.")}</p>
+        </div>
+        <span>${escapeHtml(labelizeGraph(readiness.status || "blocked"))}</span>
+      </div>
+      <div class="graph-node-promotion-grid">
+        <span class="${readiness.explicit ? "ready" : "blocked"}"><strong>${escapeHtml(String(readiness.explicit || 0))}</strong><small>explicit</small></span>
+        <span class="${readiness.inferred ? "caution" : "ready"}"><strong>${escapeHtml(String(readiness.inferred || 0))}</strong><small>inferred</small></span>
+        <span class="${readiness.candidate ? "caution" : "ready"}"><strong>${escapeHtml(String(readiness.candidate || 0))}</strong><small>candidate</small></span>
+        <span class="${readiness.accepted ? "ready" : "blocked"}"><strong>${escapeHtml(String(readiness.accepted || 0))}</strong><small>accepted</small></span>
+        <span class="${readiness.blocked ? "blocked" : "ready"}"><strong>${escapeHtml(String(readiness.blocked || 0))}</strong><small>blocked</small></span>
+        <span class="${readiness.approvedHandoffs?.length ? "ready" : "blocked"}"><strong>${escapeHtml(String(readiness.approvedHandoffs?.length || 0))}</strong><small>approved handoffs</small></span>
+      </div>
+      ${readiness.approvedHandoffs?.length ? `
+        <div class="graph-node-promotion-handoffs">
+          ${readiness.approvedHandoffs.slice(0, 3).map((item) => `
+            <article>
+              <strong>${escapeHtml(item.title || item.intent || item.queue_id || "Approved handoff")}</strong>
+              <small>${escapeHtml(`${item.concept_path || item.evidence_path || "OKF path pending"} · ${Array.isArray(item.candidate_edges) ? item.candidate_edges.length : 0} candidate edge${Array.isArray(item.candidate_edges) && item.candidate_edges.length === 1 ? "" : "s"}`)}</small>
+            </article>
+          `).join("")}
+        </div>
+      ` : ""}
+    </section>
+  `;
 }
 
 function renderGraphNodeSourceEvidenceContract(node = {}, provenance = {}, evidenceEligibility = {}, evidenceCount = 0, governanceEdges = [], directEdges = []) {
