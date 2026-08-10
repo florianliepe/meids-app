@@ -7419,9 +7419,9 @@ body.theme-dark .knowledge-source-affordances button:hover {
   font-size: 11px;
   font-style: normal;
   line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .knowledge-source-readiness-main {
@@ -7454,6 +7454,14 @@ body.theme-dark .knowledge-source-affordances button:hover {
   gap: 3px;
   min-width: 0;
   padding: 9px 10px;
+}
+
+.knowledge-source-readiness-grid span,
+.knowledge-source-readiness-grid span strong,
+.knowledge-source-readiness-grid span small {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .knowledge-source-readiness-grid span.approved {
@@ -18186,6 +18194,17 @@ body.theme-dark .compact-filterbar {
   box-shadow: none;
 }
 
+.graph-preset-bar button,
+.graph-preset-bar button span,
+.graph-preset-bar button strong,
+.graph-preset-bar button small,
+.graph-preset-bar button i {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .graph-preset-bar button::before {
   background: var(--accent);
   border-radius: 999px;
@@ -19068,7 +19087,10 @@ body.theme-dark .compact-filterbar {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 850;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   padding: 5px 8px;
+  white-space: normal;
 }
 
 .graph-list-node .graph-edge-review-actions {
@@ -23059,6 +23081,10 @@ body.graph-presenting {
 }
 
 .graph-legend.compact-control {
+  overflow: visible;
+}
+
+.graph-legend.compact-control {
   grid-template-columns: minmax(210px, 0.28fr) minmax(0, 1fr) minmax(260px, 0.36fr);
 }
 
@@ -23100,6 +23126,16 @@ body.graph-presenting {
   min-width: 0;
   padding: 7px 8px;
   text-align: left;
+}
+
+.graph-legend-item,
+.graph-legend-item strong,
+.graph-legend-item small,
+.graph-legend-actor-rule,
+.graph-legend-confidence-strip span {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .graph-legend-item::before {
@@ -28492,7 +28528,9 @@ body.theme-dark .graph-trust-boundary-grid button.active {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.25;
+  min-width: 0;
   overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .knowledge-increment-source code {
@@ -28504,6 +28542,7 @@ body.theme-dark .graph-trust-boundary-grid button.active {
   min-width: 0;
   overflow-wrap: anywhere;
   padding: 6px 8px;
+  white-space: normal;
 }
 
 .knowledge-evidence-state {
@@ -28600,7 +28639,9 @@ body.theme-dark .graph-trust-boundary-grid button.active {
   display: grid;
   gap: 2px;
   min-width: 0;
+  overflow-wrap: anywhere;
   padding: 6px 7px;
+  white-space: normal;
 }
 
 .knowledge-source-use strong {
@@ -29434,9 +29475,8 @@ body.theme-dark .knowledge-review-lane em {
 .graph-primary-node-button strong,
 .graph-primary-node-button small {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .graph-primary-node-button strong {
@@ -29822,6 +29862,14 @@ body.theme-dark .graph-retrieval-contract-flow article {
 }
 
 @media (max-width: 900px) {
+  .graph-legend.compact-control {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .graph-preset-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .graph-export-readiness,
   .graph-export-readiness-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -29935,6 +29983,12 @@ body.theme-dark .graph-retrieval-contract-flow article {
 }
 
 @media (max-width: 640px) {
+  .graph-preset-bar,
+  .graph-legend-items,
+  .graph-legend-confidence-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .production-knowledge-repo-head,
   .production-agent-url-head,
   .production-agent-missing-url-head,
