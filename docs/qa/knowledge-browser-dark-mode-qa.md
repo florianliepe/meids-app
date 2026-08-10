@@ -437,6 +437,20 @@ Latest local QA pass for Knowledge source status polish:
 
 This pass tightens Knowledge Browser card density and source readability. Concept cards now carry a card-level source state, expose a compact `Source linked` / `Source needed` action status beside Open/Copy actions, and use stronger dark-mode source-state contrast. The same QA pass also fixed Graph demo-step label containment so desktop graph labels no longer overflow. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-source-status-polish/`.
 
+Latest local QA pass for Knowledge Graph legend/detail polish:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-graph-legend-detail-polish`
+- Browser QA covers Knowledge Browser, Knowledge Graph, and trace dashboard in dark mode at `1440px` and `390px`; all six cases passed with no horizontal overflow.
+
+This pass adds a compact Graph legend use-policy strip for `Answer`, `Explore`, and `Gate`. It makes Actor Twin graph behavior explicit: approved/explicit fabric can ground answers, inferred relations remain exploration context with citation, and draft/candidate relations stay review-gated. Dark-mode styling was added for the new policy strip and verified in the graph cockpit. Screenshots are stored in `docs/visual-qa/screenshots-20260810-graph-legend-detail-polish/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

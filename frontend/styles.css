@@ -23797,6 +23797,11 @@ body.graph-presenting {
 .graph-legend-item strong,
 .graph-legend-item small,
 .graph-legend-actor-rule,
+.graph-legend-use-policy,
+.graph-legend-use-policy span,
+.graph-legend-use-policy strong,
+.graph-legend-use-policy small,
+.graph-legend-use-policy em,
 .graph-legend-confidence-strip span {
   max-width: 100%;
   min-width: 0;
@@ -23889,6 +23894,58 @@ button.graph-legend-item.active {
   color: var(--muted);
   font-size: 0.68rem;
   line-height: 1.35;
+}
+
+.graph-legend-use-policy {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.graph-legend-use-policy span {
+  background: color-mix(in srgb, var(--surface-quiet) 84%, transparent);
+  border: 1px solid var(--line);
+  border-left: 4px solid color-mix(in srgb, var(--muted) 42%, var(--line));
+  border-radius: 9px;
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  padding: 7px 8px;
+}
+
+.graph-legend-use-policy span.ready {
+  border-left-color: #34c795;
+}
+
+.graph-legend-use-policy span.cite {
+  border-left-color: #6a8de8;
+}
+
+.graph-legend-use-policy span.review {
+  border-left-color: #d7a84f;
+}
+
+.graph-legend-use-policy strong {
+  color: var(--ink);
+  font-size: 0.84rem;
+  line-height: 1;
+}
+
+.graph-legend-use-policy small {
+  color: var(--ink);
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.graph-legend-use-policy em {
+  color: var(--muted);
+  font-size: 0.6rem;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .graph-legend-confidence-strip {
@@ -30777,6 +30834,10 @@ body.theme-dark .graph-retrieval-contract-flow article {
     width: 100%;
   }
 
+  .graph-legend-use-policy {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .graph-actor-use-lanes-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -31648,6 +31709,8 @@ body.theme-dark .knowledge-source-readiness-main strong,
 body.theme-dark .knowledge-fabric-contract-main strong,
 body.theme-dark .graph-legend-head strong,
 body.theme-dark .graph-legend-item strong,
+body.theme-dark .graph-legend-use-policy strong,
+body.theme-dark .graph-legend-use-policy small,
 body.theme-dark .graph-overview-panel strong,
 body.theme-dark .graph-canvas-commandbar strong {
   color: #fff8ea;
@@ -31659,6 +31722,7 @@ body.theme-dark .knowledge-fabric-contract-grid small,
 body.theme-dark .knowledge-fabric-contract-grid em,
 body.theme-dark .graph-legend-head small,
 body.theme-dark .graph-legend-item small,
+body.theme-dark .graph-legend-use-policy em,
 body.theme-dark .graph-overview-panel small,
 body.theme-dark .graph-canvas-commandbar small {
   color: #cfc5b7;
@@ -31695,6 +31759,26 @@ body.theme-dark .graph-legend-item.needs-rework,
 body.theme-dark .graph-legend-item.contradiction-candidate.active {
   background: rgba(217, 130, 107, 0.1);
   border-left-color: #f0a39a;
+}
+
+body.theme-dark .graph-legend-use-policy span {
+  background: rgba(18, 23, 19, 0.92);
+  border-color: rgba(232, 226, 214, 0.14);
+}
+
+body.theme-dark .graph-legend-use-policy span.ready {
+  background: rgba(52, 199, 149, 0.08);
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .graph-legend-use-policy span.cite {
+  background: rgba(122, 167, 216, 0.09);
+  border-left-color: #8bb6e8;
+}
+
+body.theme-dark .graph-legend-use-policy span.review {
+  background: rgba(215, 181, 109, 0.1);
+  border-left-color: #e0c28d;
 }
 
 body.theme-dark .graph-topology-shell {

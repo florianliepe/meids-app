@@ -3383,6 +3383,26 @@ function renderGraphSemanticLegend(nodes, edges, activePath = null) {
     const meta = graphConfidenceBandMeta(key);
     return { ...meta, count: edges.filter((edge) => graphEdgeConfidenceBand(edge).key === key).length };
   });
+  const usePolicies = [
+    {
+      className: "ready",
+      label: "Answer",
+      detail: "approved + explicit",
+      value: `${approved}/${nodes.length}`,
+    },
+    {
+      className: "cite",
+      label: "Explore",
+      detail: "inferred with citation",
+      value: String(edgeClasses.inferred || 0),
+    },
+    {
+      className: "review",
+      label: "Gate",
+      detail: "drafts + candidates",
+      value: String(candidateCount + draft),
+    },
+  ];
   const items = [
     {
       icon: '<i class="legend-node approved"></i>',
@@ -3479,6 +3499,15 @@ function renderGraphSemanticLegend(nodes, edges, activePath = null) {
           <small>${escapeHtml(candidateCount || draft
             ? "Approved concepts first; inferred and candidate layers stay explainable until reviewed."
             : "Current projection can ground actor answers with source-backed context.")}</small>
+        </div>
+        <div class="graph-legend-use-policy" aria-label="Actor Twin graph use policy">
+          ${usePolicies.map((item) => `
+            <span class="${safeGraphClass(item.className)}">
+              <strong>${escapeHtml(item.value)}</strong>
+              <small>${escapeHtml(item.label)}</small>
+              <em>${escapeHtml(item.detail)}</em>
+            </span>
+          `).join("")}
         </div>
         <div class="graph-legend-confidence-strip" aria-label="Confidence bands">
           ${confidenceBands.map((band) => `
