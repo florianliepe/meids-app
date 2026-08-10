@@ -23169,6 +23169,8 @@ function renderProductionKnowledgeRepoReadiness() {
   ];
   const docsUrl = "https://github.com/florianliepe/meids-app/blob/main/docs/knowledge-fabric-okf-schema.md";
   const handoffUrl = "https://github.com/florianliepe/meids-app/blob/main/docs/production/repo-split-handoff-checklist.md";
+  const agentConfigUrl = "https://github.com/florianliepe/meids-app/blob/main/docs/production/agent-config-handoff-package.md";
+  const agentUrlReadiness = productionAgentUrlReadiness();
   target.innerHTML = `
     <section class="production-knowledge-repo-card ${statusClass}">
       <div class="production-knowledge-repo-head">
@@ -23197,8 +23199,10 @@ function renderProductionKnowledgeRepoReadiness() {
       <div class="production-knowledge-repo-actions">
         <a class="secondary small" href="${docsUrl}" target="_blank" rel="noreferrer">Open OKF schema</a>
         <a class="secondary small" href="${handoffUrl}" target="_blank" rel="noreferrer">Open handoff checklist</a>
+        <a class="secondary small" href="${agentConfigUrl}" target="_blank" rel="noreferrer">Open agent-config handoff</a>
         ${bridge.compare_url ? `<a class="secondary small" href="${escapeHtml(bridge.compare_url)}" target="_blank" rel="noreferrer">Open knowledge compare</a>` : ""}
       </div>
+      ${renderProductionAgentUrlReadiness(agentUrlReadiness)}
       <details class="production-knowledge-operator" open>
         <summary>Repo split operator sequence</summary>
         <ol>
@@ -23212,6 +23216,80 @@ function renderProductionKnowledgeRepoReadiness() {
         </ol>
       </details>
       <small>Production rule: only approved or explicitly selected pending OKF material can move into trusted retrieval. Merge remains human-reviewed.</small>
+    </section>
+  `;
+  bindConceptSourceActions(target);
+}
+
+function productionAgentUrlReadiness() {
+  const contracts = Array.isArray(state.n8nAgentContracts?.contracts)
+    ? state.n8nAgentContracts.contracts
+    : buildStaticPagesN8nAgentContracts().contracts;
+  const secretByAgent = {
+    actor_twin: "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
+    knowledge_fabric_agent: "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+    agentic_butler: "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+  };
+  return contracts.map((contract) => {
+    const agentId = contract.agent_id || "";
+    const readiness = agentRuntimeReadiness(agentId);
+    const probe = state.n8nLiveProbeResults?.[agentId] || null;
+    const status = probe?.status === "connected"
+      ? "n8n connected"
+      : readiness.configured
+        ? "configured"
+        : "missing URL";
+    return {
+      agentId,
+      name: contract.agent_name || agentDisplayName(agentId),
+      status,
+      className: status === "n8n connected" ? "ready" : readiness.configured ? "pending" : "blocked",
+      detail: probe?.detail || readiness.detail || contract.blocker || "",
+      envVar: contract.webhook_env_var || readiness.envVar || "N8N_WEBHOOK_URL",
+      githubSecret: secretByAgent[agentId] || "GH_PAGES_N8N_WEBHOOK_URL",
+      fixture: contract.source || "",
+      fixtureUrl: contract.source_url || "",
+      configured: readiness.configured,
+      runtimeSnippet: buildSingleAgentRuntimeConfigSnippet(agentId),
+    };
+  });
+}
+
+function renderProductionAgentUrlReadiness(agents = []) {
+  const configuredCount = agents.filter((agent) => agent.configured).length;
+  const missing = agents.filter((agent) => !agent.configured);
+  const missingConfig = buildN8nRuntimeConfigSnippet(missing.map((agent) => ({ id: agent.agentId })));
+  return `
+    <section class="production-agent-url-readiness">
+      <div class="production-agent-url-head">
+        <div>
+          <span class="badge">Agent URL readiness</span>
+          <strong>${escapeHtml(`${configuredCount}/${agents.length} live URLs configured`)}</strong>
+          <p>${escapeHtml(missing.length
+            ? "Knowledge Fabric Agent and Agentic Butler stay fixture-only until their public UAT or hosted backend webhook URLs are configured."
+            : "All top-level agent URLs are configured. Run live probes before production approval.")}</p>
+        </div>
+        ${missingConfig ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(missingConfig)}">Copy missing JSON</button>` : ""}
+      </div>
+      <div class="production-agent-url-grid">
+        ${agents.map((agent) => `
+          <article class="${escapeHtml(agent.className)}">
+            <span>${escapeHtml(agent.status)}</span>
+            <strong>${escapeHtml(agent.name)}</strong>
+            <p>${escapeHtml(agent.detail)}</p>
+            <dl>
+              <div><dt>Runtime key</dt><dd><code>${escapeHtml(agent.envVar)}</code></dd></div>
+              <div><dt>GitHub secret</dt><dd><code>${escapeHtml(agent.githubSecret)}</code></dd></div>
+              <div><dt>Fixture</dt><dd>${agent.fixtureUrl ? `<a href="${escapeHtml(agent.fixtureUrl)}" target="_blank" rel="noreferrer">${escapeHtml(agent.fixture)}</a>` : escapeHtml(agent.fixture)}</dd></div>
+            </dl>
+            <div class="button-row tight">
+              <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(agent.githubSecret)}">Copy secret</button>
+              ${agent.runtimeSnippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(agent.runtimeSnippet)}">Copy JSON</button>` : ""}
+            </div>
+          </article>
+        `).join("")}
+      </div>
+      <small>Public GitHub Pages can only use public UAT webhook URLs. Private production endpoints should move behind the hosted backend or a workflow-generated runtime config.</small>
     </section>
   `;
 }
