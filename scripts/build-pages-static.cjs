@@ -153,6 +153,13 @@ function build() {
     path.join(assetsDir, "zielmodus-4-live-completion-checklist.json"),
     "--write",
   ]);
+  shell("scripts/write-n8n-live-handoff-commands.cjs", [
+    "--assets-dir",
+    assetsDir,
+    "--output",
+    path.join(assetsDir, "n8n-live-handoff-commands.json"),
+    "--write",
+  ]);
   if (args.smoke) {
     shell("scripts/pages-smoke-check.cjs", [args.output]);
   }

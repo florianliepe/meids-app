@@ -114,11 +114,13 @@ const requirements = [
       "scripts/record-n8n-live-probe-evidence.cjs",
       "scripts/write-n8n-live-readiness-preflight.cjs",
       "scripts/write-zielmodus-4-live-completion-checklist.cjs",
+      "scripts/write-n8n-live-handoff-commands.cjs",
       "frontend/assets/agent-runtime-config.json",
       "frontend/assets/n8n-runtime-readiness-status.json",
       "frontend/assets/n8n-live-probe-evidence.json",
       "frontend/assets/n8n-live-readiness-preflight.json",
       "frontend/assets/zielmodus-4-live-completion-checklist.json",
+      "frontend/assets/n8n-live-handoff-commands.json",
     ],
   },
 ];
