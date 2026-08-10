@@ -214,6 +214,35 @@ function validateRepoSyncPackage(file) {
   if (!applyRules.some((rule) => /audit-only/i.test(rule))) fail(`${file}: apply_rules must keep rejected or rework items audit-only`);
   if (!applyRules.some((rule) => /Vector refresh.*merged/i.test(rule))) fail(`${file}: apply_rules must defer vector refresh until PR merge`);
   if (!/Human PR review/i.test(syncPlan.approval_gate || "")) fail(`${file}: approval_gate must require human PR review`);
+  const promotionBundle = data.graph_promotion_bundle || {};
+  if (promotionBundle.schema) {
+    if (promotionBundle.schema !== "okf.graph_promotion_history_export.v1") {
+      fail(`${file}: graph_promotion_bundle.schema must be okf.graph_promotion_history_export.v1`);
+    }
+    const promotions = Array.isArray(promotionBundle.promotions) ? promotionBundle.promotions : [];
+    if (!promotions.length) fail(`${file}: graph_promotion_bundle.promotions must include at least one promotion`);
+    for (const [index, promotion] of promotions.entries()) {
+      assertRequired(promotion, `${file}:graph_promotion_bundle.promotions[${index}]`, ["edge_key", "decision", "review_state", "evidence_refs", "evidence_gate", "repo_apply", "retrieval_rule"]);
+      if (!Array.isArray(promotion.evidence_refs)) {
+        fail(`${file}:graph_promotion_bundle.promotions[${index}]: evidence_refs must be an array`);
+      }
+      const accepted = ["approved", "accepted"].includes(String(promotion.review_state || promotion.decision || "").toLowerCase());
+      if (accepted && !promotion.evidence_refs.length) {
+        fail(`${file}:graph_promotion_bundle.promotions[${index}]: accepted promotion must include evidence_refs`);
+      }
+      assertRequired(promotion.evidence_gate || {}, `${file}:graph_promotion_bundle.promotions[${index}].evidence_gate`, ["required", "status", "rule"]);
+      if (accepted && promotion.evidence_gate.status !== "source_evidence_present") {
+        fail(`${file}:graph_promotion_bundle.promotions[${index}]: accepted promotion evidence_gate.status must be source_evidence_present`);
+      }
+      assertRequired(promotion.repo_apply || {}, `${file}:graph_promotion_bundle.promotions[${index}].repo_apply`, ["action", "target_path", "resulting_review_state", "resulting_edge_class", "requires_human_pr", "vector_refresh"]);
+      if (accepted && promotion.repo_apply.action !== "apply_to_graph_edges_yaml") {
+        fail(`${file}:graph_promotion_bundle.promotions[${index}]: accepted promotion repo_apply.action must apply to graph edges YAML`);
+      }
+      if (promotion.repo_apply.requires_human_pr !== true) {
+        fail(`${file}:graph_promotion_bundle.promotions[${index}]: repo_apply.requires_human_pr must be true`);
+      }
+    }
+  }
   const links = Array.isArray(data.handoff_graph_links) ? data.handoff_graph_links : [];
   if (!links.length) fail(`${file}: handoff_graph_links must include at least one link`);
   for (const [index, link] of links.entries()) {
@@ -222,6 +251,20 @@ function validateRepoSyncPackage(file) {
     if (!Array.isArray(link.graph_edge_keys) || !link.graph_edge_keys.length) fail(`${file}:handoff_graph_links[${index}]: graph_edge_keys must be a non-empty array`);
     if (link.review_state === "approved" && !String(link.vector_rule || "").includes("after_knowledge_repo_merge")) {
       fail(`${file}:handoff_graph_links[${index}]: approved link vector_rule must wait for knowledge repo merge`);
+    }
+    if (["approved", "accepted"].includes(String(link.graph_decision || "").toLowerCase())) {
+      const summaries = Array.isArray(link.promotion_review_summary) ? link.promotion_review_summary : [];
+      if (!summaries.length) fail(`${file}:handoff_graph_links[${index}]: approved graph_decision must include promotion_review_summary`);
+      for (const [summaryIndex, summary] of summaries.entries()) {
+        assertRequired(summary, `${file}:handoff_graph_links[${index}].promotion_review_summary[${summaryIndex}]`, ["edge_key", "decision", "evidence_refs", "repo_apply"]);
+        if (!Array.isArray(summary.evidence_refs) || !summary.evidence_refs.length) {
+          fail(`${file}:handoff_graph_links[${index}].promotion_review_summary[${summaryIndex}]: evidence_refs must be non-empty`);
+        }
+        assertRequired(summary.repo_apply || {}, `${file}:handoff_graph_links[${index}].promotion_review_summary[${summaryIndex}].repo_apply`, ["action", "target_path", "requires_human_pr"]);
+        if (summary.repo_apply.requires_human_pr !== true) {
+          fail(`${file}:handoff_graph_links[${index}].promotion_review_summary[${summaryIndex}]: repo_apply.requires_human_pr must be true`);
+        }
+      }
     }
   }
 }
