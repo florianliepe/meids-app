@@ -1,0 +1,69 @@
+{
+  "workflow_blueprint_version": "0.1.0",
+  "visibility": "public-safe-blueprint",
+  "agent_id": "actor_twin",
+  "agent_name": "Actor Twin",
+  "purpose": "User-facing answer and decision agent for MeIDs. Interprets user intent, retrieves approved OKF context, and routes execution requests to Agentic Butler.",
+  "target_n8n_trigger": {
+    "type": "chat_or_webhook",
+    "runtime_keys": [
+      "n8nActorTwinWebhookUrl",
+      "n8nAgentWebhooks.actor_twin"
+    ],
+    "github_pages_secret": "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
+    "production_secret": "N8N_ACTOR_TWIN_WEBHOOK_URL"
+  },
+  "contract_fixture": "contracts/n8n/fixtures/actor-twin.json",
+  "minimum_nodes": [
+    {
+      "name": "Receive Actor Twin request",
+      "kind": "trigger",
+      "responsibility": "Accept the public contract envelope and assign a request_id/session_id."
+    },
+    {
+      "name": "Validate envelope",
+      "kind": "function",
+      "responsibility": "Reject malformed agent_id, unsupported envelope_version, or missing input/query."
+    },
+    {
+      "name": "Retrieve approved OKF context",
+      "kind": "retrieval",
+      "responsibility": "Use approved OKF context first; include pending context only when explicitly selected and labelled."
+    },
+    {
+      "name": "Decide answer versus execution",
+      "kind": "llm",
+      "responsibility": "Answer directly for answer-only requests or return a structured handoff suggestion to Agentic Butler."
+    },
+    {
+      "name": "Return contract response",
+      "kind": "response",
+      "responsibility": "Return completed, approval_required, or failed envelope matching the fixture shape."
+    }
+  ],
+  "approval_boundary": "Actor Twin may answer and recommend. It must not send messages, schedule meetings, write to knowledge, or execute skills directly.",
+  "trace_requirements": [
+    "request_id",
+    "agent_id",
+    "intent",
+    "retrieval_sources",
+    "handoff_decision",
+    "response_status"
+  ],
+  "live_probe_expectation": {
+    "status_on_success": "n8n connected",
+    "must_return": [
+      "request_id",
+      "agent_id",
+      "status",
+      "output"
+    ]
+  },
+  "forbidden_public_content": [
+    "credentials",
+    "bearer tokens",
+    "private webhook URLs",
+    "private OKF payloads",
+    "Azure keys"
+  ]
+}

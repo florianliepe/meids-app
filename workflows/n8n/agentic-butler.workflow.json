@@ -1,0 +1,82 @@
+{
+  "workflow_blueprint_version": "0.1.0",
+  "visibility": "public-safe-blueprint",
+  "agent_id": "agentic_butler",
+  "agent_name": "Agentic Butler",
+  "purpose": "Activate approved skills, run the internal Skill Orchestrator, coordinate task agents, and enforce human approval gates before risky actions.",
+  "target_n8n_trigger": {
+    "type": "webhook",
+    "runtime_keys": [
+      "n8nAgenticButlerWebhookUrl",
+      "n8nAgentWebhooks.agentic_butler"
+    ],
+    "github_pages_secret": "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+    "production_secret": "N8N_AGENTIC_BUTLER_WEBHOOK_URL"
+  },
+  "contract_fixture": "contracts/n8n/fixtures/agentic-butler.json",
+  "minimum_nodes": [
+    {
+      "name": "Receive skill activation request",
+      "kind": "webhook",
+      "responsibility": "Accept skill_id, manual_trigger, exported sources, and approval context from MeIDs Chat."
+    },
+    {
+      "name": "Validate approved skill",
+      "kind": "policy_gate",
+      "responsibility": "Reject missing or unapproved skills before task orchestration."
+    },
+    {
+      "name": "Skill Orchestrator",
+      "kind": "internal_subagent",
+      "responsibility": "Plan the skill run, choose task agents, and keep the orchestrator internal to Agentic Butler."
+    },
+    {
+      "name": "Actor Twin checkpoint",
+      "kind": "subagent_call",
+      "responsibility": "Ask Actor Twin for prioritization, tone, risk posture, and decision steering at configured checkpoints."
+    },
+    {
+      "name": "Task agent execution",
+      "kind": "worker_group",
+      "responsibility": "Run narrow task agents for source summarization, planning, drafting, and output formatting."
+    },
+    {
+      "name": "Human approval gate",
+      "kind": "policy_gate",
+      "responsibility": "Pause before sending email, creating meetings, committing externally, or any requires_human action."
+    },
+    {
+      "name": "Store trace and return output",
+      "kind": "response",
+      "responsibility": "Return completed, approval_required, or failed envelope matching the fixture shape and store trace references."
+    }
+  ],
+  "approval_boundary": "May create draft work products. Must pause before external action, meeting creation, email send, financial commitment, or unapproved skill/refinement promotion.",
+  "trace_requirements": [
+    "request_id",
+    "agent_id",
+    "skill_id",
+    "actor_checkpoints",
+    "task_agents_used",
+    "approval_queue",
+    "trace_id"
+  ],
+  "live_probe_expectation": {
+    "status_on_success": "n8n connected",
+    "must_return": [
+      "request_id",
+      "agent_id",
+      "status",
+      "output.todos",
+      "output.approval_queue",
+      "trace.trace_id"
+    ]
+  },
+  "forbidden_public_content": [
+    "credentials",
+    "bearer tokens",
+    "private webhook URLs",
+    "private OKF payloads",
+    "Azure keys"
+  ]
+}

@@ -33,7 +33,17 @@ The public-safe agent-config handoff manifest is:
 contracts/n8n/agent-config-public-export.json
 ```
 
-It maps the three public fixtures to the future private `meids-agent-configs` repository structure. Validate it with:
+It maps the three public fixtures to the future private `meids-agent-configs` repository structure. It also references public-safe workflow blueprints:
+
+```text
+workflows/n8n/actor-twin.workflow.json
+workflows/n8n/knowledge-fabric-agent.workflow.json
+workflows/n8n/agentic-butler.workflow.json
+```
+
+These are not live n8n exports. They define the expected trigger, minimum nodes, approval boundary, trace fields, and live-probe return shape for each top-level agent so n8n implementation can proceed without exposing credentials or private knowledge.
+
+Validate the manifest and the workflow blueprints with:
 
 ```powershell
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-agent-config-export.cjs

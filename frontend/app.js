@@ -9976,6 +9976,8 @@ function buildStaticPagesN8nAgentContracts() {
       agent_name: "Actor Twin",
       source: "contracts/n8n/fixtures/actor-twin.json",
       source_url: `${repoBase}/contracts/n8n/fixtures/actor-twin.json`,
+      workflow_source: "workflows/n8n/actor-twin.workflow.json",
+      workflow_url: `${repoBase}/workflows/n8n/actor-twin.workflow.json`,
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
       webhook_env_var: "N8N_ACTOR_TWIN_WEBHOOK_URL",
       webhook_configured: hasAgentWebhook("actor_twin"),
@@ -9989,6 +9991,8 @@ function buildStaticPagesN8nAgentContracts() {
       agent_name: "Knowledge Fabric Agent",
       source: "contracts/n8n/fixtures/knowledge-fabric-agent.json",
       source_url: `${repoBase}/contracts/n8n/fixtures/knowledge-fabric-agent.json`,
+      workflow_source: "workflows/n8n/knowledge-fabric-agent.workflow.json",
+      workflow_url: `${repoBase}/workflows/n8n/knowledge-fabric-agent.workflow.json`,
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
       webhook_env_var: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
       webhook_configured: hasAgentWebhook("knowledge_fabric_agent"),
@@ -10002,6 +10006,8 @@ function buildStaticPagesN8nAgentContracts() {
       agent_name: "Agentic Butler",
       source: "contracts/n8n/fixtures/agentic-butler.json",
       source_url: `${repoBase}/contracts/n8n/fixtures/agentic-butler.json`,
+      workflow_source: "workflows/n8n/agentic-butler.workflow.json",
+      workflow_url: `${repoBase}/workflows/n8n/agentic-butler.workflow.json`,
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
       webhook_env_var: "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
       webhook_configured: hasAgentWebhook("agentic_butler"),
@@ -24416,6 +24422,8 @@ function productionAgentUrlReadiness() {
       githubSecret: secretByAgent[agentId] || "GH_PAGES_N8N_WEBHOOK_URL",
       fixture: contract.source || "",
       fixtureUrl: contract.source_url || "",
+      workflow: contract.workflow_source || "",
+      workflowUrl: contract.workflow_url || "",
       configured: readiness.configured,
       runtimeSnippet: buildSingleAgentRuntimeConfigSnippet(agentId),
     };
@@ -24451,6 +24459,7 @@ function renderProductionAgentUrlReadiness(agents = []) {
               <div><dt>Runtime key</dt><dd><code>${escapeHtml(agent.envVar)}</code></dd></div>
               <div><dt>GitHub secret</dt><dd><code>${escapeHtml(agent.githubSecret)}</code></dd></div>
               <div><dt>Fixture</dt><dd>${agent.fixtureUrl ? `<a href="${escapeHtml(agent.fixtureUrl)}" target="_blank" rel="noreferrer">${escapeHtml(agent.fixture)}</a>` : escapeHtml(agent.fixture)}</dd></div>
+              <div><dt>Workflow target</dt><dd>${agent.workflowUrl ? `<a href="${escapeHtml(agent.workflowUrl)}" target="_blank" rel="noreferrer">${escapeHtml(agent.workflow)}</a>` : escapeHtml(agent.workflow || "missing")}</dd></div>
             </dl>
             <div class="button-row tight">
               <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(agent.githubSecret)}">Copy secret</button>

@@ -39,6 +39,28 @@ for (const agent of agents) {
   if (!agent.target_workflow_path?.startsWith("workflows/n8n/")) {
     fail(`${agent.agent_id}: target_workflow_path must be under workflows/n8n`);
   }
+  const workflowPath = path.join(root, agent.target_workflow_path);
+  if (!fs.existsSync(workflowPath)) fail(`${agent.agent_id}: workflow blueprint missing at ${agent.target_workflow_path}`);
+  const workflow = readJson(workflowPath);
+  if (workflow.visibility !== "public-safe-blueprint") {
+    fail(`${agent.agent_id}: workflow blueprint visibility must be public-safe-blueprint`);
+  }
+  if (workflow.agent_id !== agent.agent_id) fail(`${agent.agent_id}: workflow blueprint agent_id mismatch`);
+  if (workflow.contract_fixture !== agent.fixture_source) {
+    fail(`${agent.agent_id}: workflow blueprint contract_fixture must match fixture_source`);
+  }
+  if (!Array.isArray(workflow.minimum_nodes) || workflow.minimum_nodes.length < 4) {
+    fail(`${agent.agent_id}: workflow blueprint must define at least four minimum nodes`);
+  }
+  if (!workflow.target_n8n_trigger?.github_pages_secret || workflow.target_n8n_trigger.github_pages_secret !== agent.github_pages_secret) {
+    fail(`${agent.agent_id}: workflow blueprint GitHub Pages secret mismatch`);
+  }
+  if (!workflow.target_n8n_trigger?.production_secret || workflow.target_n8n_trigger.production_secret !== agent.production_secret) {
+    fail(`${agent.agent_id}: workflow blueprint production secret mismatch`);
+  }
+  if (!Array.isArray(workflow.live_probe_expectation?.must_return) || !workflow.live_probe_expectation.must_return.length) {
+    fail(`${agent.agent_id}: workflow blueprint live probe expectation missing`);
+  }
   if (!Array.isArray(agent.target_prompt_paths) || !agent.target_prompt_paths.length) {
     fail(`${agent.agent_id}: target_prompt_paths missing`);
   }
@@ -51,7 +73,10 @@ for (const agent of agents) {
   if (!agent.approval_boundary) fail(`${agent.agent_id}: approval_boundary missing`);
 }
 
-const serialized = JSON.stringify(manifest);
+const serialized = JSON.stringify({
+  manifest,
+  workflows: agents.map((agent) => readJson(path.join(root, agent.target_workflow_path))),
+});
 const forbidden = [
   "github_pat_",
   "sk-",

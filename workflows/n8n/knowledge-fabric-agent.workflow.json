@@ -1,0 +1,83 @@
+{
+  "workflow_blueprint_version": "0.1.0",
+  "visibility": "public-safe-blueprint",
+  "agent_id": "knowledge_fabric_agent",
+  "agent_name": "Knowledge Fabric Agent",
+  "purpose": "Ingest, curate, audit, and route OKF knowledge updates while keeping unapproved material outside trusted retrieval.",
+  "target_n8n_trigger": {
+    "type": "webhook",
+    "runtime_keys": [
+      "n8nKnowledgeFabricWebhookUrl",
+      "n8nAgentWebhooks.knowledge_fabric_agent"
+    ],
+    "github_pages_secret": "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+    "production_secret": "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL"
+  },
+  "contract_fixture": "contracts/n8n/fixtures/knowledge-fabric-agent.json",
+  "minimum_nodes": [
+    {
+      "name": "Receive ingest request",
+      "kind": "webhook",
+      "responsibility": "Accept transcript, upload metadata, or source text envelope from MeIDs."
+    },
+    {
+      "name": "Validate OKF intake policy",
+      "kind": "function",
+      "responsibility": "Require source_type, title/content, target_state, evidence policy, and CRUD append-only policy."
+    },
+    {
+      "name": "Create pending OKF concept",
+      "kind": "llm_or_function",
+      "responsibility": "Generate Markdown/YAML concept draft with review_state=pending_review."
+    },
+    {
+      "name": "Store source evidence",
+      "kind": "storage",
+      "responsibility": "Return concept_path, evidence_path, transcript_path, and crud_log_path for repo sync review."
+    },
+    {
+      "name": "Trigger Graph Curator",
+      "kind": "subagent",
+      "responsibility": "Create candidate graph edges only; never promote them to accepted without review."
+    },
+    {
+      "name": "Defer vector refresh",
+      "kind": "policy_gate",
+      "responsibility": "Return deferred vector_refresh unless the concept is approved or selected-pending under policy."
+    },
+    {
+      "name": "Return contract response",
+      "kind": "response",
+      "responsibility": "Return completed, approval_required, or failed envelope matching the fixture shape."
+    }
+  ],
+  "approval_boundary": "May create pending-review concepts and candidate graph edges. Must not approve concepts, accepted graph edges, or trusted vector refresh without human review.",
+  "trace_requirements": [
+    "request_id",
+    "agent_id",
+    "source_type",
+    "concept_path",
+    "evidence_path",
+    "review_state",
+    "candidate_edges",
+    "vector_refresh.status"
+  ],
+  "live_probe_expectation": {
+    "status_on_success": "n8n connected",
+    "must_return": [
+      "request_id",
+      "agent_id",
+      "status",
+      "output.concept_path",
+      "output.review_state",
+      "trace.trace_id"
+    ]
+  },
+  "forbidden_public_content": [
+    "credentials",
+    "bearer tokens",
+    "private webhook URLs",
+    "private OKF payloads",
+    "Azure keys"
+  ]
+}
