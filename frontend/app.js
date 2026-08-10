@@ -13258,6 +13258,7 @@ function renderZielmodus4LiveHandoffGrid() {
     : [];
   const readinessArtifact = githubBlobUrl("frontend/assets/n8n-runtime-readiness-status.json");
   const probeArtifact = githubBlobUrl("frontend/assets/n8n-live-probe-evidence.json");
+  const preflightArtifact = githubBlobUrl("frontend/assets/n8n-live-readiness-preflight.json");
   return `
     <div class="zielmodus-live-handoff">
       <div class="zielmodus-live-handoff-head">
@@ -13269,6 +13270,7 @@ function renderZielmodus4LiveHandoffGrid() {
         <div class="button-row tight">
           <a class="secondary small" href="${escapeHtml(readinessArtifact)}" target="_blank" rel="noreferrer">Runtime status</a>
           <a class="secondary small" href="${escapeHtml(probeArtifact)}" target="_blank" rel="noreferrer">Probe evidence</a>
+          <a class="secondary small" href="${escapeHtml(preflightArtifact)}" target="_blank" rel="noreferrer">Preflight</a>
         </div>
       </div>
       <div class="zielmodus-live-handoff-grid">
