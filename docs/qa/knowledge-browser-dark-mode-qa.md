@@ -297,6 +297,20 @@ Latest local QA pass for Knowledge Fabric lifecycle trace:
 
 This pass adds a visible Knowledge Fabric lifecycle trace in the Review/Production cockpit. It shows the route from upload/transcript/source context to pending OKF concept, evidence storage, CRUD audit, graph curator handoff, vector boundary, and live n8n gate. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-lifecycle-trace/`.
 
+Latest local QA pass for Knowledge Browser card state ribbon:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-agent-config-export.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/replay-n8n-fixtures.cjs --write`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-knowledge-card-state-ribbon`
+- Targeted Playwright assertions open `?view=concepts` and verify visible `.knowledge-card-state-ribbon`, Review, Evidence, Actor use, Vector, dark mode, and zero horizontal overflow at `390px` and `1440px`.
+
+This pass adds a compact review-state ribbon to every Knowledge Browser concept card. It makes review status, evidence readiness, Actor Twin use policy, and vector readiness scannable without relying on the larger source panel. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-card-state-ribbon/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

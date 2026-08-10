@@ -19173,9 +19173,63 @@ function renderKnowledgeCard(concept) {
         ${renderKnowledgeActorUseBadge(actorUse)}
       </div>
       ${renderKnowledgeFabric(fabric)}
+      ${renderKnowledgeCardStateRibbon(concept, actorUse)}
       ${renderKnowledgeSource(concept, sourceLabel)}
       ${renderKnowledgeActions(concept)}
     </article>
+  `;
+}
+
+function renderKnowledgeCardStateRibbon(concept, actorUse = {}) {
+  const reviewState = concept.review_state || "pending-review";
+  const evidence = knowledgeEvidenceState(concept);
+  const refs = conceptSourceRefs(concept);
+  const actorClass = actorUse.className === "trusted"
+    ? "approved"
+    : actorUse.className === "cite-with-review"
+      ? "pending"
+      : "blocked";
+  const vectorClass = evidence.vectorClass === "approved"
+    ? "approved"
+    : evidence.vectorClass === "pending"
+      ? "pending"
+      : "blocked";
+  const items = [
+    {
+      label: "Review",
+      value: labelizeGraph(reviewState),
+      detail: reviewState === "approved" ? "trusted gate" : ["needs-rework", "rejected"].includes(reviewState) ? "attention" : "human gate",
+      className: reviewState === "approved" ? "approved" : ["needs-rework", "rejected"].includes(reviewState) ? "blocked" : "pending",
+    },
+    {
+      label: "Evidence",
+      value: evidence.label || "missing",
+      detail: refs.length ? `${refs.length} refs` : "source gap",
+      className: evidence.className || "missing",
+    },
+    {
+      label: "Actor use",
+      value: actorUse.label || "audit only",
+      detail: actorUse.className === "trusted" ? "answer-ready" : actorUse.className === "cite-with-review" ? "cite only" : "hold",
+      className: actorClass,
+    },
+    {
+      label: "Vector",
+      value: evidence.vectorLabel || "hold",
+      detail: evidence.vectorClass === "approved" ? "index-ready" : evidence.vectorClass === "pending" ? "selected" : "deferred",
+      className: vectorClass,
+    },
+  ];
+  return `
+    <div class="knowledge-card-state-ribbon" aria-label="Concept review and retrieval readiness">
+      ${items.map((item) => `
+        <span class="${escapeHtml(item.className)}">
+          <small>${escapeHtml(item.label)}</small>
+          <strong>${escapeHtml(item.value)}</strong>
+          <em>${escapeHtml(item.detail)}</em>
+        </span>
+      `).join("")}
+    </div>
   `;
 }
 

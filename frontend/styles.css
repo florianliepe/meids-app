@@ -29822,3 +29822,147 @@ body.theme-dark .knowledge-fabric-lifecycle-flow em {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Knowledge Browser compact review-state ribbon. */
+.knowledge-increment {
+  grid-template-columns: minmax(0, 1.05fr) minmax(156px, 0.4fr) minmax(360px, 0.95fr) minmax(240px, 0.68fr) auto;
+}
+
+.knowledge-increment.compact {
+  grid-template-columns: minmax(0, 1.08fr) minmax(142px, 0.36fr) minmax(330px, 0.9fr) minmax(220px, 0.62fr) auto;
+}
+
+.knowledge-card-state-ribbon {
+  align-self: stretch;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.knowledge-card-state-ribbon span {
+  background: color-mix(in srgb, var(--surface-quiet) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--muted) 48%, transparent);
+  border-radius: 9px;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 8px;
+}
+
+.knowledge-card-state-ribbon span.approved {
+  border-left-color: #34c795;
+}
+
+.knowledge-card-state-ribbon span.pending {
+  border-left-color: #d7a84f;
+}
+
+.knowledge-card-state-ribbon span.blocked,
+.knowledge-card-state-ribbon span.missing {
+  border-left-color: #d9826b;
+}
+
+.knowledge-card-state-ribbon small {
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.knowledge-card-state-ribbon strong {
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-card-state-ribbon em {
+  color: color-mix(in srgb, var(--muted) 84%, var(--ink));
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 760;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-actor-use {
+  border-radius: 9px;
+  gap: 3px;
+  padding: 7px 8px;
+}
+
+.knowledge-actor-use span {
+  font-size: 0.66rem;
+  line-height: 1.25;
+}
+
+.knowledge-increment.compact .knowledge-actor-use span {
+  display: none;
+}
+
+body.theme-dark .knowledge-card-state-ribbon span {
+  background: rgba(16, 20, 17, 0.9);
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .knowledge-card-state-ribbon span.approved {
+  background: rgba(52, 199, 149, 0.08);
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .knowledge-card-state-ribbon span.pending {
+  background: rgba(215, 179, 109, 0.09);
+  border-left-color: #d7b36d;
+}
+
+body.theme-dark .knowledge-card-state-ribbon span.blocked,
+body.theme-dark .knowledge-card-state-ribbon span.missing {
+  background: rgba(226, 141, 118, 0.08);
+  border-left-color: #e28d76;
+}
+
+body.theme-dark .knowledge-card-state-ribbon small {
+  color: #a99f91;
+}
+
+body.theme-dark .knowledge-card-state-ribbon strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-card-state-ribbon em {
+  color: #c9c0b3;
+}
+
+@media (max-width: 1320px) {
+  .knowledge-increment,
+  .knowledge-increment.compact {
+    grid-template-columns: minmax(0, 1fr) minmax(160px, 0.36fr) minmax(300px, 0.74fr) auto;
+  }
+
+  .knowledge-card-state-ribbon {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .knowledge-increment,
+  .knowledge-increment.compact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knowledge-card-state-ribbon {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 460px) {
+  .knowledge-card-state-ribbon {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
