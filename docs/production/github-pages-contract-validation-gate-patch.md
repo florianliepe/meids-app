@@ -8,6 +8,7 @@ The Pages workflow already validates the main MeIDs frontend and several public-
 contract fixtures. Zielmodus 4 needs the workflow to also enforce:
 
 - the generated OKF public status artifact is current;
+- the generated n8n live preflight artifact is current;
 - the Zielmodus 4 public-safe readiness gate passes;
 - the live probe evidence recorder remains syntactically valid.
 
@@ -28,6 +29,7 @@ Add these paths to the existing `on.push.paths` list:
       - "scripts/validate-zielmodus-4-readiness.cjs"
       - "scripts/record-n8n-live-probe-evidence.cjs"
       - "scripts/write-okf-validation-status.cjs"
+      - "scripts/write-n8n-live-readiness-preflight.cjs"
 ```
 
 ## Required Build Steps
@@ -38,6 +40,9 @@ Add these steps after `Validate Postgres graph projection schema` and before
 ```yaml
       - name: Validate OKF public status artifact
         run: node scripts/write-okf-validation-status.cjs --check
+
+      - name: Validate n8n live preflight artifact
+        run: node scripts/write-n8n-live-readiness-preflight.cjs --check
 
       - name: Validate Zielmodus 4 public-safe readiness
         run: node scripts/validate-zielmodus-4-readiness.cjs
@@ -52,6 +57,7 @@ Run this before applying the workflow patch:
 
 ```powershell
 node scripts\write-okf-validation-status.cjs --check
+node scripts\write-n8n-live-readiness-preflight.cjs --check
 node scripts\validate-zielmodus-4-readiness.cjs
 node --check scripts\record-n8n-live-probe-evidence.cjs
 ```
@@ -59,6 +65,7 @@ node --check scripts\record-n8n-live-probe-evidence.cjs
 Expected current state:
 
 - OKF status artifact passes.
+- n8n live preflight artifact passes with current status `partial_live_url_blocked`.
 - Zielmodus 4 public-safe readiness passes with status `partial_live_url_blocked`.
 - Strict live gate remains blocked until Knowledge Fabric Agent and Agentic Butler
   live URLs plus non-demo probe evidence are available.

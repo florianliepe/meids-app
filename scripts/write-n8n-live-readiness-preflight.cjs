@@ -4,6 +4,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
+const check = args.has("--check");
 const outputArg = process.argv.find((arg) => arg.startsWith("--output="));
 const outputPath = outputArg
   ? path.resolve(root, outputArg.slice("--output=".length))
@@ -35,6 +36,17 @@ function readJson(relativePath, fallback = null) {
   const file = path.join(root, relativePath);
   if (!fs.existsSync(file)) return fallback;
   return JSON.parse(fs.readFileSync(file, "utf8"));
+}
+
+function readJsonFile(file) {
+  return JSON.parse(fs.readFileSync(file, "utf8"));
+}
+
+function stableArtifact(artifact) {
+  return {
+    ...artifact,
+    generated_at: "<ignored>",
+  };
 }
 
 function byAgent(list = [], id) {
@@ -129,6 +141,21 @@ function main() {
   if (write) {
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     fs.writeFileSync(outputPath, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
+  }
+
+  if (check) {
+    if (!fs.existsSync(outputPath)) {
+      console.error(`n8n live preflight artifact missing: ${rel(outputPath)}`);
+      process.exit(1);
+    }
+    const current = readJsonFile(outputPath);
+    const expected = stableArtifact(artifact);
+    const actual = stableArtifact(current);
+    if (JSON.stringify(actual, null, 2) !== JSON.stringify(expected, null, 2)) {
+      console.error(`n8n live preflight artifact is stale: ${rel(outputPath)}`);
+      console.error("Run: node scripts/write-n8n-live-readiness-preflight.cjs --write");
+      process.exit(1);
+    }
   }
 
   console.log(`n8n live preflight: ${artifact.status}`);

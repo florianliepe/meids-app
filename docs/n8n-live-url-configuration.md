@@ -182,11 +182,13 @@ Strict gates:
 
 ```powershell
 node scripts\write-n8n-live-readiness-preflight.cjs --write
+node scripts\write-n8n-live-readiness-preflight.cjs --check
 node scripts\validate-zielmodus-4-readiness.cjs --require-live
 node scripts\validate-zielmodus-4-readiness.cjs --require-live-probes
 ```
 
 - `write-n8n-live-readiness-preflight.cjs --write` writes `frontend/assets/n8n-live-readiness-preflight.json` with fixture, URL, probe, blocker, and copyable command status per top-level agent.
+- `write-n8n-live-readiness-preflight.cjs --check` fails when the checked-in preflight artifact is stale.
 - `--require-live` fails until all top-level agent URL slots are configured.
 - `--require-live-probes` fails until all URLs are configured and `frontend/assets/n8n-live-probe-evidence.json` contains connected, non-demo trace evidence for Actor Twin, Knowledge Fabric Agent, and Agentic Butler.
 
