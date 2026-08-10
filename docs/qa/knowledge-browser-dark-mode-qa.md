@@ -4,6 +4,22 @@ Date: 2026-08-09
 
 Latest update: 2026-08-10
 
+## Latest Local QA Pass For Knowledge Browser Dark Polish
+
+- Added a CSS-only dark-mode polish layer for Knowledge Browser increment rows.
+- Reduced row visual weight while preserving audit density and review-state color coding.
+- Clarified state ribbon contrast for approved, pending, blocked, and missing states.
+- Re-ran pages smoke check and browser dark-mode QA.
+- Result: all 6 browser QA cases passed.
+- Minimum measured contrast in this pass: `18.65`.
+- Screenshot evidence:
+  - `docs/visual-qa/screenshots-20260810-z4-knowledge-browser-dark-polish/`
+
+Validation commands:
+
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-z4-knowledge-browser-dark-polish`
+
 ## Latest Local QA Pass For Chat Latest Agent Traces
 
 - Added a compact `Latest agent traces` panel below the Chat recent-output area.
