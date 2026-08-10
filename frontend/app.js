@@ -5821,6 +5821,7 @@ function renderGraphEdgeProvenancePanel(edge, source = {}, targetNode = {}) {
         <strong>Actor-use rule</strong>
         <span>${escapeHtml(graphEdgeUsagePolicy(edge).detail || graphEdgeUsagePolicy(edge).label)}</span>
       </div>
+      ${renderGraphSourceHandoffCue(edge)}
     </section>
   `;
 }
@@ -16788,8 +16789,81 @@ function knowledgeFabricQueuePromotionHistoryItems() {
         source_path: item.concept_path || item.evidence_path || "",
         edge_class: item.review_state === "approved" ? "explicit" : "candidate",
         path: item.concept_path || item.evidence_path || "",
+        source_handoff: knowledgeFabricGraphSourceHandoffContext(item, edge),
       }));
     });
+}
+
+function knowledgeFabricGraphSourceHandoffContext(item = {}, edge = {}) {
+  const candidateCount = Array.isArray(item.candidate_edges) ? item.candidate_edges.length : 0;
+  return {
+    queue_id: item.queue_id || item.request_id || "",
+    title: item.title || edge.source || "Source handoff",
+    review_state: item.review_state || "pending-review",
+    source_type: item.source_type || "source",
+    runtime: item.runtime || "fixture/local",
+    concept_path: item.concept_path || "",
+    evidence_path: item.evidence_path || "",
+    transcript_path: item.transcript_path || "",
+    graph_curator_trigger: item.graph_curator_trigger || "",
+    candidate_edge_count: candidateCount,
+    vector_rule: item.review_state === "approved"
+      ? "eligible after repo merge"
+      : "hold from trusted retrieval",
+  };
+}
+
+function graphSourceHandoffContext(edgeOrItem = {}) {
+  if (edgeOrItem.source_handoff) return edgeOrItem.source_handoff;
+  const sourcePath = edgeOrItem.source_path || edgeOrItem.path || edgeOrItem.evidence_path || "";
+  const edgeKey = String(edgeOrItem.edge_key || "");
+  const source = String(edgeOrItem.source || edgeOrItem.source_title || "");
+  const target = String(edgeOrItem.target || edgeOrItem.target_title || "");
+  const relation = String(edgeOrItem.relation_type || edgeOrItem.edge_type || "");
+  const queue = Array.isArray(state.knowledgeFabricIngestQueue) ? state.knowledgeFabricIngestQueue : [];
+  const matched = queue.find((item) => {
+    const queueSlug = slugify(item.queue_id || item.request_id || item.title || "");
+    const directPaths = [item.concept_path, item.evidence_path, item.transcript_path].filter(Boolean);
+    if (sourcePath && directPaths.includes(sourcePath)) return true;
+    if (queueSlug && edgeKey.includes(queueSlug)) return true;
+    return (Array.isArray(item.candidate_edges) ? item.candidate_edges : []).some((edge) => {
+      if (edge.edge_key && edge.edge_key === edgeKey) return true;
+      const edgeRelation = String(edge.relation_type || edge.edge_type || "");
+      const edgeSource = String(edge.source || "");
+      const edgeTarget = String(edge.target || "");
+      return Boolean(edgeRelation && relation && edgeRelation === relation
+        && (!source || edgeSource === source || edgeSource === edgeOrItem.source)
+        && (!target || edgeTarget === target || edgeTarget === edgeOrItem.target));
+    });
+  });
+  if (!matched) return null;
+  const candidateEdge = (Array.isArray(matched.candidate_edges) ? matched.candidate_edges : [])
+    .find((edge) => edge.edge_key === edgeKey || String(edge.relation_type || edge.edge_type || "") === relation)
+    || edgeOrItem;
+  return knowledgeFabricGraphSourceHandoffContext(matched, candidateEdge);
+}
+
+function renderGraphSourceHandoffCue(edgeOrItem = {}, options = {}) {
+  const context = graphSourceHandoffContext(edgeOrItem);
+  if (!context) return "";
+  const compact = options.compact ? " compact" : "";
+  const targetPath = context.concept_path || context.evidence_path || context.transcript_path || "";
+  const meta = [
+    labelizeGraph(context.review_state || "pending-review"),
+    `${context.candidate_edge_count || 0} candidate edge${Number(context.candidate_edge_count || 0) === 1 ? "" : "s"}`,
+    context.vector_rule,
+  ].filter(Boolean);
+  return `
+    <aside class="graph-source-handoff-cue${compact} ${safeGraphClass(context.review_state || "pending-review")}">
+      <div>
+        <span class="badge">Source handoff</span>
+        <strong>${escapeHtml(context.title || "Knowledge Fabric source handoff")}</strong>
+        <small>${escapeHtml(meta.join(" · "))}</small>
+      </div>
+      ${targetPath ? `<code>${escapeHtml(targetPath)}</code>` : ""}
+      ${context.graph_curator_trigger ? `<small>${escapeHtml(`Graph Curator trigger: ${context.graph_curator_trigger}`)}</small>` : ""}
+    </aside>
+  `;
 }
 
 function graphPromotionSummary(items = graphPromotionHistoryItems(120)) {
@@ -16911,6 +16985,7 @@ function graphPromotionDecisionQueueItems(limit = 6) {
         confidence: edge.confidence,
         note: review.note || edge.review_note || decision.description,
         risk_score: graphCandidateRiskScore(edge),
+        source_handoff: graphSourceHandoffContext(edge),
         candidate,
         terminal,
       };
@@ -16949,6 +17024,7 @@ function renderDashboardGraphDecisionQueue() {
       </div>
       <h3>${escapeHtml(`${item.source_title} -> ${item.target_title}`)}</h3>
       <p>${escapeHtml(item.note || "Candidate relation awaits human graph promotion review.")}</p>
+      ${renderGraphSourceHandoffCue(item, { compact: true })}
       <div class="queue-card-actions graph-decision-actions">
         <button class="small secondary dashboard-graph-open" type="button" data-edge-key="${escapeHtml(item.edge_key)}">Open graph</button>
         <button class="small secondary dashboard-graph-review" type="button" data-edge-key="${escapeHtml(item.edge_key)}" data-decision="accepted">Accept</button>
@@ -16991,6 +17067,7 @@ function renderDashboardGraphPromotionHistory() {
       <h3>${escapeHtml(`${item.source_title || "source"} -> ${item.target_title || "target"}`)}</h3>
       <p>${escapeHtml(item.note || "Candidate relation awaits human graph promotion review.")}</p>
       ${item.source_path ? `<code>${escapeHtml(item.source_path)}</code>` : item.path ? `<code>${escapeHtml(item.path)}</code>` : ""}
+      ${renderGraphSourceHandoffCue(item, { compact: true })}
       <div class="queue-card-actions">
         <button class="secondary small dashboard-graph-open" type="button" data-edge-key="${escapeHtml(item.edge_key || "")}">Open graph</button>
       </div>

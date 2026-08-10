@@ -7904,6 +7904,66 @@ body.theme-dark .knowledge-source-readiness-grid span {
   margin: 8px 0 0;
 }
 
+.graph-source-handoff-cue {
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-left: 4px solid color-mix(in srgb, var(--accent) 70%, var(--line));
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface) 88%, var(--accent) 12%), color-mix(in srgb, var(--surface-quiet) 94%, transparent));
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px;
+}
+
+.graph-source-handoff-cue.compact {
+  border-radius: 10px;
+  gap: 6px;
+  padding: 10px;
+}
+
+.graph-source-handoff-cue.approved,
+.graph-source-handoff-cue.accepted {
+  border-left-color: color-mix(in srgb, var(--accent) 80%, var(--line));
+}
+
+.graph-source-handoff-cue.needs-rework {
+  border-left-color: color-mix(in srgb, var(--warn) 82%, var(--line));
+}
+
+.graph-source-handoff-cue.rejected {
+  border-left-color: #c84f3f;
+}
+
+.graph-source-handoff-cue div {
+  display: grid;
+  gap: 4px;
+}
+
+.graph-source-handoff-cue strong {
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.graph-source-handoff-cue small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 720;
+  line-height: 1.4;
+}
+
+.graph-source-handoff-cue code {
+  background: color-mix(in srgb, var(--surface-strong) 84%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 8px;
+  color: var(--muted);
+  display: block;
+  font-size: 0.72rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 7px 8px;
+}
+
 .okf-graph-repo-sync-plan {
   border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
   border-radius: 10px;
@@ -8843,6 +8903,39 @@ body.theme-dark .graph-decision-queue-card {
 
 body.theme-dark .graph-decision-queue-note {
   color: #c9c0b2;
+}
+
+body.theme-dark .graph-source-handoff-cue {
+  background:
+    linear-gradient(135deg, rgba(118, 216, 191, 0.13), rgba(255, 255, 255, 0.035));
+  border-color: rgba(118, 216, 191, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body.theme-dark .graph-source-handoff-cue.needs-rework {
+  background:
+    linear-gradient(135deg, rgba(219, 174, 105, 0.13), rgba(255, 255, 255, 0.035));
+  border-color: rgba(219, 174, 105, 0.34);
+}
+
+body.theme-dark .graph-source-handoff-cue.rejected {
+  background:
+    linear-gradient(135deg, rgba(200, 79, 63, 0.12), rgba(255, 255, 255, 0.035));
+  border-color: rgba(200, 79, 63, 0.32);
+}
+
+body.theme-dark .graph-source-handoff-cue strong {
+  color: rgba(255, 252, 244, 0.94);
+}
+
+body.theme-dark .graph-source-handoff-cue small,
+body.theme-dark .graph-source-handoff-cue code {
+  color: rgba(244, 240, 231, 0.72);
+}
+
+body.theme-dark .graph-source-handoff-cue code {
+  background: rgba(0, 0, 0, 0.24);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 body.theme-dark .okf-graph-repo-sync-plan {
