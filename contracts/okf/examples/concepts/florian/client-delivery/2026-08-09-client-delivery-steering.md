@@ -13,6 +13,9 @@ risk_class: medium
 source_refs:
   - evidence/florian/uploads/2026-08-09-source-001.yaml
   - transcripts/florian/2026-08-09-client-call.md
+evidence_review_states:
+  - pending-review
+  - draft
 graph_refs:
   nodes:
     - node:concept/client-delivery

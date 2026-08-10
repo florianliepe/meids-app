@@ -61,6 +61,34 @@ function frontmatter(markdownFile) {
   return parseFlatYaml(match[1]);
 }
 
+function frontmatterText(markdownFile) {
+  const text = read(markdownFile);
+  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (!match) fail(`${markdownFile}: YAML frontmatter missing`);
+  return match[1];
+}
+
+function parseYamlList(text, key) {
+  const lines = text.split(/\r?\n/);
+  const values = [];
+  let inList = false;
+  const keyPattern = new RegExp(`^${key}:\\s*$`);
+  for (const line of lines) {
+    if (keyPattern.test(line)) {
+      inList = true;
+      continue;
+    }
+    if (!inList) continue;
+    const item = line.match(/^\s*-\s+(.+)$/);
+    if (item) {
+      values.push(parseScalar(item[1]));
+      continue;
+    }
+    if (/^[A-Za-z0-9_-]+:\s*/.test(line)) break;
+  }
+  return values;
+}
+
 function assertRequired(data, file, fields) {
   for (const field of fields) {
     if (data[field] === undefined || data[field] === "") fail(`${file}: ${field} missing`);
@@ -73,9 +101,21 @@ function assertReviewState(data, file) {
 
 function validateConcept(file) {
   const data = frontmatter(file);
+  const yaml = frontmatterText(file);
   assertRequired(data, file, ["schema", "concept_id", "twin_id", "title", "type", "cluster", "review_state", "risk_class"]);
   if (data.schema !== "okf.concept.v1") fail(`${file}: schema must be okf.concept.v1`);
   assertReviewState(data, file);
+  const sourceRefs = parseYamlList(yaml, "source_refs");
+  const evidenceReviewStates = parseYamlList(yaml, "evidence_review_states");
+  if (sourceRefs.length && !evidenceReviewStates.length) {
+    fail(`${file}: evidence_review_states missing for source_refs`);
+  }
+  if (evidenceReviewStates.length && evidenceReviewStates.length !== sourceRefs.length) {
+    fail(`${file}: evidence_review_states must align one-to-one with source_refs`);
+  }
+  for (const evidenceState of evidenceReviewStates) {
+    if (!reviewStates.has(evidenceState)) fail(`${file}: invalid evidence_review_state ${evidenceState}`);
+  }
   if (!/concepts[\\/][^\\/]+[\\/][^\\/]+[\\/]\d{4}-\d{2}-\d{2}-/.test(file)) {
     fail(`${file}: concept path must follow concepts/{twin_id}/{cluster}/{yyyy-mm-dd}-{slug}.md`);
   }
@@ -151,6 +191,21 @@ function validateVectorRequest(file) {
   }
 }
 
+function validateNegativeConcept(file) {
+  const text = read(file);
+  const expected = text.match(/expected_failure:\s*([^\r\n]+)/)?.[1]?.trim();
+  if (!expected) fail(`${file}: expected_failure missing`);
+  try {
+    validateConcept(file);
+  } catch (error) {
+    if (!String(error.message || "").includes(expected)) {
+      fail(`${file}: expected failure "${expected}" but got "${error.message}"`);
+    }
+    return;
+  }
+  fail(`${file}: negative concept fixture unexpectedly passed`);
+}
+
 let total = 0;
 let groupCount = 0;
 for (const fixtureRoot of fixtureRoots) {
@@ -172,5 +227,10 @@ for (const fixtureRoot of fixtureRoots) {
     groupCount += 1;
   }
 }
+
+const negativeConcepts = listFiles(path.join(contractRoot, "negative", "concepts"), (file) => file.endsWith(".md"));
+for (const file of negativeConcepts) validateNegativeConcept(file);
+total += negativeConcepts.length;
+if (negativeConcepts.length) groupCount += 1;
 
 console.log(`OKF fixture validation passed: ${total} files across ${groupCount} fixture groups`);

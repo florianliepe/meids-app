@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-10T01:45:05.225Z",
+  "generated_at": "2026-08-10T02:00:57.714Z",
   "status": "passed",
   "statuses": [
     "documented",
@@ -15,6 +15,7 @@
     "promotion_fixture_count": 3,
     "vector_request_fixture_count": 2,
     "negative_vector_fixture_count": 2,
+    "negative_concept_fixture_count": 1,
     "check_count": 3,
     "passed_check_count": 3
   },
@@ -49,7 +50,7 @@
       "command": "node scripts/validate-okf-fixtures.cjs",
       "status": "passed",
       "exit_code": 0,
-      "stdout": "OKF fixture validation passed: 15 files across 14 fixture groups",
+      "stdout": "OKF fixture validation passed: 16 files across 15 fixture groups",
       "stderr": ""
     },
     {
@@ -94,6 +95,9 @@
     "negative_vector_requests": [
       "contracts/okf/negative/vector/needs-rework-document-upsert.json",
       "contracts/okf/negative/vector/rejected-evidence-upsert.json"
+    ],
+    "negative_concepts": [
+      "contracts/okf/negative/concepts/missing-evidence-review-states.md"
     ]
   }
 }

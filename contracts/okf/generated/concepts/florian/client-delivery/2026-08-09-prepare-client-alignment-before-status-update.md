@@ -14,6 +14,9 @@ risk_class: medium
 source_refs:
   - evidence/florian/transcripts/2026-08-09-prepare-client-alignment-before-status-update.yaml
   - transcripts/florian/2026-08-09-prepare-client-alignment-before-status-update.md
+evidence_review_states:
+  - pending-review
+  - draft
 graph_refs:
   nodes:
     - node:concept/client-delivery

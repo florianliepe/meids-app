@@ -40,4 +40,9 @@ The vector adapter validator also checks negative fixtures in
 `contracts/okf/negative/vector`. These fixtures must fail for their declared
 reason, proving rejected or needs-rework evidence cannot enter vector refresh.
 
+The OKF fixture validator also checks negative concept fixtures in
+`contracts/okf/negative/concepts`. These fixtures must fail for their declared
+reason, proving source-linked concepts cannot omit aligned
+`evidence_review_states`.
+
 The durable schema contract is documented in `docs/knowledge-fabric-okf-schema.md`.

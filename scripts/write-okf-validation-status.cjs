@@ -107,6 +107,7 @@ function main() {
   const promotions = listFiles(path.join(root, "contracts", "okf", "promotions"), (file) => file.endsWith(".json"));
   const vectorRequests = listFiles(path.join(root, "contracts", "okf"), (file) => file.includes(`${path.sep}vector${path.sep}`) && !file.includes(`${path.sep}negative${path.sep}`) && file.endsWith(".json"));
   const negativeVectorRequests = listFiles(path.join(root, "contracts", "okf", "negative", "vector"), (file) => file.endsWith(".json"));
+  const negativeConcepts = listFiles(path.join(root, "contracts", "okf", "negative", "concepts"), (file) => file.endsWith(".md"));
   const artifact = {
     schema_version: "0.1.0",
     generated_at: new Date().toISOString(),
@@ -120,6 +121,7 @@ function main() {
       promotion_fixture_count: promotions.length,
       vector_request_fixture_count: vectorRequests.length,
       negative_vector_fixture_count: negativeVectorRequests.length,
+      negative_concept_fixture_count: negativeConcepts.length,
       check_count: checks.length,
       passed_check_count: checks.length - failed.length,
     },
@@ -139,6 +141,7 @@ function main() {
       promotions: promotions.map(rel),
       vector_requests: vectorRequests.map(rel),
       negative_vector_requests: negativeVectorRequests.map(rel),
+      negative_concepts: negativeConcepts.map(rel),
     },
   };
   if (args.write) {
