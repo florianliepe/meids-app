@@ -9981,6 +9981,8 @@ function buildStaticPagesN8nAgentContracts() {
       workflow_url: `${repoBase}/workflows/n8n/actor-twin.workflow.json`,
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
       webhook_env_var: "N8N_ACTOR_TWIN_WEBHOOK_URL",
+      github_pages_secret: "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
+      production_secret: "N8N_ACTOR_TWIN_WEBHOOK_URL",
       webhook_configured: hasAgentWebhook("actor_twin"),
       runtime_status: agentRuntimeReadiness("actor_twin").status,
       webhook_url_configured: hasAgentWebhook("actor_twin"),
@@ -9997,6 +9999,8 @@ function buildStaticPagesN8nAgentContracts() {
       workflow_url: `${repoBase}/workflows/n8n/knowledge-fabric-agent.workflow.json`,
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
       webhook_env_var: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+      github_pages_secret: "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+      production_secret: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
       webhook_configured: hasAgentWebhook("knowledge_fabric_agent"),
       runtime_status: agentRuntimeReadiness("knowledge_fabric_agent").status,
       webhook_url_configured: hasAgentWebhook("knowledge_fabric_agent"),
@@ -10013,6 +10017,8 @@ function buildStaticPagesN8nAgentContracts() {
       workflow_url: `${repoBase}/workflows/n8n/agentic-butler.workflow.json`,
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
       webhook_env_var: "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+      github_pages_secret: "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+      production_secret: "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
       webhook_configured: hasAgentWebhook("agentic_butler"),
       runtime_status: agentRuntimeReadiness("agentic_butler").status,
       webhook_url_configured: hasAgentWebhook("agentic_butler"),
@@ -12422,6 +12428,7 @@ function renderN8nRuntimeSetupActions(agents = [], contractByAgent = new Map()) 
   const missingAgents = agents.filter((agent) => !agentRuntimeReadiness(agent.id || "").configured);
   const configuredAgents = agents.filter((agent) => agentRuntimeReadiness(agent.id || "").configured);
   const missingSnippet = buildN8nRuntimeConfigSnippet(missingAgents);
+  const missingSetupPacket = buildN8nLiveUrlSetupPacket(missingAgents, contractByAgent);
   const secretRows = agents.map((agent) => {
     const readiness = agentRuntimeReadiness(agent.id || "");
     const contract = contractByAgent.get(agent.id) || {};
@@ -12448,6 +12455,7 @@ function renderN8nRuntimeSetupActions(agents = [], contractByAgent = new Map()) 
         <div class="button-row tight">
           <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/n8n-live-url-configuration.md"))}" target="_blank" rel="noreferrer">Open guide</a>
           <a class="secondary small" href="${escapeHtml(githubBlobUrl("frontend/assets/agent-runtime-config.json"))}" target="_blank" rel="noreferrer">Open runtime asset</a>
+          ${missingSetupPacket ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(missingSetupPacket)}">Copy setup packet</button>` : ""}
           ${missingSnippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(missingSnippet)}">Copy missing config</button>` : ""}
         </div>
       </div>
@@ -12475,6 +12483,72 @@ function renderN8nRuntimeSetupActions(agents = [], contractByAgent = new Map()) 
       </details>
     </section>
   `;
+}
+
+function buildN8nLiveUrlSetupPacket(missingAgents = [], contractByAgent = new Map()) {
+  const agents = missingAgents.filter((agent) => agent?.id);
+  if (!agents.length) return "";
+  const runtimeAssetPatch = buildN8nRuntimeConfigSnippet(agents);
+  const packet = {
+    packet_type: "meids_n8n_live_url_setup",
+    packet_version: "0.1.0",
+    generated_at: new Date().toISOString(),
+    target: {
+      runtime_asset: "frontend/assets/agent-runtime-config.json",
+      setup_guide: "docs/n8n-live-url-configuration.md",
+      public_uat_only: true,
+      production_note: "Private production webhook URLs should move behind the hosted backend or workflow-generated runtime config.",
+    },
+    missing_agents: agents.map((agent) => {
+      const agentId = agent.id || "";
+      const readiness = agentRuntimeReadiness(agentId);
+      const contract = contractByAgent.get(agentId) || {};
+      const fixture = `contracts/n8n/fixtures/${agentId.replaceAll("_", "-")}.json`;
+      const workflow = `workflows/n8n/${agentId.replaceAll("_", "-")}.workflow.json`;
+      const gates = productionAgentRolloutGates({
+        agentId,
+        fixture,
+        fixtureUrl: githubBlobUrl(fixture),
+        workflow,
+        workflowUrl: githubBlobUrl(workflow),
+        configured: readiness.configured,
+        approvalBoundary: contract.approval_boundary || "",
+      });
+      return {
+        agent_id: agentId,
+        agent_name: agent.name || agentDisplayName(agentId),
+        env_var: readiness.envVar || contract.webhook_env_var || "N8N_WEBHOOK_URL",
+        github_pages_secret: contract.github_pages_secret || "",
+        production_secret: contract.production_secret || "",
+        contract_fixture: fixture,
+        workflow_blueprint: workflow,
+        approval_boundary: contract.approval_boundary || "",
+        next_action: readiness.nextAction || "Create/publish the workflow, add public UAT URL, run live probe, capture trace.",
+        runtime_patch: JSON.parse(buildSingleAgentRuntimeConfigSnippet(agentId) || "{}"),
+        rollout_gates: gates.map((gate) => ({
+          gate: gate.key,
+          label: gate.label,
+          ready: gate.ready,
+          detail: gate.detail,
+        })),
+      };
+    }),
+    runtime_asset_patch: runtimeAssetPatch ? JSON.parse(runtimeAssetPatch) : {},
+    validation_commands: [
+      "node --check frontend/app.js",
+      "node scripts/validate-agent-config-export.cjs",
+      "node scripts/validate-n8n-fixtures.cjs",
+      "node scripts/pages-smoke-check.cjs frontend",
+    ],
+    uat_proof_required: [
+      "Fixture replay remains passing.",
+      "Public UAT webhook URL is configured in runtime asset or hosted config.",
+      "Cockpit live probe reaches n8n workflow.",
+      "Non-demo trace is stored for the agent.",
+      "Approval-required fixture is respected before external actions.",
+    ],
+  };
+  return JSON.stringify(packet, null, 2);
 }
 
 function renderN8nCurrentSupportedConfigPath(snippet = "") {

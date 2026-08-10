@@ -1,0 +1,190 @@
+{
+  "generated_at": "2026-08-10T04:37:32.002Z",
+  "metrics": {
+    "buttons": [
+      "Copy setup packet",
+      "Copy missing config",
+      "Copy asset JSON",
+      "Copy key",
+      "Copy JSON",
+      "Copy key",
+      "Copy JSON"
+    ],
+    "hasSetupPacket": true,
+    "parsed": {
+      "packet_type": "meids_n8n_live_url_setup",
+      "packet_version": "0.1.0",
+      "generated_at": "2026-08-10T04:37:30.605Z",
+      "target": {
+        "runtime_asset": "frontend/assets/agent-runtime-config.json",
+        "setup_guide": "docs/n8n-live-url-configuration.md",
+        "public_uat_only": true,
+        "production_note": "Private production webhook URLs should move behind the hosted backend or workflow-generated runtime config."
+      },
+      "missing_agents": [
+        {
+          "agent_id": "knowledge_fabric_agent",
+          "agent_name": "Knowledge Fabric Agent",
+          "env_var": "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+          "github_pages_secret": "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+          "production_secret": "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+          "contract_fixture": "contracts/n8n/fixtures/knowledge-fabric-agent.json",
+          "workflow_blueprint": "workflows/n8n/knowledge-fabric-agent.workflow.json",
+          "approval_boundary": "Creates pending-review concepts and candidate graph edges only. Trusted promotion and vector refresh require review policy approval.",
+          "next_action": "Create the Knowledge Fabric Agent n8n workflow, expose a public UAT webhook, then add it here.",
+          "runtime_patch": {
+            "n8nAgentWebhooks": {
+              "knowledge_fabric_agent": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE"
+            },
+            "n8nAgentProbeSlots": {
+              "knowledge_fabric_agent": {
+                "status": "configured",
+                "probe_boundary": "Public UAT webhook configured; run Knowledge Fabric ingest/graph handoff probe and capture n8n execution trace.",
+                "next_action": "Run Knowledge Fabric Agent UAT with upload/transcript fixture."
+              }
+            },
+            "n8nKnowledgeFabricWebhookUrl": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE"
+          },
+          "rollout_gates": [
+            {
+              "gate": "fixture",
+              "label": "Fixture",
+              "ready": true,
+              "detail": "Contract fixture exists."
+            },
+            {
+              "gate": "blueprint",
+              "label": "Blueprint",
+              "ready": true,
+              "detail": "n8n workflow target exists."
+            },
+            {
+              "gate": "url",
+              "label": "URL",
+              "ready": false,
+              "detail": "Live URL missing."
+            },
+            {
+              "gate": "probe",
+              "label": "Probe",
+              "ready": false,
+              "detail": "Run live probe after URL setup."
+            },
+            {
+              "gate": "trace",
+              "label": "Trace",
+              "ready": false,
+              "detail": "No non-demo live trace evidence."
+            },
+            {
+              "gate": "approval",
+              "label": "Approval",
+              "ready": true,
+              "detail": "Approval boundary documented."
+            }
+          ]
+        },
+        {
+          "agent_id": "agentic_butler",
+          "agent_name": "Agentic Butler",
+          "env_var": "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+          "github_pages_secret": "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+          "production_secret": "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+          "contract_fixture": "contracts/n8n/fixtures/agentic-butler.json",
+          "workflow_blueprint": "workflows/n8n/agentic-butler.workflow.json",
+          "approval_boundary": "Activates approved skills and drafts outputs. External actions, meetings, emails, and requires_human steps must pause.",
+          "next_action": "Create the Agentic Butler n8n workflow with approval gate, expose public UAT webhook, then add it here.",
+          "runtime_patch": {
+            "n8nAgentWebhooks": {
+              "agentic_butler": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE"
+            },
+            "n8nAgentProbeSlots": {
+              "agentic_butler": {
+                "status": "configured",
+                "probe_boundary": "Public UAT webhook configured; run approval-gated skill activation probe and capture n8n execution trace.",
+                "next_action": "Run Agentic Butler UAT with approved skill activation fixture."
+              }
+            },
+            "n8nAgenticButlerWebhookUrl": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE"
+          },
+          "rollout_gates": [
+            {
+              "gate": "fixture",
+              "label": "Fixture",
+              "ready": true,
+              "detail": "Contract fixture exists."
+            },
+            {
+              "gate": "blueprint",
+              "label": "Blueprint",
+              "ready": true,
+              "detail": "n8n workflow target exists."
+            },
+            {
+              "gate": "url",
+              "label": "URL",
+              "ready": false,
+              "detail": "Live URL missing."
+            },
+            {
+              "gate": "probe",
+              "label": "Probe",
+              "ready": false,
+              "detail": "Run live probe after URL setup."
+            },
+            {
+              "gate": "trace",
+              "label": "Trace",
+              "ready": false,
+              "detail": "No non-demo live trace evidence."
+            },
+            {
+              "gate": "approval",
+              "label": "Approval",
+              "ready": true,
+              "detail": "Approval boundary documented."
+            }
+          ]
+        }
+      ],
+      "runtime_asset_patch": {
+        "n8nAgentWebhooks": {
+          "knowledge_fabric_agent": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE",
+          "agentic_butler": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE"
+        },
+        "n8nAgentProbeSlots": {
+          "knowledge_fabric_agent": {
+            "status": "configured",
+            "probe_boundary": "Public UAT webhook configured; run Knowledge Fabric ingest/graph handoff probe and capture n8n execution trace.",
+            "next_action": "Run Knowledge Fabric Agent UAT with upload/transcript fixture."
+          },
+          "agentic_butler": {
+            "status": "configured",
+            "probe_boundary": "Public UAT webhook configured; run approval-gated skill activation probe and capture n8n execution trace.",
+            "next_action": "Run Agentic Butler UAT with approved skill activation fixture."
+          }
+        },
+        "n8nKnowledgeFabricWebhookUrl": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE",
+        "n8nAgenticButlerWebhookUrl": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE"
+      },
+      "validation_commands": [
+        "node --check frontend/app.js",
+        "node scripts/validate-agent-config-export.cjs",
+        "node scripts/validate-n8n-fixtures.cjs",
+        "node scripts/pages-smoke-check.cjs frontend"
+      ],
+      "uat_proof_required": [
+        "Fixture replay remains passing.",
+        "Public UAT webhook URL is configured in runtime asset or hosted config.",
+        "Cockpit live probe reaches n8n workflow.",
+        "Non-demo trace is stored for the agent.",
+        "Approval-required fixture is respected before external actions."
+      ]
+    },
+    "overflow": false,
+    "width": 1440,
+    "scrollWidth": 1440
+  },
+  "screenshot": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\screenshots-20260810-n8n-url-setup-packet\\n8n-url-setup-packet-production-dark.png",
+  "failures": []
+}
