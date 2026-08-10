@@ -7524,6 +7524,11 @@ body.theme-dark .knowledge-source-readiness-grid span {
   text-overflow: ellipsis;
 }
 
+.chat-mode-readiness .chat-mode-gate-detail {
+  grid-column: 1 / -1;
+  white-space: normal;
+}
+
 .chat-mode-readiness strong {
   color: var(--ink);
   font-size: 12px;

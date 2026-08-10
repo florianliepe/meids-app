@@ -1,0 +1,19 @@
+{
+  "generated_at": "2026-08-10T04:31:50.280Z",
+  "metrics": {
+    "title": "Actor Twin",
+    "active": "Actor Twin configured 4/6 gates · URL configured · 4 cases open: probe, trace. Run Actor Twin UAT and capture trace evidence.",
+    "rail": [
+      "Ask Actor Twin answer-only 4/6 gates · configured · URL configured open: probe, trace · 4 replay cases",
+      "Activate skill work execution 3/6 gates · awaiting URL · URL slot ready open: url, probe, trace · 4 replay cases",
+      "Add source context OKF ingest 3/6 gates · awaiting URL · URL slot ready open: url, probe, trace · 5 replay cases"
+    ],
+    "hasGateText": true,
+    "hasOpenText": true,
+    "overflow": false,
+    "width": 1440,
+    "scrollWidth": 1440
+  },
+  "screenshot": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\screenshots-20260810-chat-contract-gates\\chat-contract-gates-desktop-dark.png",
+  "failures": []
+}

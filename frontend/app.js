@@ -13646,8 +13646,14 @@ function bindPreflightFollowUps(root = document) {
 function chatAgentContractStatuses() {
   const contracts = state.n8nAgentContracts?.contracts || [];
   const byAgent = new Map(contracts.map((contract) => [contract.agent_id, contract]));
+  const productionAgents = productionAgentUrlReadiness();
+  const productionByAgent = new Map(productionAgents.map((agent) => [agent.agentId, agent]));
   return ["actor_twin", "knowledge_fabric_agent", "agentic_butler"].map((agentId) => {
     const contract = byAgent.get(agentId) || {};
+    const productionAgent = productionByAgent.get(agentId) || {};
+    const gates = productionAgentRolloutGates(productionAgent);
+    const readyGateCount = gates.filter((gate) => gate.ready).length;
+    const openGates = gates.filter((gate) => !gate.ready).map((gate) => gate.label.toLowerCase());
     const runtimeReadiness = agentRuntimeReadiness(agentId);
     const configured = runtimeReadiness.configured || Boolean(contract.webhook_configured);
     const replayPassed = state.n8nAgentContracts?.replay_status === "passed" || contract.replay_status === "passed";
@@ -13679,6 +13685,9 @@ function chatAgentContractStatuses() {
       replayPassed,
       replayCaseCount,
       webhookLabel,
+      readyGateCount,
+      totalGateCount: gates.length,
+      openGates,
       active: chatModeAgentId() === agentId,
     };
   });
@@ -13733,6 +13742,8 @@ function renderChatModeReadinessRail() {
     const stateLabel = status.state || "documented";
     const configuredLabel = status.webhookLabel || (status.configured ? "live URL" : "fixture");
     const evidenceLabel = status.replayCaseCount ? `${status.replayCaseCount} replay cases` : "contract documented";
+    const gateLabel = `${status.readyGateCount ?? 0}/${status.totalGateCount ?? 6} gates`;
+    const blockerLabel = status.openGates?.length ? `open: ${status.openGates.join(", ")}` : "all gates ready";
     const active = state.activeChatInteractionMode === mode.mode;
     return `
       <button class="chat-mode-readiness ${active ? "active" : ""} ${status.configured ? "configured" : "fixture"} ${safeGraphClass(stateLabel)}" type="button" data-chat-mode="${escapeHtml(mode.mode)}" title="${escapeHtml(status.detail || "")}">
@@ -13740,7 +13751,8 @@ function renderChatModeReadinessRail() {
           <strong>${escapeHtml(mode.label)}</strong>
           <small>${escapeHtml(mode.purpose)}</small>
         </span>
-        <em>${escapeHtml(`${stateLabel} · ${configuredLabel} · ${evidenceLabel}`)}</em>
+        <em>${escapeHtml(`${gateLabel} · ${stateLabel} · ${configuredLabel}`)}</em>
+        <small class="chat-mode-gate-detail">${escapeHtml(`${blockerLabel} · ${evidenceLabel}`)}</small>
       </button>
     `;
   }).join("");
@@ -13838,14 +13850,16 @@ function renderActiveChatContractBadge() {
         ? "fixture"
         : "planned";
   const replayLabel = active.replayCaseCount ? `${active.replayCaseCount} cases` : "no replay";
+  const gateLabel = `${active.readyGateCount ?? 0}/${active.totalGateCount ?? 6} gates`;
+  const blockerLabel = active.openGates?.length ? `open: ${active.openGates.join(", ")}` : "all gates ready";
   const nextAction = active.nextAction || (active.configured ? "Run live probe." : "Add live URL when available.");
   target.className = `chat-active-contract-badge ${safeGraphClass(stateLabel)} ${active.configured ? "configured" : "fixture"}`;
   target.title = `${detail} ${nextAction}`;
   target.innerHTML = `
     <strong>${escapeHtml(active.label || agentDisplayName(activeAgentId))}</strong>
     <small>${escapeHtml(stateLabel)}</small>
-    <em>${escapeHtml(`${configuredLabel} · ${replayLabel}`)}</em>
-    <span>${escapeHtml(nextAction)}</span>
+    <em>${escapeHtml(`${gateLabel} · ${configuredLabel} · ${replayLabel}`)}</em>
+    <span>${escapeHtml(`${blockerLabel}. ${nextAction}`)}</span>
   `;
 }
 
