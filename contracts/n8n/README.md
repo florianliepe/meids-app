@@ -40,3 +40,20 @@ It maps the three public fixtures to the future private `meids-agent-configs` re
 ```
 
 No secrets, private knowledge, webhook URLs, or credentials belong in these fixtures.
+
+## Live URL Handoff
+
+The fixtures prove the contract shape only. Live n8n rollout is handled through the runtime config boundary documented in:
+
+```text
+docs/n8n-live-url-configuration.md
+frontend/assets/agent-runtime-config.json
+```
+
+Current public status:
+
+- Actor Twin: public UAT URL configured.
+- Knowledge Fabric Agent: fixture and probe slot ready; live URL missing.
+- Agentic Butler: fixture and probe slot ready; live URL missing.
+
+When a live workflow is exposed, add only the intentionally public UAT webhook URL to `frontend/assets/agent-runtime-config.json`. Keep private production URLs behind the hosted backend or workflow-generated `runtime-config.js`.

@@ -7726,6 +7726,52 @@ body.theme-dark .knowledge-source-readiness-grid span {
   border-left: 3px solid color-mix(in srgb, #7aa7d8 62%, var(--line));
 }
 
+.graph-promotion-summary-strip {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 10px;
+}
+
+.graph-promotion-summary-strip article {
+  border: 1px solid var(--line);
+  border-left: 4px solid color-mix(in srgb, #7aa7d8 58%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 82%, transparent);
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.graph-promotion-summary-strip article.approved {
+  border-left-color: color-mix(in srgb, var(--accent) 64%, var(--line));
+}
+
+.graph-promotion-summary-strip article.candidate,
+.graph-promotion-summary-strip article.needs-rework {
+  border-left-color: color-mix(in srgb, #c8a35d 68%, var(--line));
+}
+
+.graph-promotion-summary-strip article.rejected,
+.graph-promotion-summary-strip article.blocked {
+  border-left-color: color-mix(in srgb, var(--warn) 64%, var(--line));
+}
+
+.graph-promotion-summary-strip strong {
+  color: var(--ink);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.graph-promotion-summary-strip span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 860;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
 .graph-promotion-history-card.approved,
 .graph-promotion-history-card.accepted {
   border-left-color: color-mix(in srgb, var(--accent) 64%, var(--line));
@@ -8006,6 +8052,25 @@ body.theme-dark .agent-trace-row.approval {
 
 body.theme-dark .graph-promotion-history-card {
   border-left-color: #a9cff5;
+}
+
+body.theme-dark .graph-promotion-summary-strip article {
+  background: #20271f;
+  border-color: #3c463a;
+}
+
+body.theme-dark .graph-promotion-summary-strip article.approved {
+  border-left-color: #9ce6d2;
+}
+
+body.theme-dark .graph-promotion-summary-strip article.candidate,
+body.theme-dark .graph-promotion-summary-strip article.needs-rework {
+  border-left-color: #f1d08c;
+}
+
+body.theme-dark .graph-promotion-summary-strip article.rejected,
+body.theme-dark .graph-promotion-summary-strip article.blocked {
+  border-left-color: #f0a39a;
 }
 
 body.theme-dark .graph-promotion-history-card.approved,
@@ -22653,6 +22718,10 @@ body.theme-dark .kg-count {
   .graph-list-node,
   .graph-node-readiness {
     grid-template-columns: 1fr;
+  }
+
+  .graph-promotion-summary-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .graph-node-evidence-grid {

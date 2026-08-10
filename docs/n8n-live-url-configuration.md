@@ -38,8 +38,27 @@ Use this only for intentionally public UAT endpoints:
 | `n8nAgentWebhooks.actor_twin` | Actor Twin chat / intent contract endpoint |
 | `n8nAgentWebhooks.knowledge_fabric_agent` | Knowledge Fabric ingest / curation endpoint |
 | `n8nAgentWebhooks.agentic_butler` | Agentic Butler skill activation endpoint |
+| `n8nAgentProbeSlots.actor_twin` | Public metadata for cockpit probe state and next action |
+| `n8nAgentProbeSlots.knowledge_fabric_agent` | Public metadata for the Knowledge Fabric Agent live URL handoff |
+| `n8nAgentProbeSlots.agentic_butler` | Public metadata for the Agentic Butler live URL handoff |
 
 Do not put private credentials, API keys, bearer tokens, or internal-only URLs in this file. Private production URLs should move to the hosted backend or workflow-generated runtime config.
+
+## Probe Slot Semantics
+
+`frontend/assets/agent-runtime-config.json` carries two kinds of data:
+
+1. `n8nAgentWebhooks`: the actual public UAT webhook URLs.
+2. `n8nAgentProbeSlots`: public, non-secret metadata explaining whether a live URL is configured, what the probe boundary is, and what the next setup action should be.
+
+The cockpit uses this distinction to avoid treating planned, fixture-only agents as broken. Current status language:
+
+| Probe status | Meaning | Cockpit interpretation |
+|---|---|---|
+| `configured` | A public UAT webhook URL exists or is expected through the runtime config. | Contract is ready for UAT/probe evidence. |
+| `awaiting_url` | Fixture and contract exist, but no live workflow URL has been provided. | Setup slot is ready; workflow URL is the next blocker. |
+| `missing URL` | No URL and no explicit probe-slot status. | Configuration is incomplete or stale. |
+| `n8n connected` | A probe or live interaction reached the workflow and produced trace evidence. | Candidate for production readiness, still subject to approval gates. |
 
 ## Current Missing Live Endpoints
 
@@ -57,6 +76,18 @@ Minimal public staging JSON shape:
   "n8nAgentWebhooks": {
     "knowledge_fabric_agent": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE",
     "agentic_butler": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE"
+  },
+  "n8nAgentProbeSlots": {
+    "knowledge_fabric_agent": {
+      "status": "configured",
+      "probe_boundary": "Public UAT webhook configured; run Knowledge Fabric ingest probe and capture n8n execution trace.",
+      "next_action": "Run Knowledge Fabric Agent UAT with upload/transcript fixture."
+    },
+    "agentic_butler": {
+      "status": "configured",
+      "probe_boundary": "Public UAT webhook configured; run approval-gated skill activation probe and capture n8n execution trace.",
+      "next_action": "Run Agentic Butler UAT with approved skill activation fixture."
+    }
   },
   "n8nKnowledgeFabricWebhookUrl": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE",
   "n8nAgenticButlerWebhookUrl": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE"

@@ -16331,15 +16331,73 @@ function knowledgeFabricQueuePromotionHistoryItems() {
     });
 }
 
+function graphPromotionSummary(items = graphPromotionHistoryItems(120)) {
+  const graph = state.okfGraph || {};
+  const graphEdges = Array.isArray(graph.edges) ? graph.edges : [];
+  const candidateEdges = graphEdges.filter((edge) => String(graphEdgeClass(edge)).includes("candidate")
+    || ["candidate", "draft", "unreviewed"].includes(String(edge.review_state || "").toLowerCase()));
+  const accepted = items.filter((item) => ["accepted", "approved"].includes(String(item.decision || item.review_state || "").toLowerCase()));
+  const needsRework = items.filter((item) => String(item.decision || item.review_state || "").toLowerCase() === "needs-rework");
+  const rejected = items.filter((item) => String(item.decision || item.review_state || "").toLowerCase() === "rejected");
+  const pending = candidateEdges.filter((edge) => {
+    const matched = items.find((item) => item.edge_key === edge.edge_key);
+    return !matched || ["candidate", "draft", "unreviewed"].includes(String(matched.review_state || matched.decision || "").toLowerCase());
+  });
+  const trustedShare = graphEdges.length ? Math.round((accepted.length / graphEdges.length) * 100) : 0;
+  return {
+    totalEdges: graphEdges.length,
+    candidateCount: candidateEdges.length,
+    pendingCount: pending.length,
+    acceptedCount: accepted.length,
+    needsReworkCount: needsRework.length,
+    rejectedCount: rejected.length,
+    trustedShare,
+  };
+}
+
+function renderGraphPromotionSummary(summary = graphPromotionSummary()) {
+  const liveReadiness = productionAgentUrlReadiness().filter((agent) => ["knowledge_fabric_agent", "agentic_butler"].includes(agent.agentId));
+  const liveBlocked = liveReadiness.filter((agent) => !agent.configured).length;
+  return `
+    <section class="graph-promotion-summary-strip" aria-label="Graph relation review metrics">
+      <article class="candidate">
+        <strong>${escapeHtml(String(summary.pendingCount))}</strong>
+        <span>pending candidate edges</span>
+      </article>
+      <article class="approved">
+        <strong>${escapeHtml(String(summary.acceptedCount))}</strong>
+        <span>accepted/trusted relations</span>
+      </article>
+      <article class="needs-rework">
+        <strong>${escapeHtml(String(summary.needsReworkCount))}</strong>
+        <span>needs rework</span>
+      </article>
+      <article class="rejected">
+        <strong>${escapeHtml(String(summary.rejectedCount))}</strong>
+        <span>rejected/blocked</span>
+      </article>
+      <article class="${liveBlocked ? "blocked" : "approved"}">
+        <strong>${escapeHtml(liveBlocked ? `${liveBlocked} URL` : "ready")}</strong>
+        <span>${escapeHtml(liveBlocked ? "agent URL gates missing" : "agent URL gates configured")}</span>
+      </article>
+    </section>
+  `;
+}
+
 function renderDashboardGraphPromotionHistory() {
   const target = $("#dashGraphPromotionHistory");
   if (!target) return;
   const items = graphPromotionHistoryItems();
   if (!items.length) {
-    target.innerHTML = renderEmptyState("No graph promotion decisions yet.", "Open Knowledge Graph", "openGraph");
+    target.innerHTML = `
+      ${renderGraphPromotionSummary(graphPromotionSummary([]))}
+      ${renderEmptyState("No graph promotion decisions yet.", "Open Knowledge Graph", "openGraph")}
+    `;
     return;
   }
-  target.innerHTML = items.map((item) => `
+  target.innerHTML = `
+    ${renderGraphPromotionSummary()}
+    ${items.map((item) => `
     <article class="activity-row queue-card graph-promotion-history-card ${dashboardPriorityClass("graph", item.review_state)} ${safeGraphClass(item.review_state)}">
       <div class="queue-card-head">
         <span class="queue-kind">${escapeHtml(labelizeGraph(item.relation_type))}</span>
@@ -16356,7 +16414,8 @@ function renderDashboardGraphPromotionHistory() {
         <button class="secondary small dashboard-graph-open" type="button" data-edge-key="${escapeHtml(item.edge_key || "")}">Open graph</button>
       </div>
     </article>
-  `).join("");
+  `).join("")}
+  `;
   target.querySelectorAll(".dashboard-graph-open").forEach((button) => {
     button.addEventListener("click", () => openGraphPromotionFromDashboard(button.dataset.edgeKey || ""));
   });
