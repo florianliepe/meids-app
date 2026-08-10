@@ -15603,6 +15603,10 @@ function bindKnowledgeFabricQueueActions() {
       exportKnowledgeFabricQueueArtifact(queueId, button);
       return;
     }
+    if (action === "export-okf-graph") {
+      exportKnowledgeFabricQueueOkfGraphPackage(queueId, button);
+      return;
+    }
     if (action === "export-reviewed-bundle") {
       exportReviewedKnowledgeFabricBundle(button);
       return;
@@ -15880,6 +15884,68 @@ function exportKnowledgeFabricQueueArtifact(queueId, button) {
   URL.revokeObjectURL(url);
   markButtonDone(button, "Exported");
   showToast("Knowledge Fabric artifact exported", filename, "success");
+}
+
+function exportKnowledgeFabricQueueOkfGraphPackage(queueId, button) {
+  const item = state.knowledgeFabricIngestQueue.find((entry) => entry.queue_id === queueId);
+  if (!item) {
+    showToast("OKF + graph export", "Queue item not found.", "warning");
+    return;
+  }
+  const artifact = buildKnowledgeFabricQueueOkfGraphPackage(item);
+  const filename = [
+    "meids-okf-graph-handoff-package",
+    safeGraphClass(item.twin_id || state.activeTwin || "twin"),
+    safeGraphClass(item.review_state || "pending-review"),
+    safeGraphClass(item.request_id || item.queue_id || "handoff").slice(0, 48),
+  ].filter(Boolean).join("-") + ".json";
+  const blob = new Blob([JSON.stringify(artifact, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, filename);
+  URL.revokeObjectURL(url);
+  markButtonDone(button, "Exported");
+  showToast(
+    "OKF + graph package exported",
+    `${artifact.summary.handoff_count} handoff · ${artifact.summary.promotion_count} graph decision${artifact.summary.promotion_count === 1 ? "" : "s"}`,
+    artifact.summary.ready_for_knowledge_repo_review ? "success" : "warning",
+  );
+}
+
+function buildKnowledgeFabricQueueOkfGraphPackage(item = {}) {
+  const itemPath = item.concept_path || item.evidence_path || "";
+  const queueSlug = slugify(item.queue_id || item.request_id || item.title || "");
+  const itemEdgeKeys = new Set((Array.isArray(item.candidate_edges) ? item.candidate_edges : [])
+    .map((edge, index) => edge.edge_key || `${queueSlug}-${slugify(edge.relation_type || edge.edge_type || "edge")}-${index}`)
+    .filter(Boolean));
+  const promotions = graphPromotionHistoryItems(120).filter((promotion) => {
+    const promotionPath = promotion.source_path || promotion.path || "";
+    return (
+      (itemPath && promotionPath === itemPath) ||
+      (promotion.edge_key && itemEdgeKeys.has(promotion.edge_key)) ||
+      (queueSlug && String(promotion.edge_key || "").includes(queueSlug))
+    );
+  });
+  const fallbackPromotions = !promotions.length && Array.isArray(item.candidate_edges)
+    ? item.candidate_edges.map((edge, index) => ({
+      edge_key: edge.edge_key || `${queueSlug}-${slugify(edge.relation_type || edge.edge_type || "edge")}-${index}`,
+      decision: item.review_state || "pending-review",
+      review_state: item.review_state || "pending-review",
+      reviewed_at: item.reviewed_at || "",
+      relation_type: edge.relation_type || edge.edge_type || "related",
+      confidence: edge.confidence,
+      note: item.review_note || "Candidate edge exported from Knowledge Fabric handoff before graph promotion history exists.",
+      source_title: labelizeGraph(edge.source || item.title || "source"),
+      target_title: labelizeGraph(edge.target || "target"),
+      source_path: item.concept_path || item.evidence_path || "",
+      target_path: edge.target_path || "",
+      evidence_refs: [item.evidence_path, item.transcript_path].filter(Boolean),
+      graph_curator_trigger: item.graph_curator_trigger || "candidate_export",
+      edge_class: item.review_state === "approved" ? "candidate_pending_graph_acceptance" : "candidate",
+      path: item.concept_path || item.evidence_path || "",
+      source_handoff: knowledgeFabricGraphSourceHandoffContext(item, edge),
+    }))
+    : [];
+  return buildOkfGraphPromotionPackageArtifact([item], promotions.length ? promotions : fallbackPromotions);
 }
 
 function buildKnowledgeFabricQueueArtifact(item = {}) {
@@ -16252,6 +16318,7 @@ function renderKnowledgeFabricQueueCard(item = {}) {
         <button class="secondary small" type="button" data-kf-queue-action="graph" data-queue-id="${escapeHtml(item.queue_id || "")}">Open graph</button>
         <button class="secondary small" type="button" data-kf-queue-action="copy" data-queue-id="${escapeHtml(item.queue_id || "")}">Copy manifest</button>
         <button class="secondary small" type="button" data-kf-queue-action="export" data-queue-id="${escapeHtml(item.queue_id || "")}">Export artifact</button>
+        <button class="secondary small" type="button" data-kf-queue-action="export-okf-graph" data-queue-id="${escapeHtml(item.queue_id || "")}" ${item.review_state === "approved" ? "" : "disabled"} title="${escapeHtml(item.review_state === "approved" ? "Export approved OKF handoff with graph candidate decisions." : "Approve OKF before exporting the combined repo-sync package.")}">Export OKF + graph</button>
       </div>
     </article>
   `;

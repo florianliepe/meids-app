@@ -550,6 +550,20 @@ Latest local QA pass for Knowledge Fabric candidate graph preview:
 
 This pass promotes candidate graph relations from a compact tag list into a visible per-handoff Graph Curator preview. Queue reviewers can inspect relation type, source-target direction, confidence, review implication, and graph-curator state before opening the graph cockpit or exporting a reviewed artifact. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-fabric-candidate-preview/`.
 
+Latest local QA pass for approved OKF + graph handoff export:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-knowledge-fabric-okf-graph-export`
+- Targeted Playwright assertion starts a local static server, opens `?view=ingest`, verifies `Export OKF + graph` is disabled before approval, approves the handoff, verifies the button is enabled, captures the downloaded JSON, confirms `meids.okf_graph_promotion_package.v1`, confirms one scoped handoff, confirms repo-sync plan presence, and checks zero button overflow.
+
+This pass adds a one-click approved handoff export for the combined OKF + graph promotion package. It keeps trusted promotion approval-gated: pending queue items export as audit artifacts, while approved items can produce a scoped repo-sync package with matching graph candidate decisions and vector refresh boundary. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-fabric-okf-graph-export/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:
