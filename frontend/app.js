@@ -15678,17 +15678,18 @@ function renderAgentTraceHistoryPanel() {
   const filtered = filteredAgentTraces(traces);
   renderAgentTraceSummary(traces, filtered);
   renderAgentTraceFilterControls();
+  const handoffTimeline = renderAgentTraceHandoffTimeline(traces);
   const setupNotice = renderAgentTraceSetupNotice();
   const sourceTraceSummary = renderKnowledgeFabricSourceTraceSummary();
   if (!traces.length) {
-    target.innerHTML = `${setupNotice}${sourceTraceSummary}<p class="empty">No local agent handoffs yet. Run Actor Twin, Knowledge Fabric, or Agentic Butler from Chat to populate this trace history.</p>`;
+    target.innerHTML = `${handoffTimeline}${setupNotice}${sourceTraceSummary}<p class="empty">No local agent handoffs yet. Run Actor Twin, Knowledge Fabric, or Agentic Butler from Chat to populate this trace history.</p>`;
     return;
   }
   if (!filtered.length) {
-    target.innerHTML = `${setupNotice}${sourceTraceSummary}<p class="empty">No traces match this filter.</p>`;
+    target.innerHTML = `${handoffTimeline}${setupNotice}${sourceTraceSummary}<p class="empty">No traces match this filter.</p>`;
     return;
   }
-  target.innerHTML = `${setupNotice}${sourceTraceSummary}${renderAgentTraceHistoryRows(filtered, 12)}`;
+  target.innerHTML = `${handoffTimeline}${setupNotice}${sourceTraceSummary}${renderAgentTraceHistoryRows(filtered, 12)}`;
 }
 
 function renderDashboardAgentTraceHistory() {
@@ -15696,12 +15697,75 @@ function renderDashboardAgentTraceHistory() {
   renderAgentProbeEvidencePanels();
   if (!target) return;
   const traces = readComposedAgentTraces();
+  const handoffTimeline = renderAgentTraceHandoffTimeline(traces, { compact: true });
   const sourceTraceSummary = renderKnowledgeFabricSourceTraceSummary({ compact: true });
   if (!traces.length) {
-    target.innerHTML = `${sourceTraceSummary}${renderEmptyState("No local n8n handoffs yet.", "Open agent contracts", "openProductionCockpit")}`;
+    target.innerHTML = `${handoffTimeline}${sourceTraceSummary}${renderEmptyState("No local n8n handoffs yet.", "Open agent contracts", "openProductionCockpit")}`;
     return;
   }
-  target.innerHTML = `${renderAgentTraceSetupNotice({ compact: true })}${sourceTraceSummary}${renderAgentTraceHistoryRows(traces, 8)}`;
+  target.innerHTML = `${handoffTimeline}${renderAgentTraceSetupNotice({ compact: true })}${sourceTraceSummary}${renderAgentTraceHistoryRows(traces, 8)}`;
+}
+
+function renderAgentTraceHandoffTimeline(traces = [], options = {}) {
+  const compact = Boolean(options.compact);
+  const statuses = new Map(chatAgentContractStatuses().map((item) => [item.agentId, item]));
+  const agents = [
+    {
+      agentId: "actor_twin",
+      role: "Intent and decision",
+      handoff: "answers directly or routes work",
+    },
+    {
+      agentId: "knowledge_fabric_agent",
+      role: "Knowledge intake",
+      handoff: "creates pending OKF concepts",
+    },
+    {
+      agentId: "agentic_butler",
+      role: "Skill execution",
+      handoff: "runs approved skills with gates",
+    },
+  ];
+  return `
+    <section class="agent-trace-handoff-timeline ${compact ? "compact" : ""}" aria-label="Agent handoff timeline">
+      <div class="agent-trace-handoff-head">
+        <div>
+          <span class="badge">Agent handoff chain</span>
+          <strong>${escapeHtml("Actor Twin → Knowledge Fabric → Agentic Butler")}</strong>
+          <p>${escapeHtml(compact
+            ? "Current trace path and readiness by top-level agent."
+            : "Visible operating trace for how user intent becomes answer, OKF update, or skill execution.")}</p>
+        </div>
+      </div>
+      <div class="agent-trace-handoff-steps">
+        ${agents.map((agent, index) => {
+          const status = statuses.get(agent.agentId) || {};
+          const latestTrace = traces.find((trace) => String(trace.agent_id || "").toLowerCase() === agent.agentId) || null;
+          const stateLabel = latestTrace?.approval_required
+            ? "approval gate"
+            : latestTrace?.status || status.state || "documented";
+          const runtime = latestTrace?.runtime || status.webhookLabel || status.state || "fixture ready";
+          const gateLabel = `${status.readyGateCount ?? 0}/${status.totalGateCount ?? 6} gates`;
+          return `
+            <article class="${safeGraphClass(stateLabel)} ${status.configured ? "configured" : "fixture"}">
+              <div class="agent-trace-handoff-index">${escapeHtml(String(index + 1))}</div>
+              <div>
+                <strong>${escapeHtml(agentDisplayName(agent.agentId))}</strong>
+                <span>${escapeHtml(agent.role)}</span>
+                <p>${escapeHtml(agent.handoff)}</p>
+              </div>
+              <dl>
+                ${detailRow("Readiness", `${status.state || "documented"} · ${gateLabel}`)}
+                ${detailRow("Latest trace", latestTrace ? stateLabel : "not recorded")}
+                ${detailRow("Runtime", runtime)}
+                ${detailRow("Trace id", latestTrace?.trace_id || "-")}
+              </dl>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function renderAgentProbeEvidencePanels() {

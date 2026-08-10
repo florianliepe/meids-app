@@ -7684,6 +7684,143 @@ body.theme-dark .knowledge-source-readiness-grid span {
   white-space: nowrap;
 }
 
+.agent-trace-handoff-timeline {
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: 12px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--surface-quiet) 88%, var(--accent) 12%), var(--surface));
+  display: grid;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 12px;
+}
+
+.agent-trace-handoff-head {
+  align-items: start;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.agent-trace-handoff-head > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.agent-trace-handoff-head strong {
+  color: var(--ink);
+  font-size: 0.96rem;
+  overflow-wrap: anywhere;
+}
+
+.agent-trace-handoff-head p {
+  color: var(--muted);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.agent-trace-handoff-steps {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.agent-trace-handoff-steps article {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--muted) 32%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  padding: 10px;
+}
+
+.agent-trace-handoff-steps article.completed,
+.agent-trace-handoff-steps article.connected,
+.agent-trace-handoff-steps article.n8n-connected,
+.agent-trace-handoff-steps article.configured {
+  border-left-color: #34c795;
+}
+
+.agent-trace-handoff-steps article.approval-gate,
+.agent-trace-handoff-steps article.approval-required,
+.agent-trace-handoff-steps article.fixture,
+.agent-trace-handoff-steps article.fixture-ready {
+  border-left-color: #d7a84f;
+}
+
+.agent-trace-handoff-steps article.blocked,
+.agent-trace-handoff-steps article.failed,
+.agent-trace-handoff-steps article.missing-url {
+  border-left-color: #d06e68;
+}
+
+.agent-trace-handoff-index {
+  align-items: center;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 999px;
+  color: var(--accent-strong);
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 900;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.agent-trace-handoff-steps article > div:not(.agent-trace-handoff-index) {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.agent-trace-handoff-steps strong {
+  color: var(--ink);
+}
+
+.agent-trace-handoff-steps span,
+.agent-trace-handoff-steps p {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.32;
+  margin: 0;
+}
+
+.agent-trace-handoff-steps dl {
+  display: grid;
+  gap: 5px;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.agent-trace-handoff-steps dl div {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(92px, 0.45fr) minmax(0, 1fr);
+}
+
+.agent-trace-handoff-steps dt,
+.agent-trace-handoff-steps dd {
+  font-size: 0.72rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.agent-trace-handoff-steps dt {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.agent-trace-handoff-steps dd {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
 .knowledge-fabric-trace-summary {
   border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
   border-left: 4px solid var(--accent);
@@ -8840,11 +8977,38 @@ body.theme-dark .chat-mode-readiness,
 body.theme-dark .chat-active-contract-badge,
 body.theme-dark .chat-contract-actions,
 body.theme-dark .agent-trace-summary span,
+body.theme-dark .agent-trace-handoff-timeline,
+body.theme-dark .agent-trace-handoff-steps article,
 body.theme-dark .knowledge-fabric-trace-summary,
 body.theme-dark .knowledge-fabric-trace-grid span,
 body.theme-dark .agent-trace-row {
   border-color: rgba(241, 235, 224, 0.18);
   background: #171d18;
+}
+
+body.theme-dark .agent-trace-handoff-timeline {
+  background:
+    linear-gradient(145deg, rgba(122, 216, 191, 0.08), #151a16);
+  border-color: color-mix(in srgb, #7ad8bf 28%, rgba(241, 235, 224, 0.18));
+}
+
+body.theme-dark .agent-trace-handoff-index {
+  background: #101411;
+  border-color: rgba(122, 216, 191, 0.34);
+  color: #9fe8d5;
+}
+
+body.theme-dark .agent-trace-handoff-head strong,
+body.theme-dark .agent-trace-handoff-steps strong,
+body.theme-dark .agent-trace-handoff-steps dd {
+  color: #fff8ea;
+}
+
+body.theme-dark .agent-trace-handoff-head p,
+body.theme-dark .agent-trace-handoff-steps span,
+body.theme-dark .agent-trace-handoff-steps p,
+body.theme-dark .agent-trace-handoff-steps dt {
+  color: #c9c0b3;
 }
 
 body.theme-dark .knowledge-fabric-trace-summary {
@@ -9241,6 +9405,7 @@ body.theme-dark .graph-svg-edge-label text {
   .chat-mode-readiness-rail,
   .chat-contract-actions,
   .agent-trace-summary,
+  .agent-trace-handoff-steps,
   .knowledge-fabric-trace-summary-head,
   .knowledge-fabric-trace-grid,
   .agent-trace-row {
