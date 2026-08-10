@@ -16889,6 +16889,10 @@ function renderKnowledgeSourceReadiness(allConcepts = [], visibleConcepts = []) 
       ${renderKnowledgeSourceReadinessItem("pending", totals.pending, "review before trust")}
       ${renderKnowledgeSourceReadinessItem("attention", totals.attention, "needs rework")}
       ${renderKnowledgeSourceReadinessItem("unlinked", totals.unlinked, "source gap")}
+      ${renderKnowledgeSourceReadinessItem("evidence-pending", totals.evidencePending, "evidence pending")}
+      ${renderKnowledgeSourceReadinessItem("evidence-approved", totals.evidenceApproved, "evidence approved")}
+      ${renderKnowledgeSourceReadinessItem("vector-ready", totals.vectorReady, "vector ready")}
+      ${renderKnowledgeSourceReadinessItem("vector-blocked", totals.vectorBlocked, "vector blocked")}
     </div>
   `;
 }
@@ -16904,8 +16908,13 @@ function knowledgeSourceReadinessSummary(concepts = []) {
     if (["needs-rework", "rejected"].includes(reviewState)) summary.attention += 1;
     if (sourceRef) summary.linked += 1;
     if (!sourceRef || ["", "unlinked", "missing"].includes(String(fabric.evidence_strength || "").toLowerCase())) summary.unlinked += 1;
+    const evidence = knowledgeEvidenceState(concept);
+    if (evidence.className === "approved") summary.evidenceApproved += 1;
+    if (evidence.className === "pending") summary.evidencePending += 1;
+    if (evidence.vectorClass === "approved" || evidence.vectorClass === "pending") summary.vectorReady += 1;
+    if (evidence.vectorClass === "blocked") summary.vectorBlocked += 1;
     return summary;
-  }, { total: 0, approved: 0, pending: 0, attention: 0, linked: 0, unlinked: 0 });
+  }, { total: 0, approved: 0, pending: 0, attention: 0, linked: 0, unlinked: 0, evidencePending: 0, evidenceApproved: 0, vectorReady: 0, vectorBlocked: 0 });
 }
 
 function renderKnowledgeSourceReadinessItem(kind, value, label) {
@@ -17066,6 +17075,13 @@ function matchesConceptSourceFilter(concept) {
   if (filter === "approved") return reviewState === "approved";
   if (filter === "pending") return ["pending-review", "candidate", "draft"].includes(reviewState);
   if (filter === "attention") return ["needs-rework", "rejected"].includes(reviewState);
+  if (["evidence-pending", "evidence-approved", "vector-ready", "vector-blocked"].includes(filter)) {
+    const evidence = knowledgeEvidenceState(concept);
+    if (filter === "evidence-pending") return evidence.className === "pending";
+    if (filter === "evidence-approved") return evidence.className === "approved";
+    if (filter === "vector-ready") return evidence.vectorClass === "approved" || evidence.vectorClass === "pending";
+    if (filter === "vector-blocked") return evidence.vectorClass === "blocked";
+  }
   return true;
 }
 

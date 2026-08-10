@@ -24987,8 +24987,18 @@ body.theme-dark .graph-trust-boundary-grid button.active {
   border-left-color: #d7a84f;
 }
 
+.knowledge-source-readiness-grid button.evidence-pending {
+  border-left-color: #d7a84f;
+}
+
+.knowledge-source-readiness-grid button.evidence-approved,
+.knowledge-source-readiness-grid button.vector-ready {
+  border-left-color: #34c795;
+}
+
 .knowledge-source-readiness-grid button.attention,
-.knowledge-source-readiness-grid button.unlinked {
+.knowledge-source-readiness-grid button.unlinked,
+.knowledge-source-readiness-grid button.vector-blocked {
   border-left-color: #d9826b;
 }
 
