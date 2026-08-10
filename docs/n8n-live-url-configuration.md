@@ -116,6 +116,9 @@ When a URL is missing, the frontend must stay usable:
 - Production/Review Cockpit shows `missing URL`.
 - Production/Review Cockpit shows runtime setup actions with the exact missing
   config keys and a copyable public UAT config snippet.
+- The copied public UAT JSON includes both `n8nAgentWebhooks` and
+  `n8nAgentProbeSlots`, so the cockpit can distinguish "URL configured" from
+  "live probe reached the workflow".
 - Production/Review Cockpit shows a fixture-to-live comparison matrix so UAT can
   distinguish contract fixture coverage from live webhook connectivity.
 - Contract fixtures remain available and testable.

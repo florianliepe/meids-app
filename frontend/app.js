@@ -12468,6 +12468,9 @@ function buildSingleAgentRuntimeConfigSnippet(agentId) {
     n8nAgentWebhooks: {
       [agentId]: "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE",
     },
+    n8nAgentProbeSlots: {
+      [agentId]: configuredProbeSlotSnippet(agentId),
+    },
   };
   if (agentId === "knowledge_fabric_agent") config.n8nKnowledgeFabricWebhookUrl = "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE";
   if (agentId === "agentic_butler") config.n8nAgenticButlerWebhookUrl = "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE";
@@ -12484,6 +12487,10 @@ function buildN8nRuntimeConfigSnippet(agents = []) {
   }, {});
   const config = {
     n8nAgentWebhooks: webhookEntries,
+    n8nAgentProbeSlots: missing.reduce((acc, agent) => {
+      acc[agent.id] = configuredProbeSlotSnippet(agent.id);
+      return acc;
+    }, {}),
   };
   missing.forEach((agent) => {
     if (agent.id === "knowledge_fabric_agent") config.n8nKnowledgeFabricWebhookUrl = "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE";
@@ -12491,6 +12498,30 @@ function buildN8nRuntimeConfigSnippet(agents = []) {
     if (agent.id === "actor_twin") config.n8nActorTwinWebhookUrl = "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE";
   });
   return JSON.stringify(config, null, 2);
+}
+
+function configuredProbeSlotSnippet(agentId) {
+  const defaults = {
+    actor_twin: {
+      probe_boundary: "Public UAT webhook configured; run Actor Twin intent probe and capture n8n execution trace.",
+      next_action: "Run Actor Twin UAT and capture trace evidence.",
+    },
+    knowledge_fabric_agent: {
+      probe_boundary: "Public UAT webhook configured; run Knowledge Fabric ingest/graph handoff probe and capture n8n execution trace.",
+      next_action: "Run Knowledge Fabric Agent UAT with upload/transcript fixture.",
+    },
+    agentic_butler: {
+      probe_boundary: "Public UAT webhook configured; run approval-gated skill activation probe and capture n8n execution trace.",
+      next_action: "Run Agentic Butler UAT with approved skill activation fixture.",
+    },
+  };
+  return {
+    status: "configured",
+    ...(defaults[agentId] || {
+      probe_boundary: "Public UAT webhook configured; run live probe and capture n8n execution trace.",
+      next_action: "Run live UAT probe.",
+    }),
+  };
 }
 
 function renderN8nContractReadiness(agent = {}, readiness = null) {
