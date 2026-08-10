@@ -8,9 +8,14 @@ on:
     paths:
       - "frontend/**"
       - "contracts/n8n/**"
+      - "contracts/okf/**"
       - "docs/**"
       - "scripts/pages-smoke-check.cjs"
       - "scripts/validate-n8n-fixtures.cjs"
+      - "scripts/validate-okf-fixtures.cjs"
+      - "scripts/validate-graph-promotions.cjs"
+      - "scripts/validate-vector-adapter.cjs"
+      - "scripts/validate-postgres-graph-schema.cjs"
       - "scripts/write-n8n-runtime-readiness-status.cjs"
       - "scripts/write-pages-agent-runtime-config.cjs"
       - ".github/workflows/intellectual-twin-pages.yml"
@@ -41,6 +46,18 @@ jobs:
 
       - name: Validate n8n contract fixtures
         run: node scripts/validate-n8n-fixtures.cjs
+
+      - name: Validate OKF contract fixtures
+        run: node scripts/validate-okf-fixtures.cjs
+
+      - name: Validate graph promotion fixtures
+        run: node scripts/validate-graph-promotions.cjs
+
+      - name: Validate vector adapter fixtures
+        run: node scripts/validate-vector-adapter.cjs
+
+      - name: Validate Postgres graph projection schema
+        run: node scripts/validate-postgres-graph-schema.cjs
 
       - name: Prepare static artifact
         env:
