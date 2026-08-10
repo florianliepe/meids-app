@@ -6448,38 +6448,72 @@ function renderGraphGovernanceQueue(graph, visibleEdges) {
   if (!target) return;
   const nodes = new Map((graph.nodes || []).map((node) => [node.node_key, node]));
   const visibleKeys = new Set((visibleEdges || []).map((edge) => edge.edge_key));
+  const reviewByEdge = new Map((state.graphEdgeReviews || []).map((review) => [review.edge_key, review]));
   const candidates = (graph.edges || [])
-    .filter((edge) => ["duplicate_candidate", "contradiction_candidate"].includes(edge.relation_type || edge.edge_type || ""))
     .filter((edge) => visibleKeys.has(edge.edge_key))
-    .map((edge) => ({
-      edge,
-      source: nodes.get(edge.source) || {},
-      target: nodes.get(edge.target) || {},
-      reviewState: edge.review_state || "unreviewed",
-    }))
+    .map((edge) => {
+      const review = reviewByEdge.get(edge.edge_key) || {};
+      const merged = {
+        ...edge,
+        review_state: review.review_state || review.decision || edge.review_state,
+      };
+      const relation = merged.relation_type || merged.edge_type || "related";
+      const reviewState = merged.review_state || "unreviewed";
+      const edgeClass = graphEdgeClass(merged);
+      const candidate = String(edgeClass).includes("candidate")
+        || String(relation).includes("candidate")
+        || ["candidate", "draft", "unreviewed", "needs-rework", "needs rework", "inferred"].includes(String(reviewState).toLowerCase());
+      const terminal = ["accepted", "approved", "rejected"].includes(String(reviewState).toLowerCase());
+      return {
+        edge: merged,
+        source: nodes.get(edge.source) || {},
+        target: nodes.get(edge.target) || {},
+        reviewState,
+        edgeClass,
+        relation,
+        candidate,
+        terminal,
+        note: review.note || edge.review_note || graphQueueRecommendation(relation, reviewState),
+      };
+    })
+    .filter((item) => item.candidate && !item.terminal)
     .sort((a, b) => graphQueuePriority(b) - graphQueuePriority(a) || Number(b.edge.confidence || 0) - Number(a.edge.confidence || 0));
+  const summary = graphPromotionSummary(graphPromotionHistoryItems(120));
   if (!candidates.length) {
-    target.innerHTML = renderEmptyState("No duplicate or contradiction candidates in the current graph filter.");
+    target.innerHTML = `
+      ${renderGraphRelationReviewQueueHeader(summary, candidates)}
+      ${renderEmptyState("No candidate relations in the current graph filter.")}
+      <p class="graph-decision-queue-note">Accepted relations can be used as trusted graph retrieval context. Draft and inferred relations stay visible, but are not promoted automatically.</p>
+    `;
     return;
   }
-  target.innerHTML = candidates
+  target.innerHTML = `
+    ${renderGraphRelationReviewQueueHeader(summary, candidates)}
+    <div class="graph-relation-review-queue">
+      ${candidates
     .slice(0, 12)
-    .map(({ edge, source, target: targetNode, reviewState }) => {
-      const relation = edge.relation_type || edge.edge_type || "candidate";
-      const pending = reviewState === "unreviewed";
+    .map(({ edge, source, target: targetNode, reviewState, relation, edgeClass, note }) => {
+      const pending = !["accepted", "approved", "rejected"].includes(String(reviewState).toLowerCase());
+      const policy = graphEdgeUsagePolicy(edge);
       return `
         <article class="activity-item graph-governance-item ${safeGraphClass(relation)} ${safeGraphClass(reviewState)}">
           <div class="activity-meta">
             <span class="badge">${escapeHtml(labelizeGraph(relation))}</span>
-          <small>${escapeHtml(reviewState)} · confidence ${escapeHtml(edge.confidence ?? "-")}</small>
+            <small>${escapeHtml(labelizeGraph(reviewState))} · ${escapeHtml(labelizeGraph(edgeClass))} · confidence ${escapeHtml(edge.confidence ?? "-")}</small>
           </div>
           <strong>${escapeHtml(source.title || edge.source || "Source")}</strong>
           <p>↔ ${escapeHtml(targetNode.title || edge.target || "Target")}</p>
           ${renderGraphConsumerBadges(edge)}
-          <small>${escapeHtml(graphQueueRecommendation(relation, reviewState))}</small>
+          <dl class="graph-relation-review-meta">
+            ${detailRow("Actor use", policy.label)}
+            ${detailRow("Next action", graphQueueRecommendation(relation, reviewState))}
+          </dl>
+          <small>${escapeHtml(note || "Candidate relation awaits promotion review.")}</small>
+          ${renderGraphSourceHandoffCue(edge, { compact: true })}
           <div class="graph-edge-review-actions">
             <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.source)}">Source</button>
             <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.target)}">Target</button>
+            <button class="small secondary" type="button" data-graph-edge="${escapeHtml(edge.edge_key || "")}">Inspect relation</button>
             ${renderGraphProposalButton(edge)}
             ${pending ? `
               <button class="small secondary" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="accepted">Accept</button>
@@ -6490,13 +6524,44 @@ function renderGraphGovernanceQueue(graph, visibleEdges) {
         </article>
       `;
     })
-    .join("");
+    .join("")}
+    </div>
+  `;
+}
+
+function renderGraphRelationReviewQueueHeader(summary = {}, candidates = []) {
+  const contradictionCount = candidates.filter((item) => String(item.relation || item.edge?.relation_type || "").includes("contradiction")).length;
+  const duplicateCount = candidates.filter((item) => String(item.relation || item.edge?.relation_type || "").includes("duplicate")).length;
+  const inferredCount = candidates.filter((item) => item.edgeClass === "inferred").length;
+  return `
+    <div class="graph-relation-review-head">
+      <div>
+        <span class="badge">Relation review queue</span>
+        <strong>${escapeHtml(String(candidates.length))} visible candidates need a promotion decision</strong>
+        <p>Accepted edges can enter Actor Twin graph retrieval. Candidate, inferred, duplicate, and contradiction edges remain explainable but untrusted until reviewed.</p>
+      </div>
+      <div class="graph-relation-review-bands">
+        <span class="candidate"><strong>${escapeHtml(String(summary.pendingCount || candidates.length))}</strong><small>pending</small></span>
+        <span class="approved"><strong>${escapeHtml(String(summary.acceptedCount || 0))}</strong><small>trusted</small></span>
+        <span class="needs-rework"><strong>${escapeHtml(String(summary.needsReworkCount || 0))}</strong><small>rework</small></span>
+        <span class="rejected"><strong>${escapeHtml(String(summary.rejectedCount || 0))}</strong><small>rejected</small></span>
+      </div>
+      <div class="graph-relation-review-flags" aria-label="Candidate relation classes">
+        <span>${escapeHtml(String(contradictionCount))} contradiction</span>
+        <span>${escapeHtml(String(duplicateCount))} duplicate</span>
+        <span>${escapeHtml(String(inferredCount))} inferred</span>
+      </div>
+    </div>
+  `;
 }
 
 function graphQueuePriority(item) {
-  if (item.reviewState === "unreviewed" && item.edge.relation_type === "contradiction_candidate") return 100;
-  if (item.reviewState === "unreviewed" && item.edge.relation_type === "duplicate_candidate") return 80;
+  const relation = item.relation || item.edge?.relation_type || "";
+  if (item.reviewState === "unreviewed" && relation === "contradiction_candidate") return 100;
+  if (item.reviewState === "unreviewed" && relation === "duplicate_candidate") return 80;
   if (item.reviewState === "needs-rework") return 60;
+  if (String(relation).includes("candidate")) return 50;
+  if (item.edgeClass === "inferred") return 35;
   return 20;
 }
 

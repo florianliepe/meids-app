@@ -8140,6 +8140,133 @@ body.theme-dark .knowledge-source-readiness-grid span {
   margin: 8px 0 0;
 }
 
+.graph-relation-review-head {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-strong) 86%, transparent), color-mix(in srgb, var(--surface-quiet) 80%, transparent));
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 13px;
+}
+
+.graph-relation-review-head > div:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.graph-relation-review-head strong,
+.graph-relation-review-head p {
+  margin: 0;
+}
+
+.graph-relation-review-head strong {
+  color: var(--ink);
+  font-size: 0.98rem;
+  line-height: 1.25;
+}
+
+.graph-relation-review-head p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 720;
+  line-height: 1.45;
+}
+
+.graph-relation-review-bands,
+.graph-relation-review-flags {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.graph-relation-review-bands span,
+.graph-relation-review-flags span {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--warn) 64%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  min-width: 0;
+  padding: 9px 10px;
+}
+
+.graph-relation-review-bands span.approved {
+  border-left-color: color-mix(in srgb, var(--accent) 64%, var(--line));
+}
+
+.graph-relation-review-bands span.needs-rework {
+  border-left-color: color-mix(in srgb, #c8a35d 68%, var(--line));
+}
+
+.graph-relation-review-bands span.rejected {
+  border-left-color: color-mix(in srgb, var(--danger, #c84f3f) 64%, var(--line));
+}
+
+.graph-relation-review-bands strong,
+.graph-relation-review-bands small,
+.graph-relation-review-flags span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.graph-relation-review-bands strong {
+  color: var(--ink);
+  font-size: 1.08rem;
+  line-height: 1;
+}
+
+.graph-relation-review-bands small,
+.graph-relation-review-flags span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 860;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.graph-relation-review-flags {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.graph-relation-review-queue {
+  display: grid;
+  gap: 10px;
+}
+
+.graph-relation-review-meta {
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 10px;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 8px 0;
+  padding: 8px;
+}
+
+.graph-relation-review-meta div {
+  min-width: 0;
+}
+
+.graph-relation-review-meta dt,
+.graph-relation-review-meta dd {
+  margin: 0;
+}
+
+.graph-relation-review-meta dt {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.graph-relation-review-meta dd {
+  color: var(--ink);
+  font-size: 0.76rem;
+  font-weight: 760;
+  overflow-wrap: anywhere;
+}
+
 .graph-source-handoff-cue {
   border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
   border-left: 4px solid color-mix(in srgb, var(--accent) 70%, var(--line));
@@ -9157,6 +9284,53 @@ body.theme-dark .graph-promotion-history-card.accepted {
 body.theme-dark .graph-promotion-history-card.needs-rework,
 body.theme-dark .graph-promotion-history-card.rejected {
   border-left-color: #f0a39a;
+}
+
+body.theme-dark .graph-relation-review-head {
+  background: linear-gradient(135deg, rgba(24, 30, 25, 0.95), rgba(17, 22, 18, 0.9));
+  border-color: rgba(232, 226, 214, 0.14);
+}
+
+body.theme-dark .graph-relation-review-head strong,
+body.theme-dark .graph-relation-review-bands strong,
+body.theme-dark .graph-relation-review-meta dd {
+  color: #fff8ea;
+}
+
+body.theme-dark .graph-relation-review-head p,
+body.theme-dark .graph-relation-review-bands small,
+body.theme-dark .graph-relation-review-flags span,
+body.theme-dark .graph-relation-review-meta dt {
+  color: #c9c0b3;
+}
+
+body.theme-dark .graph-relation-review-bands span,
+body.theme-dark .graph-relation-review-flags span,
+body.theme-dark .graph-relation-review-meta {
+  background: rgba(18, 23, 19, 0.9);
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .graph-relation-review-bands span.candidate {
+  border-left-color: #f1d08c;
+}
+
+body.theme-dark .graph-relation-review-bands span.approved {
+  border-left-color: #9ce6d2;
+}
+
+body.theme-dark .graph-relation-review-bands span.needs-rework {
+  border-left-color: #f2d39b;
+}
+
+body.theme-dark .graph-relation-review-bands span.rejected {
+  border-left-color: #f0a39f;
+}
+
+body.theme-dark .graph-decision-queue-card,
+body.theme-dark .graph-governance-item {
+  background: rgba(23, 27, 24, 0.9);
+  border-color: rgba(232, 226, 214, 0.13);
 }
 
 body.theme-dark .graph-export-readiness {
@@ -24823,6 +24997,12 @@ body.theme-dark .kg-count {
 
   .graph-node-insight-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .graph-relation-review-bands,
+  .graph-relation-review-flags,
+  .graph-relation-review-meta {
+    grid-template-columns: 1fr;
   }
 
   .graph-node-governance-item dl {

@@ -172,6 +172,20 @@ Latest local QA pass for Production live-gate evidence board:
 
 This pass adds a Production Cockpit live-gate evidence board that distinguishes contract fixture readiness, configured URL, live probe, and non-demo trace evidence for Actor Twin, Knowledge Fabric Agent, and Agentic Butler. The board exposes three public-safe probe payload copy actions and remains contained in dark mode. Screenshots are stored in `docs/visual-qa/screenshots-20260810-agent-live-gate-board/`.
 
+Latest local QA pass for the Knowledge Graph relation review queue:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-agent-config-export.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/replay-n8n-fixtures.cjs --write`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-graph-relation-review-queue`
+- Targeted Playwright assertions open `?view=graph` and verify `.graph-relation-review-head`, review bands, candidate flags, action buttons, and zero horizontal overflow at `390px` and `1440px`.
+
+This pass broadens the graph governance queue from duplicate/contradiction-only review to a visible relation review queue for candidate, inferred, duplicate, and contradiction edges. Candidate relations remain explainable but untrusted until accepted. Screenshots are stored in `docs/visual-qa/screenshots-20260810-graph-relation-review-queue/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:
