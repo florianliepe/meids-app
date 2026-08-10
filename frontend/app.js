@@ -12337,6 +12337,7 @@ async function safeRefreshStaticN8nReplayStatus() {
     mergeStaticN8nReplayStatus(replayStatus);
     renderAgentOperatingModelPanel();
     renderChatContractSurfaces();
+    renderDashboardKnowledgeGraphHandoff();
   } catch (error) {
     console.warn("Static n8n fixture replay status refresh failed", error);
   }
@@ -17410,7 +17411,8 @@ function renderDashboardKnowledgeGraphHandoff() {
   const approvedPromotions = promotions.filter((item) => ["approved", "accepted"].includes(String(item.review_state || item.decision || "").toLowerCase()));
   const blockedPromotions = promotions.filter((item) => ["rejected", "needs-rework", "blocked"].includes(String(item.review_state || item.decision || "").toLowerCase()));
   const vectorFixtureReady = Number(state.okfValidationStatus?.summary?.vector_request_fixture_count || 0) > 0;
-  const liveKnowledgeUrl = chatAgentContractStatuses().find((item) => item.id === "knowledge_fabric_agent")?.configured;
+  const agentStatuses = chatAgentContractStatuses();
+  const liveKnowledgeUrl = agentStatuses.find((item) => item.agentId === "knowledge_fabric_agent")?.configured;
   const steps = [
     {
       label: "Source intake",
@@ -17469,8 +17471,54 @@ function renderDashboardKnowledgeGraphHandoff() {
         <span><strong>${escapeHtml(source.repoSyncReady ? "yes" : "no")}</strong><small>repo review</small></span>
       </div>
     </div>
+    ${renderDashboardAgentProbeStrip(agentStatuses)}
   `;
+  target.querySelectorAll("[data-dashboard-agent-probe]").forEach((button) => {
+    button.addEventListener("click", () => probeAgentContract(button.dataset.dashboardAgentProbe || ""));
+  });
   document.querySelector('[data-dashboard-action="open-knowledge-graph"]')?.addEventListener("click", () => showView("graph"));
+}
+
+function renderDashboardAgentProbeStrip(statuses = chatAgentContractStatuses()) {
+  const replayPassed = state.n8nAgentContracts?.replay_status === "passed";
+  const replayCaseCount = Number(state.n8nAgentContracts?.replay_case_count || 0);
+  return `
+    <div class="dashboard-agent-probe-strip" aria-label="Top-level agent contract readiness">
+      <div class="dashboard-agent-probe-head">
+        <span class="badge">Top-level agent contracts</span>
+        <strong>${escapeHtml(`${statuses.filter((item) => item.configured).length}/${statuses.length} URLs configured`)}</strong>
+        <small>${escapeHtml("Fixture replay can pass before live workflow rollout; production approval still requires URL, probe, and trace evidence.")}</small>
+      </div>
+      <div class="dashboard-agent-probe-grid">
+        ${statuses.map((item) => {
+          const probe = state.n8nLiveProbeResults?.[item.agentId] || null;
+          const fixtureReady = item.replayPassed || replayPassed;
+          const fixtureCases = item.replayCaseCount || replayCaseCount;
+          const stateClass = probe?.status === "connected"
+            ? "ready"
+            : item.configured
+              ? "warning"
+              : fixtureReady
+                ? "pending"
+                : "blocked";
+          return `
+            <article class="${stateClass}">
+              <div>
+                <strong>${escapeHtml(item.label)}</strong>
+                <span>${escapeHtml(probe?.status || item.state || "documented")}</span>
+              </div>
+              <small>${escapeHtml(probe?.detail || item.detail || item.nextAction || "Contract fixture documented.")}</small>
+              <div class="dashboard-agent-probe-meta">
+                <em>${escapeHtml(fixtureReady ? `${fixtureCases} replay cases` : "fixture pending")}</em>
+                <em>${escapeHtml(item.webhookLabel || (item.configured ? "URL configured" : "fixture only"))}</em>
+              </div>
+              <button class="secondary small" type="button" data-dashboard-agent-probe="${escapeHtml(item.agentId)}">${escapeHtml(item.configured ? "Probe live" : "Record blocked probe")}</button>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
 }
 
 function exportGraphPromotionHistory() {

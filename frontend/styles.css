@@ -8346,6 +8346,114 @@ body.theme-dark .knowledge-source-readiness-grid span {
   font-size: 15px;
 }
 
+.dashboard-agent-probe-strip {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 82%, transparent);
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.dashboard-agent-probe-head {
+  align-items: end;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.dashboard-agent-probe-head .badge,
+.dashboard-agent-probe-head small {
+  grid-column: 1 / -1;
+}
+
+.dashboard-agent-probe-head strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.dashboard-agent-probe-head small {
+  color: var(--muted);
+}
+
+.dashboard-agent-probe-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dashboard-agent-probe-grid article {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--muted) 42%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-strong) 76%, transparent);
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.dashboard-agent-probe-grid article.ready {
+  border-left-color: #5bbf9f;
+}
+
+.dashboard-agent-probe-grid article.warning,
+.dashboard-agent-probe-grid article.pending {
+  border-left-color: #d7a84f;
+}
+
+.dashboard-agent-probe-grid article.blocked {
+  border-left-color: #d06e68;
+}
+
+.dashboard-agent-probe-grid article > div:first-child {
+  align-items: start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.dashboard-agent-probe-grid strong,
+.dashboard-agent-probe-grid span,
+.dashboard-agent-probe-grid small,
+.dashboard-agent-probe-grid em {
+  overflow-wrap: anywhere;
+}
+
+.dashboard-agent-probe-grid strong {
+  color: var(--ink);
+}
+
+.dashboard-agent-probe-grid span {
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 7px;
+}
+
+.dashboard-agent-probe-grid small,
+.dashboard-agent-probe-grid em {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.dashboard-agent-probe-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dashboard-agent-probe-meta em {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, transparent);
+  border-radius: 999px;
+  font-style: normal;
+  padding: 3px 7px;
+}
+
 .agent-trace-row.approval {
   border-left-color: #d7a84f;
 }
@@ -8696,6 +8804,45 @@ body.theme-dark .knowledge-graph-handoff-flow small,
 body.theme-dark .knowledge-graph-handoff-summary p,
 body.theme-dark .knowledge-graph-handoff-metrics small {
   color: #c9c0b3;
+}
+
+body.theme-dark .dashboard-agent-probe-strip,
+body.theme-dark .dashboard-agent-probe-grid article {
+  background: rgba(23, 27, 24, 0.84);
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .dashboard-agent-probe-grid article.ready {
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .dashboard-agent-probe-grid article.warning,
+body.theme-dark .dashboard-agent-probe-grid article.pending {
+  border-left-color: #f2d39b;
+}
+
+body.theme-dark .dashboard-agent-probe-grid article.blocked {
+  border-left-color: #f0a39f;
+}
+
+body.theme-dark .dashboard-agent-probe-head strong,
+body.theme-dark .dashboard-agent-probe-grid strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .dashboard-agent-probe-head small,
+body.theme-dark .dashboard-agent-probe-grid small,
+body.theme-dark .dashboard-agent-probe-grid em {
+  color: #c9c0b3;
+}
+
+body.theme-dark .dashboard-agent-probe-grid span,
+body.theme-dark .dashboard-agent-probe-meta em {
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .dashboard-agent-probe-grid span {
+  color: #9ce6d2;
 }
 
 body.theme-dark .knowledge-increment {
@@ -27099,6 +27246,15 @@ body.theme-dark .graph-retrieval-contract-flow article {
 
   .knowledge-graph-handoff-summary {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-agent-probe-head,
+  .dashboard-agent-probe-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-agent-probe-grid article > div:first-child {
+    display: grid;
   }
 
   .knowledge-increment,
