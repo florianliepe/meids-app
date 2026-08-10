@@ -110,6 +110,14 @@ The Actor Twin is configured for public staging. The following live endpoints ar
 | Knowledge Fabric Agent | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` or fallback `n8nAgentWebhooks.knowledge_fabric_agent` | Review Cockpit -> Knowledge-to-Graph Handoff -> Copy setup packet |
 | Agentic Butler | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` or fallback `n8nAgentWebhooks.agentic_butler` | Review Cockpit -> Knowledge-to-Graph Handoff -> Copy setup packet |
 
+The Production/Review Cockpit also shows a **Missing live URL setup** panel when either URL is absent. Use it as the operational handoff:
+
+1. Copy the setup packet for the missing agent.
+2. Create or publish the matching n8n workflow as a public UAT webhook, or expose it through the hosted backend.
+3. Add the URL to the matching GitHub Pages secret or to `frontend/assets/agent-runtime-config.json` for public UAT.
+4. Rerun the Pages workflow or regenerate `frontend/assets/n8n-runtime-readiness-status.json`.
+5. Run the cockpit live probe and retain the n8n execution trace before production approval.
+
 Minimal public staging JSON shape:
 
 ```json

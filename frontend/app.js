@@ -13057,6 +13057,7 @@ function renderN8nRuntimeSetupActions(agents = [], contractByAgent = new Map()) 
         </div>
       </div>
       ${missingAgents.length ? renderN8nCurrentSupportedConfigPath(missingSnippet) : ""}
+      ${missingAgents.length ? renderProductionAgentMissingUrlSetup(missingAgents) : ""}
       ${renderWorkflowScopeCredentialBlocker(missingAgents)}
       <div class="n8n-runtime-secret-grid">
         ${secretRows.map((row) => `
@@ -26522,6 +26523,7 @@ function renderProductionAgentUrlReadiness(agents = []) {
         </div>
       ` : ""}
       ${missing.length ? renderN8nCurrentSupportedConfigPath(missingConfig) : ""}
+      ${missing.length ? renderProductionAgentMissingUrlSetup(missing) : ""}
       <div class="production-agent-url-grid">
         ${agents.map((agent) => `
           <article class="${escapeHtml(agent.className)}">
@@ -26549,6 +26551,104 @@ function renderProductionAgentUrlReadiness(agents = []) {
       <small>Public GitHub Pages can only use public UAT webhook URLs. Private production endpoints should move behind the hosted backend or a workflow-generated runtime config.</small>
     </section>
   `;
+}
+
+function renderProductionAgentMissingUrlSetup(missing = []) {
+  const setupPacket = {
+    handoff: "meids_n8n_live_url_setup",
+    status: "blocked_until_public_uat_urls_exist",
+    public_safe: true,
+    docs: [
+      "docs/n8n-live-url-configuration.md",
+      "frontend/assets/agent-runtime-config.json",
+      "frontend/assets/n8n-runtime-readiness-status.json",
+    ],
+    agents: missing.map((agent) => productionAgentMissingUrlSetupRow(agent)),
+    sequence: [
+      "Publish the matching n8n workflow as a public UAT webhook or expose it through the hosted backend.",
+      "Add the URL to GitHub Pages repository secrets or to frontend/assets/agent-runtime-config.json for public UAT.",
+      "Regenerate n8n-runtime-readiness-status.json or rerun the Pages workflow.",
+      "Run the cockpit live probe and retain the n8n execution trace.",
+      "Only then move the agent from fixture-ready to production-review candidate.",
+    ],
+  };
+  return `
+    <aside class="production-agent-missing-url-setup">
+      <div class="production-agent-missing-url-head">
+        <div>
+          <span class="badge">Missing live URL setup</span>
+          <strong>${escapeHtml(`${missing.length} agent${missing.length === 1 ? "" : "s"} need public UAT URLs`)}</strong>
+          <p>These agents are contract-tested locally but cannot run end-to-end until their n8n webhook URLs are configured and probed.</p>
+        </div>
+        <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(setupPacket, null, 2))}">Copy setup packet</button>
+      </div>
+      <div class="production-agent-missing-url-grid">
+        ${missing.map((agent) => {
+          const row = productionAgentMissingUrlSetupRow(agent);
+          return `
+            <article>
+              <span>${escapeHtml(row.status)}</span>
+              <strong>${escapeHtml(row.agent_name)}</strong>
+              <p>${escapeHtml(row.required_capability)}</p>
+              <dl>
+                <div><dt>GitHub secret</dt><dd><code>${escapeHtml(row.github_secret)}</code></dd></div>
+                <div><dt>Runtime key</dt><dd><code>${escapeHtml(row.runtime_key)}</code></dd></div>
+                <div><dt>Next probe</dt><dd>${escapeHtml(row.next_probe)}</dd></div>
+              </dl>
+              <div class="button-row tight">
+                <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(row.github_secret)}">Copy secret</button>
+                <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(row.runtime_config_snippet, null, 2))}">Copy JSON</button>
+                <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(row.probe_payload, null, 2))}">Copy probe</button>
+              </div>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </aside>
+  `;
+}
+
+function productionAgentMissingUrlSetupRow(agent = {}) {
+  const agentId = agent.agentId || agent.id || "";
+  const capabilityByAgent = {
+    actor_twin: "Answer and steering workflow for user-facing Actor Twin requests.",
+    knowledge_fabric_agent: "Ingest uploads/transcripts, create pending OKF concepts, store evidence, write CRUD/audit events, and trigger graph curator handoff.",
+    agentic_butler: "Activate approved skills, orchestrate internal task agents, enforce approval gates, and return traceable work outputs.",
+  };
+  const runtimeKeyByAgent = {
+    actor_twin: "n8nActorTwinWebhookUrl / n8nAgentWebhooks.actor_twin",
+    knowledge_fabric_agent: "n8nKnowledgeFabricWebhookUrl / n8nAgentWebhooks.knowledge_fabric_agent",
+    agentic_butler: "n8nAgenticButlerWebhookUrl / n8nAgentWebhooks.agentic_butler",
+  };
+  const nextProbeByAgent = {
+    actor_twin: "Run Actor Twin intent probe from Chat and capture n8n execution trace.",
+    knowledge_fabric_agent: "Run Knowledge Fabric ingest probe with upload/transcript fixture and capture trace.",
+    agentic_butler: "Run approval-gated skill activation probe and capture trace.",
+  };
+  const githubSecretByAgent = {
+    actor_twin: "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
+    knowledge_fabric_agent: "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+    agentic_butler: "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+  };
+  return {
+    agent_id: agentId,
+    agent_name: agent.name || agentDisplayName(agentId),
+    status: agent.status || "missing URL",
+    github_secret: agent.githubSecret || githubSecretByAgent[agentId] || "GH_PAGES_N8N_WEBHOOK_URL",
+    runtime_key: runtimeKeyByAgent[agentId] || agent.envVar || "n8nAgentWebhooks.<agent_id>",
+    required_capability: capabilityByAgent[agentId] || "Expose a public UAT webhook for the matching top-level agent contract.",
+    next_probe: nextProbeByAgent[agentId] || "Run live probe and retain trace evidence.",
+    runtime_config_snippet: safeJsonParse(buildSingleAgentRuntimeConfigSnippet(agentId), {}),
+    probe_payload: agent.liveProbePayload || agentLiveProbePayload(agentId),
+  };
+}
+
+function safeJsonParse(text = "", fallback = null) {
+  try {
+    return JSON.parse(text);
+  } catch (_error) {
+    return fallback;
+  }
 }
 
 function renderProductionAgentLiveGateBoard(agents = []) {
