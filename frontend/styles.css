@@ -26962,6 +26962,47 @@ body.theme-dark .graph-trust-boundary-grid button.active {
   background: color-mix(in srgb, #d9826b 10%, var(--surface));
 }
 
+.knowledge-actor-use {
+  align-items: start;
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--muted) 42%, var(--line));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  display: grid;
+  gap: 3px;
+  margin-top: 2px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+}
+
+.knowledge-actor-use.trusted {
+  border-left-color: #34c795;
+}
+
+.knowledge-actor-use.cite-with-review {
+  border-left-color: #d7a84f;
+}
+
+.knowledge-actor-use.audit-only {
+  border-left-color: #d9826b;
+}
+
+.knowledge-actor-use strong {
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.knowledge-actor-use span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
 .knowledge-evidence-state strong {
   color: var(--muted);
   font-size: 9px;
@@ -27051,6 +27092,34 @@ body.theme-dark .knowledge-source-use.pending span:first-child {
 body.theme-dark .knowledge-source-use.blocked span:first-child {
   background: rgba(226, 141, 118, 0.13);
   border-color: rgba(226, 141, 118, 0.4);
+}
+
+body.theme-dark .knowledge-actor-use {
+  background: rgba(24, 30, 25, 0.92);
+  border-color: rgba(241, 235, 224, 0.14);
+}
+
+body.theme-dark .knowledge-actor-use.trusted {
+  background: rgba(122, 216, 191, 0.1);
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .knowledge-actor-use.cite-with-review {
+  background: rgba(215, 179, 109, 0.11);
+  border-left-color: #d7b36d;
+}
+
+body.theme-dark .knowledge-actor-use.audit-only {
+  background: rgba(226, 141, 118, 0.11);
+  border-left-color: #e28d76;
+}
+
+body.theme-dark .knowledge-actor-use strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-actor-use span {
+  color: #c9c0b3;
 }
 
 body.theme-dark .knowledge-evidence-state .approved {

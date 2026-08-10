@@ -18443,16 +18443,53 @@ function renderKnowledgeCard(concept) {
   const sourceLabel = concept.source_anchor || concept.curation_method || fabric.evidence_strength || "source pending";
   const cardDescription = compactText(concept.description || "No description stored yet.", state.conceptDensity === "compact" ? 110 : 150);
   const reviewState = concept.review_state || "pending-review";
+  const actorUse = knowledgeActorUseState(concept);
   return `
-    <article class="knowledge-increment ${state.conceptDensity === "compact" ? "compact" : ""}" data-review-state="${escapeHtml(reviewState)}">
+    <article class="knowledge-increment ${state.conceptDensity === "compact" ? "compact" : ""}" data-review-state="${escapeHtml(reviewState)}" data-actor-use="${escapeHtml(actorUse.className)}">
       <div class="knowledge-increment-main">
         ${renderKnowledgeTitleRow(concept, reviewState)}
         <p>${escapeHtml(cardDescription)}</p>
+        ${renderKnowledgeActorUseBadge(actorUse)}
       </div>
       ${renderKnowledgeFabric(fabric)}
       ${renderKnowledgeSource(concept, sourceLabel)}
       ${renderKnowledgeActions(concept)}
     </article>
+  `;
+}
+
+function knowledgeActorUseState(concept) {
+  const reviewState = concept.review_state || "pending-review";
+  const refs = conceptSourceRefs(concept);
+  const evidence = knowledgeEvidenceState(concept);
+  const hasSource = refs.length > 0;
+  if (reviewState === "approved" && evidence.className === "approved" && evidence.vectorClass === "approved") {
+    return {
+      className: "trusted",
+      label: "trusted",
+      detail: "Actor Twin can use this in grounded answers and skill context.",
+    };
+  }
+  if (["needs-rework", "rejected"].includes(reviewState) || !hasSource || ["blocked", "missing"].includes(evidence.className)) {
+    return {
+      className: "audit-only",
+      label: "audit only",
+      detail: "Keep visible for review; block trusted retrieval until source/evidence is fixed.",
+    };
+  }
+  return {
+    className: "cite-with-review",
+    label: "cite with review",
+    detail: "May support exploration with citation; human review before steering decisions.",
+  };
+}
+
+function renderKnowledgeActorUseBadge(actorUse = {}) {
+  return `
+    <div class="knowledge-actor-use ${escapeHtml(actorUse.className || "audit-only")}">
+      <strong>${escapeHtml(actorUse.label || "audit only")}</strong>
+      <span>${escapeHtml(actorUse.detail || "Review required before Actor Twin reliance.")}</span>
+    </div>
   `;
 }
 
