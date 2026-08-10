@@ -23135,6 +23135,38 @@ function renderProductionKnowledgeRepoReadiness() {
   const readyCount = checks.filter((check) => check.ready).length;
   const next = checks.find((check) => !check.ready);
   const statusClass = readyCount === checks.length ? "ready" : payloadReady || okfReady ? "pending" : "blocked";
+  const operatorSteps = [
+    {
+      label: "Confirm repo boundaries",
+      state: okfReady ? "ready" : "open",
+      detail: okfReady ? "OKF schema, fixtures, graph promotions, and vector boundary are validated." : "Validate OKF fixtures before moving knowledge content.",
+    },
+    {
+      label: "Clone private knowledge repo",
+      state: repoReady ? "ready" : "open",
+      detail: repoReady ? bridgeRepo.configured_path || bridgeLocal.path || "Private knowledge repo is available locally." : "Create or clone `meids-knowledge-fabric` as private.",
+    },
+    {
+      label: "Export reviewed sync payload",
+      state: payloadReady ? "ready" : "open",
+      detail: payloadReady ? bridgePayload.latest_path || "Payload hash is available." : "Export only reviewed OKF concepts/evidence/transcripts from local MVP.",
+    },
+    {
+      label: "Apply payload branch",
+      state: branchReady ? "ready" : payloadReady ? "manual" : "blocked",
+      detail: branchReady ? "Local branch matches the expected sync branch." : "Apply payload into `feature/knowledge-sync-*`, then inspect the diff.",
+    },
+    {
+      label: "Open human-reviewed PR",
+      state: branchReady && bridge.compare_url ? "manual" : "blocked",
+      detail: bridge.compare_url ? "Use the compare page only after confirming changed OKF files." : "PR waits for branch alignment and compare URL.",
+    },
+    {
+      label: "Prepare agent-config repo",
+      state: splitReady ? "manual" : "open",
+      detail: splitReady ? "Move live workflow specs/prompts to private agent-config repo when ready." : "Use handoff checklist to create `meids-agent-configs` boundary.",
+    },
+  ];
   const docsUrl = "https://github.com/florianliepe/meids-app/blob/main/docs/knowledge-fabric-okf-schema.md";
   const handoffUrl = "https://github.com/florianliepe/meids-app/blob/main/docs/production/repo-split-handoff-checklist.md";
   target.innerHTML = `
@@ -23167,6 +23199,18 @@ function renderProductionKnowledgeRepoReadiness() {
         <a class="secondary small" href="${handoffUrl}" target="_blank" rel="noreferrer">Open handoff checklist</a>
         ${bridge.compare_url ? `<a class="secondary small" href="${escapeHtml(bridge.compare_url)}" target="_blank" rel="noreferrer">Open knowledge compare</a>` : ""}
       </div>
+      <details class="production-knowledge-operator" open>
+        <summary>Repo split operator sequence</summary>
+        <ol>
+          ${operatorSteps.map((step) => `
+            <li class="${escapeHtml(step.state)}">
+              <span>${escapeHtml(step.state)}</span>
+              <strong>${escapeHtml(step.label)}</strong>
+              <small>${escapeHtml(step.detail)}</small>
+            </li>
+          `).join("")}
+        </ol>
+      </details>
       <small>Production rule: only approved or explicitly selected pending OKF material can move into trusted retrieval. Merge remains human-reviewed.</small>
     </section>
   `;

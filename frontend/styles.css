@@ -11445,6 +11445,92 @@ body.theme-dark .graph-promotion-flow small {
   color: var(--ink);
 }
 
+.production-knowledge-operator {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-quiet) 68%, transparent);
+  padding: 10px 12px;
+}
+
+.production-knowledge-operator summary {
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 860;
+}
+
+.production-knowledge-operator ol {
+  counter-reset: repo-step;
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.production-knowledge-operator li {
+  align-items: start;
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  counter-increment: repo-step;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: auto minmax(76px, 0.2fr) minmax(0, 1fr);
+  min-width: 0;
+  padding: 9px 10px;
+}
+
+.production-knowledge-operator li::before {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 999px;
+  color: var(--muted);
+  content: counter(repo-step);
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 860;
+  height: 22px;
+  justify-content: center;
+  width: 22px;
+}
+
+.production-knowledge-operator li.ready {
+  border-left-color: #65c8af;
+}
+
+.production-knowledge-operator li.manual {
+  border-left-color: #d4ad63;
+}
+
+.production-knowledge-operator li.blocked,
+.production-knowledge-operator li.open {
+  border-left-color: #dc887d;
+}
+
+.production-knowledge-operator span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 860;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.production-knowledge-operator strong {
+  color: var(--ink);
+  font-size: 0.84rem;
+  line-height: 1.2;
+}
+
+.production-knowledge-operator small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  grid-column: 2 / -1;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .quality-tabs {
   display: inline-flex;
   align-items: center;
@@ -24890,6 +24976,23 @@ body.theme-dark .production-knowledge-repo-actions a.secondary:hover {
   color: #fff8ea;
 }
 
+body.theme-dark .production-knowledge-operator,
+body.theme-dark .production-knowledge-operator li {
+  background: #1d241f;
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .production-knowledge-operator summary,
+body.theme-dark .production-knowledge-operator strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .production-knowledge-operator span,
+body.theme-dark .production-knowledge-operator small,
+body.theme-dark .production-knowledge-operator li::before {
+  color: #c9c0b3;
+}
+
 /* Knowledge Browser card readability polish. This sits late in the cascade by design. */
 .knowledge-increment-list {
   gap: 10px;
@@ -25169,5 +25272,28 @@ body.theme-dark .graph-relation-layer-summary small {
   .production-knowledge-repo-actions a {
     justify-content: center;
     width: 100%;
+  }
+
+  .production-knowledge-operator li {
+    align-items: start;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .production-knowledge-operator span,
+  .production-knowledge-operator strong,
+  .production-knowledge-operator small {
+    grid-column: 2;
+  }
+
+  .production-knowledge-operator span {
+    grid-row: 1;
+  }
+
+  .production-knowledge-operator strong {
+    grid-row: 2;
+  }
+
+  .production-knowledge-operator small {
+    grid-row: 3;
   }
 }

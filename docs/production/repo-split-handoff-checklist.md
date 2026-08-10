@@ -42,6 +42,19 @@ Use a conservative shared model:
 9. Move live n8n workflow documentation, prompts, and non-secret configuration into `meids-agent-configs`.
 10. Keep webhook URLs and credentials only in GitHub secrets, n8n credentials, or hosted secret stores.
 
+## Production Cockpit Operator Sequence
+
+The Production Cockpit shows this compact sequence so operators can see the current handoff state without opening the deep diagnostic panels:
+
+| Step | Operator Action | Ready Evidence |
+| --- | --- | --- |
+| 1 | Confirm repo boundaries | OKF schema, fixtures, graph promotion, and vector adapter checks pass. |
+| 2 | Clone private knowledge repo | `meids-knowledge-fabric` exists locally as a Git repository. |
+| 3 | Export reviewed sync payload | Latest payload exists and has a stable payload hash. |
+| 4 | Apply payload branch | Local branch matches `feature/knowledge-sync-*` or the expected payload branch. |
+| 5 | Open human-reviewed PR | GitHub compare page shows changed OKF Markdown/YAML files before merge. |
+| 6 | Prepare agent-config repo | `meids-agent-configs` is ready for n8n workflow specs, prompts, and skill contracts. |
+
 ## Acceptance Gates
 
 | Gate | Evidence |
