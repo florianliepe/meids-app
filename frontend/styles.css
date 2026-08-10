@@ -1066,6 +1066,17 @@ body.cockpit-mode .main {
   display: none;
 }
 
+.production-progress-header {
+  pointer-events: none;
+}
+
+.production-progress-header button,
+.production-progress-header a,
+.production-progress-header summary,
+.production-progress-header [role="button"] {
+  pointer-events: auto;
+}
+
 .production-progress-strip {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto auto;
@@ -1073,6 +1084,14 @@ body.cockpit-mode .main {
   align-items: center;
   max-width: 1180px;
   margin: 0 auto;
+  pointer-events: none;
+}
+
+.production-progress-strip button,
+.production-progress-strip a,
+.production-progress-strip summary,
+.production-progress-strip [role="button"] {
+  pointer-events: auto;
 }
 
 .production-progress-actions {
@@ -7637,6 +7656,85 @@ body.theme-dark .knowledge-source-readiness-grid span {
   margin-top: 8px;
 }
 
+.chat-mode-health-strip {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 12px;
+  width: min(100%, 840px);
+}
+
+.chat-mode-health {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 84%, transparent);
+  color: var(--muted);
+  display: grid;
+  gap: 2px;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  padding: 8px 9px;
+  text-align: left;
+}
+
+.chat-mode-health:hover,
+.chat-mode-health.active {
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.chat-mode-health span {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, currentColor 22%, var(--line));
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.62rem;
+  font-weight: 900;
+  grid-row: span 2;
+  justify-content: center;
+  min-height: 28px;
+  min-width: 46px;
+  padding: 3px 7px;
+  text-transform: uppercase;
+}
+
+.chat-mode-health strong,
+.chat-mode-health small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-mode-health strong {
+  color: var(--ink);
+  font-size: 0.78rem;
+  line-height: 1.1;
+}
+
+.chat-mode-health small {
+  color: var(--muted);
+  font-size: 0.64rem;
+  line-height: 1.2;
+}
+
+.chat-mode-health.configured,
+.chat-mode-health.n8n-connected {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--line));
+}
+
+.chat-mode-health.fixture-ready,
+.chat-mode-health.contract-tested {
+  border-color: color-mix(in srgb, #d7b56d 38%, var(--line));
+}
+
+.chat-mode-health.awaiting-url,
+.chat-mode-health.missing-url,
+.chat-mode-health.blocked {
+  border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
+}
+
 .chat-mode-readiness {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -9288,6 +9386,7 @@ body.theme-dark .agent-probe-replay-grid p {
 
 body.theme-dark .chat-contract-badges > span,
 body.theme-dark .chat-mode-readiness,
+body.theme-dark .chat-mode-health,
 body.theme-dark .chat-active-contract-badge,
 body.theme-dark .chat-contract-actions,
 body.theme-dark .agent-trace-summary span,
@@ -9408,7 +9507,9 @@ body.theme-dark .chat-contract-badges > span.active {
 }
 
 body.theme-dark .chat-mode-readiness:hover,
-body.theme-dark .chat-mode-readiness.active {
+body.theme-dark .chat-mode-readiness.active,
+body.theme-dark .chat-mode-health:hover,
+body.theme-dark .chat-mode-health.active {
   border-color: rgba(122, 216, 191, 0.64);
   background: rgba(122, 216, 191, 0.1);
 }
@@ -9419,7 +9520,9 @@ body.theme-dark .chat-contract-badges > span.fixture-ready {
 }
 
 body.theme-dark .chat-mode-readiness.fixture-ready,
-body.theme-dark .chat-mode-readiness.contract-tested {
+body.theme-dark .chat-mode-readiness.contract-tested,
+body.theme-dark .chat-mode-health.fixture-ready,
+body.theme-dark .chat-mode-health.contract-tested {
   border-color: rgba(215, 181, 109, 0.48);
   background: rgba(215, 181, 109, 0.08);
 }
@@ -9433,9 +9536,20 @@ body.theme-dark .chat-contract-badges > span.blocked {
 
 body.theme-dark .chat-mode-readiness.missing-url,
 body.theme-dark .chat-mode-readiness.awaiting-url,
-body.theme-dark .chat-mode-readiness.blocked {
+body.theme-dark .chat-mode-readiness.blocked,
+body.theme-dark .chat-mode-health.missing-url,
+body.theme-dark .chat-mode-health.awaiting-url,
+body.theme-dark .chat-mode-health.blocked {
   border-color: rgba(240, 163, 154, 0.5);
   background: rgba(240, 163, 154, 0.08);
+}
+
+body.theme-dark .chat-mode-health strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .chat-mode-health small {
+  color: #c9c0b3;
 }
 
 body.theme-dark .chat-contract-stage-row span {
@@ -9810,6 +9924,7 @@ body.theme-dark .graph-svg-edge-label text {
 
 @media (max-width: 760px) {
   .chat-contract-badges,
+  .chat-mode-health-strip,
   .chat-mode-readiness-rail,
   .chat-contract-actions,
   .agent-trace-summary,
@@ -9822,6 +9937,10 @@ body.theme-dark .graph-svg-edge-label text {
 
   .chat-mode-readiness {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat-mode-health {
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
   .agent-trace-meta {
@@ -22842,6 +22961,13 @@ body.graph-presenting {
   padding: 12px;
 }
 
+.graph-legend,
+.graph-relation-layer-summary,
+.graph-retrieval-contract-panel {
+  max-width: 100%;
+  overflow: hidden;
+}
+
 .graph-legend.compact-control {
   grid-template-columns: minmax(210px, 0.28fr) minmax(0, 1fr) minmax(260px, 0.36fr);
 }
@@ -22884,6 +23010,36 @@ body.graph-presenting {
   min-width: 0;
   padding: 7px 8px;
   text-align: left;
+}
+
+.graph-legend-item::before {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  content: "";
+  height: 9px;
+  opacity: 0.86;
+  width: 9px;
+}
+
+.graph-legend-item.explicit::before {
+  background: #34c795;
+  color: #34c795;
+}
+
+.graph-legend-item.inferred::before {
+  background: #6a8de8;
+  color: #6a8de8;
+}
+
+.graph-legend-item.candidate::before,
+.graph-legend-item.duplicate-candidate::before {
+  background: #d7a84f;
+  color: #d7a84f;
+}
+
+.graph-legend-item.contradiction-candidate::before {
+  background: #d9826b;
+  color: #d9826b;
 }
 
 button.graph-legend-item {
@@ -24725,11 +24881,27 @@ body.theme-dark .graph-legend {
   background:
     linear-gradient(135deg, color-mix(in srgb, #1b211d 92%, var(--accent) 8%), #171c18);
   border-color: #394037;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 234, 0.03);
 }
 
 body.theme-dark .graph-legend-item {
   background: #1c211d;
   border-color: #394037;
+  color: #c9c0b3;
+}
+
+body.theme-dark .graph-legend-head strong,
+body.theme-dark .graph-legend-item strong,
+body.theme-dark .graph-legend-confidence-strip strong,
+body.theme-dark .graph-legend-actor-rule strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .graph-legend-head small,
+body.theme-dark .graph-legend-item small,
+body.theme-dark .graph-legend-confidence-strip small,
+body.theme-dark .graph-legend-actor-rule small {
+  color: #c9c0b3;
 }
 
 body.theme-dark button.graph-legend-item:hover,
@@ -24767,6 +24939,51 @@ body.theme-dark .graph-legend-item.contradiction-candidate {
 
 body.theme-dark .graph-legend-item.contradiction-candidate.active {
   border-color: color-mix(in srgb, #f0a39a 76%, #394037);
+}
+
+body.theme-dark .graph-relation-layer-summary button {
+  background: #171d18;
+  border-color: rgba(241, 235, 224, 0.16);
+}
+
+body.theme-dark .graph-primary-node-button {
+  background: rgba(122, 216, 191, 0.08);
+  border-color: rgba(122, 216, 191, 0.28);
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .graph-primary-node-button:hover {
+  background: rgba(122, 216, 191, 0.12);
+  border-color: rgba(122, 216, 191, 0.42);
+}
+
+body.theme-dark .graph-primary-node-button span {
+  border-color: rgba(122, 216, 191, 0.34);
+  color: #9fe8d5;
+}
+
+body.theme-dark .graph-primary-node-button strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .graph-primary-node-button small {
+  color: #c9c0b3;
+}
+
+body.theme-dark .graph-relation-layer-summary button.explicit {
+  border-color: rgba(122, 216, 191, 0.38);
+}
+
+body.theme-dark .graph-relation-layer-summary button.inferred {
+  border-color: rgba(146, 164, 255, 0.38);
+}
+
+body.theme-dark .graph-relation-layer-summary button.candidate {
+  border-color: rgba(215, 179, 109, 0.42);
+}
+
+body.theme-dark .graph-relation-layer-summary button.contradiction-candidate {
+  border-color: rgba(217, 130, 107, 0.42);
 }
 
 body.theme-dark .legend-edge.active-path {
@@ -29055,6 +29272,63 @@ body.theme-dark .knowledge-review-lane em {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.graph-primary-node-action:empty {
+  display: none;
+}
+
+.graph-primary-node-button {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-left: 4px solid color-mix(in srgb, var(--accent) 64%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-quiet) 78%, var(--accent) 8%);
+  color: var(--ink);
+  display: grid;
+  gap: 3px;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  padding: 10px 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.graph-primary-node-button:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+}
+
+.graph-primary-node-button span {
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: 999px;
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 900;
+  grid-row: span 2;
+  padding: 5px 8px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.graph-primary-node-button strong,
+.graph-primary-node-button small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-primary-node-button strong {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.graph-primary-node-button small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
 .graph-relation-layer-summary button {
   border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
   border-left: 4px solid color-mix(in srgb, var(--muted) 36%, transparent);
@@ -29522,7 +29796,9 @@ body.theme-dark .graph-retrieval-contract-flow article {
   }
 
   .graph-relation-layer-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
+    max-width: calc(100vw - 72px);
+    width: 100%;
   }
 
   .graph-actor-use-lanes-grid {

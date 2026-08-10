@@ -287,6 +287,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindQuality();
   bindSkills();
   bindGraph();
+  document.addEventListener("click", handleGraphInteractionCapture, true);
   bindDrawer();
   bindThemeToggle();
   bindKnowledgeFabricQueueActions();
@@ -647,6 +648,12 @@ function bindGraph() {
     state.graphReasoningPreset = "custom";
     state.graphSearch = event.target.value || "";
     renderGraphCockpit();
+  });
+  $("#graphPrimaryNodeAction")?.addEventListener("click", (event) => {
+    const node = event.target.closest("[data-graph-node]");
+    if (!node) return;
+    state.selectedGraphEdgeKey = "";
+    openGraphNode(node.dataset.graphNode);
   });
   $("#graphCanvas")?.addEventListener("click", (event) => {
     const copyButton = event.target.closest(".source-copy-btn");
@@ -1102,6 +1109,25 @@ function bindGraph() {
       applyGraphSkillContextPacket("runner");
     }
   });
+}
+
+function handleGraphInteractionCapture(event) {
+  if (!event.target.closest?.("#graph")) return;
+  const edgeClassFilter = event.target.closest("[data-graph-edge-class-filter]");
+  if (edgeClassFilter) {
+    event.preventDefault();
+    event.stopPropagation();
+    state.graphReasoningPreset = "custom";
+    state.graphEdgeClassFilter = edgeClassFilter.dataset.graphEdgeClassFilter || "all";
+    renderGraphCockpit();
+    return;
+  }
+  const edgeAction = event.target.closest("[data-graph-edge-action]");
+  if (edgeAction) {
+    event.preventDefault();
+    event.stopPropagation();
+    reviewGraphEdge(edgeAction.dataset.graphEdgeKey, edgeAction.dataset.graphEdgeAction);
+  }
 }
 
 function handleGraphEdgeLabelDocumentClick(event) {
@@ -1617,11 +1643,12 @@ function selectGraphEdgeForReview(edgeKey, source = "graph") {
   state.graphEdgeSelectionSource = source;
   state.hoveredGraphEdgeKey = "";
   renderGraphCockpit();
-  if (source === "label") {
-    window.setTimeout(() => {
-      $("#graphQualityActions")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 0);
-  }
+  window.setTimeout(() => {
+    const workbench = $("#graphPrimaryNodeAction .graph-edge-workbench") || $(".graph-edge-workbench");
+    if (!workbench) return;
+    const rect = workbench.getBoundingClientRect();
+    window.scrollTo({ top: Math.max(0, window.scrollY + rect.top - 420), left: 0, behavior: "auto" });
+  }, 30);
 }
 
 async function exportGraph() {
@@ -2225,6 +2252,7 @@ function renderGraphCockpit() {
   const nodes = projection.nodes;
   const availableEdges = projection.edges;
   const edges = applyGraphEdgeFilters(availableEdges);
+  renderGraphPrimaryNodeAction(nodes, availableEdges);
   renderGraphSummary(graph, nodes, edges);
   renderGraphTrustBoundary(graph, nodes, edges, availableEdges);
   renderGraphActorUseLanes(nodes, edges, availableEdges);
@@ -2241,6 +2269,30 @@ function renderGraphCockpit() {
   renderGraphInsights(graph, nodes, edges);
   renderGraphRecommendationTasks();
   renderGraphTools(graph);
+}
+
+function renderGraphPrimaryNodeAction(nodes = [], edges = []) {
+  const target = $("#graphPrimaryNodeAction");
+  if (!target) return;
+  const selected = nodes.find((node) => node.node_key === state.selectedGraphNodeKey);
+  const topNode = selected || [...nodes]
+    .sort((a, b) => graphNodeDegree(b, edges) - graphNodeDegree(a, edges))
+    .find((node) => node.node_key);
+  if (!topNode) {
+    target.innerHTML = "";
+    return;
+  }
+  target.innerHTML = `
+    <button class="graph-primary-node-button ${safeGraphClass(topNode.review_state || "unknown")}" type="button" data-graph-node="${escapeHtml(topNode.node_key)}">
+      <span>Inspect primary node</span>
+      <strong>${escapeHtml(topNode.title || topNode.node_key)}</strong>
+      <small>${escapeHtml(`${labelizeGraph(topNode.node_type || "node")} · ${topNode.review_state || "unknown"} · ${graphNodeDegree(topNode, edges)} visible relations`)}</small>
+    </button>
+    ${state.selectedGraphEdgeKey ? renderGraphEdgeWorkbench(nodes, edges) : ""}
+    ${renderGraphNodeRelationLayerSummary(edges)}
+  `;
+  bindGraphRelationLayerControls(target);
+  bindGraphEdgeReviewControls(target);
 }
 
 function renderGraphPresetTransitionPanel(nodes = [], edges = []) {
@@ -2961,13 +3013,14 @@ function renderGraphCanvas(nodes, edges, availableEdges = edges) {
           <button class="secondary small" type="button" data-graph-action="reset">Reset view</button>
         </div>
       </div>
+      ${edgeWorkbench}
       <div class="graph-relation-strip">${totalEdgeCount ? `${allChip}${edgeMarkup}` : "<span>No visible relations</span>"}</div>
+      ${renderGraphNodeRelationLayerSummary(displayEdges)}
       ${renderGraphProjectionSummary(displayEdges, edges, activePath)}
       <div class="graph-lane-strip">${laneMarkup}</div>
       ${semanticLegend}
       ${actorUseMap}
       <div id="graphHoverInspector" class="graph-hover-inspector">${hoverInspector}</div>
-      ${edgeWorkbench}
       ${renderGraphActivePathCallout(activePath)}
       ${renderGraphOverviewPanel(topology, nodes, displayEdges, activePath, edges.length)}
       <div class="graph-topology-shell">
@@ -2991,6 +3044,8 @@ function renderGraphCanvas(nodes, edges, availableEdges = edges) {
     </div>
   `;
   bindGraphEdgeLabelClicks(target);
+  bindGraphRelationLayerControls(target);
+  bindGraphEdgeReviewControls(target);
 }
 
 function graphTopologyDisplayEdges(nodes = [], edges = [], availableEdges = edges, activePath = null) {
@@ -3236,6 +3291,7 @@ function renderGraphListNode(node, edges = []) {
 }
 
 function bindGraphEdgeLabelClicks(root) {
+  if (!root) return;
   root.querySelectorAll(".graph-svg-edge-label[data-graph-edge]").forEach((label) => {
     label.setAttribute("tabindex", "0");
     label.setAttribute("role", "button");
@@ -3251,6 +3307,34 @@ function bindGraphEdgeLabelClicks(root) {
       if (event.key === "Enter" || event.key === " ") handler(event);
     });
     label.querySelectorAll("rect, text").forEach((child) => child.addEventListener("click", handler));
+  });
+}
+
+function bindGraphRelationLayerControls(root) {
+  if (!root) return;
+  root.querySelectorAll(".graph-relation-layer-summary [data-graph-edge-class-filter]").forEach((button) => {
+    if (button.dataset.graphLayerBound === "true") return;
+    button.dataset.graphLayerBound = "true";
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      state.graphReasoningPreset = "custom";
+      state.graphEdgeClassFilter = button.dataset.graphEdgeClassFilter || "all";
+      renderGraphCockpit();
+    });
+  });
+}
+
+function bindGraphEdgeReviewControls(root) {
+  if (!root) return;
+  root.querySelectorAll("[data-graph-edge-action]").forEach((button) => {
+    if (button.dataset.graphEdgeReviewBound === "true") return;
+    button.dataset.graphEdgeReviewBound = "true";
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      reviewGraphEdge(button.dataset.graphEdgeKey || "", button.dataset.graphEdgeAction || "");
+    });
   });
 }
 
@@ -3898,18 +3982,18 @@ function renderGraphEdgeWorkbench(nodes, edges) {
           <strong>${escapeHtml(labelizeGraph(relation))}</strong>
           <small>${escapeHtml(source.title || edge.source)} → ${escapeHtml(target.title || edge.target)} · confidence ${escapeHtml(edge.confidence ?? "-")} · ${escapeHtml(reviewState)}</small>
         </div>
-        ${renderGraphReasoningPanel(edge, source, target)}
+        <div class="graph-edge-review-actions">
+          <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.source)}">Source</button>
+          <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.target)}">Target</button>
+          ${candidate ? renderGraphProposalButton(edge) : ""}
+          ${pending ? `
+            <button class="small secondary" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="accepted">Accept</button>
+            <button class="small danger" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="rejected">Reject</button>
+            <button class="small secondary" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="needs-rework">Needs rework</button>
+          ` : ""}
+        </div>
       </div>
-      <div class="graph-edge-review-actions">
-        <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.source)}">Source</button>
-        <button class="small secondary" type="button" data-graph-node="${escapeHtml(edge.target)}">Target</button>
-        ${candidate ? renderGraphProposalButton(edge) : ""}
-        ${pending ? `
-          <button class="small secondary" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="accepted">Accept</button>
-          <button class="small danger" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="rejected">Reject</button>
-          <button class="small secondary" type="button" data-graph-edge-key="${escapeHtml(edge.edge_key)}" data-graph-edge-action="needs-rework">Needs rework</button>
-        ` : ""}
-      </div>
+      ${renderGraphReasoningPanel(edge, source, target)}
     </div>
   `;
 }
@@ -5091,6 +5175,8 @@ function renderGraphNodeDetail() {
       </section>
     </div>
   `;
+  bindGraphRelationLayerControls($("#graphNodeDetail"));
+  bindGraphEdgeReviewControls($("#graphNodeDetail"));
   renderGraphQualityActions();
 }
 
@@ -6437,7 +6523,7 @@ function applyStaticGraphEdgeReview(edgeKey, decision) {
     renderGraphNodeDetail();
   }
   const status = $("#graphStatus");
-  if (status) status.textContent = `Static graph edge reviewed: ${normalizedDecision}`;
+  if (status) status.textContent = `Static graph edge accepted/reviewed: ${normalizedDecision}`;
   showToast("Graph edge reviewed", `${normalizedDecision} · static staging`, "success");
 }
 
@@ -13960,6 +14046,7 @@ function renderChatSkillMode() {
 }
 
 function renderChatContractSurfaces() {
+  renderChatModeHealthStrip();
   renderActiveChatContractBadge();
   renderChatContractBadges();
   renderChatModeReadinessRail();
@@ -14501,6 +14588,57 @@ function renderChatModeReadinessRail() {
       if (state.activeChatInteractionMode === "skill_activation") {
         $("#chatInteractionSetup").open = true;
       }
+      renderChatSkillMode();
+    });
+  });
+}
+
+function renderChatModeHealthStrip() {
+  const target = $("#chatModeHealthStrip");
+  if (!target) return;
+  const statuses = new Map(chatAgentContractStatuses().map((item) => [item.agentId, item]));
+  const modes = [
+    {
+      mode: "actor_twin",
+      agentId: "actor_twin",
+      label: "Ask",
+      detail: "Actor Twin",
+    },
+    {
+      mode: "skill_activation",
+      agentId: "agentic_butler",
+      label: "Skill",
+      detail: "Agentic Butler",
+    },
+    {
+      mode: "source_context",
+      agentId: "knowledge_fabric_agent",
+      label: "Source",
+      detail: "Knowledge Fabric",
+    },
+  ];
+  target.innerHTML = modes.map((mode) => {
+    const status = statuses.get(mode.agentId) || {};
+    const active = state.activeChatInteractionMode === mode.mode;
+    const stateLabel = status.state || "documented";
+    const configuredLabel = status.configured ? "URL" : "fixture";
+    const gateLabel = `${status.readyGateCount ?? 0}/${status.totalGateCount ?? 6}`;
+    return `
+      <button class="chat-mode-health ${active ? "active" : ""} ${status.configured ? "configured" : "fixture"} ${safeGraphClass(stateLabel)}" type="button" data-chat-mode="${escapeHtml(mode.mode)}" title="${escapeHtml(status.detail || "")}">
+        <span>${escapeHtml(mode.label)}</span>
+        <strong>${escapeHtml(mode.detail)}</strong>
+        <small>${escapeHtml(`${stateLabel} · ${configuredLabel} · ${gateLabel} gates`)}</small>
+      </button>
+    `;
+  }).join("");
+  target.querySelectorAll("[data-chat-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activeChatInteractionMode = button.dataset.chatMode || "actor_twin";
+      state.chatContractActionResult = null;
+      const select = $("#chatInteractionModeSelect");
+      if (select) select.value = state.activeChatInteractionMode;
+      if (state.activeChatInteractionMode === "source_context") $("#chatSkillContext").open = true;
+      if (state.activeChatInteractionMode === "skill_activation") $("#chatInteractionSetup").open = true;
       renderChatSkillMode();
     });
   });
