@@ -25526,6 +25526,162 @@ body.cockpit-mode .workspace-signal {
   gap: 12px;
 }
 
+.knowledge-fabric-path-panel {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-strong) 88%, transparent), color-mix(in srgb, var(--surface-quiet) 76%, transparent));
+  display: grid;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 14px;
+}
+
+.knowledge-fabric-path-head {
+  align-items: start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.knowledge-fabric-path-head h3,
+.knowledge-fabric-path-head p {
+  margin: 0;
+}
+
+.knowledge-fabric-path-head h3 {
+  color: var(--ink);
+  font-size: 1.08rem;
+  line-height: 1.2;
+  margin-top: 5px;
+}
+
+.knowledge-fabric-path-head p {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-top: 5px;
+}
+
+.knowledge-fabric-path-head > span {
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  padding: 7px 9px;
+  white-space: nowrap;
+}
+
+.knowledge-fabric-path-head > span.ready {
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--line));
+  color: color-mix(in srgb, var(--accent) 76%, var(--ink));
+}
+
+.knowledge-fabric-path-head > span.blocked {
+  border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
+  color: color-mix(in srgb, var(--warn) 70%, var(--ink));
+}
+
+.knowledge-fabric-path-flow {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.knowledge-fabric-path-flow button {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--muted) 44%, var(--line));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  box-shadow: none;
+  color: var(--ink);
+  cursor: pointer;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  text-align: left;
+}
+
+.knowledge-fabric-path-flow button.ready {
+  border-left-color: #3c9d75;
+}
+
+.knowledge-fabric-path-flow button.warning,
+.knowledge-fabric-path-flow button.open {
+  border-left-color: #c8a35d;
+}
+
+.knowledge-fabric-path-flow button.blocked {
+  border-left-color: #b85c55;
+}
+
+.knowledge-fabric-path-flow button:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+  transform: translateY(-1px);
+}
+
+.knowledge-fabric-path-flow small,
+.knowledge-fabric-path-flow strong,
+.knowledge-fabric-path-flow span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-fabric-path-flow small {
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+.knowledge-fabric-path-flow strong {
+  color: var(--ink);
+  font-size: 0.8rem;
+  line-height: 1.18;
+}
+
+.knowledge-fabric-path-flow span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.knowledge-fabric-path-boundary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.knowledge-fabric-path-boundary span {
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 80%, transparent);
+  min-width: 0;
+  padding: 9px 10px;
+}
+
+.knowledge-fabric-path-boundary strong,
+.knowledge-fabric-path-boundary small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-fabric-path-boundary strong {
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+.knowledge-fabric-path-boundary small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 720;
+  line-height: 1.3;
+  margin-top: 4px;
+}
+
 .knowledge-fabric-repo-sync-preview {
   border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   border-left: 4px solid #3c9d75;
@@ -25921,6 +26077,54 @@ body.theme-dark .knowledge-fabric-uat-grid small {
 
 body.theme-dark .knowledge-fabric-uat-grid span.ready {
   border-left-color: #7ad8bf;
+}
+
+body.theme-dark .knowledge-fabric-path-panel {
+  background: linear-gradient(135deg, rgba(23, 27, 24, 0.9), rgba(16, 20, 17, 0.82));
+  border-color: rgba(232, 226, 214, 0.13);
+}
+
+body.theme-dark .knowledge-fabric-path-head h3,
+body.theme-dark .knowledge-fabric-path-flow strong,
+body.theme-dark .knowledge-fabric-path-boundary strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-fabric-path-head p,
+body.theme-dark .knowledge-fabric-path-flow small,
+body.theme-dark .knowledge-fabric-path-flow span,
+body.theme-dark .knowledge-fabric-path-boundary small {
+  color: #c9c0b3;
+}
+
+body.theme-dark .knowledge-fabric-path-head > span,
+body.theme-dark .knowledge-fabric-path-flow button,
+body.theme-dark .knowledge-fabric-path-boundary span {
+  background: rgba(16, 20, 17, 0.82);
+  border-color: rgba(232, 226, 214, 0.12);
+}
+
+body.theme-dark .knowledge-fabric-path-head > span.ready {
+  border-color: rgba(122, 216, 191, 0.42);
+  color: #9ce6d2;
+}
+
+body.theme-dark .knowledge-fabric-path-head > span.blocked {
+  border-color: rgba(240, 163, 154, 0.38);
+  color: #f0a39f;
+}
+
+body.theme-dark .knowledge-fabric-path-flow button.ready {
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .knowledge-fabric-path-flow button.warning,
+body.theme-dark .knowledge-fabric-path-flow button.open {
+  border-left-color: #f1d08c;
+}
+
+body.theme-dark .knowledge-fabric-path-flow button.blocked {
+  border-left-color: #f0a39f;
 }
 
 body.theme-dark .knowledge-fabric-queue-card.approved {
@@ -27126,6 +27330,9 @@ body.theme-dark .graph-command-surface {
   .ingest-contract-grid,
   .ingest-contract-grid.compact,
   .knowledge-fabric-uat-grid,
+  .knowledge-fabric-path-head,
+  .knowledge-fabric-path-flow,
+  .knowledge-fabric-path-boundary,
   .knowledge-fabric-repo-sync-stats,
   .knowledge-fabric-artifact-list {
     grid-template-columns: 1fr;
@@ -27145,6 +27352,11 @@ body.theme-dark .graph-command-surface {
 
   .knowledge-fabric-uat-head small {
     text-align: left;
+  }
+
+  .knowledge-fabric-path-head > span {
+    justify-self: start;
+    white-space: normal;
   }
 
   .knowledge-fabric-queue-card code {

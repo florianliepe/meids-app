@@ -186,6 +186,20 @@ Latest local QA pass for the Knowledge Graph relation review queue:
 
 This pass broadens the graph governance queue from duplicate/contradiction-only review to a visible relation review queue for candidate, inferred, duplicate, and contradiction edges. Candidate relations remain explainable but untrusted until accepted. Screenshots are stored in `docs/visual-qa/screenshots-20260810-graph-relation-review-queue/`.
 
+Latest local QA pass for Knowledge Fabric ingest path status:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-agent-config-export.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/replay-n8n-fixtures.cjs --write`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-knowledge-fabric-ingest-path-status`
+- Targeted Playwright assertions open `?view=ingest` and verify `.knowledge-fabric-path-panel`, six lifecycle gates, three boundary cards, dark mode, and zero horizontal overflow at `390px` and `1440px`.
+
+This pass adds a Source Upload ingest-path status panel for source intake, pending OKF, evidence/CRUD, human review, graph curator, and vector boundary. The panel keeps local/static operation explicit until the live Knowledge Fabric and Butler n8n URLs are configured. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-fabric-ingest-path-status/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

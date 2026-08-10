@@ -15492,6 +15492,7 @@ function renderKnowledgeFabricQueuePanels() {
     target.innerHTML = renderKnowledgeFabricQueue(state.knowledgeFabricIngestQueue || [], selector.includes("chat") ? 3 : 8);
   });
   renderKnowledgeFabricLocalUatChecklist();
+  renderKnowledgeFabricIngestPathStatus();
   renderAgentTraceHistoryPanel();
   renderDashboardAgentTraceHistory();
 }
@@ -15515,6 +15516,112 @@ function renderKnowledgeFabricLocalUatChecklist() {
         </span>
       `).join("")}
     </div>
+  `;
+}
+
+function knowledgeFabricIngestPathStatus() {
+  const queue = state.knowledgeFabricIngestQueue || [];
+  const latest = queue[0] || {};
+  const reviewed = reviewedKnowledgeFabricQueueItems();
+  const approved = reviewed.filter((item) => item.review_state === "approved");
+  const graphPromotions = graphPromotionHistoryItems(120);
+  const liveKnowledgeUrl = productionAgentUrlReadiness().find((agent) => agent.agentId === "knowledge_fabric_agent")?.configured;
+  const liveButlerUrl = productionAgentUrlReadiness().find((agent) => agent.agentId === "agentic_butler")?.configured;
+  const hasSource = queue.length > 0;
+  const hasOkfTarget = queue.some((item) => item.concept_path || item.evidence_path || item.transcript_path);
+  const hasAudit = queue.some((item) => item.crud_log_path);
+  const graphQueued = queue.some((item) => item.graph_curator_trigger && !String(item.graph_curator_trigger).includes("not"));
+  const vectorHeld = hasSource && queue.every((item) => item.review_state === "approved"
+    || String(item.vector_refresh || "").includes("deferred")
+    || String(item.vector_refresh || "").includes("hold"));
+  const stages = [
+    {
+      key: "source",
+      label: "Source intake",
+      status: hasSource ? "ready" : "open",
+      detail: hasSource ? `${queue.length} handoff${queue.length === 1 ? "" : "s"} captured` : "Upload, paste, or transcribe a source.",
+      action: "open-ingest",
+    },
+    {
+      key: "okf",
+      label: "Pending OKF",
+      status: hasOkfTarget ? "ready" : hasSource ? "blocked" : "open",
+      detail: hasOkfTarget ? latest.concept_path || latest.evidence_path || "OKF target recorded" : "Concept/evidence path missing.",
+      action: "copy-source-repo-sync",
+    },
+    {
+      key: "audit",
+      label: "Evidence + CRUD",
+      status: hasAudit ? "ready" : hasSource ? "blocked" : "open",
+      detail: hasAudit ? queue.find((item) => item.crud_log_path)?.crud_log_path || "CRUD log target stored" : "Append-only audit target required.",
+      action: "export-uat-checklist",
+    },
+    {
+      key: "review",
+      label: "Human review",
+      status: approved.length ? "ready" : reviewed.length ? "warning" : hasSource ? "open" : "blocked",
+      detail: reviewed.length ? `${reviewed.length} reviewed · ${approved.length} approved` : "Approve, rework, or reject before trusted use.",
+      action: "review",
+    },
+    {
+      key: "graph",
+      label: "Graph curator",
+      status: graphPromotions.length ? "ready" : graphQueued ? "warning" : hasSource ? "open" : "blocked",
+      detail: graphPromotions.length ? `${graphPromotions.length} promotion decision${graphPromotions.length === 1 ? "" : "s"}` : graphQueued ? "Candidate edge generation queued." : "Graph candidate trigger pending.",
+      action: "graph",
+    },
+    {
+      key: "vector",
+      label: "Vector boundary",
+      status: vectorHeld ? "ready" : hasSource ? "warning" : "blocked",
+      detail: approved.length ? "Approved-only refresh may be prepared after repo merge." : "Vector refresh held until approval and repo merge.",
+      action: "export-reviewed-bundle",
+    },
+  ];
+  return {
+    queue,
+    latest,
+    reviewed,
+    approved,
+    liveKnowledgeUrl,
+    liveButlerUrl,
+    stages,
+  };
+}
+
+function renderKnowledgeFabricIngestPathStatus() {
+  const target = $("#knowledgeFabricIngestPathStatus");
+  if (!target) return;
+  const status = knowledgeFabricIngestPathStatus();
+  const readyCount = status.stages.filter((stage) => stage.status === "ready").length;
+  const liveClass = status.liveKnowledgeUrl ? "ready" : "blocked";
+  target.innerHTML = `
+    <section class="knowledge-fabric-path-panel">
+      <div class="knowledge-fabric-path-head">
+        <div>
+          <span class="badge">Ingest path status</span>
+          <h3>${escapeHtml(`${readyCount}/${status.stages.length} lifecycle gates ready`)}</h3>
+          <p>${escapeHtml(status.queue.length
+            ? "Local handoffs are staged as pending OKF with evidence, audit, graph, and vector boundaries visible."
+            : "No local source handoff yet. The first upload, paste, or transcript will create the pending OKF path.")}</p>
+        </div>
+        <span class="${liveClass}">${escapeHtml(status.liveKnowledgeUrl ? "Knowledge Fabric URL configured" : "Knowledge Fabric URL missing")}</span>
+      </div>
+      <div class="knowledge-fabric-path-flow">
+        ${status.stages.map((stage, index) => `
+          <button class="${safeGraphClass(stage.status)}" type="button" data-kf-queue-action="${escapeHtml(stage.action)}">
+            <small>${escapeHtml(String(index + 1).padStart(2, "0"))}</small>
+            <strong>${escapeHtml(stage.label)}</strong>
+            <span>${escapeHtml(stage.detail)}</span>
+          </button>
+        `).join("")}
+      </div>
+      <div class="knowledge-fabric-path-boundary">
+        <span><strong>Trusted retrieval</strong><small>${escapeHtml(status.approved.length ? "allowed only for approved handoffs after repo sync" : "blocked until review approval")}</small></span>
+        <span><strong>Graph use</strong><small>${escapeHtml("candidate edges remain hypotheses until accepted")}</small></span>
+        <span><strong>n8n bridge</strong><small>${escapeHtml(status.liveKnowledgeUrl && status.liveButlerUrl ? "ready for live UAT" : "fixture/local until remaining URLs exist")}</small></span>
+      </div>
+    </section>
   `;
 }
 
