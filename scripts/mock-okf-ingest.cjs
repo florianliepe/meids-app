@@ -98,6 +98,7 @@ function buildOutputs(input) {
             cluster: input.cluster,
             type: input.concept_type,
             evidence_refs: [`${evidenceManifestRef}#source-claim`],
+            evidence_review_states: [input.review_state],
           },
         },
       ],

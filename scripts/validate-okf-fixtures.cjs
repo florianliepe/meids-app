@@ -5,6 +5,8 @@ const root = path.resolve(__dirname, "..");
 const contractRoot = path.join(root, "contracts", "okf");
 const fixtureRoots = ["examples", "generated"].map((name) => path.join(contractRoot, name));
 const reviewStates = new Set(["draft", "candidate", "pending-review", "approved", "needs-rework", "rejected", "retired"]);
+const vectorTrustedStates = new Set(["approved"]);
+const vectorReviewableStates = new Set(["approved", "pending-review", "candidate"]);
 const sourceTypes = new Set(["upload", "transcript", "email_export", "calendar_export", "teams_export", "agent_output", "voice_capture"]);
 const graphEdgeClasses = new Set(["explicit", "inferred", "candidate", "duplicate-candidate", "contradiction-candidate"]);
 const graphRelations = new Set(["supports", "contradicts", "requires", "similar_to", "causes", "evidence_for", "uses_skill"]);
@@ -127,10 +129,25 @@ function validateVectorRequest(file) {
   const data = JSON.parse(read(file));
   assertRequired(data, file, ["operation", "twin_id", "source_policy", "documents"]);
   if (!["upsert", "delete", "refresh_status"].includes(data.operation)) fail(`${file}: invalid operation ${data.operation}`);
+  if (!["approved_only", "selected_pending"].includes(data.source_policy)) fail(`${file}: invalid source_policy ${data.source_policy}`);
   if (!Array.isArray(data.documents)) fail(`${file}: documents must be an array`);
   for (const [index, doc] of data.documents.entries()) {
     assertRequired(doc, `${file}:documents[${index}]`, ["concept_id", "repo_path", "review_state", "text", "metadata"]);
-    if (!reviewStates.has(doc.review_state)) fail(`${file}:documents[${index}]: invalid review_state ${doc.review_state}`);
+    if (!vectorReviewableStates.has(doc.review_state)) fail(`${file}:documents[${index}]: invalid vector review_state ${doc.review_state}`);
+    if (data.source_policy === "approved_only" && !vectorTrustedStates.has(doc.review_state)) {
+      fail(`${file}:documents[${index}]: approved_only cannot include document review_state ${doc.review_state}`);
+    }
+    if (!Array.isArray(doc.metadata.evidence_refs)) fail(`${file}:documents[${index}]: metadata.evidence_refs must be an array`);
+    if (!Array.isArray(doc.metadata.evidence_review_states)) fail(`${file}:documents[${index}]: metadata.evidence_review_states must be an array`);
+    if (doc.metadata.evidence_review_states.length !== doc.metadata.evidence_refs.length) {
+      fail(`${file}:documents[${index}]: metadata.evidence_review_states must align one-to-one with evidence_refs`);
+    }
+    for (const evidenceState of doc.metadata.evidence_review_states) {
+      if (!vectorReviewableStates.has(evidenceState)) fail(`${file}:documents[${index}]: invalid vector evidence review state ${evidenceState}`);
+      if (data.source_policy === "approved_only" && !vectorTrustedStates.has(evidenceState)) {
+        fail(`${file}:documents[${index}]: approved_only cannot include evidence review_state ${evidenceState}`);
+      }
+    }
   }
 }
 

@@ -13,6 +13,9 @@
         "type": "Decision Principle",
         "evidence_refs": [
           "evidence/florian/uploads/2026-08-09-source-001.yaml#page-2-paragraph-4"
+        ],
+        "evidence_review_states": [
+          "pending-review"
         ]
       }
     }

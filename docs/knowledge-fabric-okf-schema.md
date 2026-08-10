@@ -261,7 +261,8 @@ Adapter requests accept:
       "metadata": {
         "cluster": "client-delivery",
         "type": "Decision Principle",
-        "evidence_refs": []
+        "evidence_refs": [],
+        "evidence_review_states": []
       }
     }
   ]
@@ -272,10 +273,10 @@ Adapter responses must include `status`, `indexed_count`, `rejected_count`, `tra
 
 Validation rules:
 
-- `approved_only` requests may include only `approved` documents.
-- `selected_pending` requests may include `approved`, `pending-review`, or `candidate` documents, but the caller must label them as untrusted context.
+- `approved_only` requests may include only `approved` documents and `approved` evidence references.
+- `selected_pending` requests may include `approved`, `pending-review`, or `candidate` documents and evidence references, but the caller must label them as untrusted context.
 - `upsert` documents require either inline `text` or a `text_ref`.
-- Every document requires `concept_id`, `repo_path`, `review_state`, `cluster`, `type`, and `evidence_refs`.
+- Every document requires `concept_id`, `repo_path`, `review_state`, `cluster`, `type`, `evidence_refs`, and one aligned `evidence_review_states` entry per evidence reference.
 - Vector refresh is an adapter concern. It must not change OKF review states.
 
 Validate the boundary with:

@@ -55,11 +55,25 @@ function validateDocument(document, index, request, file) {
   if (typeof document.metadata !== "object" || Array.isArray(document.metadata)) {
     fail(`${rel(file)}: ${prefix}.metadata must be an object`);
   }
-  for (const field of ["cluster", "type", "evidence_refs"]) {
+  for (const field of ["cluster", "type", "evidence_refs", "evidence_review_states"]) {
     if (document.metadata[field] === undefined) fail(`${rel(file)}: ${prefix}.metadata.${field} missing`);
   }
   if (!Array.isArray(document.metadata.evidence_refs)) {
     fail(`${rel(file)}: ${prefix}.metadata.evidence_refs must be an array`);
+  }
+  if (!Array.isArray(document.metadata.evidence_review_states)) {
+    fail(`${rel(file)}: ${prefix}.metadata.evidence_review_states must be an array`);
+  }
+  if (document.metadata.evidence_review_states.length !== document.metadata.evidence_refs.length) {
+    fail(`${rel(file)}: ${prefix}.metadata.evidence_review_states must align one-to-one with evidence_refs`);
+  }
+  for (const [evidenceIndex, state] of document.metadata.evidence_review_states.entries()) {
+    if (!reviewableStates.has(state)) {
+      fail(`${rel(file)}: ${prefix}.metadata.evidence_review_states[${evidenceIndex}] must be one of ${Array.from(reviewableStates).join(", ")}`);
+    }
+    if (request.source_policy === "approved_only" && !trustedStates.has(state)) {
+      fail(`${rel(file)}: approved_only requests cannot include ${prefix}.metadata.evidence_review_states[${evidenceIndex}]=${state}`);
+    }
   }
 }
 
