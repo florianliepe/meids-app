@@ -397,6 +397,19 @@ Latest local QA pass for Chat live URL setup actions:
 
 This pass moves the missing live n8n URL action from the collapsed setup drawer into the primary Chat workspace. Actor Twin remains configured; Knowledge Fabric Agent and Agentic Butler remain fixture-tested but blocked from live routing until public UAT webhook URLs are added. Screenshots are stored in `docs/visual-qa/screenshots-20260810-chat-live-url-setup/`.
 
+Latest local QA pass for Production URL resolution checklist:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- Targeted Playwright assertions open `?view=quality&quality=production`, activate the Production tab, verify visible `.production-agent-url-resolution-checklist`, three agent rows, fixture-to-live columns, Knowledge Fabric Agent and Agentic Butler missing URL steps, copy checklist action, and zero horizontal overflow at `390px` and `1440px`.
+
+This pass adds a compact operator checklist in the Production Cockpit that maps each top-level agent from fixture contract to live n8n URL, probe, trace, and approval evidence. It makes the remaining live URL blocker explicit before production trace review. Screenshots are stored in `docs/visual-qa/screenshots-20260810-production-url-resolution-checklist/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

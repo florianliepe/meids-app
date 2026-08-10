@@ -26901,6 +26901,7 @@ function renderProductionAgentUrlReadiness(agents = []) {
           <a class="secondary small" href="${escapeHtml(runtimeStatusAsset)}" target="_blank" rel="noreferrer">Open readiness artifact</a>
         </div>
       ` : ""}
+      ${renderProductionAgentUrlResolutionChecklist(agents)}
       ${missing.length ? renderN8nCurrentSupportedConfigPath(missingConfig) : ""}
       ${missing.length ? renderProductionAgentMissingUrlSetup(missing) : ""}
       <div class="production-agent-url-grid">
@@ -26930,6 +26931,138 @@ function renderProductionAgentUrlReadiness(agents = []) {
       <small>Public GitHub Pages can only use public UAT webhook URLs. Private production endpoints should move behind the hosted backend or a workflow-generated runtime config.</small>
     </section>
   `;
+}
+
+function renderProductionAgentUrlResolutionChecklist(agents = []) {
+  if (!agents.length) return "";
+  const rows = agents.map(productionAgentFixtureLiveMappingRow);
+  const readySteps = rows.reduce((sum, row) => sum + row.steps.filter((step) => step.ready).length, 0);
+  const totalSteps = rows.reduce((sum, row) => sum + row.steps.length, 0);
+  const blockedRows = rows.filter((row) => !row.urlReady);
+  const setupPacket = {
+    artifact_type: "agent_url_resolution_checklist",
+    generated_at: new Date().toISOString(),
+    status: blockedRows.length ? "blocked_until_missing_urls_are_configured" : "urls_configured_probe_required",
+    public_safe: true,
+    boundary: "Fixture and contract status are public-safe. Live n8n URLs must be public UAT URLs for GitHub Pages or proxied through a hosted backend.",
+    rows,
+  };
+  return `
+    <section class="production-agent-url-resolution-checklist">
+      <div class="production-agent-url-resolution-head">
+        <div>
+          <span class="badge">URL resolution checklist</span>
+          <strong>${escapeHtml(`${readySteps}/${totalSteps} setup steps ready`)}</strong>
+          <p>${escapeHtml(blockedRows.length
+            ? "Resolve missing Knowledge Fabric and Butler URLs before live agent routing or production trace review."
+            : "All URL slots are configured. Continue with live probes and non-demo trace capture.")}</p>
+        </div>
+        <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(setupPacket, null, 2))}">Copy checklist</button>
+      </div>
+      <div class="production-agent-fixture-live-map" role="table" aria-label="Fixture to live n8n mapping">
+        <div class="production-agent-fixture-live-row header" role="row">
+          <span role="columnheader">Agent</span>
+          <span role="columnheader">Fixture contract</span>
+          <span role="columnheader">Live URL slot</span>
+          <span role="columnheader">Next action</span>
+        </div>
+        ${rows.map((row) => `
+          <div class="production-agent-fixture-live-row ${escapeHtml(row.state)}" role="row">
+            <span role="cell">
+              <strong>${escapeHtml(row.agent_name)}</strong>
+              <small>${escapeHtml(row.agent_id)}</small>
+            </span>
+            <span role="cell">
+              <i class="${row.fixtureReady ? "ready" : "blocked"}">${escapeHtml(row.fixture_status)}</i>
+              <small>${escapeHtml(row.fixture_ref)}</small>
+            </span>
+            <span role="cell">
+              <i class="${row.urlReady ? "ready" : "blocked"}">${escapeHtml(row.url_status)}</i>
+              <small>${escapeHtml(row.github_secret)}</small>
+            </span>
+            <span role="cell">
+              <small>${escapeHtml(row.next_action)}</small>
+              <div class="production-agent-step-strip">
+                ${row.steps.map((step) => `
+                  <em class="${step.ready ? "ready" : "open"}" title="${escapeHtml(step.detail)}">${escapeHtml(step.label)}</em>
+                `).join("")}
+              </div>
+            </span>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function productionAgentFixtureLiveMappingRow(agent = {}) {
+  const gates = productionAgentRolloutGates(agent);
+  const gateByKey = new Map(gates.map((gate) => [gate.key, gate]));
+  const fixtureReady = Boolean(gateByKey.get("fixture")?.ready);
+  const blueprintReady = Boolean(gateByKey.get("blueprint")?.ready);
+  const urlReady = Boolean(gateByKey.get("url")?.ready);
+  const probeReady = Boolean(gateByKey.get("probe")?.ready);
+  const traceReady = Boolean(gateByKey.get("trace")?.ready);
+  const approvalReady = Boolean(gateByKey.get("approval")?.ready);
+  const nextAction = !fixtureReady
+    ? "Fix the public fixture before exposing a live workflow."
+    : !blueprintReady
+      ? "Document the n8n workflow target in the agent contract."
+      : !urlReady
+        ? `Add ${agent.githubSecret || agent.envVar || "the webhook URL"} to runtime config or GitHub Pages secret.`
+        : !probeReady
+          ? "Run a no-write live probe and retain response evidence."
+          : !traceReady
+            ? "Run non-demo UAT and store trace evidence."
+            : !approvalReady
+              ? "Document approval boundary before production use."
+              : "Ready for production review.";
+  return {
+    agent_id: agent.agentId || "",
+    agent_name: agent.name || agentDisplayName(agent.agentId || ""),
+    state: traceReady && approvalReady ? "ready" : urlReady ? "pending" : "blocked",
+    fixture_status: fixtureReady ? "fixture ready" : "fixture missing",
+    fixture_ref: agent.fixture || "No fixture reference",
+    url_status: urlReady ? "URL configured" : "URL missing",
+    url_ready: urlReady,
+    urlReady,
+    fixtureReady,
+    github_secret: agent.githubSecret || "GH_PAGES_N8N_WEBHOOK_URL",
+    runtime_key: agent.envVar || "N8N_WEBHOOK_URL",
+    next_action: nextAction,
+    steps: [
+      {
+        label: "Fixture",
+        ready: fixtureReady,
+        detail: gateByKey.get("fixture")?.detail || "Fixture contract must exist.",
+      },
+      {
+        label: "Blueprint",
+        ready: blueprintReady,
+        detail: gateByKey.get("blueprint")?.detail || "Workflow target must be documented.",
+      },
+      {
+        label: "URL",
+        ready: urlReady,
+        detail: gateByKey.get("url")?.detail || "Live URL must be configured.",
+      },
+      {
+        label: "Probe",
+        ready: probeReady,
+        detail: gateByKey.get("probe")?.detail || "Live probe must pass.",
+      },
+      {
+        label: "Trace",
+        ready: traceReady,
+        detail: gateByKey.get("trace")?.detail || "Non-demo trace evidence must exist.",
+      },
+      {
+        label: "Approval",
+        ready: approvalReady,
+        detail: gateByKey.get("approval")?.detail || "Approval boundary must be documented.",
+      },
+    ],
+  };
 }
 
 function renderProductionAgentMissingUrlSetup(missing = []) {
