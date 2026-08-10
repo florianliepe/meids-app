@@ -85,6 +85,18 @@ Latest local QA pass for graph actor-use lanes:
 
 Screenshots for this pass are stored in `docs/visual-qa/screenshots-20260810-graph-actor-use-lanes/`.
 
+Latest local QA pass for graph node source/evidence contract:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-graph-node-source-contract`
+- Targeted Playwright DOM assertions select a graph node and verify `.graph-node-source-contract` at `390px` and `1440px`.
+
+Screenshots for this pass are stored in `docs/visual-qa/screenshots-20260810-graph-node-source-contract/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

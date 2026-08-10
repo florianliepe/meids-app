@@ -5017,6 +5017,7 @@ function renderGraphNodeDetail() {
   const relationLayerSummary = renderGraphNodeRelationLayerSummary(directEdges);
   const evidenceEligibility = graphNodeEvidenceEligibility(node, evidenceCount, governanceEdges, directEdges);
   const actorUse = graphNodeActorUseClassification(node, readiness, evidenceEligibility, governanceEdges, directEdges);
+  const sourceEvidenceContract = renderGraphNodeSourceEvidenceContract(node, provenance, evidenceEligibility, evidenceCount, governanceEdges, directEdges);
   $("#graphNodeDetail").innerHTML = `
     <div class="graph-detail-card ${safeGraphClass(node.review_state || "unknown")}">
       <div class="graph-detail-hero">
@@ -5034,6 +5035,7 @@ function renderGraphNodeDetail() {
       ${renderGraphConsumerBadges(node)}
       ${renderGraphNodeActorReadiness(readiness)}
       ${renderGraphNodeEvidenceEligibility(evidenceEligibility)}
+      ${sourceEvidenceContract}
       ${relationLayerSummary}
       ${governanceQueue}
       ${reviewFeedback}
@@ -5076,6 +5078,55 @@ function renderGraphNodeDetail() {
     </div>
   `;
   renderGraphQualityActions();
+}
+
+function renderGraphNodeSourceEvidenceContract(node = {}, provenance = {}, evidenceEligibility = {}, evidenceCount = 0, governanceEdges = [], directEdges = []) {
+  const directSourceRef = provenance.ref || node.source_deep_link || node.source_anchor || node.evidence_path || node.okf_path || node.path || "";
+  const explicitEdges = directEdges.filter((edge) => graphEdgeClass(edge) === "explicit").length;
+  const inferredEdges = directEdges.filter((edge) => graphEdgeClass(edge) === "inferred").length;
+  const candidateEdges = directEdges.filter((edge) => String(graphEdgeClass(edge)).includes("candidate")).length;
+  const blockedEdges = directEdges.filter((edge) => ["rejected", "needs-rework"].includes(String(edge.review_state || ""))).length;
+  const sourceStatus = directSourceRef ? "linked" : "missing";
+  const actionLabel = evidenceEligibility.className === "ready"
+    ? "Eligible for trusted graph/vector refresh"
+    : evidenceEligibility.className === "caution"
+      ? "Usable only as selected pending context"
+      : "Hold out of Actor Twin retrieval";
+  return `
+    <section class="graph-node-source-contract ${safeGraphClass(evidenceEligibility.className || "blocked")}">
+      <div class="graph-node-source-contract-head">
+        <div>
+          <span class="badge">Source evidence contract</span>
+          <strong>${escapeHtml(actionLabel)}</strong>
+          <p>${escapeHtml(evidenceEligibility.detail || "Evidence and governance state determine graph retrieval eligibility.")}</p>
+        </div>
+        <span class="${escapeHtml(sourceStatus)}">${escapeHtml(sourceStatus === "linked" ? "source linked" : "source missing")}</span>
+      </div>
+      <div class="graph-node-source-contract-grid">
+        <span class="${escapeHtml(sourceStatus === "linked" ? "ready" : "blocked")}">
+          <strong>${escapeHtml(sourceStatus === "linked" ? "linked" : "missing")}</strong>
+          <small>source ref</small>
+        </span>
+        <span class="${escapeHtml(evidenceCount ? "ready" : "blocked")}">
+          <strong>${escapeHtml(String(evidenceCount))}</strong>
+          <small>evidence</small>
+        </span>
+        <span class="${escapeHtml(candidateEdges || governanceEdges.length ? "caution" : "ready")}">
+          <strong>${escapeHtml(String(candidateEdges || governanceEdges.length || 0))}</strong>
+          <small>candidate gates</small>
+        </span>
+        <span class="${escapeHtml(blockedEdges ? "blocked" : "ready")}">
+          <strong>${escapeHtml(String(blockedEdges))}</strong>
+          <small>blocked relations</small>
+        </span>
+      </div>
+      <div class="graph-node-source-contract-path">
+        <strong>${escapeHtml(labelizeGraph(evidenceEligibility.vectorPolicy || "hold"))}</strong>
+        <code title="${escapeHtml(directSourceRef || "No source reference stored")}">${escapeHtml(directSourceRef || "Attach source evidence before trusted retrieval.")}</code>
+      </div>
+      <small>${escapeHtml(`${explicitEdges} explicit · ${inferredEdges} inferred · ${candidateEdges} candidate direct relations`)}</small>
+    </section>
+  `;
 }
 
 function graphNodeActorUseClassification(node = {}, readiness = {}, evidenceEligibility = {}, governanceEdges = [], directEdges = []) {
