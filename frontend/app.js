@@ -16277,6 +16277,7 @@ function renderKnowledgeFabricSourceRepoSyncPreview(items = []) {
 
 function renderKnowledgeFabricQueueCard(item = {}) {
   const edges = Array.isArray(item.candidate_edges) ? item.candidate_edges : [];
+  const reviewMeta = knowledgeFabricQueueReviewMeta(item);
   const artifactRows = [
     ["Concept", item.concept_path],
     ["Evidence", item.evidence_path],
@@ -16301,6 +16302,7 @@ function renderKnowledgeFabricQueueCard(item = {}) {
         <span><strong>${escapeHtml(item.vector_refresh || "deferred")}</strong><small>vector boundary</small></span>
       </div>
       ${renderKnowledgeFabricQueueLifecyclePreview(item)}
+      ${renderKnowledgeFabricQueueReviewTransition(item, reviewMeta)}
       ${artifactRows.length ? `
         <div class="knowledge-fabric-artifact-list">
           ${artifactRows.map(([label, value]) => renderKnowledgeFabricArtifactLink(label, value)).join("")}
@@ -16311,16 +16313,97 @@ function renderKnowledgeFabricQueueCard(item = {}) {
         <p class="knowledge-fabric-review-note">${escapeHtml(`${formatShortDate(item.reviewed_at)} · ${item.review_note || "Review decision saved."}`)}</p>
       ` : ""}
       <div class="button-row tight">
-        <button class="secondary small" type="button" data-kf-queue-action="approve" data-queue-id="${escapeHtml(item.queue_id || "")}">Approve OKF</button>
-        <button class="secondary small" type="button" data-kf-queue-action="needs-rework" data-queue-id="${escapeHtml(item.queue_id || "")}">Needs rework</button>
-        <button class="danger small" type="button" data-kf-queue-action="reject" data-queue-id="${escapeHtml(item.queue_id || "")}">Reject</button>
+        <button class="secondary small" type="button" data-kf-queue-action="approve" data-queue-id="${escapeHtml(item.queue_id || "")}" ${reviewMeta.reviewState === "approved" ? "disabled" : ""} aria-pressed="${reviewMeta.reviewState === "approved" ? "true" : "false"}" title="${escapeHtml(reviewMeta.approveTitle)}">Approve OKF</button>
+        <button class="secondary small" type="button" data-kf-queue-action="needs-rework" data-queue-id="${escapeHtml(item.queue_id || "")}" ${reviewMeta.reviewState === "needs-rework" ? "disabled" : ""} aria-pressed="${reviewMeta.reviewState === "needs-rework" ? "true" : "false"}" title="${escapeHtml(reviewMeta.reworkTitle)}">Needs rework</button>
+        <button class="danger small" type="button" data-kf-queue-action="reject" data-queue-id="${escapeHtml(item.queue_id || "")}" ${reviewMeta.reviewState === "rejected" ? "disabled" : ""} aria-pressed="${reviewMeta.reviewState === "rejected" ? "true" : "false"}" title="${escapeHtml(reviewMeta.rejectTitle)}">Reject</button>
         <button class="secondary small" type="button" data-kf-queue-action="review" data-queue-id="${escapeHtml(item.queue_id || "")}">Review cockpit</button>
         <button class="secondary small" type="button" data-kf-queue-action="graph" data-queue-id="${escapeHtml(item.queue_id || "")}">Open graph</button>
         <button class="secondary small" type="button" data-kf-queue-action="copy" data-queue-id="${escapeHtml(item.queue_id || "")}">Copy manifest</button>
         <button class="secondary small" type="button" data-kf-queue-action="export" data-queue-id="${escapeHtml(item.queue_id || "")}">Export artifact</button>
-        <button class="secondary small" type="button" data-kf-queue-action="export-okf-graph" data-queue-id="${escapeHtml(item.queue_id || "")}" ${item.review_state === "approved" ? "" : "disabled"} title="${escapeHtml(item.review_state === "approved" ? "Export approved OKF handoff with graph candidate decisions." : "Approve OKF before exporting the combined repo-sync package.")}">Export OKF + graph</button>
+        <button class="secondary small" type="button" data-kf-queue-action="export-okf-graph" data-queue-id="${escapeHtml(item.queue_id || "")}" ${reviewMeta.reviewState === "approved" ? "" : "disabled"} title="${escapeHtml(reviewMeta.exportTitle)}">Export OKF + graph</button>
       </div>
     </article>
+  `;
+}
+
+function knowledgeFabricQueueReviewMeta(item = {}) {
+  const reviewState = String(item.review_state || "pending-review");
+  const reviewed = Boolean(item.reviewed_at);
+  if (reviewState === "approved") {
+    return {
+      reviewState,
+      reviewed,
+      statusLabel: "Approved for OKF promotion",
+      vectorLabel: "Approved vector refresh queued after repo merge",
+      graphLabel: "Candidate graph edges accepted for curator handoff",
+      repoLabel: "Eligible for knowledge repo PR",
+      nextLabel: "Export OKF + graph package, then open the knowledge repo PR.",
+      approveTitle: "Already approved. Use another decision only if this approval must be corrected.",
+      reworkTitle: "Return this approved handoff to the Knowledge Fabric Agent for rework.",
+      rejectTitle: "Reject this approved handoff and keep it as audit evidence only.",
+      exportTitle: "Export approved OKF handoff with graph candidate decisions.",
+    };
+  }
+  if (reviewState === "needs-rework") {
+    return {
+      reviewState,
+      reviewed,
+      statusLabel: "Needs Knowledge Fabric rework",
+      vectorLabel: "Vector refresh held",
+      graphLabel: "Graph curator waits for clarified relation wording",
+      repoLabel: "Audit-only until reworked",
+      nextLabel: "Send back for stronger evidence, then approve the updated handoff.",
+      approveTitle: "Approve this reworked handoff if the evidence and relation wording are now sufficient.",
+      reworkTitle: "Already marked for rework.",
+      rejectTitle: "Reject this handoff if it should not enter trusted OKF use.",
+      exportTitle: "Approve OKF before exporting the combined repo-sync package.",
+    };
+  }
+  if (reviewState === "rejected") {
+    return {
+      reviewState,
+      reviewed,
+      statusLabel: "Rejected from trusted OKF use",
+      vectorLabel: "Vector refresh blocked",
+      graphLabel: "Graph promotion rejected",
+      repoLabel: "Audit evidence only",
+      nextLabel: "Keep the audit trail, or correct the decision by approving/reworking.",
+      approveTitle: "Correct this rejection and approve the handoff if it is now trusted.",
+      reworkTitle: "Move this rejected handoff back to rework if it can be salvaged.",
+      rejectTitle: "Already rejected.",
+      exportTitle: "Approve OKF before exporting the combined repo-sync package.",
+    };
+  }
+  return {
+    reviewState,
+    reviewed,
+    statusLabel: "Pending human review",
+    vectorLabel: item.vector_refresh || "Vector refresh deferred",
+    graphLabel: item.graph_curator_trigger || "Candidate graph edge waiting",
+    repoLabel: "Not eligible for knowledge repo PR yet",
+    nextLabel: "Choose approve, needs rework, or reject before trusted retrieval.",
+    approveTitle: "Approve this handoff for OKF promotion and repo-sync eligibility.",
+    reworkTitle: "Return this handoff for Knowledge Fabric Agent clarification.",
+    rejectTitle: "Reject this handoff from trusted OKF use.",
+    exportTitle: "Approve OKF before exporting the combined repo-sync package.",
+  };
+}
+
+function renderKnowledgeFabricQueueReviewTransition(item = {}, meta = knowledgeFabricQueueReviewMeta(item)) {
+  return `
+    <section class="knowledge-fabric-review-transition ${safeGraphClass(meta.reviewState)}" aria-label="Knowledge Fabric review transition">
+      <div class="knowledge-fabric-review-transition-head">
+        <span class="badge">Human review gate</span>
+        <strong>${escapeHtml(meta.statusLabel)}</strong>
+        <small>${escapeHtml(meta.nextLabel)}</small>
+      </div>
+      <div class="knowledge-fabric-review-flow">
+        <span class="${safeGraphClass(meta.reviewState)}"><strong>${escapeHtml(labelizeGraph(meta.reviewState))}</strong><small>review state</small></span>
+        <span><strong>${escapeHtml(meta.vectorLabel)}</strong><small>vector boundary</small></span>
+        <span><strong>${escapeHtml(meta.graphLabel)}</strong><small>graph curator</small></span>
+        <span><strong>${escapeHtml(meta.repoLabel)}</strong><small>repo sync</small></span>
+      </div>
+    </section>
   `;
 }
 

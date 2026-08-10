@@ -4,6 +4,34 @@ Date: 2026-08-09
 
 Latest update: 2026-08-10
 
+## Latest Local QA Pass For Knowledge Fabric Review Transitions
+
+- Added an explicit review transition strip to each Knowledge Fabric queue card.
+- Review state now shows the downstream vector boundary, graph curator state, and repo-sync eligibility in one compact handoff view.
+- Same-state decisions are disabled after review while correction paths remain available.
+- `Export OKF + graph` remains blocked until OKF approval, then becomes available after approval.
+- Verified desktop and mobile dark-mode rendering with Playwright.
+- Verified targeted queue behavior:
+  - pending handoff starts with `Approve OKF` enabled
+  - `Export OKF + graph` is disabled before approval
+  - approving the handoff updates the transition to approved
+  - `Approve OKF` becomes disabled after approval
+  - `Export OKF + graph` becomes enabled after approval
+  - review transition does not overflow the card
+- Screenshot and machine-readable QA output:
+  - `docs/visual-qa/screenshots-20260810-knowledge-fabric-review-transitions/`
+
+Validation commands:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-knowledge-fabric-review-transitions`
+
 ## Latest Local QA Pass For Knowledge And Graph Trusted Presets
 
 - Added Knowledge Browser retrieval presets for:
