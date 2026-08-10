@@ -16755,14 +16755,26 @@ function renderDashboardOkfGraphPackage() {
         `).join("")}
       </div>
     ` : ""}
+    <div class="okf-graph-repo-sync-plan">
+      <span class="badge">Knowledge repo sync</span>
+      <strong>${escapeHtml(approvedLinks.length ? "Reviewed graph package can move to repository review." : "Hold package until OKF and graph review are aligned.")}</strong>
+      <ol>
+        <li>Apply approved OKF handoffs as Markdown/YAML in the knowledge fabric repo branch.</li>
+        <li>Apply accepted graph decisions to graph edge YAML with source evidence links.</li>
+        <li>Keep rejected and needs-rework graph decisions as audit evidence only.</li>
+        <li>Queue vector adapter payloads only after the knowledge repo PR is approved and merged.</li>
+      </ol>
+    </div>
     <div class="queue-card-actions">
       <button class="secondary small" type="button" data-dashboard-action="export-okf-graph-package-inline">Export OKF + graph package</button>
+      <button class="secondary small" type="button" data-dashboard-action="copy-okf-graph-repo-sync">Copy repo sync JSON</button>
       <button class="secondary small" type="button" data-cockpit-action="openGraph">Open graph</button>
     </div>
   `;
   const exportButton = document.querySelector('[data-dashboard-action="export-okf-graph-package"]');
   if (exportButton) exportButton.onclick = exportOkfGraphPromotionPackage;
   target.querySelector('[data-dashboard-action="export-okf-graph-package-inline"]')?.addEventListener("click", exportOkfGraphPromotionPackage);
+  target.querySelector('[data-dashboard-action="copy-okf-graph-repo-sync"]')?.addEventListener("click", copyOkfGraphPromotionRepoSyncPackage);
   target.querySelector('[data-cockpit-action="openGraph"]')?.addEventListener("click", () => showView("graph"));
 }
 
@@ -16805,6 +16817,22 @@ function exportOkfGraphPromotionPackage() {
   showToast("OKF graph package exported", `${artifact.summary.handoff_count} handoff${artifact.summary.handoff_count === 1 ? "" : "s"} · ${artifact.summary.promotion_count} graph decision${artifact.summary.promotion_count === 1 ? "" : "s"}`, "success");
 }
 
+async function copyOkfGraphPromotionRepoSyncPackage() {
+  const reviewed = reviewedKnowledgeFabricQueueItems();
+  const promotions = graphPromotionHistoryItems(120);
+  if (!reviewed.length && !promotions.length) {
+    showToast("Repo sync package", "No reviewed handoffs or graph promotion decisions to copy yet.", "warning");
+    return;
+  }
+  const artifact = buildOkfGraphPromotionPackageArtifact(reviewed, promotions);
+  const copied = await copyTextToClipboard(JSON.stringify(artifact, null, 2));
+  showToast(
+    copied ? "Repo sync package copied" : "Repo sync copy failed",
+    copied ? `${artifact.summary.handoff_count} handoff${artifact.summary.handoff_count === 1 ? "" : "s"} · ${artifact.summary.promotion_count} graph decision${artifact.summary.promotion_count === 1 ? "" : "s"}` : "Clipboard access failed.",
+    copied ? "success" : "warning",
+  );
+}
+
 function buildOkfGraphPromotionPackageArtifact(reviewedItems = [], promotionItems = []) {
   const reviewedBundle = reviewedItems.length ? buildKnowledgeFabricReviewedBundle(reviewedItems) : null;
   const graphBundle = promotionItems.length ? buildGraphPromotionHistoryArtifact(promotionItems) : null;
@@ -16826,6 +16854,24 @@ function buildOkfGraphPromotionPackageArtifact(reviewedItems = [], promotionItem
       app_repo: "florianliepe/meids-app",
       knowledge_repo: "meids-knowledge-fabric",
       agent_config_repo: "meids-agent-configs",
+    },
+    knowledge_repo_sync_plan: {
+      target_branch_prefix: "knowledge-fabric/okf-graph-promotion",
+      target_paths: {
+        concepts: "concepts/<twin>/<cluster>/<slug>.md",
+        evidence: "evidence/<twin>/<source>/<date>-<slug>.md",
+        transcripts: "transcripts/<twin>/<date>-<slug>.md",
+        graph_nodes: "graph/nodes/<twin>.yaml",
+        graph_edges: "graph/edges/<twin>.yaml",
+        crud_log: "audit/crud/<twin>/<date>.jsonl",
+      },
+      apply_rules: [
+        "Approved OKF handoffs may be materialized as Markdown/YAML in the knowledge fabric repo.",
+        "Accepted or approved graph relations may update graph edge YAML only when source evidence links are present.",
+        "Needs-rework and rejected items must remain audit-only and must not enter trusted retrieval.",
+        "Vector refresh payloads remain queued until the knowledge repo PR is approved and merged.",
+      ],
+      approval_gate: "Human PR review is required before trusted OKF storage, graph promotion, or vector refresh.",
     },
     review_sequence: [
       "Inspect reviewed OKF handoffs and graph promotion decisions together.",

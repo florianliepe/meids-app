@@ -7795,6 +7795,32 @@ body.theme-dark .knowledge-source-readiness-grid span {
   margin: 8px 0 0;
 }
 
+.okf-graph-repo-sync-plan {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 84%, transparent);
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.okf-graph-repo-sync-plan strong {
+  color: var(--ink);
+  font-size: 0.94rem;
+}
+
+.okf-graph-repo-sync-plan ol {
+  color: var(--muted);
+  display: grid;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 680;
+  line-height: 1.45;
+  margin: 0 0 0 18px;
+  padding: 0;
+}
+
 .graph-promotion-summary-strip {
   display: grid;
   gap: 8px;
@@ -8685,6 +8711,15 @@ body.theme-dark .graph-decision-queue-card {
 }
 
 body.theme-dark .graph-decision-queue-note {
+  color: #c9c0b2;
+}
+
+body.theme-dark .okf-graph-repo-sync-plan {
+  border-color: rgba(232, 226, 214, 0.13);
+  background: rgba(20, 25, 21, 0.86);
+}
+
+body.theme-dark .okf-graph-repo-sync-plan ol {
   color: #c9c0b2;
 }
 
