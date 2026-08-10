@@ -53,8 +53,25 @@ Additional deployed checks on 2026-08-10 confirmed:
 
 - Knowledge Browser actor-use badges render on GitHub Pages without overflow.
 - Review/Production cockpit loads live probe evidence and exposes Knowledge Fabric / Agentic Butler URL blockers.
+- Knowledge Browser actor-use lanes render in desktop and mobile dark mode:
+  - `Trusted`
+  - `Review before trust`
+  - `Source gap`
+  - `Needs rework`
 - Current deployed app URL: `https://florianliepe.github.io/meids-app/`
 - Latest verified deployment commit for credential-boundary documentation: `e5e2a92`.
+
+Latest local QA pass for review-lane grouping:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-knowledge-review-lanes`
+- Targeted Playwright DOM assertions for `#knowledgeReviewLanes` at `390px` and `1440px`.
+
+Screenshots for this pass are stored in `docs/visual-qa/screenshots-20260810-knowledge-review-lanes/`.
 
 ## Browser QA Notes
 

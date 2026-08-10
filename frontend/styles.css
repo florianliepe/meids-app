@@ -27489,6 +27489,155 @@ body.theme-dark .knowledge-review-token.rejected {
   color: #f0b19f;
 }
 
+.knowledge-review-lanes {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-quiet) 76%, transparent);
+  display: grid;
+  gap: 10px;
+  margin: 10px 0 12px;
+  padding: 11px;
+}
+
+.knowledge-review-lanes:empty {
+  display: none;
+}
+
+.knowledge-review-lanes-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+
+.knowledge-review-lanes-head strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.knowledge-review-lanes-head small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.knowledge-review-lanes-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.knowledge-review-lane {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--muted) 44%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.knowledge-review-lane.trusted {
+  border-left-color: #34c795;
+}
+
+.knowledge-review-lane.review {
+  border-left-color: #6a8de8;
+}
+
+.knowledge-review-lane.source-gap {
+  border-left-color: #d7a84f;
+}
+
+.knowledge-review-lane.rework {
+  border-left-color: #d9826b;
+}
+
+.knowledge-review-lane > div {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.knowledge-review-lane strong {
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.knowledge-review-lane span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-review-lane small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-review-lane em {
+  color: color-mix(in srgb, var(--muted) 86%, var(--ink));
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1.3;
+  min-height: 26px;
+  overflow-wrap: anywhere;
+}
+
+body.theme-dark .knowledge-review-lanes {
+  background:
+    linear-gradient(135deg, rgba(122, 216, 191, 0.045), rgba(17, 22, 18, 0.94));
+  border-color: rgba(241, 235, 224, 0.13);
+}
+
+body.theme-dark .knowledge-review-lanes-head strong,
+body.theme-dark .knowledge-review-lane strong,
+body.theme-dark .knowledge-review-lane span {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-review-lanes-head small,
+body.theme-dark .knowledge-review-lane small {
+  color: #c9c0b3;
+}
+
+body.theme-dark .knowledge-review-lane {
+  background: #1d241f;
+  border-color: rgba(241, 235, 224, 0.13);
+}
+
+body.theme-dark .knowledge-review-lane.trusted {
+  background: rgba(52, 199, 149, 0.08);
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .knowledge-review-lane.review {
+  background: rgba(106, 141, 232, 0.08);
+  border-left-color: #8fa4f2;
+}
+
+body.theme-dark .knowledge-review-lane.source-gap {
+  background: rgba(215, 179, 109, 0.09);
+  border-left-color: #d7b36d;
+}
+
+body.theme-dark .knowledge-review-lane.rework {
+  background: rgba(226, 141, 118, 0.08);
+  border-left-color: #e28d76;
+}
+
+body.theme-dark .knowledge-review-lane em {
+  color: #d8d0c2;
+}
+
 .graph-relation-layer-summary {
   display: grid;
   gap: 8px;
@@ -27800,6 +27949,10 @@ body.theme-dark .graph-retrieval-contract-flow article {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
+  }
+
+  .knowledge-review-lanes-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .graph-relation-layer-summary {

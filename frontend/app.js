@@ -18483,6 +18483,7 @@ function renderConcepts() {
   renderConceptOverview(concepts);
   renderKnowledgeSourceReadiness(state.concepts, concepts);
   renderKnowledgeFabricContractStrip(state.concepts, concepts);
+  renderKnowledgeReviewLanes(concepts);
   if (!concepts.length) {
     list.innerHTML = renderEmptyState("No concepts match the current filters.");
     return;
@@ -18555,6 +18556,97 @@ function renderKnowledgeActorUseBadge(actorUse = {}) {
     <div class="knowledge-actor-use ${escapeHtml(actorUse.className || "audit-only")}">
       <strong>${escapeHtml(actorUse.label || "audit only")}</strong>
       <span>${escapeHtml(actorUse.detail || "Review required before Actor Twin reliance.")}</span>
+    </div>
+  `;
+}
+
+function knowledgeReviewLaneSummary(concepts = []) {
+  const lanes = {
+    trusted: {
+      className: "trusted",
+      label: "Trusted",
+      detail: "Approved, evidenced, and ready for Actor Twin grounding.",
+      action: "Use in answers",
+      items: [],
+    },
+    review: {
+      className: "review",
+      label: "Review before trust",
+      detail: "Useful context, but human review is still required before steering decisions.",
+      action: "Review evidence",
+      items: [],
+    },
+    sourceGap: {
+      className: "source-gap",
+      label: "Source gap",
+      detail: "Concepts need source or evidence repair before reliable retrieval.",
+      action: "Attach source",
+      items: [],
+    },
+    rework: {
+      className: "rework",
+      label: "Needs rework",
+      detail: "Rejected or rework concepts stay visible for audit, not trusted use.",
+      action: "Fix or retire",
+      items: [],
+    },
+  };
+  concepts.forEach((concept) => {
+    const reviewState = concept.review_state || "pending-review";
+    const actorUse = knowledgeActorUseState(concept);
+    const evidence = knowledgeEvidenceState(concept);
+    const refs = conceptSourceRefs(concept);
+    if (actorUse.className === "trusted") {
+      lanes.trusted.items.push(concept);
+      return;
+    }
+    if (["needs-rework", "rejected"].includes(reviewState)) {
+      lanes.rework.items.push(concept);
+      return;
+    }
+    if (!refs.length || ["missing", "blocked"].includes(evidence.className)) {
+      lanes.sourceGap.items.push(concept);
+      return;
+    }
+    if (actorUse.className === "audit-only") {
+      lanes.rework.items.push(concept);
+      return;
+    }
+    lanes.review.items.push(concept);
+  });
+  return [lanes.trusted, lanes.review, lanes.sourceGap, lanes.rework];
+}
+
+function renderKnowledgeReviewLanes(concepts = []) {
+  const target = $("#knowledgeReviewLanes");
+  if (!target) return;
+  const lanes = knowledgeReviewLaneSummary(concepts);
+  const total = concepts.length || 0;
+  target.innerHTML = `
+    <div class="knowledge-review-lanes-head">
+      <span class="badge">Actor-use lanes</span>
+      <strong>${escapeHtml(`${total} visible concepts`)}</strong>
+      <small>Scan which knowledge can answer, which needs citation, and which stays out of trusted use.</small>
+    </div>
+    <div class="knowledge-review-lanes-grid">
+      ${lanes.map((lane) => {
+        const count = lane.items.length;
+        const percent = total ? Math.round((count / total) * 100) : 0;
+        const examples = lane.items
+          .slice(0, 2)
+          .map((concept) => concept.title || compactPath(concept.path || "untitled"))
+          .join(" · ");
+        return `
+          <article class="knowledge-review-lane ${escapeHtml(lane.className)}">
+            <div>
+              <strong>${escapeHtml(count)}</strong>
+              <span>${escapeHtml(lane.label)}</span>
+            </div>
+            <small>${escapeHtml(`${percent}% · ${lane.detail}`)}</small>
+            <em>${escapeHtml(examples || lane.action)}</em>
+          </article>
+        `;
+      }).join("")}
     </div>
   `;
 }
