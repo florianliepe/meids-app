@@ -1,0 +1,36 @@
+[
+  {
+    "viewport": {
+      "name": "dashboard-1440",
+      "width": 1440,
+      "height": 1100
+    },
+    "cardFound": true,
+    "text": "Package readiness OKF + graph package can be exported for review. Export remains review-safe: it does not mutate knowledge storage, graph projection, vector index, GitHub, MCP, or n8n. OKF handoffs none reviewed Review a source handoff before trusted sync. Graph decisions 2 recorded Promotion histor",
+    "labels": [
+      "OKF handoffs",
+      "Graph decisions",
+      "Evidence gate",
+      "Live agent URLs"
+    ],
+    "bodyOverflow": 0,
+    "themeDark": true
+  },
+  {
+    "viewport": {
+      "name": "dashboard-390",
+      "width": 390,
+      "height": 1100
+    },
+    "cardFound": true,
+    "text": "Package readiness OKF + graph package can be exported for review. Export remains review-safe: it does not mutate knowledge storage, graph projection, vector index, GitHub, MCP, or n8n. OKF handoffs none reviewed Review a source handoff before trusted sync. Graph decisions 2 recorded Promotion histor",
+    "labels": [
+      "OKF handoffs",
+      "Graph decisions",
+      "Evidence gate",
+      "Live agent URLs"
+    ],
+    "bodyOverflow": 0,
+    "themeDark": true
+  }
+]

@@ -18438,6 +18438,7 @@ function renderDashboardOkfGraphPackage() {
       <span><strong>${escapeHtml(links.length)}</strong><small>linked paths</small></span>
       <span><strong>${escapeHtml(approvedLinks.length)}</strong><small>trusted candidates</small></span>
     </div>
+    ${renderOkfGraphPackageReadiness(reviewed, promotions, links)}
     <p>${escapeHtml(links.length ? "Reviewed OKF handoffs can be exported with matching graph promotion decisions for knowledge-repo review." : "Review a Knowledge Fabric handoff or graph relation to create a portable package.")}</p>
     ${links.length ? `
       <div class="okf-graph-package-links">
@@ -18468,9 +18469,67 @@ function renderDashboardOkfGraphPackage() {
   `;
   const exportButton = document.querySelector('[data-dashboard-action="export-okf-graph-package"]');
   if (exportButton) exportButton.onclick = exportOkfGraphPromotionPackage;
-  target.querySelector('[data-dashboard-action="export-okf-graph-package-inline"]')?.addEventListener("click", exportOkfGraphPromotionPackage);
+  target.querySelectorAll('[data-dashboard-action="export-okf-graph-package-inline"]').forEach((button) => {
+    button.addEventListener("click", exportOkfGraphPromotionPackage);
+  });
   target.querySelector('[data-dashboard-action="copy-okf-graph-repo-sync"]')?.addEventListener("click", copyOkfGraphPromotionRepoSyncPackage);
   target.querySelector('[data-cockpit-action="openGraph"]')?.addEventListener("click", () => showView("graph"));
+}
+
+function renderOkfGraphPackageReadiness(reviewed = [], promotions = [], links = []) {
+  const acceptedPromotions = promotions.filter((item) => ["approved", "accepted"].includes(String(item.review_state || item.decision || "").toLowerCase()));
+  const acceptedWithEvidence = acceptedPromotions.filter((item) => graphPromotionEvidenceRefs(item).length > 0);
+  const liveReadiness = productionAgentUrlReadiness().filter((agent) => ["knowledge_fabric_agent", "agentic_butler"].includes(agent.agentId));
+  const missingLiveUrls = liveReadiness.filter((agent) => !agent.configured);
+  const packageReady = Boolean(reviewed.length || promotions.length);
+  const evidenceReady = acceptedPromotions.length === 0 || acceptedWithEvidence.length === acceptedPromotions.length;
+  const statusRows = [
+    {
+      className: reviewed.length ? "ready" : "pending",
+      label: "OKF handoffs",
+      metric: reviewed.length ? `${reviewed.length} reviewed` : "none reviewed",
+      detail: reviewed.length ? "Markdown/YAML candidates can be packaged." : "Review a source handoff before trusted sync.",
+    },
+    {
+      className: promotions.length ? "ready" : "pending",
+      label: "Graph decisions",
+      metric: promotions.length ? `${promotions.length} recorded` : "none",
+      detail: promotions.length ? "Promotion history can be exported." : "Accept, reject, or rework at least one candidate edge.",
+    },
+    {
+      className: evidenceReady ? "ready" : "blocked",
+      label: "Evidence gate",
+      metric: acceptedPromotions.length ? `${acceptedWithEvidence.length}/${acceptedPromotions.length} accepted` : "not needed yet",
+      detail: evidenceReady ? "Accepted relations have source evidence or no accepted relation exists." : "Accepted graph relations need source evidence before graph YAML apply.",
+    },
+    {
+      className: missingLiveUrls.length ? "blocked" : "ready",
+      label: "Live agent URLs",
+      metric: missingLiveUrls.length ? `${missingLiveUrls.length} missing` : "configured",
+      detail: missingLiveUrls.length
+        ? `${missingLiveUrls.map((agent) => agent.label || agent.agentId).join(", ")} URL required for live n8n handoff.`
+        : "Knowledge Fabric Agent and Agentic Butler URL gates are configured.",
+    },
+  ];
+  return `
+    <section class="graph-export-readiness okf-graph-export-readiness ${packageReady && evidenceReady ? "ready" : "pending"}" aria-label="OKF graph package export readiness">
+      <div class="graph-export-readiness-main">
+        <span class="badge">Package readiness</span>
+        <strong>${escapeHtml(packageReady ? "OKF + graph package can be exported for review." : "Package is waiting for reviewed knowledge or graph decisions.")}</strong>
+        <small>${escapeHtml("Export remains review-safe: it does not mutate knowledge storage, graph projection, vector index, GitHub, MCP, or n8n.")}</small>
+      </div>
+      <div class="graph-export-readiness-grid">
+        ${statusRows.map((row) => `
+          <span class="${escapeHtml(row.className)}">
+            <strong>${escapeHtml(row.label)}</strong>
+            <small>${escapeHtml(row.metric)}</small>
+            <em>${escapeHtml(row.detail)}</em>
+          </span>
+        `).join("")}
+      </div>
+      <button class="secondary small" type="button" data-dashboard-action="export-okf-graph-package-inline">Export package</button>
+    </section>
+  `;
 }
 
 function renderDashboardKnowledgeGraphHandoff() {

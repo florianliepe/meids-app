@@ -8789,6 +8789,10 @@ body.theme-dark .knowledge-source-readiness-grid span {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.okf-graph-export-readiness {
+  grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.55fr) auto;
+}
+
 .okf-graph-package-summary span,
 .okf-graph-package-links article {
   border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
