@@ -7767,6 +7767,82 @@ body.theme-dark .knowledge-source-readiness-grid span {
   gap: 8px;
 }
 
+.chat-agent-trace-panel {
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-quiet) 82%, transparent);
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.chat-agent-trace-head {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.chat-agent-trace-head small {
+  color: var(--muted);
+  display: block;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  margin-top: 3px;
+}
+
+.chat-agent-trace-list {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.chat-agent-trace-list .empty {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.chat-agent-trace-card {
+  align-items: start;
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--accent) 56%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-strong) 84%, transparent);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  padding: 10px;
+}
+
+.chat-agent-trace-card.actor-twin {
+  border-left-color: #7ad8bf;
+}
+
+.chat-agent-trace-card.knowledge-fabric-agent {
+  border-left-color: #7aa7d8;
+}
+
+.chat-agent-trace-card.agentic-butler {
+  border-left-color: #d7b56d;
+}
+
+.chat-agent-trace-card strong {
+  color: var(--ink);
+  display: block;
+  font-size: 0.86rem;
+  line-height: 1.2;
+  margin-top: 5px;
+}
+
+.chat-agent-trace-card small {
+  color: var(--muted);
+  display: block;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  margin-top: 4px;
+}
+
 .chat-contract-badges {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 10px;
@@ -9644,6 +9720,8 @@ body.theme-dark .chat-mode-health,
 body.theme-dark .chat-active-contract-badge,
 body.theme-dark .chat-inline-mode-badge,
 body.theme-dark .chat-contract-actions,
+body.theme-dark .chat-agent-trace-panel,
+body.theme-dark .chat-agent-trace-card,
 body.theme-dark .agent-trace-summary span,
 body.theme-dark .agent-trace-handoff-timeline,
 body.theme-dark .agent-trace-handoff-steps article,
@@ -9652,6 +9730,15 @@ body.theme-dark .knowledge-fabric-trace-grid span,
 body.theme-dark .agent-trace-row {
   border-color: rgba(241, 235, 224, 0.18);
   background: #171d18;
+}
+
+body.theme-dark .chat-agent-trace-card strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .chat-agent-trace-head small,
+body.theme-dark .chat-agent-trace-card small {
+  color: #c9c0b3;
 }
 
 body.theme-dark .agent-trace-handoff-timeline {
@@ -10246,6 +10333,8 @@ body.theme-dark .graph-svg-edge-label text {
 @media (max-width: 760px) {
   .chat-contract-badges,
   .chat-mode-health-strip,
+  .chat-agent-trace-head,
+  .chat-agent-trace-list,
   .chat-runtime-missing-card,
   .chat-runtime-setup-ready,
   .chat-mode-readiness-rail,
@@ -10264,6 +10353,16 @@ body.theme-dark .graph-svg-edge-label text {
 
   .chat-mode-health {
     grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .chat-agent-trace-head {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat-agent-trace-card {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .agent-trace-meta {

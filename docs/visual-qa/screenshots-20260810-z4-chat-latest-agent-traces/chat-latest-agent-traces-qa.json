@@ -1,0 +1,22 @@
+[
+  {
+    "viewport": "desktop",
+    "cardCount": 3,
+    "hasActor": true,
+    "hasKnowledge": true,
+    "hasButler": true,
+    "panelText": "Actor Twin\nActor Twin\ncompleted · fixture/local · 10. Aug., 22:23\nTrace\nKnowledge Fabric Agent\nKnowledge Fabric Agent\nready · fixture/local · 10. Aug., 22:22\nTrace\nAgentic Butler\nAgentic Butler\napproval gate · fixture/local · 10. Aug., 22:21\nTrace",
+    "bodyClass": "workspace-mode theme-dark",
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "cardCount": 3,
+    "hasActor": true,
+    "hasKnowledge": true,
+    "hasButler": true,
+    "panelText": "Actor Twin\nActor Twin\ncompleted · fixture/local · 10. Aug., 22:23\nTrace\nKnowledge Fabric Agent\nKnowledge Fabric Agent\nready · fixture/local · 10. Aug., 22:22\nTrace\nAgentic Butler\nAgentic Butler\napproval gate · fixture/local · 10. Aug., 22:21\nTrace",
+    "bodyClass": "workspace-mode theme-dark",
+    "overflowX": false
+  }
+]

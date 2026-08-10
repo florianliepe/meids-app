@@ -10615,6 +10615,7 @@ async function refreshAll() {
   await safeRefreshSkillRuns();
   await safeRefreshSkillRefinements();
   await safeRefreshSkillTelemetry();
+  renderChatLatestAgentTraces();
 }
 
 function refreshStaticPagesWorkspace() {
@@ -10661,6 +10662,7 @@ function refreshStaticPagesWorkspace() {
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticOkfValidationStatus();
   renderAgentTraceHistoryPanel();
+  renderChatLatestAgentTraces();
   state.reviewDashboard = buildStaticPagesReviewDashboard();
   state.reviewDashboard.refreshed_at = new Date().toISOString();
   renderReviewDashboard(state.reviewDashboard);
@@ -15609,6 +15611,7 @@ function persistAgentTrace(result = {}) {
     const current = JSON.parse(window.localStorage.getItem(storageKeys.agentTraceLog) || "[]");
     const next = [entry, ...(Array.isArray(current) ? current : [])].slice(0, 50);
     window.localStorage.setItem(storageKeys.agentTraceLog, JSON.stringify(next));
+    renderChatLatestAgentTraces();
     renderAgentTraceHistoryPanel();
     renderDashboardAgentTraceHistory();
   } catch (error) {
@@ -15647,6 +15650,7 @@ function persistAgentProbeTrace(agentId, envelope = {}, probe = {}, options = {}
     const existing = Array.isArray(current) ? current : [];
     const deduped = existing.filter((trace) => trace.trace_id !== entry.trace_id && trace.request_id !== entry.request_id);
     window.localStorage.setItem(storageKeys.agentTraceLog, JSON.stringify([entry, ...deduped].slice(0, 50)));
+    renderChatLatestAgentTraces();
     renderAgentTraceHistoryPanel();
     renderDashboardAgentTraceHistory();
   } catch (error) {
@@ -17001,6 +17005,7 @@ function clearAgentTraceHistory() {
   } catch (error) {
     console.warn("Agent trace clear failed", error);
   }
+  renderChatLatestAgentTraces();
   renderAgentTraceHistoryPanel();
   renderDashboardAgentTraceHistory();
 }
@@ -17093,6 +17098,32 @@ function renderDashboardAgentTraceHistory() {
     return;
   }
   target.innerHTML = `${handoffTimeline}${renderAgentTraceSetupNotice({ compact: true })}${sourceTraceSummary}${sourceLifecycle}${renderAgentTraceHistoryRows(traces, 8)}`;
+}
+
+function renderChatLatestAgentTraces() {
+  const target = $("#chatLatestAgentTraces");
+  if (!target) return;
+  const traces = readComposedAgentTraces().slice(0, 3);
+  if (!traces.length) {
+    target.innerHTML = '<p class="empty">No agent traces yet. Ask the Actor Twin, add source context, or activate a skill to create one.</p>';
+    return;
+  }
+  target.innerHTML = traces.map((trace) => {
+    const agentId = String(trace.agent_id || "unknown").toLowerCase();
+    const agentClass = safeGraphClass(agentId);
+    const traceKey = trace.trace_id || trace.request_id || "";
+    const statusLabel = trace.approval_required ? "approval gate" : trace.demo ? "staging" : trace.status || "trace";
+    return `
+      <article class="chat-agent-trace-card ${agentClass}">
+        <div>
+          <span class="agent-trace-agent-chip ${agentClass}">${escapeHtml(agentDisplayName(agentId))}</span>
+          <strong>${escapeHtml(trace.agent_name || agentDisplayName(agentId))}</strong>
+          <small>${escapeHtml(`${statusLabel} · ${trace.runtime || "fixture/local"} · ${formatShortDate(trace.timestamp)}`)}</small>
+        </div>
+        <button class="secondary small" type="button" data-chat-action="open-agent-trace" data-trace-id="${escapeHtml(traceKey)}">Trace</button>
+      </article>
+    `;
+  }).join("");
 }
 
 function renderAgentTraceHandoffTimeline(traces = [], options = {}) {
