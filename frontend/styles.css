@@ -27281,6 +27281,54 @@ body.cockpit-mode .workspace-signal {
   text-transform: uppercase;
 }
 
+.knowledge-fabric-repo-sync-eligibility {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.knowledge-fabric-repo-sync-eligibility span {
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--muted) 45%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  min-width: 0;
+  padding: 9px 10px;
+}
+
+.knowledge-fabric-repo-sync-eligibility span.ready {
+  border-left-color: #3c9d75;
+}
+
+.knowledge-fabric-repo-sync-eligibility span.warning {
+  border-left-color: #c8a35d;
+}
+
+.knowledge-fabric-repo-sync-eligibility span.blocked {
+  border-left-color: #b85c55;
+}
+
+.knowledge-fabric-repo-sync-eligibility strong,
+.knowledge-fabric-repo-sync-eligibility small {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-fabric-repo-sync-eligibility strong {
+  color: var(--ink);
+  font-size: 0.86rem;
+  line-height: 1.18;
+}
+
+.knowledge-fabric-repo-sync-eligibility small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 720;
+  line-height: 1.3;
+  margin-top: 4px;
+}
+
 .okf-graph-repo-sync-plan.compact {
   margin-top: 0;
 }
@@ -27675,18 +27723,33 @@ body.theme-dark .knowledge-fabric-repo-sync-preview {
 }
 
 body.theme-dark .knowledge-fabric-repo-sync-preview h3,
+body.theme-dark .knowledge-fabric-repo-sync-eligibility strong,
 body.theme-dark .knowledge-fabric-repo-sync-stats strong {
   color: #fff8ea;
 }
 
 body.theme-dark .knowledge-fabric-repo-sync-preview p,
+body.theme-dark .knowledge-fabric-repo-sync-eligibility small,
 body.theme-dark .knowledge-fabric-repo-sync-stats small {
   color: #c9c0b3;
 }
 
+body.theme-dark .knowledge-fabric-repo-sync-eligibility span,
 body.theme-dark .knowledge-fabric-repo-sync-stats span {
   border-color: rgba(232, 226, 214, 0.12);
   background: rgba(16, 20, 17, 0.82);
+}
+
+body.theme-dark .knowledge-fabric-repo-sync-eligibility span.ready {
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .knowledge-fabric-repo-sync-eligibility span.warning {
+  border-left-color: #f1d08c;
+}
+
+body.theme-dark .knowledge-fabric-repo-sync-eligibility span.blocked {
+  border-left-color: #f0a39f;
 }
 
 body.theme-dark .knowledge-fabric-uat-checklist,
@@ -28989,6 +29052,7 @@ body.theme-dark .graph-command-surface {
   .knowledge-fabric-path-flow,
   .knowledge-fabric-path-boundary,
   .knowledge-fabric-repo-sync-stats,
+  .knowledge-fabric-repo-sync-eligibility,
   .knowledge-fabric-item-lifecycle-flow,
   .knowledge-fabric-artifact-list {
     grid-template-columns: 1fr;

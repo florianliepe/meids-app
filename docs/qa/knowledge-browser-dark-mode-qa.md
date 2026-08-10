@@ -522,6 +522,20 @@ Latest local QA pass for Knowledge Fabric item lifecycle preview:
 
 This pass adds a per-handoff Knowledge Fabric lifecycle preview to pending OKF queue cards. Reviewers can see the path from `Source` to `Pending OKF`, `Evidence + CRUD`, `Graph Curator`, `Human Review`, and `Repo + Vector` before deciding whether a handoff can become trusted knowledge. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-fabric-item-lifecycle/`.
 
+Latest local QA pass for Knowledge Fabric repo-sync eligibility:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-knowledge-fabric-repo-sync-eligibility`
+- Targeted Playwright assertion starts a local static server, opens `?view=ingest`, verifies visible `#ingest .knowledge-fabric-repo-sync-eligibility`, confirms six eligibility cells, confirms repo/vector language, dark mode, and zero horizontal overflow.
+
+This pass adds a repo-sync eligibility strip to the Knowledge Fabric queue preview. Operators can see approved handoffs eligible for knowledge-repo PR, pending handoffs, needs-rework items, rejected audit-only items, candidate graph edges, and the vector refresh boundary before exporting reviewed bundles. Screenshots are stored in `docs/visual-qa/screenshots-20260810-knowledge-fabric-repo-sync-eligibility/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

@@ -16161,8 +16161,16 @@ function renderKnowledgeFabricSourceRepoSyncPreview(items = []) {
   const reviewed = reviewedKnowledgeFabricQueueItems();
   const approved = reviewed.filter((item) => item.review_state === "approved");
   const pending = items.filter((item) => !item.reviewed_at || item.review_state === "pending-review");
+  const needsRework = reviewed.filter((item) => item.review_state === "needs-rework");
+  const rejected = reviewed.filter((item) => item.review_state === "rejected");
   const withEvidence = items.filter((item) => item.concept_path || item.evidence_path || item.transcript_path);
   const graphCandidates = items.reduce((count, item) => count + (Array.isArray(item.candidate_edges) ? item.candidate_edges.length : 0), 0);
+  const syncState = approved.length
+    ? `${approved.length} approved handoff${approved.length === 1 ? "" : "s"} eligible for knowledge-repo PR.`
+    : "No approved handoff is eligible for repo sync yet.";
+  const vectorState = approved.length
+    ? "Vector refresh can be queued only after knowledge repo merge."
+    : "Vector refresh remains blocked until approval and repo merge.";
   return `
     <article class="knowledge-fabric-repo-sync-preview">
       <div>
@@ -16175,6 +16183,14 @@ function renderKnowledgeFabricSourceRepoSyncPreview(items = []) {
         <span><strong>${escapeHtml(reviewed.length)}</strong><small>reviewed</small></span>
         <span><strong>${escapeHtml(approved.length)}</strong><small>eligible</small></span>
         <span><strong>hold</strong><small>vector rule</small></span>
+      </div>
+      <div class="knowledge-fabric-repo-sync-eligibility" aria-label="Reviewed handoff repo-sync eligibility">
+        <span class="${approved.length ? "ready" : "blocked"}"><strong>${escapeHtml(String(approved.length))}</strong><small>${escapeHtml(syncState)}</small></span>
+        <span class="${pending.length ? "warning" : "ready"}"><strong>${escapeHtml(String(pending.length))}</strong><small>pending review; audit-only until approved</small></span>
+        <span class="${needsRework.length ? "warning" : "ready"}"><strong>${escapeHtml(String(needsRework.length))}</strong><small>needs rework; return to Knowledge Fabric Agent</small></span>
+        <span class="${rejected.length ? "blocked" : "ready"}"><strong>${escapeHtml(String(rejected.length))}</strong><small>rejected; preserve as audit evidence only</small></span>
+        <span class="${graphCandidates ? "warning" : "blocked"}"><strong>${escapeHtml(String(graphCandidates))}</strong><small>candidate graph edges require curator decision</small></span>
+        <span class="${approved.length ? "warning" : "blocked"}"><strong>${escapeHtml(approved.length ? "queued later" : "blocked")}</strong><small>${escapeHtml(vectorState)}</small></span>
       </div>
       <div class="okf-graph-repo-sync-plan compact">
         <strong>Knowledge repo target</strong>
