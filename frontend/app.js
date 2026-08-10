@@ -13566,6 +13566,12 @@ function chatAgentContractStatuses() {
     const configured = runtimeReadiness.configured || Boolean(contract.webhook_configured);
     const replayPassed = state.n8nAgentContracts?.replay_status === "passed" || contract.replay_status === "passed";
     const probe = state.n8nLiveProbeResults?.[agentId];
+    const replayCaseCount = Number(contract.replay_case_count || contract.case_count || 0);
+    const webhookLabel = probe?.status === "connected"
+      ? "live probe ok"
+      : configured
+        ? "URL configured"
+        : "fixture only";
     return {
       agentId,
       label: agentDisplayName(agentId),
@@ -13577,8 +13583,11 @@ function chatAgentContractStatuses() {
             ? "fixture ready"
             : "documented",
       detail: runtimeReadiness.detail,
+      nextAction: runtimeReadiness.nextAction || "",
       configured,
       replayPassed,
+      replayCaseCount,
+      webhookLabel,
       active: chatModeAgentId() === agentId,
     };
   });
@@ -13631,7 +13640,8 @@ function renderChatModeReadinessRail() {
   target.innerHTML = modes.map((mode) => {
     const status = statuses.get(mode.agentId) || {};
     const stateLabel = status.state || "documented";
-    const configuredLabel = status.configured ? "live URL" : "fixture";
+    const configuredLabel = status.webhookLabel || (status.configured ? "live URL" : "fixture");
+    const evidenceLabel = status.replayCaseCount ? `${status.replayCaseCount} replay cases` : "contract documented";
     const active = state.activeChatInteractionMode === mode.mode;
     return `
       <button class="chat-mode-readiness ${active ? "active" : ""} ${status.configured ? "configured" : "fixture"} ${safeGraphClass(stateLabel)}" type="button" data-chat-mode="${escapeHtml(mode.mode)}" title="${escapeHtml(status.detail || "")}">
@@ -13639,7 +13649,7 @@ function renderChatModeReadinessRail() {
           <strong>${escapeHtml(mode.label)}</strong>
           <small>${escapeHtml(mode.purpose)}</small>
         </span>
-        <em>${escapeHtml(`${stateLabel} · ${configuredLabel}`)}</em>
+        <em>${escapeHtml(`${stateLabel} · ${configuredLabel} · ${evidenceLabel}`)}</em>
       </button>
     `;
   }).join("");
@@ -13732,16 +13742,19 @@ function renderActiveChatContractBadge() {
   const configuredLabel = stateLabel === "n8n connected"
     ? "live"
     : active.configured
-      ? "configured"
+      ? active.webhookLabel || "URL configured"
       : active.replayPassed
         ? "fixture"
         : "planned";
+  const replayLabel = active.replayCaseCount ? `${active.replayCaseCount} cases` : "no replay";
+  const nextAction = active.nextAction || (active.configured ? "Run live probe." : "Add live URL when available.");
   target.className = `chat-active-contract-badge ${safeGraphClass(stateLabel)} ${active.configured ? "configured" : "fixture"}`;
-  target.title = detail;
+  target.title = `${detail} ${nextAction}`;
   target.innerHTML = `
     <strong>${escapeHtml(active.label || agentDisplayName(activeAgentId))}</strong>
     <small>${escapeHtml(stateLabel)}</small>
-    <em>${escapeHtml(configuredLabel)}</em>
+    <em>${escapeHtml(`${configuredLabel} · ${replayLabel}`)}</em>
+    <span>${escapeHtml(nextAction)}</span>
   `;
 }
 

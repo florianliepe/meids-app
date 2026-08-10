@@ -7649,10 +7649,11 @@ body.theme-dark .knowledge-source-readiness-grid span {
 
 .chat-active-contract-badge {
   display: inline-grid;
-  grid-template-columns: auto auto auto;
+  grid-template-columns: auto auto minmax(80px, auto);
   align-items: center;
   gap: 6px;
   min-height: 32px;
+  max-width: min(520px, 100%);
   border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface-quiet) 88%, transparent);
@@ -7663,7 +7664,8 @@ body.theme-dark .knowledge-source-readiness-grid span {
 
 .chat-active-contract-badge strong,
 .chat-active-contract-badge small,
-.chat-active-contract-badge em {
+.chat-active-contract-badge em,
+.chat-active-contract-badge span {
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -7675,11 +7677,18 @@ body.theme-dark .knowledge-source-readiness-grid span {
 }
 
 .chat-active-contract-badge small,
-.chat-active-contract-badge em {
+.chat-active-contract-badge em,
+.chat-active-contract-badge span {
   color: var(--muted);
   font-size: 10px;
   font-style: normal;
   font-weight: 760;
+}
+
+.chat-active-contract-badge span {
+  grid-column: 1 / -1;
+  max-width: 100%;
+  color: color-mix(in srgb, var(--muted) 84%, var(--ink));
 }
 
 .chat-active-contract-badge.configured,
