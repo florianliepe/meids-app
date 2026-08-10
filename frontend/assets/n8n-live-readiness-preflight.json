@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-10T22:35:02.267Z",
+  "generated_at": "2026-08-10T23:55:23.392Z",
   "status": "partial_live_url_blocked",
   "boundary": "Public-safe preflight only. It validates local artifacts, URL slot status, and recorded probe evidence; it does not call n8n and does not contain secrets.",
   "summary": {
@@ -99,7 +99,7 @@
       },
       "commands": {
         "set_url": "node scripts/set-n8n-agent-url.cjs --agent agentic_butler --url https://YOUR-N8N-HOST/webhook/...",
-        "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent agentic_butler --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
+        "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent agentic_butler --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status approval_required"
       },
       "blockers": [
         "live_url_missing",
@@ -132,7 +132,7 @@
         "live_probe_evidence_missing"
       ],
       "set_url": "node scripts/set-n8n-agent-url.cjs --agent agentic_butler --url https://YOUR-N8N-HOST/webhook/...",
-      "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent agentic_butler --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
+      "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent agentic_butler --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status approval_required"
     }
   ]
 }

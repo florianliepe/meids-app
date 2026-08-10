@@ -21,6 +21,11 @@ const requiredPaths = [
 ];
 
 const requiredN8nAgents = ["actor_twin", "knowledge_fabric_agent", "agentic_butler"];
+const expectedN8nProbeStatuses = {
+  actor_twin: "completed",
+  knowledge_fabric_agent: "completed",
+  agentic_butler: "approval_required",
+};
 
 function readJson(filePath) {
   try {
@@ -46,6 +51,19 @@ function hasAgent(collection, agentId) {
   if (Array.isArray(collection)) return collection.some((agent) => agent.agent_id === agentId);
   if (collection && typeof collection === "object") return Object.prototype.hasOwnProperty.call(collection, agentId);
   return false;
+}
+
+function getAgent(collection, agentId) {
+  if (Array.isArray(collection)) return collection.find((agent) => agent.agent_id === agentId) || null;
+  if (collection && typeof collection === "object") return collection[agentId] || null;
+  return null;
+}
+
+function requireProbeStatusCommand(command, agentId, source) {
+  const expected = expectedN8nProbeStatuses[agentId];
+  if (!command || !String(command).includes(`--response-status ${expected}`)) {
+    throw new Error(`${source} for ${agentId} must use --response-status ${expected}`);
+  }
 }
 
 function checkContractArtifacts(root) {
@@ -83,6 +101,21 @@ function checkContractArtifacts(root) {
   for (const agentId of requiredN8nAgents) {
     if (!hasAgent(preflight.agents, agentId)) {
       throw new Error(`n8n-live-readiness-preflight.json missing ${agentId}`);
+    }
+  }
+
+  for (const agentId of requiredN8nAgents) {
+    const preflightAgent = getAgent(preflight.agents, agentId);
+    const preflightAction = getAgent(preflight.next_actions, agentId);
+    const handoffAgent = getAgent(handoffCommands.agents, agentId);
+    const checklistAgent = getAgent(completionChecklist.agents, agentId);
+    const checklistProbe = (checklistAgent?.open_items || []).find((item) => item.type === "live_probe");
+    requireProbeStatusCommand(preflightAgent?.commands?.record_probe_evidence, agentId, "preflight agent command");
+    requireProbeStatusCommand(preflightAction?.record_probe_evidence, agentId, "preflight next action command");
+    requireProbeStatusCommand(handoffAgent?.commands?.record_probe, agentId, "handoff command");
+    requireProbeStatusCommand(checklistProbe?.command, agentId, "completion checklist command");
+    if (handoffAgent?.expected_response_status !== expectedN8nProbeStatuses[agentId]) {
+      throw new Error(`handoff expected_response_status for ${agentId} must be ${expectedN8nProbeStatuses[agentId]}`);
     }
   }
 

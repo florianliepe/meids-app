@@ -18,6 +18,7 @@ const checks = [
   [node, ["scripts/write-n8n-live-readiness-preflight.cjs", "--check"]],
   [node, ["scripts/write-zielmodus-4-live-completion-checklist.cjs", "--check"]],
   [node, ["scripts/write-n8n-live-handoff-commands.cjs", "--check"]],
+  [node, ["scripts/validate-n8n-live-artifacts.cjs"]],
   [node, ["scripts/validate-zielmodus-4-readiness.cjs"]],
   [node, ["scripts/pages-smoke-check.cjs", "frontend"]],
   [node, ["scripts/build-pages-static.cjs", "--output", artifactCheckDir]],

@@ -27,16 +27,19 @@ const requiredAgents = [
     agent_id: "actor_twin",
     agent_name: "Actor Twin",
     secret: "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
+    expected_response_status: "completed",
   },
   {
     agent_id: "knowledge_fabric_agent",
     agent_name: "Knowledge Fabric Agent",
     secret: "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+    expected_response_status: "completed",
   },
   {
     agent_id: "agentic_butler",
     agent_name: "Agentic Butler",
     secret: "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+    expected_response_status: "approval_required",
   },
 ];
 
@@ -111,7 +114,7 @@ function buildAgentRow(agent, runtime, replay, evidence) {
     },
     commands: {
       set_url: `node scripts/set-n8n-agent-url.cjs --agent ${agent.agent_id} --url https://YOUR-N8N-HOST/webhook/...`,
-      record_probe_evidence: `node scripts/record-n8n-live-probe-evidence.cjs --agent ${agent.agent_id} --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed`,
+      record_probe_evidence: `node scripts/record-n8n-live-probe-evidence.cjs --agent ${agent.agent_id} --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status ${agent.expected_response_status}`,
     },
     blockers,
   };
