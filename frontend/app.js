@@ -13345,6 +13345,7 @@ function renderZielmodus4LiveHandoffGrid() {
           <a class="secondary small" href="${escapeHtml(probeArtifact)}" target="_blank" rel="noreferrer">Probe evidence</a>
           <a class="secondary small" href="${escapeHtml(preflightArtifact)}" target="_blank" rel="noreferrer">Preflight</a>
           <a class="secondary small" href="${escapeHtml(handoffArtifact)}" target="_blank" rel="noreferrer">Handoff commands</a>
+          <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/production/n8n-live-probe-runbook.md"))}" target="_blank" rel="noreferrer">Probe runbook</a>
           <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/production/zielmodus-4-live-completion-plan.md"))}" target="_blank" rel="noreferrer">Completion plan</a>
           <a class="secondary small" href="${escapeHtml(githubBlobUrl("frontend/assets/zielmodus-4-live-completion-checklist.json"))}" target="_blank" rel="noreferrer">Checklist JSON</a>
         </div>
