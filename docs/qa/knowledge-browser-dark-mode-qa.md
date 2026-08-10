@@ -4,6 +4,22 @@ Date: 2026-08-09
 
 Latest update: 2026-08-10
 
+## Latest Local QA Pass For Knowledge Graph Legend Polish
+
+- Added a CSS-only dark-mode polish layer for Knowledge Graph semantic legends.
+- Made approved/source-backed, inferred, candidate, and contradiction states more visually distinct.
+- Preserved the existing graph data model, controls, and interaction behavior.
+- Re-ran pages smoke check and browser dark-mode QA.
+- Result: all 6 browser QA cases passed.
+- Minimum measured contrast in this pass: `18.65`.
+- Screenshot evidence:
+  - `docs/visual-qa/screenshots-20260810-z4-graph-legend-dark-polish/`
+
+Validation commands:
+
+- `node scripts/pages-smoke-check.cjs frontend`
+- `NODE_PATH=<bundled-node-modules> node scripts/browser-dark-mode-qa.cjs frontend docs/visual-qa/screenshots-20260810-z4-graph-legend-dark-polish`
+
 ## Latest Local QA Pass For Knowledge Browser Dark Polish
 
 - Added a CSS-only dark-mode polish layer for Knowledge Browser increment rows.

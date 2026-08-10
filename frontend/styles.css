@@ -26507,6 +26507,75 @@ body.theme-dark .graph-preset-bar button.active {
   border-color: color-mix(in srgb, var(--accent) 62%, #3c463a);
 }
 
+/* Knowledge Graph dark-mode legend polish: make graph semantics scannable. */
+body.theme-dark .graph-legend,
+body.theme-dark .graph-inference-legend,
+body.theme-dark .graph-confidence-legend {
+  background:
+    linear-gradient(145deg, rgba(122, 216, 191, 0.055), rgba(16, 20, 17, 0.94));
+  border-color: rgba(241, 235, 224, 0.13);
+  box-shadow: none;
+}
+
+body.theme-dark .graph-legend-head strong,
+body.theme-dark .graph-inference-legend > div:first-child strong,
+body.theme-dark .graph-confidence-legend > div:first-child strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .graph-legend-head small,
+body.theme-dark .graph-inference-legend-lanes small,
+body.theme-dark .graph-confidence-band small {
+  color: #c9c0b3;
+}
+
+body.theme-dark .graph-legend-item,
+body.theme-dark .graph-inference-legend-lanes article,
+body.theme-dark .graph-confidence-band {
+  background: rgba(19, 24, 20, 0.9);
+  border-color: rgba(241, 235, 224, 0.13);
+}
+
+body.theme-dark .graph-legend-item.explicit,
+body.theme-dark .graph-inference-legend-lanes article.approved-use {
+  background: rgba(122, 216, 191, 0.1);
+  border-color: rgba(122, 216, 191, 0.34);
+}
+
+body.theme-dark .graph-legend-item.inferred,
+body.theme-dark .graph-inference-legend-lanes article.inferred-use {
+  background: rgba(122, 167, 216, 0.11);
+  border-color: rgba(122, 167, 216, 0.36);
+}
+
+body.theme-dark .graph-legend-item.candidate,
+body.theme-dark .graph-legend-item.duplicate-candidate,
+body.theme-dark .graph-inference-legend-lanes article.candidate-use {
+  background: rgba(215, 179, 109, 0.11);
+  border-color: rgba(215, 179, 109, 0.36);
+}
+
+body.theme-dark .graph-legend-item.contradiction-candidate {
+  background: rgba(226, 141, 118, 0.12);
+  border-color: rgba(226, 141, 118, 0.38);
+}
+
+body.theme-dark .graph-legend-item.active,
+body.theme-dark .graph-legend-item:hover {
+  background: rgba(122, 216, 191, 0.16);
+  border-color: rgba(122, 216, 191, 0.52);
+}
+
+body.theme-dark .graph-legend-item strong,
+body.theme-dark .graph-inference-legend-lanes strong,
+body.theme-dark .graph-confidence-band strong {
+  color: #fff8ea;
+}
+
+body.theme-dark .graph-legend-item small {
+  color: #c9c0b3;
+}
+
 body.theme-dark .graph-demo-flow-panel,
 body.theme-dark .graph-demo-flow-steps button {
   background:
