@@ -326,6 +326,19 @@ Latest local QA pass for lifecycle graph handoff actions:
 
 This pass adds graph-curator handoff actions directly to the Knowledge Fabric lifecycle trace. Reviewers can now move from lifecycle evidence to graph inspection, graph promotion history export, OKF+graph package export, or repo-sync JSON without hunting through lower dashboard panels. Screenshots are stored in `docs/visual-qa/screenshots-20260810-lifecycle-graph-handoff-actions/`.
 
+Latest local QA pass for trusted retrieval readiness:
+
+- `node --check frontend/app.js`
+- `node scripts/pages-smoke-check.cjs frontend`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- Targeted Playwright assertions open `?view=quality&quality=production`, expand the Production/Repository cockpit disclosures, and verify visible `.trusted-retrieval-readiness`, five readiness cards, dark mode, and zero horizontal overflow at `390px` and `1440px`.
+
+This pass adds a compact trusted retrieval readiness panel to the Production/Review Cockpit. It ties OKF source trust, graph relation promotion, vector adapter boundary, Postgres graph projection, and live n8n handoff state into one operator-readable signal. Screenshots are stored in `docs/visual-qa/screenshots-20260810-trusted-retrieval-readiness/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

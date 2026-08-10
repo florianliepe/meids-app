@@ -1,0 +1,36 @@
+{
+  "desktop": {
+    "title": "Start the local MVP server.",
+    "visible": true,
+    "panelText": "Trusted retrieval readiness review gated Actor Twin must treat OKF drafts, unaccepted graph edges, and vector candidates as untrusted context until review gates pass. Copy packet warning OKF source trust 1 pending Approve source-backed OKF concepts before trusted Actor Twin retrieval. pending Graph relation trust 2 review events Accept candidate graph relations with evidence before graph-assisted retrieval. ready Vector adapter boundary handoff ready Adapter request shape is validated without Azure credentials. ready Graph projection schema tested Postgres graph tables are defined for hosted projection. blocked Live agent handoff fixture gated Live n8n URL slots for Knowledge Fabric Agent an",
+    "cardCount": 5,
+    "cards": [
+      "warning OKF source trust 1 pending Approve source-backed OKF concepts before trusted Actor Twin retrieval.",
+      "pending Graph relation trust 2 review events Accept candidate graph relations with evidence before graph-assisted retrieval.",
+      "ready Vector adapter boundary handoff ready Adapter request shape is validated without Azure credentials.",
+      "ready Graph projection schema tested Postgres graph tables are defined for hosted projection.",
+      "blocked Live agent handoff fixture gated Live n8n URL slots for Knowledge Fabric Agent and Agentic Butler are still required."
+    ],
+    "overflowX": 0,
+    "rawFallback": false,
+    "clipped": false,
+    "themeDark": true
+  },
+  "mobile": {
+    "title": "Start the local MVP server.",
+    "visible": true,
+    "panelText": "Trusted retrieval readiness review gated Actor Twin must treat OKF drafts, unaccepted graph edges, and vector candidates as untrusted context until review gates pass. Copy packet warning OKF source trust 1 pending Approve source-backed OKF concepts before trusted Actor Twin retrieval. pending Graph relation trust 2 review events Accept candidate graph relations with evidence before graph-assisted retrieval. ready Vector adapter boundary handoff ready Adapter request shape is validated without Azure credentials. ready Graph projection schema tested Postgres graph tables are defined for hosted projection. blocked Live agent handoff fixture gated Live n8n URL slots for Knowledge Fabric Agent an",
+    "cardCount": 5,
+    "cards": [
+      "warning OKF source trust 1 pending Approve source-backed OKF concepts before trusted Actor Twin retrieval.",
+      "pending Graph relation trust 2 review events Accept candidate graph relations with evidence before graph-assisted retrieval.",
+      "ready Vector adapter boundary handoff ready Adapter request shape is validated without Azure credentials.",
+      "ready Graph projection schema tested Postgres graph tables are defined for hosted projection.",
+      "blocked Live agent handoff fixture gated Live n8n URL slots for Knowledge Fabric Agent and Agentic Butler are still required."
+    ],
+    "overflowX": 0,
+    "rawFallback": false,
+    "clipped": false,
+    "themeDark": true
+  }
+}

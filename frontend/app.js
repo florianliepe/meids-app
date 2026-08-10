@@ -26329,6 +26329,7 @@ function renderProductionKnowledgeRepoReadiness() {
         <a class="secondary small" href="${agentConfigUrl}" target="_blank" rel="noreferrer">Open agent-config handoff</a>
         ${bridge.compare_url ? `<a class="secondary small" href="${escapeHtml(bridge.compare_url)}" target="_blank" rel="noreferrer">Open knowledge compare</a>` : ""}
       </div>
+      ${renderProductionTrustedRetrievalReadiness()}
       <div class="production-graph-review-gates">
         <div class="production-graph-review-head">
           <span class="badge">Graph review gates</span>
@@ -26355,6 +26356,153 @@ function renderProductionKnowledgeRepoReadiness() {
     </section>
   `;
   bindConceptSourceActions(target);
+  target.querySelector("[data-production-action='copyTrustedRetrievalPacket']")?.addEventListener("click", copyTrustedRetrievalReadinessPacket);
+}
+
+function productionTrustedRetrievalReadiness() {
+  const concepts = Array.isArray(state.concepts) && state.concepts.length ? state.concepts : buildStaticPagesConcepts();
+  const conceptSummary = knowledgeSourceReadinessSummary(concepts);
+  const promotions = graphPromotionHistoryItems(120);
+  const acceptedPromotions = promotions.filter((item) => ["approved", "accepted"].includes(String(item.review_state || item.decision || "").toLowerCase()));
+  const acceptedWithEvidence = acceptedPromotions.filter((item) => graphPromotionEvidenceRefs(item).length > 0);
+  const blockedPromotions = promotions.filter((item) => ["rejected", "needs-rework", "blocked"].includes(String(item.review_state || item.decision || "").toLowerCase()));
+  const okf = state.okfValidationStatus || {};
+  const summary = okf.summary || {};
+  const vectorFixtureReady = Number(summary.vector_request_fixture_count || 0) > 0;
+  const repoSyncReady = Number(summary.repo_sync_package_fixture_count || 0) > 0;
+  const postgresGraphReady = Number(summary.postgres_graph_schema_count || 0) > 0;
+  const agentReadiness = productionAgentUrlReadiness();
+  const knowledgeAgent = agentReadiness.find((agent) => agent.agentId === "knowledge_fabric_agent") || {};
+  const butlerAgent = agentReadiness.find((agent) => agent.agentId === "agentic_butler") || {};
+  const okfTrusted = conceptSummary.approved > 0 && conceptSummary.evidenceApproved > 0;
+  const graphTrusted = acceptedPromotions.length > 0 && acceptedWithEvidence.length === acceptedPromotions.length;
+  const vectorReadyForHandoff = vectorFixtureReady && repoSyncReady && okf.status === "passed";
+  const liveReady = Boolean(knowledgeAgent.configured && butlerAgent.configured);
+  const usable = okfTrusted && (graphTrusted || acceptedPromotions.length === 0) && vectorReadyForHandoff;
+  const status = !conceptSummary.total || !okfTrusted
+    ? "blocked"
+    : usable && liveReady
+      ? "ready"
+      : usable
+        ? "pending"
+        : "warning";
+  const cards = [
+    {
+      key: "okf",
+      label: "OKF source trust",
+      value: okfTrusted ? `${conceptSummary.approved} approved` : `${conceptSummary.pending} pending`,
+      state: okfTrusted ? "ready" : conceptSummary.approved ? "warning" : "blocked",
+      detail: okfTrusted
+        ? `${conceptSummary.evidenceApproved} concepts have approved evidence signals.`
+        : "Approve source-backed OKF concepts before trusted Actor Twin retrieval.",
+    },
+    {
+      key: "graph",
+      label: "Graph relation trust",
+      value: acceptedPromotions.length ? `${acceptedPromotions.length} accepted` : `${promotions.length} review events`,
+      state: graphTrusted ? "ready" : acceptedPromotions.length ? "warning" : promotions.length ? "pending" : "blocked",
+      detail: graphTrusted
+        ? "Accepted graph relations have evidence references."
+        : blockedPromotions.length
+          ? `${blockedPromotions.length} blocked/rework relation decisions remain excluded from trusted retrieval.`
+          : "Accept candidate graph relations with evidence before graph-assisted retrieval.",
+    },
+    {
+      key: "vector",
+      label: "Vector adapter boundary",
+      value: vectorReadyForHandoff ? "handoff ready" : vectorFixtureReady ? "fixture only" : "deferred",
+      state: vectorReadyForHandoff ? "ready" : vectorFixtureReady ? "warning" : "pending",
+      detail: vectorReadyForHandoff
+        ? "Adapter request shape is validated without Azure credentials."
+        : "Vector refresh remains staged until OKF repo-sync and credentials are available.",
+    },
+    {
+      key: "projection",
+      label: "Graph projection",
+      value: postgresGraphReady ? "schema tested" : "missing",
+      state: postgresGraphReady ? "ready" : "pending",
+      detail: postgresGraphReady
+        ? "Postgres graph tables are defined for hosted projection."
+        : "Hosted graph projection waits for validated Postgres schema.",
+    },
+    {
+      key: "handoff",
+      label: "Live agent handoff",
+      value: liveReady ? "configured" : "fixture gated",
+      state: liveReady ? "ready" : "blocked",
+      detail: liveReady
+        ? "Knowledge Fabric Agent and Agentic Butler URLs are configured."
+        : "Live n8n URL slots for Knowledge Fabric Agent and Agentic Butler are still required.",
+    },
+  ];
+  return {
+    status,
+    status_label: status === "ready" ? "trusted live" : status === "pending" ? "trusted local" : status === "warning" ? "partial trust" : "review gated",
+    actor_policy: usable
+      ? "Actor Twin may use approved OKF concepts and accepted evidence-backed graph relations; draft/pending material stays attributed."
+      : "Actor Twin must treat OKF drafts, unaccepted graph edges, and vector candidates as untrusted context until review gates pass.",
+    concept_summary: conceptSummary,
+    graph_summary: {
+      promotion_count: promotions.length,
+      accepted_count: acceptedPromotions.length,
+      accepted_with_evidence_count: acceptedWithEvidence.length,
+      blocked_or_rework_count: blockedPromotions.length,
+    },
+    vector_summary: {
+      fixture_ready: vectorFixtureReady,
+      repo_sync_ready: repoSyncReady,
+      postgres_graph_ready: postgresGraphReady,
+      credentials_required_now: false,
+    },
+    live_agent_summary: {
+      knowledge_fabric_agent: knowledgeAgent.configured ? "configured" : "awaiting_url",
+      agentic_butler: butlerAgent.configured ? "configured" : "awaiting_url",
+    },
+    cards,
+  };
+}
+
+function renderProductionTrustedRetrievalReadiness() {
+  const readiness = productionTrustedRetrievalReadiness();
+  return `
+    <section class="trusted-retrieval-readiness ${escapeHtml(readiness.status)}" aria-label="Trusted retrieval readiness">
+      <div class="trusted-retrieval-head">
+        <div>
+          <span class="badge">Trusted retrieval readiness</span>
+          <strong>${escapeHtml(readiness.status_label)}</strong>
+          <p>${escapeHtml(readiness.actor_policy)}</p>
+        </div>
+        <button class="secondary small" type="button" data-production-action="copyTrustedRetrievalPacket">Copy packet</button>
+      </div>
+      <div class="trusted-retrieval-grid">
+        ${readiness.cards.map((card) => `
+          <article class="${escapeHtml(card.state)}">
+            <span>${escapeHtml(card.state)}</span>
+            <strong>${escapeHtml(card.label)}</strong>
+            <p>${escapeHtml(card.value)}</p>
+            <small>${escapeHtml(card.detail)}</small>
+          </article>
+        `).join("")}
+      </div>
+      <small>Use rule: approved OKF and accepted evidence-backed graph relations can inform trusted answers. Drafts and inferred edges require visible attribution or human review.</small>
+    </section>
+  `;
+}
+
+async function copyTrustedRetrievalReadinessPacket() {
+  const readiness = productionTrustedRetrievalReadiness();
+  const packet = {
+    artifact_type: "trusted_retrieval_readiness",
+    generated_at: new Date().toISOString(),
+    boundary: "Public-safe cockpit evidence only. Does not mutate OKF storage, graph projection, vector indexes, GitHub, MCP, or n8n.",
+    readiness,
+  };
+  const copied = await copyTextToClipboard(JSON.stringify(packet, null, 2));
+  showToast(
+    copied ? "Trusted retrieval packet copied" : "Trusted retrieval packet copy failed",
+    copied ? readiness.status_label : "Clipboard access unavailable.",
+    copied ? "success" : "error",
+  );
 }
 
 function productionAgentUrlReadiness() {
