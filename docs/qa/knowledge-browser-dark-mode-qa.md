@@ -410,6 +410,19 @@ Latest local QA pass for Production URL resolution checklist:
 
 This pass adds a compact operator checklist in the Production Cockpit that maps each top-level agent from fixture contract to live n8n URL, probe, trace, and approval evidence. It makes the remaining live URL blocker explicit before production trace review. Screenshots are stored in `docs/visual-qa/screenshots-20260810-production-url-resolution-checklist/`.
 
+Latest local QA pass for Production n8n workflow handoff packet:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+- Targeted Playwright assertions open `?view=quality&quality=production`, activate the Production tab, verify visible `.production-n8n-handoff-packet`, Knowledge Fabric Agent and Agentic Butler workflow briefs, public UAT secret keys, ingest/approval language, copy actions, and zero horizontal overflow at `390px` and `1440px`.
+
+This pass adds a copyable n8n workflow handoff packet to the Production Cockpit. It gives the n8n builder the missing workflow briefs, fixture contracts, runtime keys, GitHub secret names, probe payloads, and post-creation sequence required before Knowledge Fabric Agent and Agentic Butler can move from fixture-ready to live UAT. Screenshots are stored in `docs/visual-qa/screenshots-20260810-production-n8n-handoff-packet/`.
+
 ## Browser QA Notes
 
 The browser QA script requires Playwright. In the Codex desktop runtime, run it with the bundled Node package path:

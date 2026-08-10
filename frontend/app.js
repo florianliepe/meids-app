@@ -26904,6 +26904,7 @@ function renderProductionAgentUrlReadiness(agents = []) {
       ${renderProductionAgentUrlResolutionChecklist(agents)}
       ${missing.length ? renderN8nCurrentSupportedConfigPath(missingConfig) : ""}
       ${missing.length ? renderProductionAgentMissingUrlSetup(missing) : ""}
+      ${missing.length ? renderProductionN8nHandoffPacket(missing) : ""}
       <div class="production-agent-url-grid">
         ${agents.map((agent) => `
           <article class="${escapeHtml(agent.className)}">
@@ -27161,6 +27162,140 @@ function safeJsonParse(text = "", fallback = null) {
   } catch (_error) {
     return fallback;
   }
+}
+
+function renderProductionN8nHandoffPacket(missing = []) {
+  const docs = [
+    "docs/n8n-live-url-configuration.md",
+    "docs/production/agent-config-handoff-package.md",
+    "contracts/n8n/agent-config-public-export.json",
+  ];
+  const packet = buildProductionN8nHandoffPacket(missing);
+  return `
+    <section class="production-n8n-handoff-packet">
+      <div class="production-n8n-handoff-head">
+        <div>
+          <span class="badge">n8n workflow handoff</span>
+          <strong>${escapeHtml(`${missing.length} workflow brief${missing.length === 1 ? "" : "s"} ready`)}</strong>
+          <p>Copy this packet into the private agent-config or n8n build task. It describes what the missing workflows must do before their public UAT URLs can be wired into MeIDs.</p>
+        </div>
+        <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(packet, null, 2))}">Copy handoff packet</button>
+      </div>
+      <div class="production-n8n-handoff-docs">
+        ${docs.map((doc) => `<a class="secondary small" href="${escapeHtml(githubBlobUrl(doc))}" target="_blank" rel="noreferrer">${escapeHtml(doc.split("/").pop() || doc)}</a>`).join("")}
+      </div>
+      <div class="production-n8n-handoff-grid">
+        ${packet.target_agents.map((agent) => `
+          <article class="production-n8n-handoff-card">
+            <header>
+              <span>${escapeHtml(agent.status)}</span>
+              <strong>${escapeHtml(agent.agent_name)}</strong>
+            </header>
+            <p>${escapeHtml(agent.role_summary)}</p>
+            <dl>
+              <div><dt>Workflow brief</dt><dd>${escapeHtml(agent.workflow_brief)}</dd></div>
+              <div><dt>Fixture contract</dt><dd><a href="${escapeHtml(githubBlobUrl(agent.fixture_contract))}" target="_blank" rel="noreferrer">${escapeHtml(agent.fixture_contract)}</a></dd></div>
+              <div><dt>Runtime key</dt><dd><code>${escapeHtml(agent.runtime_config_key)}</code></dd></div>
+              <div><dt>GitHub secret</dt><dd><code>${escapeHtml(agent.github_secret)}</code></dd></div>
+            </dl>
+            <ol class="production-n8n-handoff-sequence">
+              ${agent.workflow_sequence.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}
+            </ol>
+            <div class="button-row tight">
+              <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(agent, null, 2))}">Copy agent brief</button>
+              <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(agent.probe_payload, null, 2))}">Copy probe</button>
+              <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(agent.github_secret)}">Copy secret</button>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function buildProductionN8nHandoffPacket(missing = []) {
+  return {
+    artifact_type: "meids_n8n_workflow_handoff_packet",
+    generated_at: new Date().toISOString(),
+    public_safe: true,
+    status: "handoff_ready_url_blocked",
+    boundary: "Use this packet to create or publish public UAT n8n webhooks. Do not paste private credentials or production-only URLs into the public GitHub Pages runtime asset.",
+    required_after_workflow_creation: [
+      "Add the public UAT webhook URL to the matching GitHub Pages repository secret or runtime config key.",
+      "Rerun the Pages workflow or regenerate frontend/assets/n8n-runtime-readiness-status.json.",
+      "Run the Production Cockpit live probe.",
+      "Capture a non-demo n8n trace before production approval.",
+    ],
+    target_agents: missing.map(productionN8nHandoffAgentBrief),
+  };
+}
+
+function productionN8nHandoffAgentBrief(agent = {}) {
+  const agentId = agent.agentId || agent.id || "";
+  const row = productionAgentMissingUrlSetupRow(agent);
+  const roleSummaryByAgent = {
+    knowledge_fabric_agent: "Owns ingest and curation. Converts uploads and transcripts into pending OKF concepts with evidence, CRUD audit events, graph-curator triggers, and vector-refresh handoff payloads.",
+    agentic_butler: "Owns execution. Activates approved skills, runs the internal Skill Orchestrator, coordinates task agents, pauses for approval gates, and returns traceable work outputs.",
+    actor_twin: "Owns user-facing answer and steering. Interprets intent, retrieves OKF/vector/graph context, and escalates work execution to Agentic Butler when needed.",
+  };
+  const workflowBriefByAgent = {
+    knowledge_fabric_agent: "Build a webhook workflow that accepts source_text/file metadata, validates the OKF ingest request, writes a pending concept draft, stores source evidence, appends CRUD/audit events, emits candidate graph edges, and returns a public-safe ingest summary.",
+    agentic_butler: "Build a webhook workflow that accepts approved skill activation requests, loads the skill config, runs the internal skill-orchestrator sequence, stops before requires_human actions, and returns either a completed work artifact or an approval-required response.",
+    actor_twin: "Build a webhook workflow that accepts Chat intent requests, resolves persona and retrieval context, returns grounded answer output, and flags escalation to Agentic Butler for work execution.",
+  };
+  const sequenceByAgent = {
+    knowledge_fabric_agent: [
+      "Webhook receives upload/transcript ingest envelope.",
+      "Validate tenant, active twin, source type, and public-safe payload shape.",
+      "Create pending OKF concept markdown/YAML and evidence references.",
+      "Append CRUD/audit event and prepare graph-curator candidate edges.",
+      "Return response with concept status pending-review and trace metadata.",
+    ],
+    agentic_butler: [
+      "Webhook receives skill activation envelope from Chat.",
+      "Validate skill is approved/active and source context is available.",
+      "Run internal Skill Orchestrator and task-agent steps within max step budget.",
+      "Pause and return approval_required before emails, meetings, external commitments, or requires_human actions.",
+      "Return skill output, approval request, trace metadata, and suggested knowledge capture candidates.",
+    ],
+    actor_twin: [
+      "Webhook receives user query and active twin context.",
+      "Classify answer-only versus work-execution intent.",
+      "Retrieve OKF, graph, and optional vector context where available.",
+      "Return grounded answer or route recommendation with trace metadata.",
+      "Escalate to human or Agentic Butler when outside answer boundary.",
+    ],
+  };
+  const approvalBoundaryByAgent = {
+    knowledge_fabric_agent: "May create pending concepts and candidate edges. Must not approve concepts, promote graph edges, or refresh trusted production retrieval without review policy approval.",
+    agentic_butler: "May draft and orchestrate approved skills. Must pause before external actions, meeting creation, email sending, irreversible commitments, or any requires_human step.",
+    actor_twin: "May answer and steer. Must not execute work or external actions directly; execution routes to Agentic Butler.",
+  };
+  return {
+    agent_id: agentId,
+    agent_name: row.agent_name,
+    status: row.status || "missing URL",
+    role_summary: roleSummaryByAgent[agentId] || row.required_capability,
+    workflow_brief: workflowBriefByAgent[agentId] || row.required_capability,
+    workflow_sequence: sequenceByAgent[agentId] || [
+      "Receive webhook envelope.",
+      "Validate public-safe request contract.",
+      "Execute agent-specific task boundary.",
+      "Return contract-compliant response and trace metadata.",
+    ],
+    fixture_contract: row.agent_id === "agentic_butler"
+      ? "contracts/n8n/fixtures/agentic-butler.json"
+      : row.agent_id === "knowledge_fabric_agent"
+        ? "contracts/n8n/fixtures/knowledge-fabric-agent.json"
+        : "contracts/n8n/fixtures/actor-twin.json",
+    workflow_target: agent.workflow || `workflows/n8n/${String(agentId).replace(/_/g, "-")}.workflow.json`,
+    github_secret: row.github_secret,
+    runtime_config_key: row.runtime_key,
+    approval_boundary: approvalBoundaryByAgent[agentId] || "Follow the documented approval boundary in the agent contract.",
+    probe_payload: row.probe_payload,
+    runtime_config_snippet: row.runtime_config_snippet,
+    next_probe: row.next_probe,
+  };
 }
 
 function renderProductionAgentLiveGateBoard(agents = []) {

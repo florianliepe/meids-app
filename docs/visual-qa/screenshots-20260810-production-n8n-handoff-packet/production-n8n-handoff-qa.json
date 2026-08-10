@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-08-10T17:13:20.693Z",
+  "results": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 1000,
+      "hasPacket": true,
+      "hasKnowledgeFabric": true,
+      "hasButler": true,
+      "hasKnowledgeSecret": true,
+      "hasButlerSecret": true,
+      "hasIngestLanguage": true,
+      "hasApprovalLanguage": true,
+      "copyButtons": 7,
+      "bodyWidth": 1440,
+      "viewportWidth": 1440,
+      "horizontalOverflow": false,
+      "packetWidth": 558.65625
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 920,
+      "hasPacket": true,
+      "hasKnowledgeFabric": true,
+      "hasButler": true,
+      "hasKnowledgeSecret": true,
+      "hasButlerSecret": true,
+      "hasIngestLanguage": true,
+      "hasApprovalLanguage": true,
+      "copyButtons": 7,
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "horizontalOverflow": false,
+      "packetWidth": 195
+    }
+  ],
+  "failures": []
+}

@@ -14089,6 +14089,124 @@ body.theme-dark .graph-promotion-flow small {
   white-space: normal;
 }
 
+.production-n8n-handoff-packet {
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 42%),
+    color-mix(in srgb, var(--surface) 86%, transparent);
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.production-n8n-handoff-head {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.production-n8n-handoff-head strong {
+  color: var(--ink);
+  display: block;
+  font-size: 0.98rem;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+
+.production-n8n-handoff-head p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.38;
+  margin: 4px 0 0;
+}
+
+.production-n8n-handoff-docs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.production-n8n-handoff-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.production-n8n-handoff-card {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--accent) 46%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-quiet) 84%, transparent);
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.production-n8n-handoff-card header {
+  display: grid;
+  gap: 4px;
+}
+
+.production-n8n-handoff-card header span {
+  color: var(--warn-strong);
+  font-size: 0.66rem;
+  font-weight: 860;
+  text-transform: uppercase;
+}
+
+.production-n8n-handoff-card strong {
+  color: var(--ink);
+  font-size: 0.94rem;
+  line-height: 1.15;
+}
+
+.production-n8n-handoff-card p,
+.production-n8n-handoff-card dt,
+.production-n8n-handoff-card dd,
+.production-n8n-handoff-sequence {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.34;
+  margin: 0;
+}
+
+.production-n8n-handoff-card dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.production-n8n-handoff-card dl div {
+  display: grid;
+  gap: 2px;
+}
+
+.production-n8n-handoff-card dd {
+  overflow-wrap: anywhere;
+}
+
+.production-n8n-handoff-card code {
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--surface-strong) 76%, transparent);
+  color: var(--ink);
+  display: inline-block;
+  max-width: 100%;
+  padding: 3px 5px;
+  white-space: normal;
+}
+
+.production-n8n-handoff-sequence {
+  padding-left: 18px;
+}
+
+.production-n8n-handoff-sequence li + li {
+  margin-top: 3px;
+}
+
 .production-agent-url-grid {
   display: grid;
   gap: 8px;
@@ -29679,6 +29797,42 @@ body.theme-dark .production-agent-missing-url-grid code {
   border-color: rgba(232, 226, 214, 0.16);
 }
 
+body.theme-dark .production-n8n-handoff-packet {
+  background:
+    linear-gradient(135deg, rgba(122, 216, 191, 0.08), transparent 42%),
+    #1a211c;
+  border-color: rgba(122, 216, 191, 0.24);
+}
+
+body.theme-dark .production-n8n-handoff-card {
+  background: #1d241f;
+  border-color: rgba(232, 226, 214, 0.13);
+  border-left-color: #7ad8bf;
+}
+
+body.theme-dark .production-n8n-handoff-head strong,
+body.theme-dark .production-n8n-handoff-card strong,
+body.theme-dark .production-n8n-handoff-card code {
+  color: #fff8ea;
+}
+
+body.theme-dark .production-n8n-handoff-head p,
+body.theme-dark .production-n8n-handoff-card p,
+body.theme-dark .production-n8n-handoff-card dt,
+body.theme-dark .production-n8n-handoff-card dd,
+body.theme-dark .production-n8n-handoff-sequence {
+  color: #c9c0b3;
+}
+
+body.theme-dark .production-n8n-handoff-card header span {
+  color: #d7b36d;
+}
+
+body.theme-dark .production-n8n-handoff-card code {
+  background: #121713;
+  border-color: rgba(232, 226, 214, 0.16);
+}
+
 body.theme-dark .production-runtime-readiness-agents span {
   background: rgba(29, 36, 31, 0.9);
   border-color: rgba(232, 226, 214, 0.14);
@@ -30529,6 +30683,7 @@ body.theme-dark .graph-retrieval-contract-flow article {
 
   .production-agent-url-grid,
   .production-agent-missing-url-grid,
+  .production-n8n-handoff-grid,
   .production-agent-fixture-live-map,
   .production-agent-live-gate-table,
   .production-agent-rollout-grid {
@@ -30636,6 +30791,7 @@ body.theme-dark .graph-retrieval-contract-flow article {
   .production-agent-url-head,
   .production-agent-url-resolution-head,
   .production-agent-missing-url-head,
+  .production-n8n-handoff-head,
   .production-agent-rollout-head,
   .production-knowledge-repo-actions {
     display: grid;
@@ -30646,6 +30802,7 @@ body.theme-dark .graph-retrieval-contract-flow article {
   .trusted-retrieval-grid,
   .production-agent-url-grid,
   .production-agent-missing-url-grid,
+  .production-n8n-handoff-grid,
   .production-agent-fixture-live-map,
   .production-agent-live-gate-table,
   .production-agent-rollout-grid {
