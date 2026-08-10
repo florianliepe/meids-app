@@ -6,7 +6,11 @@ Owner: MeIDs production setup
 
 ## Purpose
 
-This document records the GitHub Pages workflow update needed to inject all three MeIDs top-level n8n agent URLs into `runtime-config.js` during deployment.
+This document records the GitHub Pages workflow update needed to inject all three MeIDs top-level n8n agent URLs into the public runtime assets during deployment:
+
+- `runtime-config.js`
+- `assets/agent-runtime-config.json`
+- `assets/n8n-runtime-readiness-status.json`
 
 ## Current Supported Paths
 
@@ -18,7 +22,7 @@ Fallback path for local/static public UAT testing: configure intentionally publi
 frontend/assets/agent-runtime-config.json
 ```
 
-That asset is copied unchanged into the GitHub Pages build and is already used by the Production/Review Cockpit to distinguish:
+That asset is used unchanged for local/static fallback testing. In the hosted GitHub Pages build, the workflow regenerates `dist-pages/assets/agent-runtime-config.json` from repository secrets and then regenerates `dist-pages/assets/n8n-runtime-readiness-status.json` from that same file. The Production/Review Cockpit uses these assets to distinguish:
 
 - `configured`
 - `awaiting_url`
@@ -73,7 +77,7 @@ diff --git a/.github/workflows/intellectual-twin-pages.yml b/.github/workflows/i
 +          if [ -n "$ACTOR_TWIN_WEBHOOK_URL" ]; then actor_status="configured"; fi
 +          if [ -n "$GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL" ]; then knowledge_status="configured"; fi
 +          if [ -n "$GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL" ]; then butler_status="configured"; fi
-           cat > dist-pages/runtime-config.js <<EOF
+          cat > dist-pages/runtime-config.js <<EOF
            window.INTELLECTUAL_TWIN_CONFIG = {
              apiBaseUrl: "$GH_PAGES_API_BASE_URL",
              assetBaseUrl: "",
@@ -106,8 +110,10 @@ diff --git a/.github/workflows/intellectual-twin-pages.yml b/.github/workflows/i
 +            },
 +            n8nChatEnabled: "$GH_PAGES_N8N_CHAT_WEBHOOK_URL" !== "" || "$ACTOR_TWIN_WEBHOOK_URL" !== "",
              staticPagesMode: "$GH_PAGES_API_BASE_URL" === ""
-           };
-           EOF
+          };
+          EOF
+          node scripts/write-pages-agent-runtime-config.cjs --output dist-pages/assets/agent-runtime-config.json
+          node scripts/write-n8n-runtime-readiness-status.cjs --config dist-pages/assets/agent-runtime-config.json --output dist-pages/assets/n8n-runtime-readiness-status.json
 ```
 
 ## Runtime Config Shape After Patch
@@ -136,6 +142,8 @@ window.INTELLECTUAL_TWIN_CONFIG = {
   staticPagesMode: true
 };
 ```
+
+The generated `dist-pages/assets/agent-runtime-config.json` mirrors the agent webhook and probe-slot values. The generated `dist-pages/assets/n8n-runtime-readiness-status.json` summarizes configured versus awaiting URL slots for cockpit badges and production readiness review.
 
 ## Validation After Secret Changes
 
