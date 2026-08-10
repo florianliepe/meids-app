@@ -154,6 +154,31 @@ Minimal public staging JSON shape:
 
 After adding a URL, the cockpit status should move from `missing URL` to `configured`. It only becomes `n8n connected` after the live probe reaches the workflow and records a trace.
 
+## Local Public UAT URL Helper
+
+For local UAT, use the checked-in helper to update the public staging runtime config and regenerate readiness artifacts in one step:
+
+```powershell
+& "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\set-n8n-agent-url.cjs `
+  --agent knowledge_fabric_agent `
+  --url "https://YOUR-N8N-HOST/webhook/YOUR-KNOWLEDGE-FABRIC-UAT-PATH"
+
+& "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\set-n8n-agent-url.cjs `
+  --agent agentic_butler `
+  --url "https://YOUR-N8N-HOST/webhook/YOUR-AGENTIC-BUTLER-UAT-PATH"
+```
+
+The helper:
+
+- accepts only `actor_twin`, `knowledge_fabric_agent`, or `agentic_butler`;
+- rejects non-HTTPS URLs and URLs without `/webhook/`;
+- rejects obvious token/API-key patterns;
+- writes `frontend/assets/agent-runtime-config.json`;
+- regenerates `frontend/assets/n8n-runtime-readiness-status.json`;
+- regenerates `frontend/assets/zielmodus-4-readiness-status.json`.
+
+Use this helper only for intentionally public UAT endpoints. For production, prefer GitHub Pages repository secrets or hosted backend secret injection.
+
 ## Chat-Level Contract Actions
 
 The Chat interaction setup now exposes the active agent contract directly beside the mode selector:

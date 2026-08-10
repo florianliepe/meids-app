@@ -103,6 +103,7 @@ const requirements = [
       "workflows/n8n/knowledge-fabric-agent.workflow.json",
       "workflows/n8n/agentic-butler.workflow.json",
       "scripts/validate-agent-config-export.cjs",
+      "scripts/set-n8n-agent-url.cjs",
       "frontend/assets/agent-runtime-config.json",
       "frontend/assets/n8n-runtime-readiness-status.json",
     ],
