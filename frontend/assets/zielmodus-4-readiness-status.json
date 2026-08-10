@@ -1,0 +1,163 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-10T20:48:57.564Z",
+  "status": "partial_live_url_blocked",
+  "mode": "public_safe",
+  "summary": {
+    "requirement_count": 9,
+    "ready_requirement_count": 9,
+    "qa_check_count": 2,
+    "passed_qa_check_count": 2,
+    "public_safe_ready": true,
+    "live_ready": false
+  },
+  "requirements": [
+    {
+      "id": "okf_schema",
+      "label": "OKF markdown/YAML schema",
+      "status": "ready",
+      "evidence": [
+        "docs/knowledge-fabric-okf-schema.md",
+        "contracts/okf/examples/concepts",
+        "contracts/okf/examples/evidence",
+        "contracts/okf/examples/transcripts",
+        "contracts/okf/examples/graph/nodes",
+        "contracts/okf/examples/graph/edges"
+      ],
+      "missing": []
+    },
+    {
+      "id": "repo_split",
+      "label": "Repo split target",
+      "status": "ready",
+      "evidence": [
+        "docs/production/repo-split-handoff-checklist.md",
+        "docs/production/agent-config-repo-scaffold.md"
+      ],
+      "missing": []
+    },
+    {
+      "id": "knowledge_fabric_ingest",
+      "label": "Knowledge Fabric Agent ingest path",
+      "status": "ready",
+      "evidence": [
+        "contracts/okf/ingest/sample-ingest-request.json",
+        "scripts/mock-okf-ingest.cjs",
+        "contracts/okf/generated/concepts",
+        "contracts/okf/generated/evidence",
+        "contracts/okf/generated/transcripts",
+        "contracts/okf/generated/audit",
+        "contracts/okf/generated/graph/edges"
+      ],
+      "missing": []
+    },
+    {
+      "id": "graph_promotion",
+      "label": "Graph relation promotion workflow",
+      "status": "ready",
+      "evidence": [
+        "contracts/okf/promotions/README.md",
+        "contracts/okf/promotions/approve-edge-example.json",
+        "contracts/okf/promotions/needs-rework-edge-example.json",
+        "contracts/okf/promotions/reject-edge-example.json",
+        "scripts/validate-graph-promotions.cjs"
+      ],
+      "missing": []
+    },
+    {
+      "id": "vector_boundary",
+      "label": "Vector DB adapter boundary without credentials",
+      "status": "ready",
+      "evidence": [
+        "contracts/okf/examples/vector",
+        "contracts/okf/negative/vector",
+        "scripts/validate-vector-adapter.cjs"
+      ],
+      "missing": []
+    },
+    {
+      "id": "browser_dark_mode",
+      "label": "Knowledge Browser dark-mode QA",
+      "status": "ready",
+      "evidence": [
+        "docs/qa/knowledge-browser-dark-mode-qa.md",
+        "docs/visual-qa/screenshots-20260810-z4-knowledge-browser-dark-polish/browser-dark-mode-qa.json",
+        "docs/visual-qa/screenshots-20260810-z4-final-audit/knowledge-desktop-dark.png",
+        "docs/visual-qa/screenshots-20260810-z4-final-audit/knowledge-mobile-dark.png"
+      ],
+      "missing": []
+    },
+    {
+      "id": "graph_dark_mode",
+      "label": "Knowledge Graph dark-mode QA",
+      "status": "ready",
+      "evidence": [
+        "docs/qa/knowledge-browser-dark-mode-qa.md",
+        "docs/visual-qa/screenshots-20260810-z4-graph-legend-dark-polish/browser-dark-mode-qa.json",
+        "docs/visual-qa/screenshots-20260810-z4-final-audit/graph-desktop-dark.png",
+        "docs/visual-qa/screenshots-20260810-z4-final-audit/graph-mobile-dark.png"
+      ],
+      "missing": []
+    },
+    {
+      "id": "agent_trace_ui",
+      "label": "Agent trace/history UI",
+      "status": "ready",
+      "evidence": [
+        "docs/visual-qa/screenshots-20260810-z4-chat-latest-agent-traces/chat-latest-agent-traces-qa.json",
+        "docs/visual-qa/screenshots-20260810-z4-final-audit/trace-dashboard-desktop-dark.png",
+        "docs/visual-qa/screenshots-20260810-z4-final-audit/trace-dashboard-mobile-dark.png"
+      ],
+      "missing": []
+    },
+    {
+      "id": "live_url_guidance",
+      "label": "Live n8n URL guidance",
+      "status": "ready",
+      "evidence": [
+        "docs/n8n-live-url-configuration.md",
+        "frontend/assets/agent-runtime-config.json",
+        "frontend/assets/n8n-runtime-readiness-status.json"
+      ],
+      "missing": []
+    }
+  ],
+  "qa": [
+    {
+      "status": "passed",
+      "path": "docs/visual-qa/screenshots-20260810-z4-final-audit/browser-dark-mode-qa.json",
+      "passed": true,
+      "case_count": 6,
+      "failures": []
+    },
+    {
+      "status": "passed",
+      "path": "docs/visual-qa/screenshots-20260810-z4-chat-latest-agent-traces/chat-latest-agent-traces-qa.json",
+      "passed": true,
+      "case_count": 2,
+      "failures": []
+    }
+  ],
+  "live_n8n": {
+    "status": "partial",
+    "configured_count": 1,
+    "awaiting_url_count": 2,
+    "required_agents": [
+      "actor_twin",
+      "knowledge_fabric_agent",
+      "agentic_butler"
+    ],
+    "missing_live_agents": [
+      "knowledge_fabric_agent",
+      "agentic_butler"
+    ],
+    "artifact_status": "partial",
+    "detail": "Missing live URL(s): knowledge_fabric_agent, agentic_butler"
+  },
+  "next_actions": [
+    "Configure GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL.",
+    "Configure GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL.",
+    "Regenerate runtime readiness artifacts and redeploy GitHub Pages.",
+    "Run cockpit live probes and capture n8n execution trace evidence."
+  ]
+}

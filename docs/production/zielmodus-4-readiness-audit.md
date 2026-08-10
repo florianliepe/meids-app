@@ -39,6 +39,8 @@ Run from the repository root:
 
 ```powershell
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" --check frontend\app.js
+& "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-zielmodus-4-readiness.cjs
+& "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-zielmodus-4-readiness.cjs --write
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-n8n-fixtures.cjs
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-okf-fixtures.cjs
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-graph-promotions.cjs
@@ -48,6 +50,18 @@ Run from the repository root:
 $env:NODE_PATH="C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\node_modules"
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\browser-dark-mode-qa.cjs frontend docs\visual-qa\screenshots-20260810-z4-final-audit
 ```
+
+## Machine Readiness Gate
+
+`scripts/validate-zielmodus-4-readiness.cjs` is the machine-checkable gate for this audit.
+
+| Command | Expected result now | Purpose |
+| --- | --- | --- |
+| `node scripts/validate-zielmodus-4-readiness.cjs` | Exit `0`, status `partial_live_url_blocked` | Confirms all public-safe evidence and QA are ready while live n8n URLs are still missing |
+| `node scripts/validate-zielmodus-4-readiness.cjs --write` | Exit `0`, writes `frontend/assets/zielmodus-4-readiness-status.json` | Publishes a static readiness artifact for GitHub Pages and operator review |
+| `node scripts/validate-zielmodus-4-readiness.cjs --require-live` | Exit `1` until both missing live URLs exist | Strict production/live gate for final Zielmodus closure |
+
+The current correct status is `partial_live_url_blocked`: all schema, fixture, graph, vector-boundary, trace, and dark-mode evidence is present; Knowledge Fabric Agent and Agentic Butler remain blocked on live webhook URLs.
 
 ## Live n8n Completion Gate
 
