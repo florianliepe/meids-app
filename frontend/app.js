@@ -12450,6 +12450,7 @@ function renderOkfValidationStatusPanel() {
   }
   const summary = status.summary || {};
   const vector = status.vector_eligibility || {};
+  const evidenceGaps = okfEvidenceReviewGapSummary(state.concepts || []);
   const paths = status.paths || {};
   const checks = Array.isArray(status.checks) ? status.checks : [];
   const statusClass = status.status === "passed" ? "ready" : status.status === "blocked" ? "pending" : "warning";
@@ -12482,6 +12483,19 @@ function renderOkfValidationStatusPanel() {
         ${(vector.statuses || []).map((item) => `<span class="${safeGraphClass(item)}">${escapeHtml(item)}</span>`).join("")}
       </div>
     </div>
+    <div class="okf-evidence-review-gaps ${evidenceGaps.missingReviewStateCount ? "warning" : "ready"}">
+      <div>
+        <span class="queue-kind">evidence review gate</span>
+        <strong>${escapeHtml(`${evidenceGaps.missingReviewStateCount}/${evidenceGaps.sourceLinkedConceptCount} source-linked concepts missing explicit evidence state`)}</strong>
+        <p>${escapeHtml(evidenceGaps.missingReviewStateCount ? "Add evidence_review_states before trusted vector refresh." : "Source-linked concepts carry explicit evidence review state.")}</p>
+      </div>
+      <div class="okf-vector-state-grid">
+        <span class="ready"><strong>${escapeHtml(String(evidenceGaps.approvedEvidenceConceptCount))}</strong><small>approved evidence</small></span>
+        <span class="pending"><strong>${escapeHtml(String(evidenceGaps.pendingEvidenceConceptCount))}</strong><small>pending evidence</small></span>
+        <span class="${evidenceGaps.blockedEvidenceConceptCount ? "warning" : "ready"}"><strong>${escapeHtml(String(evidenceGaps.blockedEvidenceConceptCount))}</strong><small>blocked evidence</small></span>
+        <span class="${evidenceGaps.missingReviewStateCount ? "warning" : "ready"}"><strong>${escapeHtml(String(evidenceGaps.missingReviewStateCount))}</strong><small>missing state</small></span>
+      </div>
+    </div>
     <div class="okf-validation-checks">
       ${checks.map((check) => `
         <article class="${check.status === "passed" ? "ready" : "pending"}">
@@ -12499,6 +12513,28 @@ function renderOkfValidationStatusPanel() {
       ${paths.vector_adapter_example ? `<a href="${escapeHtml(githubBlobUrl(paths.vector_adapter_example))}" target="_blank" rel="noreferrer">Vector adapter</a>` : ""}
     </div>
   `;
+}
+
+function okfEvidenceReviewGapSummary(concepts = []) {
+  return concepts.reduce((summary, concept) => {
+    const refs = conceptSourceRefs(concept);
+    if (!refs.length) return summary;
+    summary.sourceLinkedConceptCount += 1;
+    const states = Array.isArray(concept.evidence_review_states)
+      ? concept.evidence_review_states.map((item) => String(item || "").toLowerCase()).filter(Boolean)
+      : [];
+    if (!states.length) summary.missingReviewStateCount += 1;
+    if (states.some((stateValue) => stateValue === "approved")) summary.approvedEvidenceConceptCount += 1;
+    if (states.some((stateValue) => ["pending-review", "pending", "candidate", "draft"].includes(stateValue))) summary.pendingEvidenceConceptCount += 1;
+    if (states.some((stateValue) => ["blocked", "rejected", "needs-rework"].includes(stateValue))) summary.blockedEvidenceConceptCount += 1;
+    return summary;
+  }, {
+    sourceLinkedConceptCount: 0,
+    missingReviewStateCount: 0,
+    approvedEvidenceConceptCount: 0,
+    pendingEvidenceConceptCount: 0,
+    blockedEvidenceConceptCount: 0,
+  });
 }
 
 function githubBlobUrl(repoPath = "") {

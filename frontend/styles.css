@@ -8216,7 +8216,8 @@ body.theme-dark .graph-svg-edge-label text {
   color: var(--muted);
 }
 
-.okf-vector-eligibility {
+.okf-vector-eligibility,
+.okf-evidence-review-gaps {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 10px;
@@ -8226,7 +8227,13 @@ body.theme-dark .graph-svg-edge-label text {
   background: color-mix(in srgb, var(--accent) 5%, var(--surface));
 }
 
-.okf-vector-eligibility p {
+.okf-evidence-review-gaps.warning {
+  border-color: color-mix(in srgb, var(--warn) 40%, var(--line));
+  background: color-mix(in srgb, var(--warn) 7%, var(--surface));
+}
+
+.okf-vector-eligibility p,
+.okf-evidence-review-gaps p {
   margin: 4px 0 0;
   color: var(--muted);
 }
@@ -8287,9 +8294,15 @@ body.theme-dark .graph-svg-edge-label text {
 body.theme-dark .okf-validation-summary,
 body.theme-dark .okf-validation-checks article,
 body.theme-dark .okf-vector-eligibility,
+body.theme-dark .okf-evidence-review-gaps,
 body.theme-dark .okf-vector-state-grid span {
   border-color: rgba(241, 235, 224, 0.18);
   background: #171d18;
+}
+
+body.theme-dark .okf-evidence-review-gaps.warning {
+  border-color: rgba(241, 208, 140, 0.34);
+  background: rgba(215, 168, 79, 0.08);
 }
 
 body.theme-dark .okf-validation-summary.ready {
