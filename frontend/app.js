@@ -339,6 +339,11 @@ function bindViewFilters() {
     if (select) select.value = state.conceptSourceFilter;
     renderConcepts();
   });
+  $("#knowledgeRetrievalPresetBar")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-knowledge-retrieval-preset]");
+    if (!button) return;
+    applyKnowledgeRetrievalPreset(button.dataset.knowledgeRetrievalPreset || "all");
+  });
   $("#conceptDensityBtn")?.addEventListener("click", () => {
     state.conceptDensity = state.conceptDensity === "compact" ? "comfortable" : "compact";
     renderConcepts();
@@ -2085,6 +2090,17 @@ function applyGraphReasoningPreset(preset) {
       focus: false,
       search: "skill",
     },
+    trusted: {
+      includeDrafts: false,
+      nodeType: "all",
+      review: "approved",
+      edgeType: "all",
+      edgeClass: "explicit",
+      density: "compact",
+      layout: "evidence",
+      focus: false,
+      search: "",
+    },
   }[preset];
   if (!settings) return;
   state.graphReasoningPreset = preset;
@@ -2097,7 +2113,7 @@ function applyGraphReasoningPreset(preset) {
   state.graphNodeTypeFilter = settings.nodeType;
   state.graphReviewFilter = settings.review;
   state.graphEdgeTypeFilter = settings.edgeType;
-  state.graphEdgeClassFilter = "all";
+  state.graphEdgeClassFilter = settings.edgeClass || "all";
   state.graphDensityMode = settings.density;
   state.graphLayoutMode = settings.layout;
   state.graphFocusMode = settings.focus;
@@ -2117,6 +2133,13 @@ function applyGraphReasoningPreset(preset) {
 
 function graphDemoSteps() {
   return [
+    {
+      id: "trusted",
+      nr: "00",
+      preset: "trusted",
+      title: "Trusted retrieval",
+      detail: "Restrict the graph to approved concepts and explicit relations for direct Actor Twin answers.",
+    },
     {
       id: "context",
       nr: "01",
@@ -2356,6 +2379,16 @@ function graphPresetDefinition(preset) {
 
 function graphPresetList() {
   return [
+    {
+      key: "trusted",
+      label: "Trusted retrieval",
+      shortLabel: "Trusted",
+      purpose: "Approved node basis and explicit relations only for direct Actor Twin answers.",
+      focus: "approved concepts and source-backed edges",
+      actorUse: "safe answer context",
+      output: "Answer packet",
+      trust: "Strict",
+    },
     {
       key: "explain",
       label: "Explain context",
@@ -19497,6 +19530,7 @@ function renderConcepts() {
   renderConceptAtlasSummary(state.concepts, concepts);
   renderConceptHealthClusters(state.concepts);
   renderConceptOverview(concepts);
+  renderKnowledgeRetrievalPresetBar(state.concepts, concepts);
   renderKnowledgeSourceReadiness(state.concepts, concepts);
   renderKnowledgeFabricContractStrip(state.concepts, concepts);
   renderKnowledgeReviewLanes(concepts);
@@ -19685,6 +19719,113 @@ function knowledgeReviewLaneSummary(concepts = []) {
     lanes.review.items.push(concept);
   });
   return [lanes.trusted, lanes.review, lanes.sourceGap, lanes.rework];
+}
+
+function knowledgeRetrievalPresetList() {
+  return [
+    {
+      key: "all",
+      label: "All fabric",
+      detail: "Every visible concept, including review and repair lanes.",
+      reviewFilter: "all",
+      sourceFilter: "all",
+      density: "comfortable",
+    },
+    {
+      key: "trusted",
+      label: "Trusted retrieval",
+      detail: "Approved concepts with answer-ready source posture.",
+      reviewFilter: "approved",
+      sourceFilter: "approved",
+      density: "compact",
+    },
+    {
+      key: "review",
+      label: "Review queue",
+      detail: "Pending or candidate concepts before Actor Twin trust.",
+      reviewFilter: "pending-review",
+      sourceFilter: "pending",
+      density: "compact",
+    },
+    {
+      key: "source-gaps",
+      label: "Source gaps",
+      detail: "Concepts requiring evidence, transcript, or source links.",
+      reviewFilter: "all",
+      sourceFilter: "gap",
+      density: "comfortable",
+    },
+    {
+      key: "vector-ready",
+      label: "Vector ready",
+      detail: "Selected knowledge that can feed the vector adapter boundary.",
+      reviewFilter: "all",
+      sourceFilter: "vector-ready",
+      density: "compact",
+    },
+  ];
+}
+
+function activeKnowledgeRetrievalPresetKey() {
+  const match = knowledgeRetrievalPresetList().find((preset) =>
+    preset.reviewFilter === state.conceptReviewFilter
+      && preset.sourceFilter === state.conceptSourceFilter
+      && (preset.density || state.conceptDensity) === state.conceptDensity,
+  );
+  return match?.key || "custom";
+}
+
+function applyKnowledgeRetrievalPreset(key = "all") {
+  const preset = knowledgeRetrievalPresetList().find((item) => item.key === key) || knowledgeRetrievalPresetList()[0];
+  state.conceptReviewFilter = preset.reviewFilter || "all";
+  state.conceptSourceFilter = preset.sourceFilter || "all";
+  state.conceptTypeFilter = "all";
+  state.conceptProfileFilter = "all";
+  state.conceptClusterFilter = "all";
+  state.conceptDensity = preset.density || state.conceptDensity || "comfortable";
+  const sourceSelect = $("#conceptSourceFilter");
+  if (sourceSelect) sourceSelect.value = state.conceptSourceFilter;
+  const typeSelect = $("#conceptTypeFilter");
+  if (typeSelect) typeSelect.value = state.conceptTypeFilter;
+  const searchInput = $("#conceptSearch");
+  if (searchInput) searchInput.value = "";
+  updateFilterChips("[data-concept-review]", state.conceptReviewFilter, "conceptReview");
+  renderConcepts();
+}
+
+function renderKnowledgeRetrievalPresetBar(allConcepts = [], visibleConcepts = []) {
+  const target = $("#knowledgeRetrievalPresetBar");
+  if (!target) return;
+  const activeKey = activeKnowledgeRetrievalPresetKey();
+  const summaries = knowledgeRetrievalPresetList().map((preset) => {
+    const count = allConcepts.filter((concept) => {
+      const previousReview = state.conceptReviewFilter;
+      const previousSource = state.conceptSourceFilter;
+      state.conceptReviewFilter = preset.reviewFilter || "all";
+      state.conceptSourceFilter = preset.sourceFilter || "all";
+      const match = matchesConceptReviewFilter(concept) && matchesConceptSourceFilter(concept);
+      state.conceptReviewFilter = previousReview;
+      state.conceptSourceFilter = previousSource;
+      return match;
+    }).length;
+    return { ...preset, count };
+  });
+  target.innerHTML = `
+    <div class="knowledge-retrieval-preset-head">
+      <span class="badge">Retrieval presets</span>
+      <strong>${escapeHtml(`${visibleConcepts.length}/${allConcepts.length} active`)}</strong>
+      <small>Switch between answer-ready, review, source repair, and vector handoff views.</small>
+    </div>
+    <div class="knowledge-retrieval-preset-grid">
+      ${summaries.map((preset) => `
+        <button class="${activeKey === preset.key ? "active" : ""} ${safeGraphClass(preset.key)}" type="button" data-knowledge-retrieval-preset="${escapeHtml(preset.key)}" aria-pressed="${escapeHtml(String(activeKey === preset.key))}">
+          <strong>${escapeHtml(String(preset.count))}</strong>
+          <span>${escapeHtml(preset.label)}</span>
+          <small>${escapeHtml(preset.detail)}</small>
+        </button>
+      `).join("")}
+    </div>
+  `;
 }
 
 function renderKnowledgeReviewLanes(concepts = []) {

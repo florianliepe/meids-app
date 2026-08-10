@@ -4,6 +4,32 @@ Date: 2026-08-09
 
 Latest update: 2026-08-10
 
+## Latest Local QA Pass For Knowledge And Graph Trusted Presets
+
+- Added Knowledge Browser retrieval presets for:
+  - all fabric
+  - trusted retrieval
+  - review queue
+  - source gaps
+  - vector ready
+- Added Knowledge Graph `Trusted retrieval` reasoning mode.
+- Verified desktop `1440px` and mobile `390px` dark-mode rendering with Playwright.
+- Verified Knowledge presets update the source filter to `approved` and `vector-ready`.
+- Verified Graph trusted retrieval sets `approved` review state, hides drafts, and uses explicit relation layer.
+- Verified no horizontal overflow.
+- Screenshot and machine-readable QA output:
+  - `docs/visual-qa/screenshots-20260810-knowledge-graph-trusted-presets/`
+
+Validation commands:
+
+- `node --check frontend/app.js`
+- `node scripts/validate-n8n-fixtures.cjs`
+- `node scripts/validate-okf-fixtures.cjs`
+- `node scripts/validate-graph-promotions.cjs`
+- `node scripts/validate-vector-adapter.cjs`
+- `node scripts/validate-postgres-graph-schema.cjs`
+- `node scripts/pages-smoke-check.cjs frontend`
+
 ## Latest Local QA Pass For Inline Chat Contract Badges
 
 - Added inline contract health badges beside the Chat interaction mode selector for Actor Twin, Knowledge Fabric Agent, and Agentic Butler.

@@ -7337,6 +7337,90 @@ body.theme-dark .knowledge-source-affordances button:hover {
   display: none;
 }
 
+.knowledge-retrieval-preset-bar {
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-quiet) 86%, transparent);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(180px, 0.35fr) minmax(0, 1fr);
+  margin: 10px 0 12px;
+  padding: 12px;
+}
+
+.knowledge-retrieval-preset-bar:empty {
+  display: none;
+}
+
+.knowledge-retrieval-preset-head,
+.knowledge-retrieval-preset-grid button {
+  min-width: 0;
+}
+
+.knowledge-retrieval-preset-head {
+  display: grid;
+  gap: 5px;
+}
+
+.knowledge-retrieval-preset-head strong {
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.knowledge-retrieval-preset-head small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.knowledge-retrieval-preset-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.knowledge-retrieval-preset-grid button {
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  color: var(--muted);
+  cursor: pointer;
+  display: grid;
+  gap: 3px;
+  min-height: 82px;
+  padding: 10px;
+  text-align: left;
+}
+
+.knowledge-retrieval-preset-grid button.active {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+  background: color-mix(in srgb, var(--accent) 11%, var(--surface));
+}
+
+.knowledge-retrieval-preset-grid strong,
+.knowledge-retrieval-preset-grid span,
+.knowledge-retrieval-preset-grid small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-retrieval-preset-grid strong {
+  color: var(--ink);
+  font-size: 1.02rem;
+  line-height: 1;
+}
+
+.knowledge-retrieval-preset-grid span {
+  color: var(--ink);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.knowledge-retrieval-preset-grid small {
+  color: var(--muted);
+  font-size: 0.64rem;
+  line-height: 1.25;
+}
+
 .knowledge-fabric-contract-strip {
   display: grid;
   gap: 10px;
@@ -7587,6 +7671,32 @@ body.theme-dark .knowledge-source-readiness {
   border-color: rgba(241, 235, 224, 0.14);
 }
 
+body.theme-dark .knowledge-retrieval-preset-bar {
+  background: rgba(21, 26, 22, 0.84);
+  border-color: rgba(241, 235, 224, 0.14);
+}
+
+body.theme-dark .knowledge-retrieval-preset-grid button {
+  background: rgba(17, 21, 17, 0.74);
+  border-color: rgba(241, 235, 224, 0.13);
+}
+
+body.theme-dark .knowledge-retrieval-preset-grid button.active {
+  background: rgba(122, 216, 191, 0.1);
+  border-color: rgba(122, 216, 191, 0.46);
+}
+
+body.theme-dark .knowledge-retrieval-preset-head strong,
+body.theme-dark .knowledge-retrieval-preset-grid strong,
+body.theme-dark .knowledge-retrieval-preset-grid span {
+  color: #fff8ea;
+}
+
+body.theme-dark .knowledge-retrieval-preset-head small,
+body.theme-dark .knowledge-retrieval-preset-grid small {
+  color: #c9c0b3;
+}
+
 body.theme-dark .knowledge-fabric-contract-main,
 body.theme-dark .knowledge-fabric-contract-grid a,
 body.theme-dark .knowledge-fabric-contract-grid span {
@@ -7626,9 +7736,14 @@ body.theme-dark .knowledge-source-readiness-grid span {
 
 @media (max-width: 900px) {
   .knowledge-source-readiness,
+  .knowledge-retrieval-preset-bar,
   .knowledge-fabric-contract-strip,
   .knowledge-source-readiness-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knowledge-retrieval-preset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .knowledge-fabric-contract-grid {
@@ -18397,7 +18512,7 @@ body.theme-dark .compact-filterbar {
 .graph-preset-bar {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .graph-preset-bar button {
@@ -18483,6 +18598,10 @@ body.theme-dark .compact-filterbar {
 
 .graph-preset-bar button.decide::before {
   background: #d9a454;
+}
+
+.graph-preset-bar button.trusted::before {
+  background: #76d6be;
 }
 
 .graph-preset-bar button.meeting::before {
@@ -30261,6 +30380,7 @@ body.theme-dark .graph-retrieval-contract-flow article {
 
 @media (max-width: 640px) {
   .graph-preset-bar,
+  .knowledge-retrieval-preset-grid,
   .graph-legend-items,
   .graph-legend-confidence-strip {
     grid-template-columns: minmax(0, 1fr);

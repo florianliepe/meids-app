@@ -1,0 +1,106 @@
+{
+  "pass": true,
+  "checkedAt": "2026-08-10T16:35:05.363Z",
+  "results": [
+    {
+      "name": "desktop-knowledge",
+      "url": "http://127.0.0.1:8769/?view=concepts",
+      "width": 1440,
+      "height": 1100,
+      "type": "knowledge",
+      "title": "Knowledge",
+      "presetCount": 5,
+      "presetLabels": [
+        "4 All fabric Every visible concept, including review and repair lanes.",
+        "3 Trusted retrieval Approved concepts with answer-ready source posture.",
+        "1 Review queue Pending or candidate concepts before Actor Twin trust.",
+        "0 Source gaps Concepts requiring evidence, transcript, or source links.",
+        "4 Vector ready Selected knowledge that can feed the vector adapter boundary."
+      ],
+      "afterTrusted": {
+        "review": "approved",
+        "active": [
+          "trusted"
+        ],
+        "countText": "3/4 concepts"
+      },
+      "afterVector": {
+        "review": "vector-ready",
+        "active": [
+          "vector-ready"
+        ],
+        "countText": "4/4 concepts"
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "name": "mobile-knowledge",
+      "url": "http://127.0.0.1:8769/?view=concepts",
+      "width": 390,
+      "height": 1100,
+      "type": "knowledge",
+      "title": "Knowledge",
+      "presetCount": 5,
+      "presetLabels": [
+        "4 All fabric Every visible concept, including review and repair lanes.",
+        "3 Trusted retrieval Approved concepts with answer-ready source posture.",
+        "1 Review queue Pending or candidate concepts before Actor Twin trust.",
+        "0 Source gaps Concepts requiring evidence, transcript, or source links.",
+        "4 Vector ready Selected knowledge that can feed the vector adapter boundary."
+      ],
+      "afterTrusted": {
+        "review": "approved",
+        "active": [
+          "trusted"
+        ],
+        "countText": "3/4 concepts"
+      },
+      "afterVector": {
+        "review": "vector-ready",
+        "active": [
+          "vector-ready"
+        ],
+        "countText": "4/4 concepts"
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "name": "desktop-graph",
+      "url": "http://127.0.0.1:8769/?view=graph",
+      "width": 1440,
+      "height": 1100,
+      "type": "graph",
+      "title": "Graph",
+      "presetCount": 5,
+      "trustedActive": true,
+      "reviewFilter": "approved",
+      "edgeClassActive": [
+        "explicit",
+        "explicit",
+        "all"
+      ],
+      "includeDrafts": false,
+      "graphPresetText": "Reasoning mode changed Trusted retrieval Approved node basis and explicit relations only for direct Actor Twin answers. Explain Trusted retrieval Projection3 nodes / 2 relations Focusapproved concepts and source-backed edges Actor usesafe answer context",
+      "horizontalOverflow": false
+    },
+    {
+      "name": "mobile-graph",
+      "url": "http://127.0.0.1:8769/?view=graph",
+      "width": 390,
+      "height": 1100,
+      "type": "graph",
+      "title": "Graph",
+      "presetCount": 5,
+      "trustedActive": true,
+      "reviewFilter": "approved",
+      "edgeClassActive": [
+        "explicit",
+        "explicit",
+        "all"
+      ],
+      "includeDrafts": false,
+      "graphPresetText": "Reasoning mode changed Trusted retrieval Approved node basis and explicit relations only for direct Actor Twin answers. Explain Trusted retrieval Projection3 nodes / 2 relations Focusapproved concepts and source-backed edges Actor usesafe answer context",
+      "horizontalOverflow": false
+    }
+  ]
+}
