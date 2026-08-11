@@ -15060,10 +15060,10 @@ function chatAgentContractStatuses() {
     const contractStatuses = new Set(Array.isArray(contract.statuses) ? contract.statuses : []);
     const replayPassed = state.n8nAgentContracts?.replay_status === "passed" || contract.replay_status === "passed";
     const contractTested = replayPassed || contractStatuses.has("contract tested");
-    const probe = state.n8nLiveProbeResults?.[agentId];
+    const probe = mergedN8nProbeEvidence(agentId);
     const replayCaseCount = Number(contract.replay_case_count || contract.case_count || 0);
     const runtimeState = runtimeReadiness.status || "";
-    const n8nConnected = probe?.status === "connected";
+    const n8nConnected = probe?.status === "connected" && probe?.demo !== true && Boolean(probe?.trace_id);
     const webhookLabel = probe?.status === "connected"
       ? "live probe ok"
       : configured
@@ -15169,6 +15169,27 @@ function renderChatContractStageRow(stages = [], options = {}) {
       `).join("")}
     </span>
   `;
+}
+
+function persistedN8nProbeEvidence(agentId = "") {
+  const agents = Array.isArray(state.n8nLiveProbeEvidenceStatus?.agents)
+    ? state.n8nLiveProbeEvidenceStatus.agents
+    : [];
+  return agents.find((agent) => agent.agent_id === agentId) || null;
+}
+
+function mergedN8nProbeEvidence(agentId = "") {
+  const persisted = persistedN8nProbeEvidence(agentId) || {};
+  const session = state.n8nLiveProbeResults?.[agentId] || {};
+  return {
+    ...persisted,
+    ...session,
+    evidence: {
+      ...(persisted.evidence || {}),
+      ...(session.evidence || {}),
+    },
+    ai_agent: session.ai_agent || persisted.ai_agent || null,
+  };
 }
 
 function chatModeButtonDefinitions() {
@@ -27995,8 +28016,8 @@ function productionAgentUrlReadiness() {
   return contracts.map((contract) => {
     const agentId = contract.agent_id || "";
     const readiness = agentRuntimeReadiness(agentId);
-    const probe = state.n8nLiveProbeResults?.[agentId] || null;
-    const status = probe?.status === "connected"
+    const probe = mergedN8nProbeEvidence(agentId);
+    const status = probe?.status === "connected" && probe?.demo !== true && Boolean(probe?.trace_id)
       ? "n8n connected"
       : readiness.configured
         ? "configured"
@@ -28007,6 +28028,7 @@ function productionAgentUrlReadiness() {
       status,
       className: status === "n8n connected" ? "ready" : readiness.configured ? "pending" : status === "awaiting URL" ? "pending" : "blocked",
       detail: probe?.detail || readiness.detail || contract.blocker || "",
+      probe,
       envVar: contract.webhook_env_var || readiness.envVar || "N8N_WEBHOOK_URL",
       githubSecret: secretByAgent[agentId] || "GH_PAGES_N8N_WEBHOOK_URL",
       fixture: contract.source || "",
@@ -28034,7 +28056,7 @@ function productionAgentRolloutGateSummary(agents = []) {
 }
 
 function productionAgentRolloutGates(agent = {}) {
-  const probe = state.n8nLiveProbeResults?.[agent.agentId] || null;
+  const probe = mergedN8nProbeEvidence(agent.agentId);
   const traces = readComposedAgentTraces();
   const liveTrace = traces.find((trace) => {
     const sameAgent = String(trace.agent_id || "").toLowerCase() === String(agent.agentId || "").toLowerCase();
@@ -28044,7 +28066,7 @@ function productionAgentRolloutGates(agent = {}) {
   const fixtureReady = Boolean(agent.fixture && agent.fixtureUrl);
   const blueprintReady = Boolean(agent.workflow && agent.workflowUrl);
   const urlReady = Boolean(agent.configured);
-  const probeReady = probe?.status === "connected";
+  const probeReady = probe?.status === "connected" && probe?.demo !== true && Boolean(probe?.trace_id);
   const traceReady = Boolean(liveTrace);
   const approvalReady = Boolean(agent.approvalBoundary);
   return [
@@ -31573,9 +31595,12 @@ function agentProbeEvidenceLine(contract = {}) {
   const checkedAt = probe.checked_at || contract.probeCheckedAt || "";
   const lastError = probe.last_error || contract.probeLastError || "";
   const traceId = probe.trace_id || contract.probeTraceId || "";
-  if (!status && !checkedAt && !lastError && !traceId) return "";
+  const aiAgent = probe.ai_agent || contract.aiAgent || {};
+  const aiNode = aiAgent?.integrated ? aiAgent.node || "AI Agent" : "";
+  if (!status && !checkedAt && !lastError && !traceId && !aiNode) return "";
   const parts = [];
   if (status) parts.push(`probe ${status}`);
+  if (aiNode) parts.push(`AI ${aiNode}`);
   if (checkedAt) parts.push(`checked ${formatShortDate(checkedAt)}`);
   if (traceId) parts.push(`trace ${traceId}`);
   if (lastError) parts.push(`last error: ${lastError}`);

@@ -43,6 +43,7 @@ function usage() {
     "  --execution-url <public-safe n8n execution URL>",
     "  --response-status completed|approval_required|failed",
     "  --url-source runtime-asset|browser-local|github-pages-secret|manual",
+    "  --ai-agent-node <n8n AI Agent node name>",
     "  --checked-at 2026-08-10T20:00:00.000Z",
     "  --output frontend/assets/n8n-live-probe-evidence.json",
   ].join("\n"));
@@ -58,6 +59,7 @@ const traceId = readArg("trace-id");
 const executionUrl = readArg("execution-url");
 const responseStatus = readArg("response-status") || "completed";
 const urlSource = readArg("url-source") || "manual";
+const aiAgentNode = readArg("ai-agent-node");
 const checkedAt = readArg("checked-at") || new Date().toISOString();
 const outputArg = readArg("output");
 const outputPath = outputArg
@@ -136,6 +138,12 @@ const entry = {
 };
 
 if (executionUrl) entry.evidence.n8n_execution_url = executionUrl;
+if (aiAgentNode) {
+  entry.ai_agent = {
+    integrated: true,
+    node: aiAgentNode,
+  };
+}
 if (responseStatus === "approval_required") {
   entry.evidence.approval_gate_confirmed = true;
 }
