@@ -60,6 +60,7 @@ function validateFixture(file) {
   }
   validateLiveProbeFixture(fixture);
   if (fixture.agent_id === "knowledge_fabric_agent") validateKnowledgeFabricFixture(fixture);
+  if (fixture.agent_id === "agentic_butler") validateAgenticButlerFixture(fixture);
   return fixture.agent_id;
 }
 
@@ -124,7 +125,38 @@ function validateKnowledgeFabricFixture(fixture) {
   }
 }
 
-const files = fs.readdirSync(fixtureDir).filter((file) => file.endsWith(".json"));
+function validateAgenticButlerFixture(fixture) {
+  const createSkill = fixture.create_skill;
+  if (!createSkill || typeof createSkill !== "object") fail("agentic_butler: create_skill fixture missing");
+  assertEnvelope("create_skill", createSkill, "agentic_butler");
+  if (createSkill.intent !== "create_skill") fail("agentic_butler: create_skill.intent must be create_skill");
+  if (createSkill.approval?.required !== true) fail("agentic_butler: create_skill.approval.required must be true");
+  if (createSkill.approval?.gate !== "skill_spec_approval") {
+    fail("agentic_butler: create_skill.approval.gate must be skill_spec_approval");
+  }
+  if (createSkill.context?.approval_policy !== "never_auto_approve_generated_skills") {
+    fail("agentic_butler: create_skill.context.approval_policy must prevent auto approval");
+  }
+  const expected = createSkill.expected_response || {};
+  if (expected.status !== "approval_required") {
+    fail("agentic_butler: create_skill.expected_response.status must be approval_required");
+  }
+  if (expected.approval?.required !== true || expected.approval?.gate !== "skill_spec_approval") {
+    fail("agentic_butler: create_skill.expected_response.approval must require skill_spec_approval");
+  }
+  const skillCreation = expected.output?.skill_creation || {};
+  if (skillCreation.skill_status !== "pending_approval") {
+    fail("agentic_butler: create_skill must leave skill_status pending_approval");
+  }
+  if (skillCreation.auto_approved !== false) {
+    fail("agentic_butler: create_skill must explicitly set auto_approved false");
+  }
+  if (skillCreation.decomposition_agent !== "blocked_until_skillspec_approved") {
+    fail("agentic_butler: create_skill must block decomposition until SkillSpec approval");
+  }
+}
+
+const files = fs.readdirSync(fixtureDir).filter((file) => file.endsWith(".json") && file !== "actor-twin-routing.json");
 const validatedFixtures = files.map((file) => {
   const filePath = path.join(fixtureDir, file);
   const agentId = validateFixture(filePath);
@@ -134,6 +166,7 @@ const seen = new Set(validatedFixtures.map((fixture) => fixture.agent_id));
 const missing = requiredAgents.filter((agent) => !seen.has(agent));
 if (missing.length) fail(`Missing fixtures: ${missing.join(", ")}`);
 const liveProbeCount = validatedFixtures.filter((fixture) => fixture.live_probe).length;
-const caseCount = (files.length * requiredSections.length) + liveProbeCount;
+const createSkillCount = validatedFixtures.filter((fixture) => fixture.agent_id === "agentic_butler" && fixture.create_skill).length;
+const caseCount = (files.length * requiredSections.length) + liveProbeCount + createSkillCount;
 
 console.log(`n8n fixture validation passed: ${files.length} fixtures, ${caseCount} replay cases`);

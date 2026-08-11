@@ -108,6 +108,29 @@ function replayLiveProbe(fixture) {
   return { case: "live_probe", status: "passed", request_id: probe.request_id, checks };
 }
 
+function replayCreateSkill(fixture) {
+  if (fixture.agent_id !== "agentic_butler") return null;
+  const createSkill = fixture.create_skill;
+  if (!hasObject(createSkill)) fail("agentic_butler.create_skill: fixture missing");
+  if (createSkill.agent_id !== "agentic_butler") fail("agentic_butler.create_skill: agent_id mismatch");
+  if (!createSkill.envelope_version) fail("agentic_butler.create_skill: envelope_version missing");
+  if (!createSkill.request_id) fail("agentic_butler.create_skill: request_id missing");
+  const checks = [];
+  if (createSkill.intent !== "create_skill") fail("agentic_butler.create_skill: intent must be create_skill");
+  checks.push("create_skill_intent");
+  if (createSkill.approval?.required !== true) fail("agentic_butler.create_skill: approval.required must be true");
+  checks.push("human_approval_required");
+  if (createSkill.context?.approval_policy !== "never_auto_approve_generated_skills") {
+    fail("agentic_butler.create_skill: approval_policy must prevent auto approval");
+  }
+  checks.push("no_auto_approval");
+  if (createSkill.expected_response?.output?.skill_creation?.skill_status !== "pending_approval") {
+    fail("agentic_butler.create_skill: skill_status must be pending_approval");
+  }
+  checks.push("pending_approval_status");
+  return { case: "create_skill", status: "passed", request_id: createSkill.request_id, gate: createSkill.approval.gate, checks };
+}
+
 function replayFixture(file) {
   const fixture = readJson(file);
   if (!requiredAgents.includes(fixture.agent_id)) fail(`${file}: unknown agent_id ${fixture.agent_id}`);
@@ -119,7 +142,7 @@ function replayFixture(file) {
     replayResponse(fixture),
     replayApprovalRequired(fixture),
     replayFailure(fixture),
-  ].concat(replayLiveProbe(fixture) || []);
+  ].concat(replayCreateSkill(fixture) || [], replayLiveProbe(fixture) || []);
   return {
     agent_id: fixture.agent_id,
     agent_name: fixture.agent_name,
@@ -152,7 +175,7 @@ function parseArgs(argv) {
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  const files = fs.readdirSync(fixtureDir).filter((file) => file.endsWith(".json")).sort();
+  const files = fs.readdirSync(fixtureDir).filter((file) => file.endsWith(".json") && file !== "actor-twin-routing.json").sort();
   const agents = files.map((file) => replayFixture(path.join(fixtureDir, file)));
   const seen = new Set(agents.map((agent) => agent.agent_id));
   const missing = requiredAgents.filter((agent) => !seen.has(agent));

@@ -174,6 +174,10 @@ function build() {
     "--output",
     path.join(assetsDir, "n8n-ai-agent-readiness-status.json"),
   ]);
+  shell("scripts/write-actor-twin-routing-readiness-status.cjs", [
+    "--output",
+    path.join(assetsDir, "actor-twin-routing-readiness-status.json"),
+  ]);
   if (args.smoke) {
     shell("scripts/pages-smoke-check.cjs", [args.output]);
   }

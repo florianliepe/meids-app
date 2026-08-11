@@ -1,0 +1,196 @@
+{
+  "schema_version": "0.1.0",
+  "contract_version": "0.1.0",
+  "source": "contracts/n8n/fixtures/actor-twin-routing.json",
+  "agent_id": "actor_twin",
+  "agent_name": "Actor Twin",
+  "purpose": "Public-safe routing contract for Actor Twin as the single Chat routing authority.",
+  "chat_surface_policy": {
+    "diagnostics": "cockpit_only",
+    "manual_knowledge_fabric_activation": false,
+    "manual_agentic_butler_activation": false,
+    "visible_states": [
+      "thinking",
+      "answering",
+      "using_knowledge",
+      "activating_skill",
+      "drafting_new_skill",
+      "approval_required"
+    ]
+  },
+  "required_route_decisions": [
+    "answer_direct",
+    "retrieve_knowledge",
+    "ingest_or_stage_knowledge",
+    "activate_skill",
+    "create_skill",
+    "request_human_clarification"
+  ],
+  "route_decisions": [
+    {
+      "case_id": "route_answer_direct",
+      "description": "Answer-only user request with no work execution or knowledge staging requirement.",
+      "request": {
+        "query": "What should I consider before a client alignment meeting?",
+        "selected_approved_skill_ids": [],
+        "source_context_present": false,
+        "approved_knowledge_available": true,
+        "risk_posture": "balanced"
+      },
+      "expected_route": {
+        "decision": "answer_direct",
+        "target_agent": "actor_twin",
+        "intent": "answer_question",
+        "visible_state": "answering",
+        "approval_required": false,
+        "reason": "Answer-only request; Actor Twin can answer using approved OKF and cited draft hypotheses."
+      }
+    },
+    {
+      "case_id": "route_retrieve_knowledge",
+      "description": "Explicit retrieval request; Actor Twin delegates retrieval to Knowledge Fabric Agent.",
+      "request": {
+        "query": "Find the approved evidence about client delivery steering.",
+        "selected_approved_skill_ids": [],
+        "source_context_present": false,
+        "approved_knowledge_available": true,
+        "risk_posture": "balanced"
+      },
+      "expected_route": {
+        "decision": "retrieve_knowledge",
+        "target_agent": "knowledge_fabric_agent",
+        "intent": "retrieve_context",
+        "visible_state": "using_knowledge",
+        "approval_required": false,
+        "reason": "Knowledge lookup should use approved-first OKF, graph, and vector boundaries."
+      },
+      "expected_delegate_envelope": {
+        "agent_id": "knowledge_fabric_agent",
+        "intent": "retrieve_context",
+        "input": {
+          "retrieval_goal": "approved_evidence",
+          "query": "Find the approved evidence about client delivery steering."
+        },
+        "context": {
+          "trust_policy": "approved_first_include_pending_as_draft",
+          "graph_policy": "read_approved_and_candidate_context_with_labels"
+        }
+      }
+    },
+    {
+      "case_id": "route_ingest_or_stage_knowledge",
+      "description": "User provides source material; Actor Twin delegates staging to Knowledge Fabric Agent.",
+      "request": {
+        "query": "Remember this transcript as a pending concept for later review.",
+        "selected_approved_skill_ids": [],
+        "source_context_present": true,
+        "approved_knowledge_available": false,
+        "risk_posture": "balanced"
+      },
+      "expected_route": {
+        "decision": "ingest_or_stage_knowledge",
+        "target_agent": "knowledge_fabric_agent",
+        "intent": "ingest_concept",
+        "visible_state": "using_knowledge",
+        "approval_required": false,
+        "reason": "Source ingestion creates pending OKF with evidence and does not promote to trusted retrieval."
+      },
+      "expected_delegate_envelope": {
+        "agent_id": "knowledge_fabric_agent",
+        "intent": "ingest_concept",
+        "input": {
+          "target_state": "pending_review",
+          "source_type": "chat_source_context"
+        },
+        "context": {
+          "allowed_outputs": ["markdown", "yaml_frontmatter", "graph_candidate_edges"],
+          "vector_policy": "do_not_refresh_without_approved_storage"
+        }
+      }
+    },
+    {
+      "case_id": "route_activate_skill",
+      "description": "Work-execution request matching an approved skill; Actor Twin delegates execution to Agentic Butler.",
+      "request": {
+        "query": "Plan my day from the exported email and calendar context.",
+        "selected_approved_skill_ids": ["project-management-support-steering"],
+        "selected_skill_status": "approved",
+        "source_context_present": true,
+        "approved_knowledge_available": true,
+        "risk_posture": "balanced"
+      },
+      "expected_route": {
+        "decision": "activate_skill",
+        "target_agent": "agentic_butler",
+        "intent": "activate_skill",
+        "visible_state": "activating_skill",
+        "approval_required": false,
+        "reason": "An approved skill can run for planning outputs; external actions still require a gate."
+      },
+      "expected_delegate_envelope": {
+        "agent_id": "agentic_butler",
+        "intent": "activate_skill",
+        "input": {
+          "skill_id": "project-management-support-steering",
+          "manual_trigger": false
+        },
+        "context": {
+          "skill_orchestrator": "internal_component",
+          "actor_checkpoint_policy": "consult_actor_twin_before_prioritization_and_before_human_gates"
+        }
+      }
+    },
+    {
+      "case_id": "route_create_skill",
+      "description": "Missing capability or explicit new-skill request; Actor Twin delegates skill drafting to Agentic Butler.",
+      "request": {
+        "query": "Create a new skill for preparing supplier negotiation briefs.",
+        "selected_approved_skill_ids": [],
+        "source_context_present": false,
+        "approved_knowledge_available": true,
+        "risk_posture": "balanced"
+      },
+      "expected_route": {
+        "decision": "create_skill",
+        "target_agent": "agentic_butler",
+        "intent": "create_skill",
+        "visible_state": "drafting_new_skill",
+        "approval_required": true,
+        "skill_status": "pending_approval",
+        "reason": "New capabilities must be elicited, decomposed, and held behind human approval."
+      },
+      "expected_delegate_envelope": {
+        "agent_id": "agentic_butler",
+        "intent": "create_skill",
+        "input": {
+          "skill_idea": "Create a new skill for preparing supplier negotiation briefs.",
+          "manual_trigger": false
+        },
+        "context": {
+          "elicitation_agent": "start_structured_interview",
+          "decomposition_agent": "blocked_until_skillspec_approved",
+          "approval_policy": "never_auto_approve_generated_skills"
+        }
+      }
+    },
+    {
+      "case_id": "route_request_human_clarification",
+      "description": "Ambiguous or unsafe request; Actor Twin asks the human before delegation.",
+      "request": {
+        "query": "Do the thing for the client.",
+        "selected_approved_skill_ids": [],
+        "source_context_present": false,
+        "approved_knowledge_available": false,
+        "risk_posture": "strict"
+      },
+      "expected_route": {
+        "decision": "request_human_clarification",
+        "target_agent": "human",
+        "intent": "clarify_request",
+        "visible_state": "approval_required",
+        "approval_required": true,
+        "reason": "Intent, output, and side-effect boundary are unclear."
+      }
+    }
+  ]
+}

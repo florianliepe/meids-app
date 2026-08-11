@@ -78,6 +78,58 @@
       "recoverable": true
     }
   },
+  "create_skill": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_agentic_butler_create_skill_001",
+    "timestamp": "2026-08-11T10:00:00Z",
+    "agent_id": "agentic_butler",
+    "intent": "create_skill",
+    "principal": {
+      "twin_id": "florian",
+      "display_name": "Florian"
+    },
+    "input": {
+      "skill_idea": "Create a skill for preparing supplier negotiation briefs.",
+      "manual_trigger": false,
+      "source_summary": "Public-safe example request with no private supplier data.",
+      "desired_outcome": "A reusable pending skill draft that can later prepare negotiation context, questions, risks, and decision options."
+    },
+    "context": {
+      "elicitation_agent": "start_structured_interview",
+      "decomposition_agent": "blocked_until_skillspec_approved",
+      "skill_lifecycle": "draft_to_pending_approval",
+      "approval_policy": "never_auto_approve_generated_skills",
+      "skill_orchestrator": "internal_component_after_approval"
+    },
+    "approval": {
+      "required": true,
+      "gate": "skill_spec_approval",
+      "summary": "A generated skill draft requires human approval before decomposition or activation.",
+      "proposed_action": "Review and approve the SkillSpec before creating executable skill artifacts."
+    },
+    "expected_response": {
+      "status": "approval_required",
+      "approval": {
+        "required": true,
+        "gate": "skill_spec_approval",
+        "summary": "SkillSpec draft is ready for human review.",
+        "proposed_action": "Approve the SkillSpec for decomposition, or revise."
+      },
+      "output": {
+        "skill_creation": {
+          "status": "pending_approval",
+          "skill_status": "pending_approval",
+          "auto_approved": false,
+          "elicitation_agent": "ready_to_interview",
+          "decomposition_agent": "blocked_until_skillspec_approved"
+        }
+      },
+      "trace": {
+        "stored": true,
+        "trace_id_required": true
+      }
+    }
+  },
   "live_probe": {
     "envelope_version": "0.1.0",
     "request_id": "req_agentic_butler_live_probe_001",

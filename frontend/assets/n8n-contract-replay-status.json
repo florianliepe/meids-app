@@ -1,9 +1,9 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-10T12:21:20.394Z",
+  "generated_at": "2026-08-11T14:50:02.213Z",
   "status": "passed",
   "fixture_count": 3,
-  "case_count": 15,
+  "case_count": 16,
   "statuses": [
     "documented",
     "fixture ready",
@@ -151,12 +151,13 @@
       "contract_version": "0.1.0",
       "source": "contracts/n8n/fixtures/agentic-butler.json",
       "status": "passed",
-      "case_count": 5,
+      "case_count": 6,
       "tested_cases": [
         "request",
         "response",
         "approval_required",
         "failure",
+        "create_skill",
         "live_probe"
       ],
       "statuses": [
@@ -199,7 +200,13 @@
           "reason": "Readiness probe only; no durable action or external side effect."
         },
         "expected_response": {
-          "status": "completed",
+          "status": "approval_required",
+          "approval": {
+            "required": true,
+            "gate": "requires_human_action",
+            "summary": "The approval-gated skill activation probe must stop before any external action.",
+            "proposed_action": "Prepare a skill activation plan but pause before sending messages, creating meetings, or writing to external systems."
+          },
           "output": {
             "readiness": "connected",
             "side_effects": "none",
@@ -262,6 +269,18 @@
             "error_code",
             "error_message",
             "recoverability"
+          ]
+        },
+        {
+          "case": "create_skill",
+          "status": "passed",
+          "request_id": "req_agentic_butler_create_skill_001",
+          "gate": "skill_spec_approval",
+          "checks": [
+            "create_skill_intent",
+            "human_approval_required",
+            "no_auto_approval",
+            "pending_approval_status"
           ]
         },
         {

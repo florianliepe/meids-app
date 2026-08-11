@@ -215,6 +215,8 @@
   n8nLiveHandoffCommands: null,
   n8nProductionAdapterStatus: null,
   n8nAiAgentReadinessStatus: null,
+  actorTwinRoutingReadinessStatus: null,
+  lastActorTwinRouteDecision: null,
   zielmodus4LiveCompletionChecklist: null,
   zielmodus4ReadinessStatus: null,
   n8nContractTestResult: null,
@@ -277,6 +279,7 @@ const N8N_LIVE_READINESS_PREFLIGHT_PATH = "assets/n8n-live-readiness-preflight.j
 const N8N_LIVE_HANDOFF_COMMANDS_PATH = "assets/n8n-live-handoff-commands.json";
 const N8N_PRODUCTION_ADAPTER_STATUS_PATH = "assets/n8n-production-adapter-status.json";
 const N8N_AI_AGENT_READINESS_STATUS_PATH = "assets/n8n-ai-agent-readiness-status.json";
+const ACTOR_TWIN_ROUTING_READINESS_STATUS_PATH = "assets/actor-twin-routing-readiness-status.json";
 const ZIELMODUS_4_LIVE_COMPLETION_CHECKLIST_PATH = "assets/zielmodus-4-live-completion-checklist.json";
 const ZIELMODUS_4_READINESS_STATUS_PATH = "assets/zielmodus-4-readiness-status.json";
 const OKF_VALIDATION_STATUS_PATH = "assets/okf-validation-status.json";
@@ -8219,112 +8222,42 @@ function bindChat() {
     const input = $("#queryInput");
     const query = input.value.trim();
     if (!query) return;
-    if (state.activeChatInteractionMode === "source_context") {
-      input.value = "";
-      addMessage("user", query);
-      addMessage("assistant", "Preparing Knowledge Fabric handoff...");
-      try {
-        const result = await routeKnowledgeFabricFromChat(query);
-        persistAgentTrace(result);
-        persistKnowledgeFabricIngest(result);
-        removeLastAssistantPlaceholder();
-        addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
-      } catch (error) {
-        removeLastAssistantPlaceholder();
-        addMessage("assistant", `Knowledge Fabric handoff failed: ${error.message}`);
-      }
-      return;
-    }
-    if (state.appliedChatSkillIds.length === 1 && event.submitter?.dataset?.runLocalSkill === "true") {
-      const sourceInput = {
-        email_input: $("#chatSkillEmail").value,
-        calendar_input: $("#chatSkillCalendar").value,
-        teams_input: $("#chatSkillTeams").value,
-        knowledge_context: $("#chatSkillKnowledge").value,
-      };
-      if (!(await confirmSkillFollowUpGate(sourceInput, "chat"))) return;
-      if (!(await confirmTwinScopedAction("run this skill"))) return;
-      input.value = "";
-      addMessage("user", query);
-      addMessage("assistant", "Running approved skill...");
-      try {
-        const result = await postJson("/api/skills/run", {
-          skill_id: state.activeChatSkillId,
-          manual_request: query,
-          email_input: $("#chatSkillEmail").value,
-          calendar_input: $("#chatSkillCalendar").value,
-          teams_input: $("#chatSkillTeams").value,
-          knowledge_context: $("#chatSkillKnowledge").value,
-          graph_context_packet: state.graphSkillContextPacket || null,
-          twin: state.activeTwin,
-          actor: "local-user",
-        });
-        removeLastAssistantPlaceholder();
-        addMessage("assistant", formatChatSkillRun(result), result);
-        $("#chatSkillContext").open = false;
-        await safeRefreshReviewDashboard();
-        await safeRefreshSkillRuns();
-      } catch (error) {
-        removeLastAssistantPlaceholder();
-        addMessage("assistant", `Skill run failed: ${error.message}`);
-      }
-      return;
-    }
-    if (state.activeChatInteractionMode === "skill_activation" || state.appliedChatSkillIds.length) {
-      const sourceInput = {
-        email_input: $("#chatSkillEmail").value,
-        calendar_input: $("#chatSkillCalendar").value,
-        teams_input: $("#chatSkillTeams").value,
-        knowledge_context: $("#chatSkillKnowledge").value,
-      };
-      if (!(await confirmSkillFollowUpGate(sourceInput, "chat"))) return;
-      input.value = "";
-      addMessage("user", query);
-      addMessage("assistant", "Activating approved skill through Agentic Butler...");
-      try {
-        const result = await routeAgenticButlerFromChat(query);
-        persistAgentTrace(result);
-        removeLastAssistantPlaceholder();
-        addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
-      } catch (error) {
-        removeLastAssistantPlaceholder();
-        addMessage("assistant", `Agentic Butler failed: ${error.message}`);
-      }
-      return;
-    }
-    if (state.activeChatInteractionMode === "actor_twin" || hasAgentWebhook("actor_twin") || (runtimeConfig.n8nChatEnabled && runtimeConfig.n8nChatWebhookUrl)) {
-      input.value = "";
-      addMessage("user", query);
-      addMessage("assistant", "Asking Actor Twin...");
-      try {
-        const result = await routeActorTwinFromChat(query);
-        persistAgentTrace(result);
-        removeLastAssistantPlaceholder();
-        const node = addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
-        if (state.voiceAnswerEnabled) speakMessage(node, result.answer);
-      } catch (error) {
-        removeLastAssistantPlaceholder();
-        addMessage("assistant", `Actor Twin failed: ${error.message}`);
-      }
-      return;
-    }
+    const route = decideActorTwinRoute(query);
+    state.lastActorTwinRouteDecision = route;
+    renderSkillRoutingPanel();
+    const sourceInput = {
+      email_input: $("#chatSkillEmail").value,
+      calendar_input: $("#chatSkillCalendar").value,
+      teams_input: $("#chatSkillTeams").value,
+      knowledge_context: $("#chatSkillKnowledge").value,
+    };
+    if (route.decision === "activate_skill" && !(await confirmSkillFollowUpGate(sourceInput, "chat"))) return;
     input.value = "";
     addMessage("user", query);
-    addMessage("assistant", "Thinking with local OKF sources...");
+    if (route.decision === "request_human_clarification") {
+      addMessage("assistant", route.clarification || "Please clarify the desired output and whether any external action is allowed.");
+      return;
+    }
+    addMessage("assistant", route.placeholder);
     try {
-      const result = await postJson("/api/query", {
-        query,
-        twin: state.activeTwin,
-        concept_types: selectedConceptTypes(),
-        retrieval_mode: $("#retrievalModeSelect").value,
-        include_graph: $("#retrievalModeSelect").value === "graph",
-      });
+      let result;
+      if (route.decision === "retrieve_knowledge" || route.decision === "ingest_or_stage_knowledge") {
+        result = await routeKnowledgeFabricFromChat(query, route);
+        if (route.decision === "ingest_or_stage_knowledge") persistKnowledgeFabricIngest(result);
+      } else if (route.decision === "activate_skill") {
+        result = await routeAgenticButlerFromChat(query, route);
+      } else if (route.decision === "create_skill") {
+        result = await routeAgenticButlerSkillCreationFromChat(query, route);
+      } else {
+        result = await routeActorTwinFromChat(query, route);
+      }
+      persistAgentTrace(result);
       removeLastAssistantPlaceholder();
-      const node = addMessage("assistant", result.answer, result);
-      if (state.voiceAnswerEnabled) speakMessage(node, result.answer);
+      const node = addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
+      if (state.voiceAnswerEnabled && result.agent_id === "actor_twin") speakMessage(node, result.answer);
     } catch (error) {
       removeLastAssistantPlaceholder();
-      addMessage("assistant", `Query failed: ${error.message}`);
+      addMessage("assistant", `${agentDisplayName(route.target_agent)} failed: ${error.message}`);
     }
   });
 }
@@ -8520,6 +8453,7 @@ function bindQuality() {
       await safeRefreshStaticN8nLiveHandoffCommands();
       await safeRefreshStaticN8nProductionAdapterStatus();
       await safeRefreshStaticN8nAiAgentReadinessStatus();
+      await safeRefreshStaticActorTwinRoutingReadinessStatus();
       await safeRefreshStaticZielmodus4LiveCompletionChecklist();
       await safeRefreshStaticZielmodus4ReadinessStatus();
       await safeRefreshStaticN8nReplayStatus();
@@ -10690,6 +10624,7 @@ function refreshStaticPagesWorkspace() {
   safeRefreshStaticN8nLiveHandoffCommands();
   safeRefreshStaticN8nProductionAdapterStatus();
   safeRefreshStaticN8nAiAgentReadinessStatus();
+  safeRefreshStaticActorTwinRoutingReadinessStatus();
   safeRefreshStaticZielmodus4LiveCompletionChecklist();
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticZielmodus4ReadinessStatus();
@@ -13124,6 +13059,20 @@ async function safeRefreshStaticN8nAiAgentReadinessStatus() {
   }
 }
 
+async function safeRefreshStaticActorTwinRoutingReadinessStatus() {
+  if (!staticPagesMode) return;
+  try {
+    state.actorTwinRoutingReadinessStatus = await fetchFrontendAssetJson(ACTOR_TWIN_ROUTING_READINESS_STATUS_PATH, { optional: true });
+    renderChatSkillMode();
+    renderAgentOperatingModelPanel();
+    renderProductionProgressHeader();
+  } catch (error) {
+    state.actorTwinRoutingReadinessStatus = null;
+    renderAgentOperatingModelPanel();
+    console.warn("Static Actor Twin routing readiness status refresh failed", error);
+  }
+}
+
 async function safeRefreshStaticZielmodus4LiveCompletionChecklist() {
   if (!staticPagesMode) return;
   try {
@@ -13411,6 +13360,7 @@ function renderZielmodus4LiveHandoffGrid() {
       ` : ""}
       ${renderN8nProductionAdapterSummary()}
       ${renderN8nAiAgentReadinessSummary()}
+      ${renderActorTwinRoutingReadinessSummary()}
       ${renderZielmodus4StrictReadinessOperatorPanel(agentIds)}
       <div class="zielmodus-live-handoff-grid">
         ${agentIds.map((agentId) => {
@@ -13523,6 +13473,47 @@ function renderN8nAiAgentReadinessSummary() {
             </article>
           `;
         }).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderActorTwinRoutingReadinessSummary() {
+  const readiness = state.actorTwinRoutingReadinessStatus || {};
+  if (!readiness.schema_version) return "";
+  const summary = readiness.summary || {};
+  const indicators = Array.isArray(readiness.cockpit_indicators) ? readiness.cockpit_indicators : [];
+  const routes = Array.isArray(readiness.routes) ? readiness.routes : [];
+  const status = readiness.status || "unknown";
+  const artifact = githubBlobUrl("frontend/assets/actor-twin-routing-readiness-status.json");
+  const fixture = githubBlobUrl("contracts/n8n/fixtures/actor-twin-routing.json");
+  return `
+    <section class="n8n-ai-agent-readiness ${status === "routing_contract_ready" ? "ready" : "pending"}" aria-label="Actor Twin routing readiness">
+      <div class="n8n-ai-agent-readiness-head">
+        <div>
+          <span class="badge">Actor Twin routing</span>
+          <strong>${escapeHtml(String(summary.fixture_ready_count ?? 0))}/${escapeHtml(String(summary.required_route_count ?? 6))} route decisions fixture-ready</strong>
+          <p>Chat remains Actor-Twin-first. Knowledge Fabric and Agentic Butler are delegated automatically; diagnostics stay in this cockpit.</p>
+        </div>
+        <div class="button-row tight">
+          <a class="secondary small" href="${escapeHtml(artifact)}" target="_blank" rel="noreferrer">Open status</a>
+          <a class="secondary small" href="${escapeHtml(fixture)}" target="_blank" rel="noreferrer">Open fixture</a>
+        </div>
+      </div>
+      <div class="n8n-ai-agent-readiness-grid">
+        ${indicators.map((item) => `
+          <article class="${item.status === "fixture_ready" ? "ready" : "blocked"}">
+            <span>${escapeHtml(item.status || "unknown")}</span>
+            <strong>${escapeHtml(item.label || item.key)}</strong>
+            <p>${escapeHtml(item.detail || "")}</p>
+          </article>
+        `).join("")}
+      </div>
+      <div class="zielmodus-preflight-summary ${escapeHtml(status === "routing_contract_ready" ? "ready" : "blocked")}">
+        <span><strong>${escapeHtml(String(routes.length))}</strong><small>routes</small></span>
+        <span><strong>${escapeHtml(summary.approval_gate_active ? "active" : "blocked")}</strong><small>approval gate</small></span>
+        <span><strong>${escapeHtml(summary.chat_diagnostics_policy || "unknown")}</strong><small>Chat diagnostics</small></span>
+        <span><strong>${escapeHtml(summary.chat_manual_agent_activation_disabled ? "disabled" : "check")}</strong><small>manual agent activation</small></span>
       </div>
     </section>
   `;
@@ -14851,16 +14842,16 @@ function renderSkillRoutingPanel() {
   const applied = state.skills.filter((skill) => state.appliedChatSkillIds.includes(skill.skill_id));
   const active = state.twins.find((twin) => twin.twin_id === state.activeTwin);
   const switchWarning = recentTwinSwitchWarning();
-  const agentId = state.activeChatInteractionMode === "skill_activation"
-    ? "agentic_butler"
-    : state.activeChatInteractionMode === "source_context"
-      ? "knowledge_fabric_agent"
-      : "actor_twin";
-  const configured = hasAgentWebhook(agentId);
+  const route = state.lastActorTwinRouteDecision || null;
+  const agentId = route?.target_agent || "actor_twin";
+  const configured = agentId === "human" ? true : hasAgentWebhook(agentId);
+  const routeLabel = route
+    ? `${route.decision.replaceAll("_", " ")} -> ${agentDisplayName(agentId)}`
+    : "Actor Twin routes each request";
   const content = `
       <strong>Actor pipeline</strong>
-      <span>${escapeHtml(active?.display_name || state.activeTwin)} · ${escapeHtml(state.riskPosture)} posture · ${escapeHtml(chatInteractionModeLabel())} · ${escapeHtml(configured ? "n8n configured" : "fixture fallback")}</span>
-      <p>${escapeHtml(state.webSearchEnabled ? "Websearch requested." : "Websearch off.")} ${escapeHtml(state.voiceAnswerEnabled ? "Voice playback on." : "Voice playback off.")} ${escapeHtml(applied.length ? `${applied.length} approved skill layer${applied.length === 1 ? "" : "s"} selected.` : "No approved skill layer selected.")}</p>
+      <span>${escapeHtml(active?.display_name || state.activeTwin)} · ${escapeHtml(state.riskPosture)} posture · ${escapeHtml(routeLabel)} · ${escapeHtml(configured ? "n8n configured" : "fixture fallback")}</span>
+      <p>${escapeHtml(route?.reason || "The Actor Twin decides whether to answer, use knowledge, activate an approved skill, or draft a new skill.")} ${escapeHtml(applied.length ? `${applied.length} approved skill layer${applied.length === 1 ? "" : "s"} available.` : "No approved skill layer selected.")}</p>
       ${switchWarning ? `<p class="warning-copy">${escapeHtml(switchWarning)}</p>` : ""}
     `;
   const chatPanel = $("#chatSkillRouting");
@@ -16011,13 +16002,138 @@ function buildAgentContractEnvelope(agentId, intent, query, input = {}, context 
   };
 }
 
-async function routeActorTwinFromChat(query) {
+function decideActorTwinRoute(query) {
+  const normalized = String(query || "").toLowerCase();
+  const sourceContext = chatSourceContext();
+  const sourcePresent = Object.values(sourceContext).some((value) => String(value || "").trim());
+  const selectedApprovedSkill = selectedApprovedChatSkill();
+  const approvedSkillAvailable = Boolean(selectedApprovedSkill);
+  const createSkillIntent = /\b(create|build|define|design|shape|draft|new)\b.*\b(skill|capability|agent)\b|\bteach\b.*\bskill\b|\bmissing skill\b/i.test(query);
+  const ingestIntent = sourcePresent || /\b(remember|save|ingest|stage|upload|transcript|source|capture|add this|store this)\b/i.test(query);
+  const retrieveIntent = /\b(find|retrieve|search|evidence|source|context|what do i know|approved|knowledge|graph|citation)\b/i.test(query);
+  const executionIntent = approvedSkillAvailable || /\b(plan my day|prepare|draft|summari[sz]e for|activate skill|use skill|run skill|brief|todo|to-do|workstream|meeting)\b/i.test(query);
+  const riskyExternalAction = /\b(send|email|mail|invite|schedule|book|publish|commit|approve|delete)\b/i.test(query);
+  const ambiguous = normalized.length < 8 || /\b(do the thing|handle it|make it happen)\b/i.test(query);
+  const base = {
+    query,
+    source_context_present: sourcePresent,
+    selected_skill_id: selectedApprovedSkill?.skill_id || "",
+    approved_skill_available: approvedSkillAvailable,
+    risk_posture: state.riskPosture,
+    runtime: "deterministic_fallback",
+  };
+  if (createSkillIntent) {
+    return actorRoute({
+      ...base,
+      decision: "create_skill",
+      target_agent: "agentic_butler",
+      intent: "create_skill",
+      visible_state: "drafting_new_skill",
+      approval_required: true,
+      placeholder: "Drafting a new skill request through Agentic Butler...",
+      reason: "The request asks for a new capability; generated skills must remain pending approval.",
+    });
+  }
+  if (executionIntent && approvedSkillAvailable) {
+    return actorRoute({
+      ...base,
+      decision: "activate_skill",
+      target_agent: "agentic_butler",
+      intent: "activate_skill",
+      visible_state: riskyExternalAction ? "approval_required" : "activating_skill",
+      approval_required: riskyExternalAction,
+      placeholder: riskyExternalAction
+        ? "Preparing approval-gated skill activation through Agentic Butler..."
+        : "Activating approved skill through Agentic Butler...",
+      reason: "The request maps to an approved skill; Agentic Butler owns execution and approval gates.",
+    });
+  }
+  if (executionIntent && !approvedSkillAvailable && /\b(skill|workflow|agent|reusable)\b/i.test(query)) {
+    return actorRoute({
+      ...base,
+      decision: "create_skill",
+      target_agent: "agentic_butler",
+      intent: "create_skill",
+      visible_state: "drafting_new_skill",
+      approval_required: true,
+      placeholder: "Drafting a new skill request through Agentic Butler...",
+      reason: "The request appears to need a reusable capability, but no approved skill is selected.",
+    });
+  }
+  if (ingestIntent) {
+    return actorRoute({
+      ...base,
+      decision: "ingest_or_stage_knowledge",
+      target_agent: "knowledge_fabric_agent",
+      intent: "ingest_concept",
+      visible_state: "using_knowledge",
+      approval_required: false,
+      placeholder: "Using Knowledge Fabric to stage source context...",
+      reason: "Source context should become pending OKF evidence, not trusted knowledge automatically.",
+    });
+  }
+  if (retrieveIntent) {
+    return actorRoute({
+      ...base,
+      decision: "retrieve_knowledge",
+      target_agent: "knowledge_fabric_agent",
+      intent: "retrieve_context",
+      visible_state: "using_knowledge",
+      approval_required: false,
+      placeholder: "Using Knowledge Fabric for approved-first retrieval...",
+      reason: "The request asks for context or evidence retrieval.",
+    });
+  }
+  if (ambiguous || (state.riskPosture === "strict" && riskyExternalAction)) {
+    return actorRoute({
+      ...base,
+      decision: "request_human_clarification",
+      target_agent: "human",
+      intent: "clarify_request",
+      visible_state: "approval_required",
+      approval_required: true,
+      placeholder: "Clarifying before delegation...",
+      clarification: "Please clarify the intended outcome, target audience, and whether external actions are allowed.",
+      reason: "The request is ambiguous or potentially risky.",
+    });
+  }
+  return actorRoute({
+    ...base,
+    decision: "answer_direct",
+    target_agent: "actor_twin",
+    intent: "answer_question",
+    visible_state: "answering",
+    approval_required: false,
+    placeholder: "Asking Actor Twin...",
+    reason: "Answer-only request with no required delegation.",
+  });
+}
+
+function actorRoute(route) {
+  return {
+    route_id: `route_${Date.now().toString(36)}`,
+    ...route,
+  };
+}
+
+function selectedApprovedChatSkill() {
+  const candidates = [
+    state.activeChatSkillId,
+    ...state.appliedChatSkillIds,
+  ].filter(Boolean);
+  return candidates
+    .map((skillId) => state.skills.find((skill) => skill.skill_id === skillId))
+    .find((skill) => skill?.status === "approved") || null;
+}
+
+async function routeActorTwinFromChat(query, route = null) {
   const envelope = buildAgentContractEnvelope(
     "actor_twin",
     "answer_question",
     query,
     { mode: "grounded_answer" },
     {
+      route_decision: route,
       okf_refs: [],
       graph_refs: [],
       source_context: chatSourceContext(),
@@ -16027,9 +16143,8 @@ async function routeActorTwinFromChat(query) {
   return postAgentContractEnvelope("actor_twin", envelope, fallbackActorTwinResponse);
 }
 
-async function routeAgenticButlerFromChat(query) {
-  const selected = state.skills.find((skill) => skill.skill_id === state.activeChatSkillId)
-    || state.skills.find((skill) => state.appliedChatSkillIds.includes(skill.skill_id));
+async function routeAgenticButlerFromChat(query, route = null) {
+  const selected = selectedApprovedChatSkill();
   if (!selected) throw new Error("Select one approved skill before activating Agentic Butler.");
   if (selected.status !== "approved") throw new Error("Agentic Butler can only activate approved skills.");
   const sourceContext = chatSourceContext();
@@ -16047,6 +16162,7 @@ async function routeAgenticButlerFromChat(query) {
       knowledge_context: sourceContext.knowledge_context,
     },
     {
+      route_decision: route,
       actor_checkpoint_policy: "consult_actor_twin_before_prioritization_and_before_human_gates",
       skill_orchestrator: "internal_component",
       allowed_outputs: ["daily_plan", "todo_table", "approval_queue"],
@@ -16055,26 +16171,69 @@ async function routeAgenticButlerFromChat(query) {
   return postAgentContractEnvelope("agentic_butler", envelope, fallbackAgenticButlerResponse);
 }
 
-async function routeKnowledgeFabricFromChat(query) {
+async function routeAgenticButlerSkillCreationFromChat(query, route = null) {
   const sourceContext = chatSourceContext();
-  const title = query.slice(0, 80) || "Chat source context";
   const envelope = buildAgentContractEnvelope(
-    "knowledge_fabric_agent",
-    "ingest_concept",
+    "agentic_butler",
+    "create_skill",
     query,
     {
-      source_type: "chat_source_context",
-      title,
-      content: [sourceContext.email_input, sourceContext.calendar_input, sourceContext.teams_input, sourceContext.knowledge_context]
+      skill_idea: query,
+      manual_trigger: false,
+      source_summary: [sourceContext.email_input, sourceContext.calendar_input, sourceContext.teams_input, sourceContext.knowledge_context]
         .filter(Boolean)
         .join("\n\n")
-        .slice(0, 12000),
-      target_state: "pending_review",
+        .slice(0, 6000),
+      desired_outcome: "Pending SkillSpec draft and elicitation plan for human approval.",
     },
     {
+      route_decision: route,
+      elicitation_agent: "start_structured_interview",
+      decomposition_agent: "blocked_until_skillspec_approved",
+      skill_lifecycle: "draft_to_pending_approval",
+      approval_policy: "never_auto_approve_generated_skills",
+      skill_orchestrator: "internal_component_after_approval",
+    },
+    {
+      required: true,
+      gate: "skill_spec_approval",
+      summary: "Generated skills require human approval before decomposition or activation.",
+      proposed_action: "Review and approve the SkillSpec, or revise it before decomposition.",
+    },
+  );
+  return postAgentContractEnvelope("agentic_butler", envelope, fallbackAgenticButlerSkillCreationResponse);
+}
+
+async function routeKnowledgeFabricFromChat(query, route = null) {
+  const sourceContext = chatSourceContext();
+  const title = query.slice(0, 80) || "Chat source context";
+  const retrieve = route?.decision === "retrieve_knowledge";
+  const envelope = buildAgentContractEnvelope(
+    "knowledge_fabric_agent",
+    retrieve ? "retrieve_context" : "ingest_concept",
+    query,
+    retrieve
+      ? {
+          retrieval_goal: "approved_evidence",
+          title,
+          content: "",
+          target_state: "read_only",
+        }
+      : {
+          source_type: "chat_source_context",
+          title,
+          content: [sourceContext.email_input, sourceContext.calendar_input, sourceContext.teams_input, sourceContext.knowledge_context]
+            .filter(Boolean)
+            .join("\n\n")
+            .slice(0, 12000),
+          target_state: "pending_review",
+        },
+    {
+      route_decision: route,
       okf_namespace: `concepts/${state.activeTwin || "florian"}/inbox`,
       allowed_outputs: ["markdown", "yaml_frontmatter", "graph_candidate_edges"],
       vector_policy: "do_not_refresh_without_approved_storage",
+      trust_policy: "approved_first_include_pending_as_draft",
     },
   );
   return postAgentContractEnvelope("knowledge_fabric_agent", envelope, fallbackKnowledgeFabricResponse);
@@ -18140,7 +18299,49 @@ function fallbackAgenticButlerResponse(envelope, runtime) {
   }, envelope, runtime);
 }
 
+function fallbackAgenticButlerSkillCreationResponse(envelope, runtime) {
+  const idea = envelope.input?.skill_idea || envelope.input?.query || "New skill";
+  return normalizeAgentContractResponse("agentic_butler", {
+    status: "approval_required",
+    approval: {
+      required: true,
+      gate: "skill_spec_approval",
+      summary: "SkillSpec draft is ready for human review.",
+      proposed_action: "Approve this SkillSpec for decomposition, or revise it.",
+    },
+    output: {
+      summary: "New skill draft prepared and held for approval.",
+      skill_creation: {
+        status: "pending_approval",
+        skill_status: "pending_approval",
+        auto_approved: false,
+        skill_idea: idea,
+        elicitation_agent: "ready_to_interview",
+        decomposition_agent: "blocked_until_skillspec_approved",
+      },
+      next_questions: [
+        "When should this skill trigger, and when should it not?",
+        "Which inputs are required, and where should they come from?",
+        "Which actions must always require human approval?",
+      ],
+    },
+    trace: { trace_id: `trace_${envelope.request_id}`, used_agents: ["agentic_butler", "skill_elicitation_agent"], stored: false },
+  }, envelope, runtime);
+}
+
 function fallbackKnowledgeFabricResponse(envelope, runtime) {
+  if (envelope.intent === "retrieve_context") {
+    return normalizeAgentContractResponse("knowledge_fabric_agent", {
+      status: "completed",
+      output: {
+        summary: "Approved-first retrieval packet prepared for Actor Twin.",
+        answer: "Knowledge Fabric fixture response: use approved OKF concepts first; label drafts and candidate graph relations as untrusted context.",
+        retrieved_refs: [],
+        trust_policy: "approved_first_include_pending_as_draft",
+      },
+      trace: { trace_id: `trace_${envelope.request_id}`, used_agents: ["graph_curator"], stored: false },
+    }, envelope, runtime);
+  }
   const slug = slugify(envelope.input?.title || "chat-source-context");
   const date = new Date().toISOString().slice(0, 10);
   const twin = state.activeTwin || "florian";
@@ -18181,6 +18382,10 @@ function agentContractResponseText(result = {}) {
   const response = result.response || {};
   const output = response.output || {};
   if (response.status === "approval_required") {
+    if (output.skill_creation) {
+      const questions = Array.isArray(output.next_questions) ? `\n\nNext elicitation questions:\n- ${output.next_questions.join("\n- ")}` : "";
+      return `${response.approval?.summary || "Skill creation requires human approval."}${questions}`;
+    }
     return response.approval?.summary || "Human approval is required before this action can continue.";
   }
   return result.answer || output.answer || output.summary || output.concept_path || `${result.agent_name || "Agent"} completed.`;
@@ -24975,13 +25180,15 @@ function renderProductionProgressHeader() {
   const finalPacket = state.productionFinalReviewPacket || {};
   const bridge = state.productionGithubKnowledgeBridge || {};
   const runtimeReadiness = state.n8nRuntimeReadinessStatus || {};
+  const actorRouting = state.actorTwinRoutingReadinessStatus || {};
   const hasState = Boolean(
     readiness.type ||
     readiness.status ||
     readiness.check_count !== undefined ||
     finalPacket.status ||
     bridge.status ||
-    runtimeReadiness.schema_version
+    runtimeReadiness.schema_version ||
+    actorRouting.schema_version
   );
   if (!hasState) {
     target.hidden = true;

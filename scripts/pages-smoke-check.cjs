@@ -16,6 +16,7 @@ const requiredPaths = [
   "assets/n8n-live-readiness-preflight.json",
   "assets/n8n-live-handoff-commands.json",
   "assets/n8n-ai-agent-readiness-status.json",
+  "assets/actor-twin-routing-readiness-status.json",
   "assets/okf-validation-status.json",
   "assets/zielmodus-4-readiness-status.json",
   "assets/zielmodus-4-live-completion-checklist.json",
@@ -95,6 +96,7 @@ function checkContractArtifacts(root) {
   const preflight = readJson(path.join(assetsRoot, "n8n-live-readiness-preflight.json"));
   const handoffCommands = readJson(path.join(assetsRoot, "n8n-live-handoff-commands.json"));
   const aiAgentReadiness = readJson(path.join(assetsRoot, "n8n-ai-agent-readiness-status.json"));
+  const actorRouting = readJson(path.join(assetsRoot, "actor-twin-routing-readiness-status.json"));
   const okfStatus = readJson(path.join(assetsRoot, "okf-validation-status.json"));
   const zielmodus = readJson(path.join(assetsRoot, "zielmodus-4-readiness-status.json"));
   const completionChecklist = readJson(path.join(assetsRoot, "zielmodus-4-live-completion-checklist.json"));
@@ -111,6 +113,8 @@ function checkContractArtifacts(root) {
   requireObject(handoffCommands.summary, "n8n-live-handoff-commands.json summary");
   requireObject(aiAgentReadiness.summary, "n8n-ai-agent-readiness-status.json summary");
   requireArray(aiAgentReadiness.agents, "n8n-ai-agent-readiness-status.json agents");
+  requireObject(actorRouting.summary, "actor-twin-routing-readiness-status.json summary");
+  requireArray(actorRouting.routes, "actor-twin-routing-readiness-status.json routes");
   requireObject(okfStatus.summary, "okf-validation-status.json summary");
   requireObject(zielmodus.summary, "zielmodus-4-readiness-status.json summary");
   requireObject(completionChecklist.summary, "zielmodus-4-live-completion-checklist.json summary");
@@ -123,6 +127,19 @@ function checkContractArtifacts(root) {
     if (!hasAgent(handoffCommands.agents, agentId)) throw new Error(`n8n-live-handoff-commands.json missing ${agentId}`);
     if (!hasAgent(aiAgentReadiness.agents, agentId)) throw new Error(`n8n-ai-agent-readiness-status.json missing ${agentId}`);
     if (!hasAgent(completionChecklist.agents, agentId)) throw new Error(`zielmodus-4-live-completion-checklist.json missing ${agentId}`);
+  }
+
+  if (actorRouting.status !== "routing_contract_ready") {
+    throw new Error("actor-twin-routing-readiness-status.json must be routing_contract_ready");
+  }
+  if (Number(actorRouting.summary.fixture_ready_count || 0) < 6) {
+    throw new Error("actor-twin-routing-readiness-status.json must cover all six route decisions");
+  }
+  if (actorRouting.summary.approval_gate_active !== true) {
+    throw new Error("actor-twin-routing-readiness-status.json approval gate must be active");
+  }
+  if (actorRouting.summary.chat_diagnostics_policy !== "cockpit_only") {
+    throw new Error("actor-twin-routing-readiness-status.json must keep diagnostics cockpit-only");
   }
 
   if (!Array.isArray(preflight.agents) || preflight.agents.length !== requiredN8nAgents.length) {
