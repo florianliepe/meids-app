@@ -1,7 +1,7 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-11T07:42:34.725Z",
-  "status": "partial_live_url_blocked",
+  "generated_at": "2026-08-11T09:28:06.096Z",
+  "status": "live_probe_evidence_pending",
   "mode": "public_safe",
   "summary": {
     "requirement_count": 9,
@@ -9,7 +9,7 @@
     "qa_check_count": 2,
     "passed_qa_check_count": 2,
     "public_safe_ready": true,
-    "live_ready": false,
+    "live_ready": true,
     "live_probe_ready": false
   },
   "requirements": [
@@ -160,20 +160,17 @@
     }
   ],
   "live_n8n": {
-    "status": "partial",
-    "configured_count": 1,
-    "awaiting_url_count": 2,
+    "status": "configured",
+    "configured_count": 3,
+    "awaiting_url_count": 0,
     "required_agents": [
       "actor_twin",
       "knowledge_fabric_agent",
       "agentic_butler"
     ],
-    "missing_live_agents": [
-      "knowledge_fabric_agent",
-      "agentic_butler"
-    ],
-    "artifact_status": "partial",
-    "detail": "Missing live URL(s): knowledge_fabric_agent, agentic_butler"
+    "missing_live_agents": [],
+    "artifact_status": "configured",
+    "detail": "All top-level agent live URL slots are configured. Live probe evidence still must be captured before production readiness."
   },
   "live_probe_evidence": {
     "status": "partial",
@@ -188,18 +185,18 @@
     "detail": "Missing live probe evidence for: actor_twin, knowledge_fabric_agent, agentic_butler"
   },
   "live_completion_checklist": {
-    "status": "partial_live_url_blocked",
+    "status": "live_probe_evidence_pending",
     "path": "frontend/assets/zielmodus-4-live-completion-checklist.json",
-    "missing_live_url_count": 2,
+    "missing_live_url_count": 0,
     "missing_probe_trace_count": 3,
     "estimated_remaining_after_urls_exist": "45-90 minutes",
     "missing_agents": [],
-    "detail": "Completion checklist open work: 2 URL(s), 3 probe trace(s)."
+    "detail": "Completion checklist open work: 0 URL(s), 3 probe trace(s)."
   },
   "next_actions": [
-    "Configure GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL.",
-    "Configure GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL.",
-    "Regenerate runtime readiness artifacts and redeploy GitHub Pages.",
-    "Run cockpit live probes and capture n8n execution trace evidence."
+    "Run cockpit live probes for all three agents.",
+    "Export live probe evidence to frontend/assets/n8n-live-probe-evidence.json.",
+    "Capture n8n execution trace evidence.",
+    "Confirm human approval gate behavior for Agentic Butler."
   ]
 }

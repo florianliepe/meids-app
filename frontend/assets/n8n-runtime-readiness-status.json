@@ -1,12 +1,12 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-11T07:42:25.695Z",
+  "generated_at": "2026-08-11T09:28:05.806Z",
   "source": "frontend/assets/agent-runtime-config.json",
-  "status": "partial",
+  "status": "configured",
   "summary": {
     "agent_count": 3,
-    "configured_count": 1,
-    "awaiting_url_count": 2,
+    "configured_count": 3,
+    "awaiting_url_count": 0,
     "missing_count": 0
   },
   "boundary": "Public-safe runtime readiness artifact. It validates URL slots and probe metadata, but it does not call n8n and does not prove live connectivity.",
@@ -56,17 +56,17 @@
     {
       "agent_id": "knowledge_fabric_agent",
       "agent_name": "Knowledge Fabric Agent",
-      "status": "awaiting_url",
-      "status_label": "awaiting URL",
-      "url_configured": false,
-      "url_origin": "",
-      "url_shape": "empty",
+      "status": "configured",
+      "status_label": "URL configured",
+      "url_configured": true,
+      "url_origin": "https://eraneos-agentic-platform.azurewebsites.net",
+      "url_shape": "valid_public_webhook",
       "env_var": "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
       "github_pages_secret": "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
       "top_level_url_key": "n8nKnowledgeFabricWebhookUrl",
-      "probe_slot_status": "awaiting_url",
-      "detail": "Webhook slot prepared; no live POST is attempted until a public UAT or hosted backend URL exists.",
-      "next_action": "Create the Knowledge Fabric Agent n8n workflow, expose a public UAT webhook, then add it here.",
+      "probe_slot_status": "configured",
+      "detail": "Public UAT webhook configured through scripts/set-n8n-agent-url.cjs. Live workflow proof still requires cockpit probe or n8n execution trace.",
+      "next_action": "Run Knowledge Fabric Agent UAT with upload/transcript fixture.",
       "required_capabilities": [
         "okf_ingest",
         "evidence_storage",
@@ -81,13 +81,13 @@
         },
         {
           "gate": "webhook_url",
-          "ready": false,
-          "detail": "No public UAT webhook URL configured."
+          "ready": true,
+          "detail": "Webhook URL has public https webhook shape."
         },
         {
           "gate": "probe_slot",
           "ready": true,
-          "detail": "Probe slot status: awaiting_url."
+          "detail": "Probe slot status: configured."
         },
         {
           "gate": "public_safe",
@@ -99,17 +99,17 @@
     {
       "agent_id": "agentic_butler",
       "agent_name": "Agentic Butler",
-      "status": "awaiting_url",
-      "status_label": "awaiting URL",
-      "url_configured": false,
-      "url_origin": "",
-      "url_shape": "empty",
+      "status": "configured",
+      "status_label": "URL configured",
+      "url_configured": true,
+      "url_origin": "https://eraneos-agentic-platform.azurewebsites.net",
+      "url_shape": "valid_public_webhook",
       "env_var": "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
       "github_pages_secret": "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
       "top_level_url_key": "n8nAgenticButlerWebhookUrl",
-      "probe_slot_status": "awaiting_url",
-      "detail": "Webhook slot prepared; approval-gated skill activation remains fixture-only until live workflow URL exists.",
-      "next_action": "Create the Agentic Butler n8n workflow with approval gate, expose public UAT webhook, then add it here.",
+      "probe_slot_status": "configured",
+      "detail": "Public UAT webhook configured through scripts/set-n8n-agent-url.cjs. Live workflow proof still requires cockpit probe or n8n execution trace.",
+      "next_action": "Run Agentic Butler UAT with approval-gated skill activation fixture.",
       "required_capabilities": [
         "approved_skill_activation",
         "approval_gate_detection",
@@ -123,13 +123,13 @@
         },
         {
           "gate": "webhook_url",
-          "ready": false,
-          "detail": "No public UAT webhook URL configured."
+          "ready": true,
+          "detail": "Webhook URL has public https webhook shape."
         },
         {
           "gate": "probe_slot",
           "ready": true,
-          "detail": "Probe slot status: awaiting_url."
+          "detail": "Probe slot status: configured."
         },
         {
           "gate": "public_safe",

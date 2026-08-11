@@ -2,8 +2,8 @@
   "purpose": "Optional public staging endpoints for top-level n8n agents. Keep empty until a workflow is intentionally exposed for public UAT.",
   "n8nAgentWebhooks": {
     "actor_twin": "https://eraneos-agentic-platform.azurewebsites.net/webhook/af44a40b-6bd8-49f4-9d39-73a14d3678dd/chat",
-    "knowledge_fabric_agent": "",
-    "agentic_butler": ""
+    "knowledge_fabric_agent": "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/knowledge-fabric/ingest",
+    "agentic_butler": "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/agentic-butler/run"
   },
   "n8nAgentProbeSlots": {
     "actor_twin": {
@@ -12,17 +12,17 @@
       "next_action": "Run Actor Twin UAT and capture trace evidence."
     },
     "knowledge_fabric_agent": {
-      "status": "awaiting_url",
-      "probe_boundary": "Webhook slot prepared; no live POST is attempted until a public UAT or hosted backend URL exists.",
-      "next_action": "Create the Knowledge Fabric Agent n8n workflow, expose a public UAT webhook, then add it here."
+      "status": "configured",
+      "probe_boundary": "Public UAT webhook configured through scripts/set-n8n-agent-url.cjs. Live workflow proof still requires cockpit probe or n8n execution trace.",
+      "next_action": "Run Knowledge Fabric Agent UAT with upload/transcript fixture."
     },
     "agentic_butler": {
-      "status": "awaiting_url",
-      "probe_boundary": "Webhook slot prepared; approval-gated skill activation remains fixture-only until live workflow URL exists.",
-      "next_action": "Create the Agentic Butler n8n workflow with approval gate, expose public UAT webhook, then add it here."
+      "status": "configured",
+      "probe_boundary": "Public UAT webhook configured through scripts/set-n8n-agent-url.cjs. Live workflow proof still requires cockpit probe or n8n execution trace.",
+      "next_action": "Run Agentic Butler UAT with approval-gated skill activation fixture."
     }
   },
   "n8nActorTwinWebhookUrl": "https://eraneos-agentic-platform.azurewebsites.net/webhook/af44a40b-6bd8-49f4-9d39-73a14d3678dd/chat",
-  "n8nKnowledgeFabricWebhookUrl": "",
-  "n8nAgenticButlerWebhookUrl": ""
+  "n8nKnowledgeFabricWebhookUrl": "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/knowledge-fabric/ingest",
+  "n8nAgenticButlerWebhookUrl": "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/agentic-butler/run"
 }
