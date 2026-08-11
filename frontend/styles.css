@@ -6207,6 +6207,114 @@ body.theme-dark .repo-responsibility-lane {
   overflow-wrap: anywhere;
 }
 
+.n8n-ai-agent-readiness {
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 90%, var(--surface-quiet));
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.n8n-ai-agent-readiness.pending {
+  border-color: color-mix(in srgb, var(--warn) 34%, var(--line));
+}
+
+.n8n-ai-agent-readiness.ready {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+}
+
+.n8n-ai-agent-readiness-head {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.n8n-ai-agent-readiness-head strong {
+  color: var(--ink);
+  display: block;
+  font-size: 13px;
+  margin-top: 4px;
+  text-transform: capitalize;
+}
+
+.n8n-ai-agent-readiness-head p {
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 3px 0 0;
+  max-width: 760px;
+}
+
+.n8n-ai-agent-readiness-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.n8n-ai-agent-readiness-grid article {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-quiet) 84%, transparent);
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.n8n-ai-agent-readiness-grid article.ready {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+}
+
+.n8n-ai-agent-readiness-grid article.pending {
+  border-color: color-mix(in srgb, var(--warn) 34%, var(--line));
+}
+
+.n8n-ai-agent-readiness-grid article > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.n8n-ai-agent-readiness-grid article strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.n8n-ai-agent-readiness-grid article small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.n8n-ai-agent-readiness-grid dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.n8n-ai-agent-readiness-grid dl div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.n8n-ai-agent-readiness-grid dt {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.n8n-ai-agent-readiness-grid dd {
+  color: var(--ink);
+  font-size: 11px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .zielmodus-completion-checklist {
   border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
   border-radius: 8px;
@@ -6295,12 +6403,14 @@ body.theme-dark .repo-responsibility-lane {
   .zielmodus-handoff-command-summary,
   .zielmodus-strict-command-grid,
   .zielmodus-live-handoff-grid,
+  .n8n-ai-agent-readiness-grid,
   .zielmodus-completion-items {
     grid-template-columns: 1fr;
   }
 
   .zielmodus-live-handoff-head,
-  .zielmodus-strict-operator-head {
+  .zielmodus-strict-operator-head,
+  .n8n-ai-agent-readiness-head {
     display: grid;
   }
 }

@@ -15,6 +15,7 @@ const requiredPaths = [
   "assets/n8n-live-probe-evidence.json",
   "assets/n8n-live-readiness-preflight.json",
   "assets/n8n-live-handoff-commands.json",
+  "assets/n8n-ai-agent-readiness-status.json",
   "assets/okf-validation-status.json",
   "assets/zielmodus-4-readiness-status.json",
   "assets/zielmodus-4-live-completion-checklist.json",
@@ -93,6 +94,7 @@ function checkContractArtifacts(root) {
   const probeEvidence = readJson(path.join(assetsRoot, "n8n-live-probe-evidence.json"));
   const preflight = readJson(path.join(assetsRoot, "n8n-live-readiness-preflight.json"));
   const handoffCommands = readJson(path.join(assetsRoot, "n8n-live-handoff-commands.json"));
+  const aiAgentReadiness = readJson(path.join(assetsRoot, "n8n-ai-agent-readiness-status.json"));
   const okfStatus = readJson(path.join(assetsRoot, "okf-validation-status.json"));
   const zielmodus = readJson(path.join(assetsRoot, "zielmodus-4-readiness-status.json"));
   const completionChecklist = readJson(path.join(assetsRoot, "zielmodus-4-live-completion-checklist.json"));
@@ -107,6 +109,8 @@ function checkContractArtifacts(root) {
   requireArray(probeEvidence.agents, "n8n-live-probe-evidence.json agents");
   requireObject(preflight.summary, "n8n-live-readiness-preflight.json summary");
   requireObject(handoffCommands.summary, "n8n-live-handoff-commands.json summary");
+  requireObject(aiAgentReadiness.summary, "n8n-ai-agent-readiness-status.json summary");
+  requireArray(aiAgentReadiness.agents, "n8n-ai-agent-readiness-status.json agents");
   requireObject(okfStatus.summary, "okf-validation-status.json summary");
   requireObject(zielmodus.summary, "zielmodus-4-readiness-status.json summary");
   requireObject(completionChecklist.summary, "zielmodus-4-live-completion-checklist.json summary");
@@ -117,6 +121,7 @@ function checkContractArtifacts(root) {
     if (!hasAgent(runtimeReadiness.agents, agentId)) throw new Error(`n8n-runtime-readiness-status.json missing ${agentId}`);
     if (!hasAgent(probeEvidence.agents, agentId)) throw new Error(`n8n-live-probe-evidence.json missing ${agentId}`);
     if (!hasAgent(handoffCommands.agents, agentId)) throw new Error(`n8n-live-handoff-commands.json missing ${agentId}`);
+    if (!hasAgent(aiAgentReadiness.agents, agentId)) throw new Error(`n8n-ai-agent-readiness-status.json missing ${agentId}`);
     if (!hasAgent(completionChecklist.agents, agentId)) throw new Error(`zielmodus-4-live-completion-checklist.json missing ${agentId}`);
   }
 

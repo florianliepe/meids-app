@@ -214,6 +214,7 @@
   n8nLiveReadinessPreflight: null,
   n8nLiveHandoffCommands: null,
   n8nProductionAdapterStatus: null,
+  n8nAiAgentReadinessStatus: null,
   zielmodus4LiveCompletionChecklist: null,
   zielmodus4ReadinessStatus: null,
   n8nContractTestResult: null,
@@ -275,6 +276,7 @@ const N8N_LIVE_PROBE_EVIDENCE_STATUS_PATH = "assets/n8n-live-probe-evidence.json
 const N8N_LIVE_READINESS_PREFLIGHT_PATH = "assets/n8n-live-readiness-preflight.json";
 const N8N_LIVE_HANDOFF_COMMANDS_PATH = "assets/n8n-live-handoff-commands.json";
 const N8N_PRODUCTION_ADAPTER_STATUS_PATH = "assets/n8n-production-adapter-status.json";
+const N8N_AI_AGENT_READINESS_STATUS_PATH = "assets/n8n-ai-agent-readiness-status.json";
 const ZIELMODUS_4_LIVE_COMPLETION_CHECKLIST_PATH = "assets/zielmodus-4-live-completion-checklist.json";
 const ZIELMODUS_4_READINESS_STATUS_PATH = "assets/zielmodus-4-readiness-status.json";
 const OKF_VALIDATION_STATUS_PATH = "assets/okf-validation-status.json";
@@ -8517,6 +8519,7 @@ function bindQuality() {
       await safeRefreshStaticN8nLiveReadinessPreflight();
       await safeRefreshStaticN8nLiveHandoffCommands();
       await safeRefreshStaticN8nProductionAdapterStatus();
+      await safeRefreshStaticN8nAiAgentReadinessStatus();
       await safeRefreshStaticZielmodus4LiveCompletionChecklist();
       await safeRefreshStaticZielmodus4ReadinessStatus();
       await safeRefreshStaticN8nReplayStatus();
@@ -10686,6 +10689,7 @@ function refreshStaticPagesWorkspace() {
   safeRefreshStaticN8nLiveReadinessPreflight();
   safeRefreshStaticN8nLiveHandoffCommands();
   safeRefreshStaticN8nProductionAdapterStatus();
+  safeRefreshStaticN8nAiAgentReadinessStatus();
   safeRefreshStaticZielmodus4LiveCompletionChecklist();
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticZielmodus4ReadinessStatus();
@@ -13107,6 +13111,19 @@ async function safeRefreshStaticN8nProductionAdapterStatus() {
   }
 }
 
+async function safeRefreshStaticN8nAiAgentReadinessStatus() {
+  if (!staticPagesMode) return;
+  try {
+    state.n8nAiAgentReadinessStatus = await fetchFrontendAssetJson(N8N_AI_AGENT_READINESS_STATUS_PATH, { optional: true });
+    renderAgentOperatingModelPanel();
+    renderProductionProgressHeader();
+  } catch (error) {
+    state.n8nAiAgentReadinessStatus = null;
+    renderAgentOperatingModelPanel();
+    console.warn("Static n8n AI-agent readiness status refresh failed", error);
+  }
+}
+
 async function safeRefreshStaticZielmodus4LiveCompletionChecklist() {
   if (!staticPagesMode) return;
   try {
@@ -13393,6 +13410,7 @@ function renderZielmodus4LiveHandoffGrid() {
         </div>
       ` : ""}
       ${renderN8nProductionAdapterSummary()}
+      ${renderN8nAiAgentReadinessSummary()}
       ${renderZielmodus4StrictReadinessOperatorPanel(agentIds)}
       <div class="zielmodus-live-handoff-grid">
         ${agentIds.map((agentId) => {
@@ -13448,6 +13466,65 @@ function renderN8nProductionAdapterSummary() {
       <span><strong>${escapeHtml(status.replaceAll("_", " "))}</strong><small>schema validation</small></span>
       <span><strong>${escapeHtml(String(pending.length))}</strong><small>production adapter next actions</small></span>
     </div>
+  `;
+}
+
+function renderN8nAiAgentReadinessSummary() {
+  const readiness = state.n8nAiAgentReadinessStatus || {};
+  if (!readiness.schema_version) return "";
+  const summary = readiness.summary || {};
+  const agents = Array.isArray(readiness.agents) ? readiness.agents : [];
+  const status = readiness.status || "unknown";
+  const productionVerified = summary.production_ai_logic_verified === true;
+  const artifact = githubBlobUrl("frontend/assets/n8n-ai-agent-readiness-status.json");
+  const runbook = githubBlobUrl("docs/production/n8n-ai-agent-activation-runbook.md");
+  return `
+    <section class="n8n-ai-agent-readiness ${productionVerified ? "ready" : "pending"}" aria-label="n8n AI-agent logic readiness">
+      <div class="n8n-ai-agent-readiness-head">
+        <div>
+          <span class="badge">AI logic gate</span>
+          <strong>${escapeHtml(status.replaceAll("_", " "))}</strong>
+          <p>${escapeHtml(readiness.interpretation || "Distinguishes live webhook readiness from verified AI-agent execution.")}</p>
+        </div>
+        <div class="button-row tight">
+          <a class="secondary small" href="${escapeHtml(artifact)}" target="_blank" rel="noreferrer">Open AI status</a>
+          <a class="secondary small" href="${escapeHtml(runbook)}" target="_blank" rel="noreferrer">Activation runbook</a>
+        </div>
+      </div>
+      <div class="zielmodus-preflight-summary ${escapeHtml(safeGraphClass(status))}">
+        <span><strong>${escapeHtml(String(summary.ai_agent_blueprint_ready_count ?? 0))}/${escapeHtml(String(summary.agent_count ?? agents.length))}</strong><small>AI blueprints</small></span>
+        <span><strong>${escapeHtml(String(summary.live_probe_claims_ai_agent_count ?? 0))}/${escapeHtml(String(summary.agent_count ?? agents.length))}</strong><small>probe claims AI</small></span>
+        <span><strong>${escapeHtml(String(summary.live_trace_recorded_count ?? 0))}/${escapeHtml(String(summary.agent_count ?? agents.length))}</strong><small>live traces</small></span>
+        <span><strong>${escapeHtml(String(summary.manual_live_workflow_verification_required_count ?? 0))}</strong><small>manual verifications open</small></span>
+      </div>
+      <div class="n8n-ai-agent-readiness-grid">
+        ${agents.map((agent) => {
+          const gates = agent.gates || {};
+          const readyCount = [
+            gates.ai_agent_blueprint_ready,
+            gates.response_adapter_ready,
+            gates.live_url_configured,
+            gates.live_trace_recorded,
+            gates.live_probe_claims_ai_agent,
+          ].filter(Boolean).length;
+          const statusClass = gates.manual_live_workflow_verification_required ? "pending" : "ready";
+          return `
+            <article class="${escapeHtml(statusClass)}">
+              <span>${escapeHtml(agent.agent_name || agentDisplayName(agent.agent_id))}</span>
+              <strong>${escapeHtml(`${readyCount}/5 machine gates`)}</strong>
+              <small>${escapeHtml(agent.role || "Agent role")}</small>
+              <dl>
+                <div><dt>Blueprint</dt><dd>${escapeHtml(gates.ai_agent_blueprint_ready ? "AI Agent node ready" : "missing")}</dd></div>
+                <div><dt>Adapter</dt><dd>${escapeHtml(gates.response_adapter_ready ? "contract ready" : "blocked")}</dd></div>
+                <div><dt>Live</dt><dd>${escapeHtml(gates.live_url_configured ? "URL configured" : "URL missing")}</dd></div>
+                <div><dt>Trace</dt><dd>${escapeHtml(agent.live_probe?.trace_id || "trace pending")}</dd></div>
+                <div><dt>Verification</dt><dd>${escapeHtml(gates.manual_live_workflow_verification_required ? "n8n canvas check required" : "verified")}</dd></div>
+              </dl>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </section>
   `;
 }
 

@@ -170,6 +170,10 @@ function build() {
     path.join(assetsDir, "n8n-live-handoff-commands.json"),
     "--write",
   ]);
+  shell("scripts/write-n8n-ai-agent-readiness-status.cjs", [
+    "--output",
+    path.join(assetsDir, "n8n-ai-agent-readiness-status.json"),
+  ]);
   if (args.smoke) {
     shell("scripts/pages-smoke-check.cjs", [args.output]);
   }
