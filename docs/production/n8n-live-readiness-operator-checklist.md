@@ -8,6 +8,8 @@ Boundary: public-safe. Do not commit API keys, bearer tokens, private knowledge,
 
 ## What Is Left
 
+Important boundary: this checklist verifies live contract readiness and records trace evidence. It does not create the internal AI Agent nodes inside n8n. The required n8n agent implementation package is documented in `docs/production/n8n-ai-agent-integration-plan.md`.
+
 | Agent | Current open item | Required result |
 | --- | --- | --- |
 | Actor Twin | Record non-demo live probe evidence | `completed` response with n8n trace id |
