@@ -10,6 +10,7 @@ const checks = [
   [node, ["--check", "frontend/app.js"]],
   [node, ["--check", "scripts/build-pages-static.cjs"]],
   [node, ["scripts/validate-n8n-fixtures.cjs"]],
+  [node, ["scripts/validate-n8n-live-probes.cjs"]],
   [node, ["scripts/validate-okf-fixtures.cjs"]],
   [node, ["scripts/validate-graph-promotions.cjs"]],
   [node, ["scripts/validate-vector-adapter.cjs"]],

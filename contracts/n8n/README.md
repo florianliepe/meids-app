@@ -14,6 +14,16 @@ Each fixture includes:
 - `failure`: recoverable failure envelope.
 - `live_probe`: no-write readiness probe used after a public UAT or hosted webhook URL exists.
 
+Standalone no-write live probe payloads are also available for direct n8n replay or manual webhook testing:
+
+```text
+contracts/n8n/live-probes/actor-twin.json
+contracts/n8n/live-probes/knowledge-fabric-agent.json
+contracts/n8n/live-probes/agentic-butler.json
+```
+
+They are derived from the embedded `live_probe` blocks in the fixtures. Actor Twin and Knowledge Fabric Agent expect `completed`; Agentic Butler expects `approval_required` because skill execution must stop at the human gate before any external action.
+
 Run the local structural check:
 
 ```powershell
@@ -24,6 +34,12 @@ Replay all fixture cases and refresh the public cockpit status artifact:
 
 ```powershell
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\replay-n8n-fixtures.cjs --write
+```
+
+Validate that standalone live-probe payloads still match their source fixtures:
+
+```powershell
+& "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\validate-n8n-live-probes.cjs
 ```
 
 The replay artifact is written to `frontend/assets/n8n-contract-replay-status.json` and is safe for GitHub Pages because it contains only readiness metadata, case counts, and public fixture references. Current coverage is 15 replay cases across the three top-level agents.
