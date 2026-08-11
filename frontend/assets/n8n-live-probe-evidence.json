@@ -7,14 +7,14 @@
       "agent_id": "actor_twin",
       "agent_name": "Actor Twin",
       "status": "connected",
-      "checked_at": "2026-08-11T10:52:09.107Z",
-      "trace_id": "n8n_exec_16247",
+      "checked_at": "2026-08-11T16:09:59.306Z",
+      "trace_id": "n8n_exec_16273",
       "demo": false,
-      "url_source": "github-pages-secret",
+      "url_source": "browser-local",
       "evidence": {
         "response_status": "completed",
         "expected_response_status": "completed",
-        "n8n_execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/fDn8yXo3W41hh3yR/executions/16247"
+        "n8n_execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/fDn8yXo3W41hh3yR/executions/16273"
       },
       "ai_agent": {
         "integrated": true,
@@ -25,14 +25,14 @@
       "agent_id": "knowledge_fabric_agent",
       "agent_name": "Knowledge Fabric Agent",
       "status": "connected",
-      "checked_at": "2026-08-11T10:52:09.177Z",
-      "trace_id": "n8n_exec_16248",
+      "checked_at": "2026-08-11T16:09:59.387Z",
+      "trace_id": "n8n_exec_16274",
       "demo": false,
-      "url_source": "github-pages-secret",
+      "url_source": "browser-local",
       "evidence": {
         "response_status": "completed",
         "expected_response_status": "completed",
-        "n8n_execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/7Ci86PxXipwvYpKv/executions/16248"
+        "n8n_execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/7Ci86PxXipwvYpKv/executions/16274"
       },
       "ai_agent": {
         "integrated": true,
@@ -43,14 +43,14 @@
       "agent_id": "agentic_butler",
       "agent_name": "Agentic Butler",
       "status": "connected",
-      "checked_at": "2026-08-11T10:52:09.252Z",
-      "trace_id": "n8n_exec_16249",
+      "checked_at": "2026-08-11T16:09:59.467Z",
+      "trace_id": "n8n_exec_16275",
       "demo": false,
-      "url_source": "github-pages-secret",
+      "url_source": "browser-local",
       "evidence": {
         "response_status": "approval_required",
         "expected_response_status": "approval_required",
-        "n8n_execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/KZOqZRUAnVfFEAYJ/executions/16249",
+        "n8n_execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/KZOqZRUAnVfFEAYJ/executions/16275",
         "approval_gate_confirmed": true
       },
       "ai_agent": {
@@ -59,7 +59,7 @@
       }
     }
   ],
-  "updated_at": "2026-08-11T10:52:09.256Z",
+  "updated_at": "2026-08-11T16:09:59.471Z",
   "summary": {
     "agent_count": 3,
     "connected_agent_count": 3,

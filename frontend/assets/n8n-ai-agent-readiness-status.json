@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-11T15:52:17.860Z",
+  "generated_at": "2026-08-11T16:10:11.378Z",
   "status": "ai_agent_blueprints_ready_live_verification_required",
   "boundary": "Public-safe readiness artifact. It checks repo workflow implementation blueprints and public probe evidence, but does not expose secrets or call n8n.",
   "summary": {
@@ -44,8 +44,8 @@
       },
       "live_probe": {
         "status": "connected",
-        "trace_id": "n8n_exec_16247",
-        "execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/fDn8yXo3W41hh3yR/executions/16247",
+        "trace_id": "n8n_exec_16273",
+        "execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/fDn8yXo3W41hh3yR/executions/16273",
         "ai_agent_node": "Actor Twin AI Agent"
       },
       "next_actions": [
@@ -82,8 +82,8 @@
       },
       "live_probe": {
         "status": "connected",
-        "trace_id": "n8n_exec_16248",
-        "execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/7Ci86PxXipwvYpKv/executions/16248",
+        "trace_id": "n8n_exec_16274",
+        "execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/7Ci86PxXipwvYpKv/executions/16274",
         "ai_agent_node": "Knowledge Fabric AI Agent"
       },
       "next_actions": [
@@ -120,8 +120,8 @@
       },
       "live_probe": {
         "status": "connected",
-        "trace_id": "n8n_exec_16249",
-        "execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/KZOqZRUAnVfFEAYJ/executions/16249",
+        "trace_id": "n8n_exec_16275",
+        "execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/KZOqZRUAnVfFEAYJ/executions/16275",
         "ai_agent_node": "Agentic Butler AI Agent"
       },
       "next_actions": [
