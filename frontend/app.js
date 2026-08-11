@@ -28128,6 +28128,7 @@ function renderProductionAgentUrlReadiness(agents = []) {
   const missing = agents.filter((agent) => !agent.configured);
   const missingConfig = buildN8nRuntimeConfigSnippet(missing.map((agent) => ({ id: agent.agentId })));
   const liveUrlGuide = githubBlobUrl("docs/n8n-live-url-configuration.md");
+  const liveOperatorChecklist = githubBlobUrl("docs/production/n8n-live-readiness-operator-checklist.md");
   const runtimeAsset = githubBlobUrl("frontend/assets/agent-runtime-config.json");
   const runtimeStatusAsset = githubBlobUrl("frontend/assets/n8n-runtime-readiness-status.json");
   const runtimeStatus = state.n8nRuntimeReadinessStatus || {};
@@ -28150,6 +28151,7 @@ function renderProductionAgentUrlReadiness(agents = []) {
           <strong>${escapeHtml(`${runtimeSummary.configured_count ?? configuredCount}/${runtimeSummary.agent_count ?? agents.length} URLs validated from runtime asset`)}</strong>
           <small>${escapeHtml(runtimeStatus.boundary || "Runtime readiness validates URL slots but does not prove live connectivity.")}</small>
           <a class="secondary small" href="${escapeHtml(runtimeStatusAsset)}" target="_blank" rel="noreferrer">Open readiness artifact</a>
+          <a class="secondary small" href="${escapeHtml(liveOperatorChecklist)}" target="_blank" rel="noreferrer">Open live checklist</a>
         </div>
       ` : ""}
       ${renderProductionAgentUrlSourceComparison(agents, runtimeSummary)}
@@ -28466,6 +28468,7 @@ function safeJsonParse(text = "", fallback = null) {
 function renderProductionN8nHandoffPacket(missing = []) {
   const docs = [
     "docs/n8n-live-url-configuration.md",
+    "docs/production/n8n-live-readiness-operator-checklist.md",
     "docs/production/agent-config-handoff-package.md",
     "contracts/n8n/agent-config-public-export.json",
   ];
