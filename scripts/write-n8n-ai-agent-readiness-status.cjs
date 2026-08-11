@@ -13,6 +13,7 @@ const agents = [
     agent_id: "actor_twin",
     agent_name: "Actor Twin",
     implementation: "actor-twin.ai-agent.workflow.json",
+    promoted_workflow: "actor-twin.workflow.json",
     required_ai_node: "Actor Twin AI Agent",
     required_model_node: "Actor Twin Chat Model",
     expected_live_workflow: "fDn8yXo3W41hh3yR",
@@ -22,6 +23,7 @@ const agents = [
     agent_id: "knowledge_fabric_agent",
     agent_name: "Knowledge Fabric Agent",
     implementation: "knowledge-fabric-agent.ai-agent.workflow.json",
+    promoted_workflow: "knowledge-fabric-agent.workflow.json",
     required_ai_node: "Knowledge Fabric AI Agent",
     required_model_node: "Knowledge Fabric Chat Model",
     expected_live_workflow: "7Ci86PxXipwvYpKv",
@@ -31,6 +33,7 @@ const agents = [
     agent_id: "agentic_butler",
     agent_name: "Agentic Butler",
     implementation: "agentic-butler.ai-agent.workflow.json",
+    promoted_workflow: "agentic-butler.workflow.json",
     required_ai_node: "Agentic Butler AI Agent",
     required_model_node: "Agentic Butler Chat Model",
     expected_live_workflow: "KZOqZRUAnVfFEAYJ",
@@ -81,10 +84,15 @@ function runtimeFor(runtime, agentId) {
 
 function buildAgent(agent, runtime, probe, adapterReady) {
   const implementationPath = path.join(implementationDir, agent.implementation);
+  const promotedWorkflowPath = path.join(root, "workflows", "n8n", agent.promoted_workflow);
   const workflow = readJson(implementationPath, {});
+  const promotedWorkflow = readJson(promotedWorkflowPath, {});
   const aiNode = nodeByName(workflow, agent.required_ai_node);
   const modelNode = nodeByName(workflow, agent.required_model_node);
   const modelConnected = hasAiModelConnection(workflow, agent.required_model_node, agent.required_ai_node);
+  const promotedAiNode = nodeByName(promotedWorkflow, agent.required_ai_node);
+  const promotedModelNode = nodeByName(promotedWorkflow, agent.required_model_node);
+  const promotedModelConnected = hasAiModelConnection(promotedWorkflow, agent.required_model_node, agent.required_ai_node);
   const probeAgent = liveProbeFor(probe, agent.agent_id);
   const runtimeAgent = runtimeFor(runtime, agent.agent_id);
   const liveProbeClaimsAi = probeAgent.ai_agent?.integrated === true;
@@ -95,16 +103,24 @@ function buildAgent(agent, runtime, probe, adapterReady) {
       String(modelNode.type || "").includes("lmChat") &&
       modelConnected,
   );
+  const promotedWorkflowReady = Boolean(
+    promotedAiNode &&
+      String(promotedAiNode.type || "").includes("langchain.agent") &&
+      promotedModelNode &&
+      String(promotedModelNode.type || "").includes("lmChat") &&
+      promotedModelConnected,
+  );
   const liveUrlReady = runtimeAgent.url_configured === true;
   const traceReady = probeAgent.status === "connected" && probeAgent.demo !== true && Boolean(probeAgent.trace_id);
   const manualVerificationRequired = true;
-  const state = implementationReady && adapterReady && liveUrlReady && traceReady && liveProbeClaimsAi
+  const state = implementationReady && promotedWorkflowReady && adapterReady && liveUrlReady && traceReady && liveProbeClaimsAi
     ? "live_ai_claimed_verify_in_n8n"
-    : implementationReady && adapterReady
+    : implementationReady && promotedWorkflowReady && adapterReady
       ? "blueprint_ready_live_incomplete"
       : "blocked";
   const blockers = [];
   if (!implementationReady) blockers.push("AI Agent blueprint lacks required AI Agent, chat model, or model connection.");
+  if (!promotedWorkflowReady) blockers.push("Main n8n workflow import target is not populated with the AI Agent workflow.");
   if (!adapterReady) blockers.push("Production response adapter is not validated.");
   if (!liveUrlReady) blockers.push("Public UAT/live webhook URL is not configured.");
   if (!traceReady) blockers.push("Non-demo live trace evidence is missing.");
@@ -116,9 +132,11 @@ function buildAgent(agent, runtime, probe, adapterReady) {
     role: agent.role,
     status: state,
     implementation_path: rel(implementationPath),
+    promoted_workflow_path: rel(promotedWorkflowPath),
     expected_live_workflow: agent.expected_live_workflow,
     gates: {
       ai_agent_blueprint_ready: implementationReady,
+      promoted_workflow_ready: promotedWorkflowReady,
       response_adapter_ready: adapterReady,
       live_url_configured: liveUrlReady,
       live_trace_recorded: traceReady,
@@ -147,6 +165,7 @@ function buildArtifact() {
   const adapterReady = adapter.summary?.production_adapter_ready === true;
   const agentRows = agents.map((agent) => buildAgent(agent, runtime, probe, adapterReady));
   const blueprintReady = agentRows.filter((agent) => agent.gates.ai_agent_blueprint_ready).length;
+  const promotedReady = agentRows.filter((agent) => agent.gates.promoted_workflow_ready).length;
   const liveClaimed = agentRows.filter((agent) => agent.gates.live_probe_claims_ai_agent).length;
   const traceReady = agentRows.filter((agent) => agent.gates.live_trace_recorded).length;
   const manualRequired = agentRows.filter((agent) => agent.gates.manual_live_workflow_verification_required).length;
@@ -159,6 +178,7 @@ function buildArtifact() {
     summary: {
       agent_count: agentRows.length,
       ai_agent_blueprint_ready_count: blueprintReady,
+      promoted_workflow_ready_count: promotedReady,
       live_probe_claims_ai_agent_count: liveClaimed,
       live_trace_recorded_count: traceReady,
       manual_live_workflow_verification_required_count: manualRequired,
@@ -187,6 +207,9 @@ function main() {
     if (current.summary?.agent_count !== artifact.summary.agent_count) throw new Error(`${rel(args.output)} agent count is out of date`);
     if (current.summary?.ai_agent_blueprint_ready_count !== artifact.summary.ai_agent_blueprint_ready_count) {
       throw new Error(`${rel(args.output)} AI blueprint count is out of date`);
+    }
+    if (current.summary?.promoted_workflow_ready_count !== artifact.summary.promoted_workflow_ready_count) {
+      throw new Error(`${rel(args.output)} promoted workflow count is out of date`);
     }
   } else {
     fs.mkdirSync(path.dirname(args.output), { recursive: true });

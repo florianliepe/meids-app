@@ -13443,6 +13443,7 @@ function renderN8nAiAgentReadinessSummary() {
       </div>
       <div class="zielmodus-preflight-summary ${escapeHtml(safeGraphClass(status))}">
         <span><strong>${escapeHtml(String(summary.ai_agent_blueprint_ready_count ?? 0))}/${escapeHtml(String(summary.agent_count ?? agents.length))}</strong><small>AI blueprints</small></span>
+        <span><strong>${escapeHtml(String(summary.promoted_workflow_ready_count ?? 0))}/${escapeHtml(String(summary.agent_count ?? agents.length))}</strong><small>import targets</small></span>
         <span><strong>${escapeHtml(String(summary.live_probe_claims_ai_agent_count ?? 0))}/${escapeHtml(String(summary.agent_count ?? agents.length))}</strong><small>probe claims AI</small></span>
         <span><strong>${escapeHtml(String(summary.live_trace_recorded_count ?? 0))}/${escapeHtml(String(summary.agent_count ?? agents.length))}</strong><small>live traces</small></span>
         <span><strong>${escapeHtml(String(summary.manual_live_workflow_verification_required_count ?? 0))}</strong><small>manual verifications open</small></span>
@@ -13452,6 +13453,7 @@ function renderN8nAiAgentReadinessSummary() {
           const gates = agent.gates || {};
           const readyCount = [
             gates.ai_agent_blueprint_ready,
+            gates.promoted_workflow_ready,
             gates.response_adapter_ready,
             gates.live_url_configured,
             gates.live_trace_recorded,
@@ -13461,10 +13463,11 @@ function renderN8nAiAgentReadinessSummary() {
           return `
             <article class="${escapeHtml(statusClass)}">
               <span>${escapeHtml(agent.agent_name || agentDisplayName(agent.agent_id))}</span>
-              <strong>${escapeHtml(`${readyCount}/5 machine gates`)}</strong>
+              <strong>${escapeHtml(`${readyCount}/6 machine gates`)}</strong>
               <small>${escapeHtml(agent.role || "Agent role")}</small>
               <dl>
                 <div><dt>Blueprint</dt><dd>${escapeHtml(gates.ai_agent_blueprint_ready ? "AI Agent node ready" : "missing")}</dd></div>
+                <div><dt>Import</dt><dd>${escapeHtml(gates.promoted_workflow_ready ? "workflow target ready" : "target missing")}</dd></div>
                 <div><dt>Adapter</dt><dd>${escapeHtml(gates.response_adapter_ready ? "contract ready" : "blocked")}</dd></div>
                 <div><dt>Live</dt><dd>${escapeHtml(gates.live_url_configured ? "URL configured" : "URL missing")}</dd></div>
                 <div><dt>Trace</dt><dd>${escapeHtml(agent.live_probe?.trace_id || "trace pending")}</dd></div>
