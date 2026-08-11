@@ -173,7 +173,9 @@ async function run() {
       }
       if (qaCase.view === "dashboard") {
         if (!interactionMetrics.traceRows) failures.push("trace dashboard has no visible agent trace rows");
-        if (!interactionMetrics.setupNotice) failures.push("trace dashboard missing live URL setup notice");
+        if (interactionMetrics.awaitingUrlCount > 0 && !interactionMetrics.setupNotice) {
+          failures.push("trace dashboard missing live URL setup notice");
+        }
       }
       results.push({ ...qaCase, metrics, contrast: Number(contrast.toFixed(2)), screenshot, status: failures.length ? "failed" : "passed", failures });
     }
@@ -238,7 +240,18 @@ async function inspectTraceDashboard(page) {
   await page.waitForSelector("#dashAgentTraceHistory", { timeout: 10000 }).catch(() => {});
   const traceRows = await page.locator("#dashAgentTraceHistory .agent-trace-row").count();
   const setupNotice = await page.locator("#dashAgentTraceHistory .agent-trace-setup-notice").count();
-  return { traceRows, setupNotice };
+  const runtimeStatus = await page.evaluate(async () => {
+    try {
+      const response = await fetch("./assets/n8n-runtime-readiness-status.json");
+      return response.ok ? response.json() : {};
+    } catch {
+      return {};
+    }
+  });
+  const summary = runtimeStatus.summary || {};
+  const agents = Array.isArray(runtimeStatus.agents) ? runtimeStatus.agents : [];
+  const awaitingUrlCount = summary.awaiting_url_count ?? agents.filter((agent) => agent.status === "awaiting_url").length;
+  return { traceRows, setupNotice, awaitingUrlCount };
 }
 
 run().catch((error) => {

@@ -28062,7 +28062,7 @@ body.cockpit-mode .workspace-signal {
 .knowledge-fabric-path-flow {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .knowledge-fabric-path-flow button {
@@ -28076,6 +28076,7 @@ body.cockpit-mode .workspace-signal {
   display: grid;
   gap: 5px;
   min-width: 0;
+  min-height: 112px;
   padding: 10px;
   text-align: left;
 }

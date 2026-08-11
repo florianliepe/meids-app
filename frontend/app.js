@@ -14715,8 +14715,8 @@ function renderChatSkillMode() {
   const applied = state.skills.filter((skill) => state.appliedChatSkillIds.includes(skill.skill_id));
   const isSkillMode = Boolean(applied.length);
   if (!["source_context", "skill_activation"].includes(state.activeChatInteractionMode)) $("#chatSkillContext").open = false;
-  $("#chatSkillContext").hidden = false;
-  $("#chatSkillContext").classList.toggle("hidden", false);
+  $("#chatSkillContext").hidden = true;
+  $("#chatSkillContext").classList.toggle("hidden", true);
   $("#n8nAgentPanel").hidden = true;
   const modeSelect = $("#chatInteractionModeSelect");
   if (modeSelect) modeSelect.value = state.activeChatInteractionMode || "actor_twin";
@@ -16908,14 +16908,14 @@ function knowledgeFabricIngestPathStatus() {
       key: "okf",
       label: "Pending OKF",
       status: hasOkfTarget ? "ready" : hasSource ? "blocked" : "open",
-      detail: hasOkfTarget ? latest.concept_path || latest.evidence_path || "OKF target recorded" : "Concept/evidence path missing.",
+      detail: hasOkfTarget ? "Concept and evidence targets prepared for review." : "Concept/evidence target pending.",
       action: "copy-source-repo-sync",
     },
     {
       key: "audit",
       label: "Evidence + CRUD",
       status: hasAudit ? "ready" : hasSource ? "blocked" : "open",
-      detail: hasAudit ? queue.find((item) => item.crud_log_path)?.crud_log_path || "CRUD log target stored" : "Append-only audit target required.",
+      detail: hasAudit ? "Audit trail target prepared." : "Append-only audit target pending.",
       action: "export-uat-checklist",
     },
     {
@@ -16964,7 +16964,7 @@ function renderKnowledgeFabricIngestPathStatus() {
           <span class="badge">Ingest path status</span>
           <h3>${escapeHtml(`${readyCount}/${status.stages.length} lifecycle gates ready`)}</h3>
           <p>${escapeHtml(status.queue.length
-            ? "Local handoffs are staged as pending OKF with evidence, audit, graph, and vector boundaries visible."
+            ? "Captured sources are staged for review. Detailed evidence and queue decisions live in Knowledge and Review."
             : "No local source handoff yet. The first upload, paste, or transcript will create the pending OKF path.")}</p>
         </div>
         <span class="${liveClass}">${escapeHtml(status.liveKnowledgeUrl ? "Knowledge Fabric URL configured" : "Knowledge Fabric URL missing")}</span>
@@ -16989,7 +16989,7 @@ function renderKnowledgeFabricIngestPathStatus() {
 
 function renderKnowledgeFabricQueue(items = [], limit = 6, options = {}) {
   if (!items.length) {
-    return renderEmptyState("No pending OKF source handoffs yet. Use Add source context in Chat or upload a source.");
+    return renderEmptyState("No pending OKF source handoffs yet. Upload, paste, or transcribe a source.");
   }
   const compact = Boolean(options.compact);
   const activeFilter = compact ? "all" : state.knowledgeFabricQueueFilter || "all";
@@ -24889,7 +24889,7 @@ function productionProgressStages() {
 function renderProductionProgressHeader() {
   const target = $("#productionProgressHeader");
   if (!target) return;
-  if (!document.body.classList.contains("cockpit-mode")) {
+  if (document.body.dataset.activeView !== "quality") {
     target.hidden = true;
     target.innerHTML = "";
     return;

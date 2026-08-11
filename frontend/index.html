@@ -186,16 +186,12 @@
           <div id="chatWorkspaceIntro" class="workspace-intro"></div>
           <section class="chat-workspace-hero" aria-label="Agent interaction workspace">
             <span class="badge">Actor Twin</span>
-            <h2>Ask the twin. Activate a skill when work needs execution.</h2>
-            <p>One focused surface for questions, skill activation, source context, and voice capture. Review, graph, trace, and governance work stays in the cockpit.</p>
+            <h2>Ask, decide, and move work forward.</h2>
+            <p>The Actor Twin is the primary interface. It retrieves knowledge and routes work to agents when needed; cockpit views hold review, graph, trace, and production controls.</p>
             <div class="chat-quick-actions" aria-label="Workspace shortcuts">
               <button class="secondary small" type="button" data-chat-action="focus-query">Ask twin</button>
-              <button class="secondary small" type="button" data-chat-action="open-interaction-setup">Activate skill</button>
-              <button class="secondary small" type="button" data-chat-action="open-skill-context">Add source context</button>
               <button class="secondary small" type="button" data-cockpit-action="openVoice">Voice capture</button>
             </div>
-            <div id="chatModeHealthStrip" class="chat-mode-health-strip" aria-label="Chat agent contract health"></div>
-            <div id="chatRuntimeSetupShortcuts" class="chat-runtime-setup-shortcuts" aria-label="Missing live agent URL setup"></div>
           </section>
           <section class="chat-output-shell" aria-label="Recent twin outputs">
             <div class="chat-output-head">
@@ -204,59 +200,29 @@
             </div>
             <div id="messages" class="messages"></div>
           </section>
-          <section class="chat-agent-trace-panel" aria-label="Latest agent traces">
-            <div class="chat-agent-trace-head">
-              <div>
-                <span class="badge">Latest agent traces</span>
-                <small>Recent Actor Twin, Knowledge Fabric, and Agentic Butler handoffs.</small>
-              </div>
-              <button class="secondary small" type="button" data-chat-action="open-agent-trace">Open trace cockpit</button>
-            </div>
-            <div id="chatLatestAgentTraces" class="chat-agent-trace-list"></div>
-          </section>
-          <section class="panel knowledge-fabric-queue-panel" aria-label="Pending Knowledge Fabric ingest queue">
-            <div class="knowledge-fabric-queue-head">
-              <div>
-                <span class="badge">Knowledge Fabric queue</span>
-                <h2>Pending OKF source handoffs</h2>
-                <p>Source-context runs stay visible until they are reviewed, synced, or promoted into durable knowledge.</p>
-              </div>
-              <div class="button-row tight">
-                <button class="secondary small" type="button" data-kf-queue-action="open-ingest">Open source upload</button>
-                <button class="secondary small" type="button" data-kf-queue-action="export-reviewed-bundle">Export reviewed bundle</button>
-              </div>
-            </div>
-            <div id="chatKnowledgeFabricQueue" class="knowledge-fabric-queue"></div>
-          </section>
           <details id="chatInteractionSetup" class="chat-workspace-drawer">
-            <summary>Interaction setup</summary>
+            <summary>Answer settings</summary>
             <section class="chat-workspace-settings" aria-label="Interaction setup">
               <div class="chat-skillbar" aria-label="Ask twin controls">
-                <label for="chatInteractionModeSelect">Mode</label>
-                <select id="chatInteractionModeSelect" class="compact-select">
+                <label for="chatInteractionModeSelect" hidden>Mode</label>
+                <select id="chatInteractionModeSelect" class="compact-select" hidden>
                   <option value="actor_twin">Ask Actor Twin</option>
                   <option value="skill_activation">Activate approved skill</option>
                   <option value="source_context">Add source context</option>
                 </select>
-                <span id="activeChatContractBadge" class="chat-active-contract-badge" aria-label="Active mode contract readiness">Contract loading</span>
-                <div id="chatInlineModeBadges" class="chat-inline-mode-badges" aria-label="Inline chat mode contract health"></div>
                 <label for="riskPostureSelect">Posture</label>
                 <select id="riskPostureSelect" class="compact-select">
                   <option value="careful">Careful</option>
                   <option value="balanced" selected>Balanced</option>
                   <option value="bold">Bold</option>
                 </select>
-                <details id="appliedSkillsMenu" class="skills-menu">
+                <details id="appliedSkillsMenu" class="skills-menu" hidden>
                   <summary id="appliedSkillsSummary">Applied skills: none</summary>
                   <div id="appliedSkillsList" class="skills-menu-list"></div>
                 </details>
-                <span id="chatSkillStatus" class="muted-inline">Ask twin through external agent</span>
+                <span id="chatSkillStatus" class="muted-inline">Actor Twin routes knowledge and skills when needed.</span>
               </div>
-              <div id="chatContractBadges" class="chat-contract-badges" aria-label="Agent contract readiness"></div>
-              <div id="chatModeReadinessRail" class="chat-mode-readiness-rail" aria-label="Chat mode readiness"></div>
-              <div id="chatContractActions" class="chat-contract-actions" aria-label="Active agent contract actions"></div>
             </section>
-            <div id="chatSkillRouting" class="skill-routing-panel"></div>
             <details class="chat-retrieval-settings">
               <summary>Search scope</summary>
               <div class="chat-filters" aria-label="Retrieval filters">
@@ -288,7 +254,7 @@
             <div id="n8nChatMount" class="n8n-chat-mount"></div>
             <p id="n8nChatStatus" class="muted-inline">n8n chat not loaded yet.</p>
           </section>
-          <details id="chatSkillContext" class="chat-skill-context">
+          <details id="chatSkillContext" class="chat-skill-context" hidden>
             <summary>Skill source context</summary>
             <div id="chatSkillPreflight" class="skill-preflight"></div>
             <div class="preset-row">
@@ -459,32 +425,29 @@
             <div>
               <span class="badge">Knowledge Fabric contract</span>
               <h2>Every source enters as pending OKF.</h2>
-              <p>Uploads and transcripts create reviewable knowledge first. Trusted retrieval, graph promotion, and vector refresh stay gated.</p>
+              <p>Uploads and transcripts create reviewable knowledge first. The detailed queue, evidence, and decisions live in Knowledge and Review.</p>
             </div>
             <div class="ingest-contract-grid" aria-label="Knowledge Fabric ingest lifecycle">
-              <span><strong>Pending concept</strong><small>Markdown + YAML frontmatter</small></span>
-              <span><strong>Evidence record</strong><small>Source anchor and provenance hash</small></span>
-              <span><strong>CRUD audit</strong><small>Append-only learning trail</small></span>
-              <span><strong>Graph candidates</strong><small>Draft edges for curator review</small></span>
-              <span><strong>Vector boundary</strong><small>Deferred until approved policy</small></span>
+              <span><strong>Capture</strong><small>Source is received</small></span>
+              <span><strong>Stage</strong><small>Pending concept is prepared</small></span>
+              <span><strong>Review</strong><small>Human approval gates trust</small></span>
+              <span><strong>Connect</strong><small>Graph candidates stay draft</small></span>
+              <span><strong>Retrieve</strong><small>Approved-only context</small></span>
             </div>
           </article>
           <article class="panel knowledge-fabric-queue-panel">
             <div class="knowledge-fabric-queue-head">
               <div>
-                <span class="badge">Pending ingest queue</span>
-                <h2>Review source handoffs before trusted use.</h2>
-                <p>Each entry carries concept, evidence, CRUD, graph-curator, and vector-boundary signals.</p>
+                <span class="badge">Source status</span>
+                <h2>Captured sources move into review.</h2>
+                <p>This page stays focused on intake. Use Knowledge and Review for concepts, evidence, and approval decisions.</p>
               </div>
               <div class="button-row tight">
-                <button class="secondary small" type="button" data-kf-queue-action="export-uat-checklist">Export local UAT checklist</button>
-                <button class="secondary small" type="button" data-kf-queue-action="export-reviewed-bundle">Export reviewed bundle</button>
-                <button class="secondary small" type="button" data-kf-queue-action="clear">Clear local queue</button>
+                <button class="secondary small" type="button" data-cockpit-action="openKnowledge">Open Knowledge</button>
+                <button class="secondary small" type="button" data-cockpit-action="reviewConcepts">Open Review</button>
               </div>
             </div>
-            <div id="knowledgeFabricLocalUatChecklist" class="knowledge-fabric-uat-checklist"></div>
             <div id="knowledgeFabricIngestPathStatus" class="knowledge-fabric-ingest-path-status" aria-label="Knowledge Fabric ingest path status"></div>
-            <div id="ingestKnowledgeFabricQueue" class="knowledge-fabric-queue"></div>
           </article>
           <pre id="ingestResult" class="output">No ingest yet.</pre>
         </section>
