@@ -28730,6 +28730,14 @@ body.cockpit-mode .workspace-signal {
   overflow-wrap: anywhere;
 }
 
+.knowledge-fabric-artifact-list *,
+.knowledge-fabric-target-path * {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .knowledge-fabric-artifact-list strong,
 .knowledge-fabric-target-path strong {
   color: var(--ink);
