@@ -1,0 +1,84 @@
+{
+  "name": "MeIDs Knowledge Fabric Agent - contract shell",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meids/knowledge-fabric/ingest",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "knowledge-fabric-receive-request",
+      "name": "Receive request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "meids-knowledge-fabric-contract-shell"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json.body ?? $json;\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nconst requestId = input.request_id || input.live_probe?.request_id || `req_${executionId}`;\nconst principal = input.principal || input.live_probe?.principal || { twin_id: 'unknown', display_name: 'Unknown' };\nconst payload = input.live_probe || input;\nconst isProbe = payload.intent === 'live_probe' || input.intent === 'live_probe';\nconst safeSlug = (payload.input?.title || input.input?.title || 'knowledge-fabric-probe')\n  .toString()\n  .toLowerCase()\n  .replace(/[^a-z0-9]+/g, '-')\n  .replace(/^-|-$/g, '')\n  .slice(0, 72) || 'knowledge-fabric-probe';\nconst today = new Date().toISOString().slice(0, 10);\nconst capabilities = payload.context?.expected_capabilities || input.context?.expected_capabilities || [\n  'okf_pending_concept_contract',\n  'evidence_storage_contract',\n  'crud_audit_contract',\n  'graph_candidate_trigger_contract',\n  'vector_refresh_boundary'\n];\n\nconst response = {\n  envelope_version: input.envelope_version || payload.envelope_version || '0.1.0',\n  request_id: requestId,\n  agent_id: 'knowledge_fabric_agent',\n  status: 'completed',\n  output: isProbe ? {\n    readiness: 'connected',\n    side_effects: 'none',\n    capabilities_checked: capabilities\n  } : {\n    concept_path: `concepts/${principal.twin_id || 'unknown'}/pending/${today}-${safeSlug}.md`,\n    evidence_path: `evidence/${principal.twin_id || 'unknown'}/pending/${today}-${safeSlug}.yaml`,\n    transcript_path: payload.input?.source_type === 'transcript' ? `transcripts/${principal.twin_id || 'unknown'}/${today}-${safeSlug}.md` : null,\n    crud_log_path: `audit/crud/${principal.twin_id || 'unknown'}/${today}.jsonl`,\n    review_state: 'pending_review',\n    candidate_edges: [\n      {\n        source: `concept:${safeSlug}`,\n        target: 'cluster:pending-review',\n        relation_type: 'candidate_member_of_cluster',\n        confidence: 0.51\n      }\n    ],\n    graph_curator_trigger: {\n      status: 'queued',\n      operation: 'derive_candidate_edges',\n      target_state: 'candidate'\n    },\n    vector_refresh: {\n      status: 'deferred',\n      reason: 'Pending-review concepts are not pushed to trusted vector indexes without review policy approval.'\n    }\n  },\n  trace: {\n    stored: true,\n    trace_id: `n8n_exec_${executionId}`,\n    used_agents: ['knowledge_fabric_agent_shell', 'graph_curator_pending_boundary']\n  }\n};\n\nreturn [{ json: response }];"
+      },
+      "id": "knowledge-fabric-contract-response",
+      "name": "Contract response shell",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "knowledge-fabric-return-json",
+      "name": "Return JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        560,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Receive request": {
+      "main": [
+        [
+          {
+            "node": "Contract response shell",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contract response shell": {
+      "main": [
+        [
+          {
+            "node": "Return JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {},
+  "versionId": "meids-knowledge-fabric-contract-shell-0.1.0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "description": "Public-safe contract shell. Insert AI Agent/LLM nodes between Receive request and Contract response shell for production intelligence."
+  }
+}

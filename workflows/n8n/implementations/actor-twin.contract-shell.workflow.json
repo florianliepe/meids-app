@@ -1,0 +1,84 @@
+{
+  "name": "MeIDs Actor Twin - contract shell",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meids/actor-twin/chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "actor-twin-receive-request",
+      "name": "Receive request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "meids-actor-twin-contract-shell"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json.body ?? $json;\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nconst requestId = input.request_id || input.live_probe?.request_id || `req_${executionId}`;\nconst query = input.input?.query || input.chatInput || input.message || 'Public-safe Actor Twin readiness probe.';\nconst response = {\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: requestId,\n  agent_id: 'actor_twin',\n  status: 'completed',\n  output: {\n    answer: `Actor Twin contract shell received the query: ${query}`,\n    confidence: 0.72,\n    mode: 'answer_only',\n    citations: [],\n    handoff: {\n      required: false,\n      target_agent: null\n    }\n  },\n  trace: {\n    stored: true,\n    trace_id: `n8n_exec_${executionId}`,\n    used_agents: ['actor_twin_shell']\n  }\n};\nreturn [{ json: response }];"
+      },
+      "id": "actor-twin-contract-response",
+      "name": "Contract response shell",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "actor-twin-return-json",
+      "name": "Return JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        560,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Receive request": {
+      "main": [
+        [
+          {
+            "node": "Contract response shell",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contract response shell": {
+      "main": [
+        [
+          {
+            "node": "Return JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {},
+  "versionId": "meids-actor-twin-contract-shell-0.1.0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "description": "Public-safe contract shell. Insert retrieval, persona steering, and LLM/AI Agent nodes for production intelligence."
+  }
+}
