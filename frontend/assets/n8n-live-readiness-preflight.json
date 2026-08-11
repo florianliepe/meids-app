@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-11T10:36:49.836Z",
+  "generated_at": "2026-08-11T10:46:15.947Z",
   "status": "ready_for_production_review",
   "boundary": "Public-safe preflight only. It validates local artifacts, URL slot status, and recorded probe evidence; it does not call n8n and does not contain secrets.",
   "summary": {
@@ -30,8 +30,8 @@
       "live_probe": {
         "status": "connected",
         "connected": true,
-        "trace_id": "n8n_exec_16246",
-        "checked_at": "2026-08-11T10:33:45.318Z",
+        "trace_id": "n8n_exec_16247",
+        "checked_at": "2026-08-11T10:45:59.895Z",
         "next_action": "Run Actor Twin live probe and record returned trace id."
       },
       "commands": {
@@ -59,8 +59,8 @@
       "live_probe": {
         "status": "connected",
         "connected": true,
-        "trace_id": "n8n_exec_16244",
-        "checked_at": "2026-08-11T10:33:44.918Z",
+        "trace_id": "n8n_exec_16248",
+        "checked_at": "2026-08-11T10:45:59.916Z",
         "next_action": "Run Knowledge Fabric Agent live probe and record returned trace id."
       },
       "commands": {
@@ -88,8 +88,8 @@
       "live_probe": {
         "status": "connected",
         "connected": true,
-        "trace_id": "n8n_exec_16245",
-        "checked_at": "2026-08-11T10:33:45.204Z",
+        "trace_id": "n8n_exec_16249",
+        "checked_at": "2026-08-11T10:45:59.931Z",
         "next_action": "Run Agentic Butler live probe and record returned trace id."
       },
       "commands": {
