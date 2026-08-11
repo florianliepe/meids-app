@@ -1,0 +1,28 @@
+{
+  "envelope_version": "0.1.0",
+  "request_id": "req_actor_twin_adapter_001",
+  "agent_id": "actor_twin",
+  "status": "completed",
+  "output": {
+    "answer": "Use approved context first. Treat pending concepts as hypotheses until reviewed.",
+    "confidence": 0.82,
+    "mode": "answer_only",
+    "citations": [
+      {
+        "ref": "concepts/florian/example/approved-client-context.md",
+        "state": "approved"
+      }
+    ],
+    "handoff": {
+      "required": false,
+      "target_agent": null
+    }
+  },
+  "trace": {
+    "stored": true,
+    "trace_id": "trace_actor_twin_adapter_001",
+    "used_agents": [
+      "actor_twin_ai_agent"
+    ]
+  }
+}

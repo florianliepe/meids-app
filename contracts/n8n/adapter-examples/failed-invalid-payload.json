@@ -1,0 +1,11 @@
+{
+  "envelope_version": "0.1.0",
+  "request_id": "req_adapter_failure_001",
+  "agent_id": "knowledge_fabric_agent",
+  "status": "failed",
+  "error": {
+    "code": "INVALID_CONTRACT_PAYLOAD",
+    "message": "The request or AI output could not be normalized into the MeIDs n8n response contract.",
+    "recoverable": true
+  }
+}

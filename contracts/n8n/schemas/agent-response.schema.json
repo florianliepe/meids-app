@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meids.local/contracts/n8n/schemas/agent-response.schema.json",
+  "title": "MeIDs n8n Agent Response",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "envelope_version",
+    "request_id",
+    "agent_id",
+    "status"
+  ],
+  "properties": {
+    "envelope_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "agent_id": {
+      "type": "string",
+      "enum": [
+        "actor_twin",
+        "knowledge_fabric_agent",
+        "agentic_butler"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "approval_required",
+        "failed"
+      ]
+    },
+    "output": {
+      "type": "object"
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "required",
+        "gate",
+        "summary",
+        "proposed_action"
+      ],
+      "properties": {
+        "required": {
+          "const": true
+        },
+        "gate": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proposed_action": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "code",
+        "message",
+        "recoverable"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recoverable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "stored",
+        "trace_id",
+        "used_agents"
+      ],
+      "properties": {
+        "stored": {
+          "type": "boolean"
+        },
+        "trace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "used_agents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "completed"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "output",
+          "trace"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "approval_required"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "approval",
+          "trace"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "failed"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "error"
+        ]
+      }
+    }
+  ]
+}

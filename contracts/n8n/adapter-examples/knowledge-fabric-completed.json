@@ -1,0 +1,38 @@
+{
+  "envelope_version": "0.1.0",
+  "request_id": "req_knowledge_fabric_adapter_001",
+  "agent_id": "knowledge_fabric_agent",
+  "status": "completed",
+  "output": {
+    "concept_path": "concepts/florian/transcripts/2026-08-11-client-alignment-reflection.md",
+    "evidence_path": "evidence/florian/transcripts/2026-08-11-client-alignment-reflection.yaml",
+    "transcript_path": "transcripts/florian/2026-08-11-client-alignment-reflection.md",
+    "crud_log_path": "audit/crud/florian/2026-08-11.jsonl",
+    "review_state": "pending_review",
+    "candidate_edges": [
+      {
+        "source": "concept:client-alignment-reflection",
+        "target": "cluster:client-delivery",
+        "relation_type": "candidate_member_of_cluster",
+        "confidence": 0.7
+      }
+    ],
+    "graph_curator_trigger": {
+      "status": "queued",
+      "operation": "derive_candidate_edges",
+      "target_state": "candidate"
+    },
+    "vector_refresh": {
+      "status": "deferred",
+      "reason": "Pending-review concepts are not pushed to trusted vector indexes without review approval."
+    }
+  },
+  "trace": {
+    "stored": true,
+    "trace_id": "trace_knowledge_fabric_adapter_001",
+    "used_agents": [
+      "knowledge_fabric_agent_ai_agent",
+      "graph_curator"
+    ]
+  }
+}

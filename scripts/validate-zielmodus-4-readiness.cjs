@@ -192,7 +192,7 @@ function liveAgentStatus() {
     artifact_status: readiness.status || "unknown",
     detail: missingLive.length
       ? `Missing live URL(s): ${missingLive.join(", ")}`
-      : "All top-level agent live URL slots are configured. Live probe evidence still must be captured before production readiness.",
+      : "All top-level agent live URL slots are configured. Live probe evidence is evaluated by the live probe gate.",
   };
 }
 

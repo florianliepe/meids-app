@@ -10,6 +10,8 @@ const checks = [
   [node, ["--check", "frontend/app.js"]],
   [node, ["--check", "scripts/build-pages-static.cjs"]],
   [node, ["scripts/validate-n8n-fixtures.cjs"]],
+  [node, ["scripts/validate-n8n-response-adapters.cjs"]],
+  [node, ["scripts/write-n8n-production-adapter-status.cjs", "--check"]],
   [node, ["scripts/validate-n8n-live-probes.cjs"]],
   [node, ["scripts/validate-n8n-live-probe-evidence.cjs"]],
   [node, ["scripts/validate-okf-fixtures.cjs"]],
@@ -42,7 +44,7 @@ try {
     run(command, args);
   }
   console.log("\nZielmodus 4 public-safe gate passed.");
-  console.log("Live completion still requires configured n8n URLs and non-demo probe traces.");
+  console.log("Live completion is proven for UAT; remaining work is production adapter and durable persistence hardening.");
 } catch (error) {
   console.error(`\n${error.message}`);
   process.exit(1);

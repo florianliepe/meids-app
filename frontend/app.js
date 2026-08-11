@@ -213,6 +213,7 @@
   n8nLiveProbeEvidenceStatus: null,
   n8nLiveReadinessPreflight: null,
   n8nLiveHandoffCommands: null,
+  n8nProductionAdapterStatus: null,
   zielmodus4LiveCompletionChecklist: null,
   zielmodus4ReadinessStatus: null,
   n8nContractTestResult: null,
@@ -273,6 +274,7 @@ const N8N_RUNTIME_READINESS_STATUS_PATH = "assets/n8n-runtime-readiness-status.j
 const N8N_LIVE_PROBE_EVIDENCE_STATUS_PATH = "assets/n8n-live-probe-evidence.json";
 const N8N_LIVE_READINESS_PREFLIGHT_PATH = "assets/n8n-live-readiness-preflight.json";
 const N8N_LIVE_HANDOFF_COMMANDS_PATH = "assets/n8n-live-handoff-commands.json";
+const N8N_PRODUCTION_ADAPTER_STATUS_PATH = "assets/n8n-production-adapter-status.json";
 const ZIELMODUS_4_LIVE_COMPLETION_CHECKLIST_PATH = "assets/zielmodus-4-live-completion-checklist.json";
 const ZIELMODUS_4_READINESS_STATUS_PATH = "assets/zielmodus-4-readiness-status.json";
 const OKF_VALIDATION_STATUS_PATH = "assets/okf-validation-status.json";
@@ -8514,6 +8516,7 @@ function bindQuality() {
       await safeRefreshStaticN8nLiveProbeEvidenceStatus();
       await safeRefreshStaticN8nLiveReadinessPreflight();
       await safeRefreshStaticN8nLiveHandoffCommands();
+      await safeRefreshStaticN8nProductionAdapterStatus();
       await safeRefreshStaticZielmodus4LiveCompletionChecklist();
       await safeRefreshStaticZielmodus4ReadinessStatus();
       await safeRefreshStaticN8nReplayStatus();
@@ -10682,6 +10685,7 @@ function refreshStaticPagesWorkspace() {
   safeRefreshStaticN8nLiveProbeEvidenceStatus();
   safeRefreshStaticN8nLiveReadinessPreflight();
   safeRefreshStaticN8nLiveHandoffCommands();
+  safeRefreshStaticN8nProductionAdapterStatus();
   safeRefreshStaticZielmodus4LiveCompletionChecklist();
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticZielmodus4ReadinessStatus();
@@ -13090,6 +13094,19 @@ async function safeRefreshStaticN8nLiveHandoffCommands() {
   }
 }
 
+async function safeRefreshStaticN8nProductionAdapterStatus() {
+  if (!staticPagesMode) return;
+  try {
+    state.n8nProductionAdapterStatus = await fetchFrontendAssetJson(N8N_PRODUCTION_ADAPTER_STATUS_PATH, { optional: true });
+    renderAgentOperatingModelPanel();
+    renderProductionProgressHeader();
+  } catch (error) {
+    state.n8nProductionAdapterStatus = null;
+    renderAgentOperatingModelPanel();
+    console.warn("Static n8n production adapter status refresh failed", error);
+  }
+}
+
 async function safeRefreshStaticZielmodus4LiveCompletionChecklist() {
   if (!staticPagesMode) return;
   try {
@@ -13332,6 +13349,7 @@ function renderZielmodus4LiveHandoffGrid() {
   const probeArtifact = githubBlobUrl("frontend/assets/n8n-live-probe-evidence.json");
   const preflightArtifact = githubBlobUrl("frontend/assets/n8n-live-readiness-preflight.json");
   const handoffArtifact = githubBlobUrl("frontend/assets/n8n-live-handoff-commands.json");
+  const adapterArtifact = githubBlobUrl("frontend/assets/n8n-production-adapter-status.json");
   const blockerSummary = preflightActions
     .flatMap((action) => Array.isArray(action.blockers) ? action.blockers : [])
     .reduce((acc, blocker) => {
@@ -13351,6 +13369,7 @@ function renderZielmodus4LiveHandoffGrid() {
           <a class="secondary small" href="${escapeHtml(probeArtifact)}" target="_blank" rel="noreferrer">Probe evidence</a>
           <a class="secondary small" href="${escapeHtml(preflightArtifact)}" target="_blank" rel="noreferrer">Preflight</a>
           <a class="secondary small" href="${escapeHtml(handoffArtifact)}" target="_blank" rel="noreferrer">Handoff commands</a>
+          <a class="secondary small" href="${escapeHtml(adapterArtifact)}" target="_blank" rel="noreferrer">Adapter status</a>
           <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/production/n8n-live-probe-runbook.md"))}" target="_blank" rel="noreferrer">Probe runbook</a>
           <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/production/zielmodus-4-completion-audit.md"))}" target="_blank" rel="noreferrer">Completion audit</a>
           <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/production/zielmodus-4-live-completion-plan.md"))}" target="_blank" rel="noreferrer">Completion plan</a>
@@ -13373,6 +13392,7 @@ function renderZielmodus4LiveHandoffGrid() {
           <span><strong>${escapeHtml(preflight.status || "unknown")}</strong><small>${escapeHtml(Object.keys(blockerSummary).length ? Object.entries(blockerSummary).map(([key, count]) => `${key}: ${count}`).join(" · ") : "no blockers")}</small></span>
         </div>
       ` : ""}
+      ${renderN8nProductionAdapterSummary()}
       ${renderZielmodus4StrictReadinessOperatorPanel(agentIds)}
       <div class="zielmodus-live-handoff-grid">
         ${agentIds.map((agentId) => {
@@ -13410,6 +13430,23 @@ function renderZielmodus4LiveHandoffGrid() {
         }).join("")}
       </div>
       ${renderZielmodus4CompletionChecklist()}
+    </div>
+  `;
+}
+
+function renderN8nProductionAdapterSummary() {
+  const adapter = state.n8nProductionAdapterStatus || {};
+  if (!adapter.schema_version) return "";
+  const summary = adapter.summary || {};
+  const status = adapter.status || "unknown";
+  const examples = Array.isArray(adapter.examples) ? adapter.examples : [];
+  const pending = Array.isArray(adapter.next_actions) ? adapter.next_actions : [];
+  return `
+    <div class="zielmodus-preflight-summary ${escapeHtml(safeGraphClass(status))}" aria-label="n8n production adapter readiness">
+      <span><strong>${escapeHtml(String(summary.example_count ?? examples.length))}</strong><small>adapter examples</small></span>
+      <span><strong>${escapeHtml(String(summary.status_count ?? 0))}/3</strong><small>response statuses</small></span>
+      <span><strong>${escapeHtml(status.replaceAll("_", " "))}</strong><small>schema validation</small></span>
+      <span><strong>${escapeHtml(String(pending.length))}</strong><small>production adapter next actions</small></span>
     </div>
   `;
 }

@@ -36,13 +36,34 @@ The AI Agent performs staging reasoning. The contract response node still enforc
 - `workflows/n8n/implementations/knowledge-fabric-agent.ai-agent.workflow.json`
 - `workflows/n8n/implementations/agentic-butler.ai-agent.workflow.json`
 - `frontend/assets/n8n-live-probe-evidence.json`
+- `contracts/n8n/schemas/agent-response.schema.json`
+- `contracts/n8n/adapter-examples/*.json`
+- `frontend/assets/n8n-production-adapter-status.json`
+
+## Production Adapter Contract
+
+The next live n8n patch should replace the staging response normalizer with a production adapter layer that validates raw AI Agent output against the shared response contract.
+
+The adapter must return exactly one stable status:
+
+- `completed`: safe answer or safe draft output with trace evidence.
+- `approval_required`: risky action is proposed and must pause for human approval.
+- `failed`: contract normalization failed or required input is missing.
+
+Validate adapter examples with:
+
+```powershell
+node scripts\validate-n8n-response-adapters.cjs
+node scripts\write-n8n-production-adapter-status.cjs --check
+```
 
 ## Next Integration Step
 
 Replace the staging contract shell outputs with production adapters incrementally:
 
-1. Add response schema validation after each AI Agent.
-2. Add explicit error fallback branches.
-3. Connect Knowledge Fabric output to OKF draft creation.
-4. Connect Agentic Butler output to approved skill run records and approval queue.
-5. Connect Actor Twin routing to choose answer-only, knowledge ingest, or skill activation.
+1. Patch each live n8n workflow so raw AI output is normalized through the production adapter response schema.
+2. Add explicit error fallback branches returning `failed` with `INVALID_CONTRACT_PAYLOAD`.
+3. Re-run live probes and record new trace IDs after adapter patching.
+4. Connect Knowledge Fabric output to OKF draft creation.
+5. Connect Agentic Butler output to approved skill run records and approval queue.
+6. Connect Actor Twin routing to choose answer-only, knowledge ingest, or skill activation.

@@ -1,0 +1,29 @@
+{
+  "envelope_version": "0.1.0",
+  "request_id": "req_agentic_butler_adapter_001",
+  "agent_id": "agentic_butler",
+  "status": "approval_required",
+  "approval": {
+    "required": true,
+    "gate": "requires_human_action",
+    "summary": "The skill run proposes external follow-up actions after preparing the plan.",
+    "proposed_action": "Prepare drafts and meeting options, then pause before sending messages or creating calendar entries."
+  },
+  "output": {
+    "summary": "Daily planning skill can produce a prioritized plan, but external actions remain gated.",
+    "skill_run": {
+      "mode": "staging",
+      "execute": false,
+      "skill_id": "project-management-support-steering"
+    }
+  },
+  "trace": {
+    "stored": true,
+    "trace_id": "trace_agentic_butler_adapter_001",
+    "used_agents": [
+      "agentic_butler_ai_agent",
+      "internal_skill_orchestrator",
+      "actor_twin_checkpoint"
+    ]
+  }
+}
