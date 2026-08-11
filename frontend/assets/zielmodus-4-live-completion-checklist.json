@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-10T23:00:52.156Z",
+  "generated_at": "2026-08-11T07:42:26.074Z",
   "status": "partial_live_url_blocked",
   "boundary": "Public-safe checklist. It contains no secrets and does not call n8n; it derives the remaining completion work from committed readiness artifacts.",
   "summary": {
