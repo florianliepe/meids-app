@@ -28723,11 +28723,13 @@ body.cockpit-mode .workspace-signal {
 }
 
 .knowledge-fabric-artifact-list strong,
+.knowledge-fabric-artifact-list a > span,
 .knowledge-fabric-artifact-list span span,
 .knowledge-fabric-target-path strong,
 .knowledge-fabric-target-path span {
   display: block;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .knowledge-fabric-artifact-list *,
