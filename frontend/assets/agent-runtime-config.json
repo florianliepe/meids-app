@@ -1,15 +1,15 @@
 {
   "purpose": "Optional public staging endpoints for top-level n8n agents. Keep empty until a workflow is intentionally exposed for public UAT.",
   "n8nAgentWebhooks": {
-    "actor_twin": "https://eraneos-agentic-platform.azurewebsites.net/webhook/af44a40b-6bd8-49f4-9d39-73a14d3678dd/chat",
+    "actor_twin": "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/actor-twin/chat",
     "knowledge_fabric_agent": "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/knowledge-fabric/ingest",
     "agentic_butler": "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/agentic-butler/run"
   },
   "n8nAgentProbeSlots": {
     "actor_twin": {
       "status": "configured",
-      "probe_boundary": "Static Pages stores the public UAT URL; live workflow proof is captured through cockpit probe or n8n execution trace.",
-      "next_action": "Run Actor Twin UAT and capture trace evidence."
+      "probe_boundary": "Public UAT webhook configured through scripts/set-n8n-agent-url.cjs. Live workflow proof still requires cockpit probe or n8n execution trace.",
+      "next_action": "Run Actor Twin UAT and capture n8n trace evidence."
     },
     "knowledge_fabric_agent": {
       "status": "configured",
@@ -22,7 +22,7 @@
       "next_action": "Run Agentic Butler UAT with approval-gated skill activation fixture."
     }
   },
-  "n8nActorTwinWebhookUrl": "https://eraneos-agentic-platform.azurewebsites.net/webhook/af44a40b-6bd8-49f4-9d39-73a14d3678dd/chat",
+  "n8nActorTwinWebhookUrl": "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/actor-twin/chat",
   "n8nKnowledgeFabricWebhookUrl": "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/knowledge-fabric/ingest",
   "n8nAgenticButlerWebhookUrl": "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/agentic-butler/run"
 }

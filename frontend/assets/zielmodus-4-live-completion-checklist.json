@@ -1,15 +1,15 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-11T09:28:06.326Z",
-  "status": "live_probe_evidence_pending",
+  "generated_at": "2026-08-11T10:34:33.067Z",
+  "status": "ready_for_strict_gate",
   "boundary": "Public-safe checklist. It contains no secrets and does not call n8n; it derives the remaining completion work from committed readiness artifacts.",
   "summary": {
     "agent_count": 3,
     "missing_live_url_count": 0,
-    "missing_probe_trace_count": 3,
+    "missing_probe_trace_count": 0,
     "estimated_remaining_after_urls_exist": "45-90 minutes",
-    "zielmodus_status": "live_probe_evidence_pending",
-    "preflight_status": "live_probe_evidence_pending"
+    "zielmodus_status": "complete",
+    "preflight_status": "ready_for_production_review"
   },
   "artifacts": {
     "completion_plan": "docs/production/zielmodus-4-live-completion-plan.md",
@@ -23,65 +23,38 @@
     {
       "agent_id": "actor_twin",
       "agent_name": "Actor Twin",
-      "status": "open",
+      "status": "ready_for_final_gate",
       "runtime_url_status": "configured",
       "url_configured": true,
-      "live_probe_status": "awaiting_probe",
-      "live_probe_connected": false,
-      "blockers": [
-        "live_probe_evidence_missing"
-      ],
+      "live_probe_status": "connected",
+      "live_probe_connected": true,
+      "blockers": [],
       "estimate_minutes_after_url": "10-15",
-      "open_items": [
-        {
-          "type": "live_probe",
-          "label": "Record Actor Twin non-demo probe evidence",
-          "probe": "answer-only query with trace response",
-          "command": "node scripts/record-n8n-live-probe-evidence.cjs --agent actor_twin --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
-        }
-      ]
+      "open_items": []
     },
     {
       "agent_id": "knowledge_fabric_agent",
       "agent_name": "Knowledge Fabric Agent",
-      "status": "open",
+      "status": "ready_for_final_gate",
       "runtime_url_status": "configured",
       "url_configured": true,
-      "live_probe_status": "awaiting_probe",
-      "live_probe_connected": false,
-      "blockers": [
-        "live_probe_evidence_missing"
-      ],
+      "live_probe_status": "connected",
+      "live_probe_connected": true,
+      "blockers": [],
       "estimate_minutes_after_url": "10-20",
-      "open_items": [
-        {
-          "type": "live_probe",
-          "label": "Record Knowledge Fabric Agent non-demo probe evidence",
-          "probe": "no-write upload/transcript ingest fixture",
-          "command": "node scripts/record-n8n-live-probe-evidence.cjs --agent knowledge_fabric_agent --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
-        }
-      ]
+      "open_items": []
     },
     {
       "agent_id": "agentic_butler",
       "agent_name": "Agentic Butler",
-      "status": "open",
+      "status": "ready_for_final_gate",
       "runtime_url_status": "configured",
       "url_configured": true,
-      "live_probe_status": "awaiting_probe",
-      "live_probe_connected": false,
-      "blockers": [
-        "live_probe_evidence_missing"
-      ],
+      "live_probe_status": "connected",
+      "live_probe_connected": true,
+      "blockers": [],
       "estimate_minutes_after_url": "15-25",
-      "open_items": [
-        {
-          "type": "live_probe",
-          "label": "Record Agentic Butler non-demo probe evidence",
-          "probe": "approval-required skill activation fixture",
-          "command": "node scripts/record-n8n-live-probe-evidence.cjs --agent agentic_butler --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status approval_required"
-        }
-      ]
+      "open_items": []
     }
   ],
   "final_gate_commands": [

@@ -1,20 +1,20 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-11T09:28:06.173Z",
-  "status": "live_probe_evidence_pending",
+  "generated_at": "2026-08-11T10:36:49.836Z",
+  "status": "ready_for_production_review",
   "boundary": "Public-safe preflight only. It validates local artifacts, URL slot status, and recorded probe evidence; it does not call n8n and does not contain secrets.",
   "summary": {
     "agent_count": 3,
     "fixture_ready_count": 3,
     "url_ready_count": 3,
-    "live_probe_ready_count": 0,
-    "zielmodus_status": "live_probe_evidence_pending"
+    "live_probe_ready_count": 3,
+    "zielmodus_status": "complete"
   },
   "agents": [
     {
       "agent_id": "actor_twin",
       "agent_name": "Actor Twin",
-      "status": "blocked",
+      "status": "ready",
       "fixture": {
         "status": "passed",
         "case_count": 5,
@@ -25,27 +25,25 @@
         "configured": true,
         "url_origin": "https://eraneos-agentic-platform.azurewebsites.net",
         "github_pages_secret": "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
-        "next_action": "Run Actor Twin UAT and capture trace evidence."
+        "next_action": "Run Actor Twin UAT and capture n8n trace evidence."
       },
       "live_probe": {
-        "status": "awaiting_probe",
-        "connected": false,
-        "trace_id": "",
-        "checked_at": "",
+        "status": "connected",
+        "connected": true,
+        "trace_id": "n8n_exec_16246",
+        "checked_at": "2026-08-11T10:33:45.318Z",
         "next_action": "Run Actor Twin live probe and record returned trace id."
       },
       "commands": {
         "set_url": "node scripts/set-n8n-agent-url.cjs --agent actor_twin --url https://YOUR-N8N-HOST/webhook/...",
         "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent actor_twin --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
       },
-      "blockers": [
-        "live_probe_evidence_missing"
-      ]
+      "blockers": []
     },
     {
       "agent_id": "knowledge_fabric_agent",
       "agent_name": "Knowledge Fabric Agent",
-      "status": "blocked",
+      "status": "ready",
       "fixture": {
         "status": "passed",
         "case_count": 5,
@@ -59,24 +57,22 @@
         "next_action": "Run Knowledge Fabric Agent UAT with upload/transcript fixture."
       },
       "live_probe": {
-        "status": "awaiting_probe",
-        "connected": false,
-        "trace_id": "",
-        "checked_at": "",
-        "next_action": "Configure public UAT URL, run no-write ingest probe, and record returned trace id."
+        "status": "connected",
+        "connected": true,
+        "trace_id": "n8n_exec_16244",
+        "checked_at": "2026-08-11T10:33:44.918Z",
+        "next_action": "Run Knowledge Fabric Agent live probe and record returned trace id."
       },
       "commands": {
         "set_url": "node scripts/set-n8n-agent-url.cjs --agent knowledge_fabric_agent --url https://YOUR-N8N-HOST/webhook/...",
         "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent knowledge_fabric_agent --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
       },
-      "blockers": [
-        "live_probe_evidence_missing"
-      ]
+      "blockers": []
     },
     {
       "agent_id": "agentic_butler",
       "agent_name": "Agentic Butler",
-      "status": "blocked",
+      "status": "ready",
       "fixture": {
         "status": "passed",
         "case_count": 5,
@@ -90,45 +86,18 @@
         "next_action": "Run Agentic Butler UAT with approval-gated skill activation fixture."
       },
       "live_probe": {
-        "status": "awaiting_probe",
-        "connected": false,
-        "trace_id": "",
-        "checked_at": "",
-        "next_action": "Configure public UAT URL, run approval-gated skill probe, and record returned trace id."
+        "status": "connected",
+        "connected": true,
+        "trace_id": "n8n_exec_16245",
+        "checked_at": "2026-08-11T10:33:45.204Z",
+        "next_action": "Run Agentic Butler live probe and record returned trace id."
       },
       "commands": {
         "set_url": "node scripts/set-n8n-agent-url.cjs --agent agentic_butler --url https://YOUR-N8N-HOST/webhook/...",
         "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent agentic_butler --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status approval_required"
       },
-      "blockers": [
-        "live_probe_evidence_missing"
-      ]
+      "blockers": []
     }
   ],
-  "next_actions": [
-    {
-      "agent_id": "actor_twin",
-      "blockers": [
-        "live_probe_evidence_missing"
-      ],
-      "set_url": "node scripts/set-n8n-agent-url.cjs --agent actor_twin --url https://YOUR-N8N-HOST/webhook/...",
-      "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent actor_twin --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
-    },
-    {
-      "agent_id": "knowledge_fabric_agent",
-      "blockers": [
-        "live_probe_evidence_missing"
-      ],
-      "set_url": "node scripts/set-n8n-agent-url.cjs --agent knowledge_fabric_agent --url https://YOUR-N8N-HOST/webhook/...",
-      "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent knowledge_fabric_agent --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
-    },
-    {
-      "agent_id": "agentic_butler",
-      "blockers": [
-        "live_probe_evidence_missing"
-      ],
-      "set_url": "node scripts/set-n8n-agent-url.cjs --agent agentic_butler --url https://YOUR-N8N-HOST/webhook/...",
-      "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent agentic_butler --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status approval_required"
-    }
-  ]
+  "next_actions": []
 }

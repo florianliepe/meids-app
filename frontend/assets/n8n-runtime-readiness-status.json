@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-11T09:28:05.806Z",
+  "generated_at": "2026-08-11T10:34:33.013Z",
   "source": "frontend/assets/agent-runtime-config.json",
   "status": "configured",
   "summary": {
@@ -23,8 +23,8 @@
       "github_pages_secret": "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
       "top_level_url_key": "n8nActorTwinWebhookUrl",
       "probe_slot_status": "configured",
-      "detail": "Static Pages stores the public UAT URL; live workflow proof is captured through cockpit probe or n8n execution trace.",
-      "next_action": "Run Actor Twin UAT and capture trace evidence.",
+      "detail": "Public UAT webhook configured through scripts/set-n8n-agent-url.cjs. Live workflow proof still requires cockpit probe or n8n execution trace.",
+      "next_action": "Run Actor Twin UAT and capture n8n trace evidence.",
       "required_capabilities": [
         "intent_interpretation",
         "retrieval_policy",

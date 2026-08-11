@@ -42,12 +42,15 @@ function assertAgentSet(agents, source) {
 function validatePreflight() {
   const artifact = readJson("frontend/assets/n8n-live-readiness-preflight.json");
   assertAgentSet(artifact.agents, "n8n-live-readiness-preflight.json agents");
-  assertAgentSet(artifact.next_actions, "n8n-live-readiness-preflight.json next_actions");
   for (const agentId of Object.keys(expectedResponseStatus)) {
     const agent = byAgent(artifact.agents, agentId);
     const action = byAgent(artifact.next_actions, agentId);
     assertCommandStatus(agent?.commands?.record_probe_evidence, agentId, "preflight agent command");
-    assertCommandStatus(action?.record_probe_evidence, agentId, "preflight next action command");
+    if (action) {
+      assertCommandStatus(action.record_probe_evidence, agentId, "preflight next action command");
+    } else if (agent?.live_probe?.connected !== true) {
+      fail(`n8n-live-readiness-preflight.json next_actions: missing open action for unconnected ${agentId}`);
+    }
   }
 }
 
@@ -70,7 +73,11 @@ function validateCompletionChecklist() {
   for (const agentId of Object.keys(expectedResponseStatus)) {
     const agent = byAgent(artifact.agents, agentId);
     const recordItem = (agent.open_items || []).find((item) => item.type === "live_probe");
-    assertCommandStatus(recordItem?.command, agentId, "completion checklist probe command");
+    if (recordItem) {
+      assertCommandStatus(recordItem.command, agentId, "completion checklist probe command");
+    } else if (agent.live_probe_connected !== true) {
+      fail(`completion checklist: missing live probe open item for unconnected ${agentId}`);
+    }
   }
 }
 

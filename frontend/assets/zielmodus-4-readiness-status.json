@@ -1,7 +1,7 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-11T09:28:06.096Z",
-  "status": "live_probe_evidence_pending",
+  "generated_at": "2026-08-11T10:34:15.116Z",
+  "status": "complete",
   "mode": "public_safe",
   "summary": {
     "requirement_count": 9,
@@ -10,7 +10,7 @@
     "passed_qa_check_count": 2,
     "public_safe_ready": true,
     "live_ready": true,
-    "live_probe_ready": false
+    "live_probe_ready": true
   },
   "requirements": [
     {
@@ -173,16 +173,12 @@
     "detail": "All top-level agent live URL slots are configured. Live probe evidence still must be captured before production readiness."
   },
   "live_probe_evidence": {
-    "status": "partial",
+    "status": "complete",
     "path": "frontend/assets/n8n-live-probe-evidence.json",
-    "connected_count": 0,
+    "connected_count": 3,
     "required_count": 3,
-    "missing_probe_agents": [
-      "actor_twin",
-      "knowledge_fabric_agent",
-      "agentic_butler"
-    ],
-    "detail": "Missing live probe evidence for: actor_twin, knowledge_fabric_agent, agentic_butler"
+    "missing_probe_agents": [],
+    "detail": "All top-level agents have connected, non-demo live probe evidence."
   },
   "live_completion_checklist": {
     "status": "live_probe_evidence_pending",
@@ -195,7 +191,6 @@
   },
   "next_actions": [
     "Run cockpit live probes for all three agents.",
-    "Export live probe evidence to frontend/assets/n8n-live-probe-evidence.json.",
     "Capture n8n execution trace evidence.",
     "Confirm human approval gate behavior for Agentic Butler."
   ]

@@ -69,6 +69,22 @@ function requireProbeStatusCommand(command, agentId, source) {
   }
 }
 
+function requireProbeEvidence(agent, agentId) {
+  const expected = expectedN8nProbeStatuses[agentId];
+  if (agent?.status === "connected") {
+    if (!agent.trace_id) throw new Error(`probe evidence trace_id missing for connected ${agentId}`);
+    if (agent.demo === true) throw new Error(`probe evidence for ${agentId} must not be demo evidence`);
+    if (agent.evidence?.response_status !== expected) {
+      throw new Error(`probe evidence response_status for ${agentId} must be ${expected}`);
+    }
+    if (!agent.evidence?.n8n_execution_url) {
+      throw new Error(`probe evidence execution URL missing for ${agentId}`);
+    }
+    return;
+  }
+  requireProbeStatusCommand(agent?.record_command_template, agentId, "probe evidence command template");
+}
+
 function checkContractArtifacts(root) {
   const assetsRoot = path.join(root, "assets");
   const probeRoot = path.join(assetsRoot, "n8n-live-probes");
@@ -121,13 +137,18 @@ function checkContractArtifacts(root) {
     const checklistAgent = getAgent(completionChecklist.agents, agentId);
     const checklistProbe = (checklistAgent?.open_items || []).find((item) => item.type === "live_probe");
     requireProbeStatusCommand(preflightAgent?.commands?.record_probe_evidence, agentId, "preflight agent command");
-    requireProbeStatusCommand(probeEvidenceAgent?.record_command_template, agentId, "probe evidence command template");
-    if (probeEvidenceAgent?.expected_response_status && probeEvidenceAgent.expected_response_status !== expectedN8nProbeStatuses[agentId]) {
-      throw new Error(`probe evidence expected_response_status for ${agentId} must be ${expectedN8nProbeStatuses[agentId]}`);
+    requireProbeEvidence(probeEvidenceAgent, agentId);
+    if (preflightAction) {
+      requireProbeStatusCommand(preflightAction.record_probe_evidence, agentId, "preflight next action command");
+    } else if (preflightAgent?.live_probe?.connected !== true) {
+      throw new Error(`preflight next action missing for unconnected ${agentId}`);
     }
-    requireProbeStatusCommand(preflightAction?.record_probe_evidence, agentId, "preflight next action command");
     requireProbeStatusCommand(handoffAgent?.commands?.record_probe, agentId, "handoff command");
-    requireProbeStatusCommand(checklistProbe?.command, agentId, "completion checklist command");
+    if (checklistProbe) {
+      requireProbeStatusCommand(checklistProbe.command, agentId, "completion checklist command");
+    } else if (checklistAgent?.live_probe_connected !== true) {
+      throw new Error(`completion checklist command missing for unconnected ${agentId}`);
+    }
     if (handoffAgent?.expected_response_status !== expectedN8nProbeStatuses[agentId]) {
       throw new Error(`handoff expected_response_status for ${agentId} must be ${expectedN8nProbeStatuses[agentId]}`);
     }
