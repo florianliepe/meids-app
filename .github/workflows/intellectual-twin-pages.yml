@@ -15,6 +15,7 @@ on:
       - "scripts/pages-smoke-check.cjs"
       - "scripts/validate-n8n-fixtures.cjs"
       - "scripts/validate-n8n-ai-agent-workflows.cjs"
+      - "scripts/validate-agent-runtime-handoffs.cjs"
       - "scripts/validate-okf-fixtures.cjs"
       - "scripts/validate-graph-promotions.cjs"
       - "scripts/validate-vector-adapter.cjs"
@@ -52,6 +53,9 @@ jobs:
 
       - name: Validate n8n AI-agent workflow exports
         run: node scripts/validate-n8n-ai-agent-workflows.cjs
+
+      - name: Validate agent runtime handoff fixtures
+        run: node scripts/validate-agent-runtime-handoffs.cjs
 
       - name: Validate OKF contract fixtures
         run: node scripts/validate-okf-fixtures.cjs

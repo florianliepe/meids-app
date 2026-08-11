@@ -1,0 +1,242 @@
+{
+  "schema_version": "0.1.0",
+  "contract_version": "0.1.0",
+  "source": "contracts/n8n/fixtures/agent-runtime-handoffs.json",
+  "purpose": "Public-safe replay cases for Actor Twin first routing and target-agent handoffs.",
+  "runtime_policy": {
+    "entry_agent": "actor_twin",
+    "knowledge_fabric_manual_activation": false,
+    "agentic_butler_manual_activation": false,
+    "skill_orchestrator_boundary": "internal_component_of_agentic_butler",
+    "approval_policy": "never_auto_approve_generated_skills_or_external_actions"
+  },
+  "cases": [
+    {
+      "case_id": "actor_direct_answer",
+      "user_query": "What should I consider before a client alignment meeting?",
+      "actor_response": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_runtime_actor_direct",
+        "agent_id": "actor_twin",
+        "status": "completed",
+        "output": {
+          "answer": "Use approved client context first and cite any draft context as unvalidated.",
+          "route_decision": {
+            "decision": "answer_direct",
+            "target_agent": "actor_twin",
+            "intent": "answer_question",
+            "visible_state": "answering",
+            "approval_required": false,
+            "handoff_required": false,
+            "reason": "Answer-only request."
+          }
+        },
+        "trace": {
+          "stored": true,
+          "trace_id": "trace_runtime_actor_direct",
+          "used_agents": ["actor_twin"]
+        }
+      },
+      "expected": {
+        "target_agent": "actor_twin",
+        "handoff_required": false,
+        "handoff_status": "not_required"
+      }
+    },
+    {
+      "case_id": "actor_to_knowledge_retrieve",
+      "user_query": "Find approved evidence about client delivery steering.",
+      "actor_response": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_runtime_actor_retrieve",
+        "agent_id": "actor_twin",
+        "status": "completed",
+        "output": {
+          "answer": "I will retrieve approved-first context through Knowledge Fabric.",
+          "route_decision": {
+            "decision": "retrieve_knowledge",
+            "target_agent": "knowledge_fabric_agent",
+            "intent": "retrieve_context",
+            "visible_state": "using_knowledge",
+            "approval_required": false,
+            "handoff_required": true,
+            "reason": "The request asks for governed retrieval."
+          }
+        },
+        "trace": {
+          "stored": true,
+          "trace_id": "trace_runtime_actor_retrieve",
+          "used_agents": ["actor_twin"]
+        }
+      },
+      "target_response": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_runtime_kf_retrieve",
+        "agent_id": "knowledge_fabric_agent",
+        "status": "completed",
+        "output": {
+          "summary": "Approved evidence packet prepared.",
+          "retrieved_refs": ["concepts/florian/client-delivery/example.md"],
+          "trust_policy": "approved_first_include_pending_as_draft"
+        },
+        "trace": {
+          "stored": true,
+          "trace_id": "trace_runtime_kf_retrieve",
+          "used_agents": ["knowledge_fabric_agent", "graph_curator"]
+        }
+      },
+      "expected": {
+        "target_agent": "knowledge_fabric_agent",
+        "handoff_required": true,
+        "handoff_status": "completed"
+      }
+    },
+    {
+      "case_id": "actor_to_knowledge_stage",
+      "user_query": "Remember this transcript as a pending concept.",
+      "actor_response": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_runtime_actor_stage",
+        "agent_id": "actor_twin",
+        "status": "completed",
+        "output": {
+          "answer": "I will stage this source as pending OKF for review.",
+          "route_decision": {
+            "decision": "ingest_or_stage_knowledge",
+            "target_agent": "knowledge_fabric_agent",
+            "intent": "ingest_concept",
+            "visible_state": "using_knowledge",
+            "approval_required": false,
+            "handoff_required": true,
+            "reason": "Source material should become pending knowledge, not trusted memory."
+          }
+        },
+        "trace": {
+          "stored": true,
+          "trace_id": "trace_runtime_actor_stage",
+          "used_agents": ["actor_twin"]
+        }
+      },
+      "target_response": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_runtime_kf_stage",
+        "agent_id": "knowledge_fabric_agent",
+        "status": "completed",
+        "output": {
+          "summary": "Pending OKF source handoff prepared.",
+          "concept_path": "concepts/florian/inbox/runtime-stage.md",
+          "evidence_path": "evidence/florian/chat/runtime-stage.yaml",
+          "review_state": "pending_review",
+          "vector_refresh": "deferred_until_approved"
+        },
+        "trace": {
+          "stored": true,
+          "trace_id": "trace_runtime_kf_stage",
+          "used_agents": ["knowledge_fabric_agent", "graph_curator"]
+        }
+      },
+      "expected": {
+        "target_agent": "knowledge_fabric_agent",
+        "handoff_required": true,
+        "handoff_status": "completed"
+      }
+    },
+    {
+      "case_id": "actor_to_butler_activate_skill",
+      "user_query": "Plan my day from the exported email and calendar context.",
+      "actor_response": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_runtime_actor_skill",
+        "agent_id": "actor_twin",
+        "status": "completed",
+        "output": {
+          "answer": "I will ask Agentic Butler to activate the approved planning skill.",
+          "route_decision": {
+            "decision": "activate_skill",
+            "target_agent": "agentic_butler",
+            "intent": "activate_skill",
+            "visible_state": "activating_skill",
+            "approval_required": false,
+            "handoff_required": true,
+            "reason": "Approved skill execution requested."
+          }
+        },
+        "trace": {
+          "stored": true,
+          "trace_id": "trace_runtime_actor_skill",
+          "used_agents": ["actor_twin"]
+        }
+      },
+      "target_response": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_runtime_butler_skill",
+        "agent_id": "agentic_butler",
+        "status": "completed",
+        "output": {
+          "summary": "Prioritized daily plan created.",
+          "skill_orchestrator": "internal_component",
+          "todos": []
+        },
+        "trace": {
+          "stored": true,
+          "trace_id": "trace_runtime_butler_skill",
+          "used_agents": ["agentic_butler", "skill_orchestrator", "actor_twin"]
+        }
+      },
+      "expected": {
+        "target_agent": "agentic_butler",
+        "handoff_required": true,
+        "handoff_status": "completed"
+      }
+    },
+    {
+      "case_id": "actor_to_butler_create_skill_approval",
+      "user_query": "Create a new skill for supplier negotiation briefs.",
+      "actor_response": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_runtime_actor_create_skill",
+        "agent_id": "actor_twin",
+        "status": "completed",
+        "output": {
+          "answer": "I will ask Agentic Butler to start a SkillSpec draft and hold it for approval.",
+          "route_decision": {
+            "decision": "create_skill",
+            "target_agent": "agentic_butler",
+            "intent": "create_skill",
+            "visible_state": "drafting_new_skill",
+            "approval_required": true,
+            "handoff_required": true,
+            "reason": "New skills must be elicited and approved before decomposition."
+          }
+        },
+        "trace": {
+          "stored": true,
+          "trace_id": "trace_runtime_actor_create_skill",
+          "used_agents": ["actor_twin"]
+        }
+      },
+      "target_response": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_runtime_butler_create_skill",
+        "agent_id": "agentic_butler",
+        "status": "approval_required",
+        "approval": {
+          "required": true,
+          "gate": "skill_spec_approval",
+          "summary": "SkillSpec draft requires human approval.",
+          "proposed_action": "Approve this SkillSpec for decomposition, or revise it."
+        },
+        "trace": {
+          "stored": true,
+          "trace_id": "trace_runtime_butler_create_skill",
+          "used_agents": ["agentic_butler", "skill_elicitation_agent"]
+        }
+      },
+      "expected": {
+        "target_agent": "agentic_butler",
+        "handoff_required": true,
+        "handoff_status": "approval_required"
+      }
+    }
+  ]
+}

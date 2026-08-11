@@ -8238,19 +8238,9 @@ function bindChat() {
       addMessage("assistant", route.clarification || "Please clarify the desired output and whether any external action is allowed.");
       return;
     }
-    addMessage("assistant", route.placeholder);
+    addMessage("assistant", "Asking Actor Twin...");
     try {
-      let result;
-      if (route.decision === "retrieve_knowledge" || route.decision === "ingest_or_stage_knowledge") {
-        result = await routeKnowledgeFabricFromChat(query, route);
-        if (route.decision === "ingest_or_stage_knowledge") persistKnowledgeFabricIngest(result);
-      } else if (route.decision === "activate_skill") {
-        result = await routeAgenticButlerFromChat(query, route);
-      } else if (route.decision === "create_skill") {
-        result = await routeAgenticButlerSkillCreationFromChat(query, route);
-      } else {
-        result = await routeActorTwinFromChat(query, route);
-      }
+      const result = await runActorTwinRuntimeInteraction(query, route);
       persistAgentTrace(result);
       removeLastAssistantPlaceholder();
       const node = addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
@@ -16132,11 +16122,19 @@ function selectedApprovedChatSkill() {
 async function routeActorTwinFromChat(query, route = null) {
   const envelope = buildAgentContractEnvelope(
     "actor_twin",
-    "answer_question",
+    "route_request",
     query,
-    { mode: "grounded_answer" },
+    { mode: "runtime_router" },
     {
       route_decision: route,
+      expected_route_decisions: [
+        "answer_direct",
+        "retrieve_knowledge",
+        "ingest_or_stage_knowledge",
+        "activate_skill",
+        "create_skill",
+        "request_human_clarification",
+      ],
       okf_refs: [],
       graph_refs: [],
       source_context: chatSourceContext(),
@@ -16158,7 +16156,7 @@ async function routeAgenticButlerFromChat(query, route = null) {
     {
       skill_id: selected.skill_id,
       skill_name: selected.name,
-      manual_trigger: true,
+      manual_trigger: false,
       email_export: sourceContext.email_input,
       calendar_export: sourceContext.calendar_input,
       teams_export: sourceContext.teams_input,
@@ -16242,6 +16240,127 @@ async function routeKnowledgeFabricFromChat(query, route = null) {
   return postAgentContractEnvelope("knowledge_fabric_agent", envelope, fallbackKnowledgeFabricResponse);
 }
 
+async function runActorTwinRuntimeInteraction(query, fallbackRoute = null) {
+  const actorResult = await routeActorTwinFromChat(query, fallbackRoute);
+  const route = actorRouteFromRuntime(actorResult, fallbackRoute);
+  state.lastActorTwinRouteDecision = route;
+  renderSkillRoutingPanel();
+  if (!route || ["answer_direct", "request_human_clarification"].includes(route.decision) || route.target_agent === "actor_twin") {
+    return attachAgentRuntimeChain(actorResult, {
+      actorResult,
+      route,
+      handoffStatus: "not_required",
+    });
+  }
+  persistAgentTrace(attachAgentRuntimeChain(actorResult, {
+    actorResult,
+    route,
+    handoffStatus: "route_decided",
+  }));
+  let targetResult;
+  if (route.target_agent === "knowledge_fabric_agent") {
+    targetResult = await routeKnowledgeFabricFromChat(query, route);
+    if (route.decision === "ingest_or_stage_knowledge") persistKnowledgeFabricIngest(targetResult);
+  } else if (route.target_agent === "agentic_butler" && route.decision === "create_skill") {
+    targetResult = await routeAgenticButlerSkillCreationFromChat(query, route);
+  } else if (route.target_agent === "agentic_butler") {
+    targetResult = await routeAgenticButlerFromChat(query, route);
+  } else {
+    return attachAgentRuntimeChain(actorResult, {
+      actorResult,
+      route,
+      handoffStatus: "unsupported_target",
+    });
+  }
+  return attachAgentRuntimeChain(targetResult, {
+    actorResult,
+    route,
+    handoffStatus: targetResult.response?.status || "completed",
+  });
+}
+
+function actorRouteFromRuntime(actorResult = {}, fallbackRoute = null) {
+  const output = actorResult.response?.output || {};
+  const candidates = [
+    output.route_decision,
+    output.route,
+    output.routing,
+    output.handoff,
+    actorResult.response?.route_decision,
+  ].filter(Boolean);
+  const route = candidates.find((item) => item && typeof item === "object") || null;
+  const decision = route?.decision || route?.route_decision || route?.intent_decision || fallbackRoute?.decision || "answer_direct";
+  const target = route?.target_agent || route?.targetAgent || output.target_agent || fallbackRoute?.target_agent || targetAgentForRouteDecision(decision);
+  return actorRoute({
+    ...(fallbackRoute || {}),
+    ...(route || {}),
+    decision,
+    target_agent: target,
+    intent: route?.intent || fallbackRoute?.intent || intentForRouteDecision(decision),
+    visible_state: route?.visible_state || fallbackRoute?.visible_state || visibleStateForRouteDecision(decision),
+    approval_required: Boolean(route?.approval_required ?? fallbackRoute?.approval_required ?? decision === "create_skill"),
+    reason: route?.reason || fallbackRoute?.reason || "Actor Twin runtime route decision.",
+    handoff_required: Boolean(route?.handoff_required ?? !["answer_direct", "request_human_clarification"].includes(decision)),
+    handoff_payload: route?.handoff_payload || output.handoff_payload || null,
+    runtime: actorResult.runtime || fallbackRoute?.runtime || "actor_twin_runtime",
+  });
+}
+
+function targetAgentForRouteDecision(decision = "") {
+  if (["retrieve_knowledge", "ingest_or_stage_knowledge"].includes(decision)) return "knowledge_fabric_agent";
+  if (["activate_skill", "create_skill"].includes(decision)) return "agentic_butler";
+  if (decision === "request_human_clarification") return "human";
+  return "actor_twin";
+}
+
+function intentForRouteDecision(decision = "") {
+  return {
+    answer_direct: "answer_question",
+    retrieve_knowledge: "retrieve_context",
+    ingest_or_stage_knowledge: "ingest_concept",
+    activate_skill: "activate_skill",
+    create_skill: "create_skill",
+    request_human_clarification: "clarify_request",
+  }[decision] || "answer_question";
+}
+
+function visibleStateForRouteDecision(decision = "") {
+  return {
+    answer_direct: "answering",
+    retrieve_knowledge: "using_knowledge",
+    ingest_or_stage_knowledge: "using_knowledge",
+    activate_skill: "activating_skill",
+    create_skill: "drafting_new_skill",
+    request_human_clarification: "approval_required",
+  }[decision] || "answering";
+}
+
+function attachAgentRuntimeChain(result = {}, { actorResult = null, route = null, handoffStatus = "" } = {}) {
+  const actorTrace = actorResult?.response?.trace?.trace_id || actorResult?.trace_id || "";
+  const targetTrace = result.response?.trace?.trace_id || result.trace_id || "";
+  const chain = {
+    actor_trace_id: actorTrace,
+    handoff_trace_id: result.agent_id === "actor_twin" ? "" : targetTrace,
+    target_agent: route?.target_agent || result.agent_id || "",
+    route_decision: route?.decision || "",
+    handoff_status: handoffStatus || result.response?.status || "",
+  };
+  result.runtime_chain = chain;
+  if (result.response) {
+    result.response.trace = {
+      stored: false,
+      used_agents: [],
+      ...(result.response.trace || {}),
+      ...chain,
+    };
+    result.response.output = {
+      ...(result.response.output || {}),
+      route_decision: result.response.output?.route_decision || route || null,
+    };
+  }
+  return result;
+}
+
 async function postAgentContractEnvelope(agentId, envelope, fallbackFactory) {
   const webhookUrl = getAgentWebhook(agentId);
   if (!webhookUrl) return fallbackFactory(envelope, "fixture fallback");
@@ -16315,6 +16434,11 @@ function persistAgentTrace(result = {}) {
     runtime: result.runtime || "",
     request_id: response.request_id || result.request?.request_id || "",
     trace_id: trace.trace_id || result.trace_id || "",
+    actor_trace_id: trace.actor_trace_id || result.runtime_chain?.actor_trace_id || "",
+    handoff_trace_id: trace.handoff_trace_id || result.runtime_chain?.handoff_trace_id || "",
+    target_agent: trace.target_agent || result.runtime_chain?.target_agent || "",
+    route_decision: trace.route_decision || result.runtime_chain?.route_decision || "",
+    handoff_status: trace.handoff_status || result.runtime_chain?.handoff_status || "",
     approval_required: response.status === "approval_required" || Boolean(response.approval?.required),
   };
   try {
@@ -18262,6 +18386,15 @@ function fallbackActorTwinResponse(envelope, runtime) {
     status: "completed",
     output: {
       answer: `Actor Twin fixture response: ${query || "Ask received"}. Use approved OKF context first; include drafts only as unvalidated hypotheses.`,
+      route_decision: envelope.context?.route_decision || {
+        decision: "answer_direct",
+        target_agent: "actor_twin",
+        intent: "answer_question",
+        visible_state: "answering",
+        approval_required: false,
+        handoff_required: false,
+        reason: "Fixture fallback direct answer.",
+      },
       confidence: 0.78,
       citations: [],
     },

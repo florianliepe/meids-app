@@ -13,6 +13,7 @@ const checks = [
   [node, ["scripts/validate-n8n-fixtures.cjs"]],
   [node, ["scripts/validate-n8n-ai-agent-workflows.cjs"]],
   [node, ["scripts/validate-actor-twin-routing.cjs"]],
+  [node, ["scripts/validate-agent-runtime-handoffs.cjs"]],
   [node, ["scripts/validate-n8n-response-adapters.cjs"]],
   [node, ["scripts/write-n8n-production-adapter-status.cjs", "--check"]],
   [node, ["scripts/write-n8n-ai-agent-readiness-status.cjs", "--check"]],

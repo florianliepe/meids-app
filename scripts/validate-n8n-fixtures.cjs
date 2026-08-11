@@ -156,7 +156,10 @@ function validateAgenticButlerFixture(fixture) {
   }
 }
 
-const files = fs.readdirSync(fixtureDir).filter((file) => file.endsWith(".json") && file !== "actor-twin-routing.json");
+const files = fs.readdirSync(fixtureDir).filter((file) => (
+  file.endsWith(".json")
+  && !["actor-twin-routing.json", "agent-runtime-handoffs.json"].includes(file)
+));
 const validatedFixtures = files.map((file) => {
   const filePath = path.join(fixtureDir, file);
   const agentId = validateFixture(filePath);
