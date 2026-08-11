@@ -3,6 +3,7 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const fixturePath = path.join(root, "contracts", "n8n", "fixtures", "actor-twin-routing.json");
+const actorFixturePath = path.join(root, "contracts", "n8n", "fixtures", "actor-twin.json");
 
 const requiredRoutes = [
   "answer_direct",
@@ -49,6 +50,13 @@ function isObject(value) {
 
 function validate() {
   if (!fs.existsSync(fixturePath)) fail(`Missing routing fixture: ${rel(fixturePath)}`);
+  if (!fs.existsSync(actorFixturePath)) fail(`Missing Actor Twin fixture: ${rel(actorFixturePath)}`);
+  const actorFixture = readJson(actorFixturePath);
+  const directRoute = actorFixture.response?.output?.route_decision;
+  if (!isObject(directRoute)) fail("Actor Twin fixture response must include output.route_decision");
+  if (directRoute.decision !== "answer_direct") fail("Actor Twin fixture direct response must declare answer_direct");
+  if (directRoute.target_agent !== "actor_twin") fail("Actor Twin direct route must target actor_twin");
+  if (directRoute.handoff_required !== false) fail("Actor Twin direct route must set handoff_required false");
   const fixture = readJson(fixturePath);
   if (fixture.agent_id !== "actor_twin") fail("routing fixture must belong to actor_twin");
   if (fixture.chat_surface_policy?.diagnostics !== "cockpit_only") {

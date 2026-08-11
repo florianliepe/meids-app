@@ -35,6 +35,15 @@
     "status": "completed",
     "output": {
       "answer": "Use the approved client-alignment context first, then cite draft concepts only as unvalidated hypotheses.",
+      "route_decision": {
+        "decision": "answer_direct",
+        "target_agent": "actor_twin",
+        "intent": "answer_question",
+        "visible_state": "answering",
+        "approval_required": false,
+        "handoff_required": false,
+        "reason": "Answer-only request with no external action or work-execution handoff."
+      },
       "confidence": 0.82,
       "citations": [
         {

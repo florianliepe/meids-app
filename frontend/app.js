@@ -215,6 +215,7 @@
   n8nLiveHandoffCommands: null,
   n8nProductionAdapterStatus: null,
   n8nAiAgentReadinessStatus: null,
+  n8nBrowserRuntimeShapeStatus: null,
   actorTwinRoutingReadinessStatus: null,
   lastActorTwinRouteDecision: null,
   zielmodus4LiveCompletionChecklist: null,
@@ -279,6 +280,7 @@ const N8N_LIVE_READINESS_PREFLIGHT_PATH = "assets/n8n-live-readiness-preflight.j
 const N8N_LIVE_HANDOFF_COMMANDS_PATH = "assets/n8n-live-handoff-commands.json";
 const N8N_PRODUCTION_ADAPTER_STATUS_PATH = "assets/n8n-production-adapter-status.json";
 const N8N_AI_AGENT_READINESS_STATUS_PATH = "assets/n8n-ai-agent-readiness-status.json";
+const N8N_BROWSER_RUNTIME_SHAPE_PATH = "assets/n8n-browser-runtime-shape.json";
 const ACTOR_TWIN_ROUTING_READINESS_STATUS_PATH = "assets/actor-twin-routing-readiness-status.json";
 const ZIELMODUS_4_LIVE_COMPLETION_CHECKLIST_PATH = "assets/zielmodus-4-live-completion-checklist.json";
 const ZIELMODUS_4_READINESS_STATUS_PATH = "assets/zielmodus-4-readiness-status.json";
@@ -288,6 +290,7 @@ const storageKeys = {
   landingDismissed: "intellectualTwin.landing.dismissed",
   approvalPrefix: "intellectualTwin.approval",
   agentTraceLog: "intellectualTwin.agentTraceLog",
+  agentApprovalQueue: "intellectualTwin.agentApprovalQueue",
   knowledgeFabricIngestQueue: "intellectualTwin.knowledgeFabricIngestQueue",
   agentWebhookOverrides: "intellectualTwin.agentWebhookOverrides",
 };
@@ -8172,6 +8175,10 @@ function bindChat() {
       copyAgentApproval(action);
       return;
     }
+    if (action.dataset.chatAction === "copy-agent-resume") {
+      copyAgentApprovalResumePayload(action);
+      return;
+    }
     if (action.dataset.chatAction === "open-agent-trace") {
       openAgentTraceFromChat(action.dataset.traceId || action.dataset.requestId || "");
     }
@@ -8443,6 +8450,7 @@ function bindQuality() {
       await safeRefreshStaticN8nLiveHandoffCommands();
       await safeRefreshStaticN8nProductionAdapterStatus();
       await safeRefreshStaticN8nAiAgentReadinessStatus();
+      await safeRefreshStaticN8nBrowserRuntimeShapeStatus();
       await safeRefreshStaticActorTwinRoutingReadinessStatus();
       await safeRefreshStaticZielmodus4LiveCompletionChecklist();
       await safeRefreshStaticZielmodus4ReadinessStatus();
@@ -10614,6 +10622,7 @@ function refreshStaticPagesWorkspace() {
   safeRefreshStaticN8nLiveHandoffCommands();
   safeRefreshStaticN8nProductionAdapterStatus();
   safeRefreshStaticN8nAiAgentReadinessStatus();
+  safeRefreshStaticN8nBrowserRuntimeShapeStatus();
   safeRefreshStaticActorTwinRoutingReadinessStatus();
   safeRefreshStaticZielmodus4LiveCompletionChecklist();
   safeRefreshStaticN8nReplayStatus();
@@ -13049,6 +13058,19 @@ async function safeRefreshStaticN8nAiAgentReadinessStatus() {
   }
 }
 
+async function safeRefreshStaticN8nBrowserRuntimeShapeStatus() {
+  if (!staticPagesMode) return;
+  try {
+    state.n8nBrowserRuntimeShapeStatus = await fetchFrontendAssetJson(N8N_BROWSER_RUNTIME_SHAPE_PATH, { optional: true });
+    renderAgentOperatingModelPanel();
+    renderProductionProgressHeader();
+  } catch (error) {
+    state.n8nBrowserRuntimeShapeStatus = null;
+    renderAgentOperatingModelPanel();
+    console.warn("Static n8n browser runtime shape refresh failed", error);
+  }
+}
+
 async function safeRefreshStaticActorTwinRoutingReadinessStatus() {
   if (!staticPagesMode) return;
   try {
@@ -13350,6 +13372,7 @@ function renderZielmodus4LiveHandoffGrid() {
       ` : ""}
       ${renderN8nProductionAdapterSummary()}
       ${renderN8nAiAgentReadinessSummary()}
+      ${renderN8nBrowserRuntimeShapeSummary()}
       ${renderActorTwinRoutingReadinessSummary()}
       ${renderZielmodus4StrictReadinessOperatorPanel(agentIds)}
       <div class="zielmodus-live-handoff-grid">
@@ -13466,6 +13489,39 @@ function renderN8nAiAgentReadinessSummary() {
             </article>
           `;
         }).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderN8nBrowserRuntimeShapeSummary() {
+  const artifact = state.n8nBrowserRuntimeShapeStatus || {};
+  if (!artifact.schema_version) return "";
+  const summary = artifact.summary || {};
+  const agents = Array.isArray(artifact.agents) ? artifact.agents : [];
+  const routeGapCount = agents.filter((agent) => agent.agent_id === "actor_twin" && !agent.response_shape?.has_route_decision).length;
+  const backendProxy = summary.backend_proxy_recommended || routeGapCount > 0;
+  const className = backendProxy ? "pending" : "ready";
+  return `
+    <section class="n8n-ai-agent-readiness ${className}" aria-label="Browser runtime response shape">
+      <div class="n8n-ai-agent-readiness-head">
+        <div>
+          <span class="badge">Browser runtime shape</span>
+          <strong>${escapeHtml(String(summary.called_count ?? 0))}/${escapeHtml(String(summary.agent_count ?? agents.length))} live calls · ${escapeHtml(String(summary.cors_ready_count ?? 0))} CORS-ready</strong>
+          <p>${escapeHtml(routeGapCount
+            ? "Actor Twin is reachable, but the live workflow must return output.route_decision directly instead of wrapping it as answer text."
+            : "Public UAT calls return browser-compatible headers and contract-shaped responses.")}</p>
+        </div>
+        <div class="button-row tight">
+          <a class="secondary small" href="${escapeHtml(githubBlobUrl("frontend/assets/n8n-browser-runtime-shape.json"))}" target="_blank" rel="noreferrer">Open browser probe</a>
+          <a class="secondary small" href="${escapeHtml(githubBlobUrl("docs/production/agent-runtime-interaction-contract.md"))}" target="_blank" rel="noreferrer">Runtime contract</a>
+        </div>
+      </div>
+      <div class="zielmodus-preflight-summary ${className}">
+        <span><strong>${escapeHtml(String(summary.called_count ?? 0))}</strong><small>called</small></span>
+        <span><strong>${escapeHtml(String(summary.cors_ready_count ?? 0))}</strong><small>CORS-ready</small></span>
+        <span><strong>${escapeHtml(String(routeGapCount))}</strong><small>route gaps</small></span>
+        <span><strong>${escapeHtml(backendProxy ? "recommended" : "optional")}</strong><small>backend proxy</small></span>
       </div>
     </section>
   `;
@@ -16402,24 +16458,54 @@ function parseMaybeJson(raw) {
 function normalizeAgentContractResponse(agentId, data, envelope, runtime) {
   const response = data?.response || data?.data || data || {};
   const status = response.status || data?.status || "completed";
+  const normalizedOutput = normalizeAgentOutput(response.output || data?.output || outputFromN8nData(data));
+  const normalizedApproval = response.approval || data?.approval || normalizedOutput.approval || null;
+  const normalizedTrace = response.trace || data?.trace || normalizedOutput.trace || { trace_id: response.trace_id || data?.trace_id || envelope.request_id, stored: false };
   return {
     agent_id: agentId,
     agent_name: agentDisplayName(agentId),
     runtime,
-    trace_id: response.trace?.trace_id || response.trace_id || data?.trace_id || envelope.request_id,
+    trace_id: normalizedTrace.trace_id || response.trace_id || data?.trace_id || envelope.request_id,
     request: envelope,
     response: {
       envelope_version: response.envelope_version || envelope.envelope_version,
       request_id: response.request_id || envelope.request_id,
       agent_id: response.agent_id || agentId,
       status,
-      output: response.output || data?.output || outputFromN8nData(data),
-      approval: response.approval || data?.approval || null,
-      trace: response.trace || data?.trace || { trace_id: response.trace_id || data?.trace_id || envelope.request_id, stored: false },
+      output: normalizedOutput.output || normalizedOutput,
+      approval: normalizedApproval,
+      trace: normalizedTrace,
       error: response.error || data?.error || null,
     },
-    answer: extractAgentAnswer(response.output || data?.output || data, status),
+    answer: extractAgentAnswer(normalizedOutput.output || normalizedOutput || data, status),
   };
+}
+
+function normalizeAgentOutput(output = {}) {
+  if (!output || typeof output !== "object") return output;
+  const embedded = parseEmbeddedJsonObject(output.answer || output.text || output.message || "");
+  if (!embedded || typeof embedded !== "object") return output;
+  const embeddedOutput = embedded.output && typeof embedded.output === "object" ? embedded.output : embedded;
+  return {
+    ...output,
+    ...embeddedOutput,
+    answer: embeddedOutput.answer || output.answer || output.text || output.message,
+    approval: embedded.approval || output.approval,
+    trace: embedded.trace || output.trace,
+  };
+}
+
+function parseEmbeddedJsonObject(value = "") {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = (fenced ? fenced[1] : text).trim();
+  if (!candidate.startsWith("{") || !candidate.endsWith("}")) return null;
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    return null;
+  }
 }
 
 function persistAgentTrace(result = {}) {
@@ -16441,6 +16527,7 @@ function persistAgentTrace(result = {}) {
     handoff_status: trace.handoff_status || result.runtime_chain?.handoff_status || "",
     approval_required: response.status === "approval_required" || Boolean(response.approval?.required),
   };
+  persistAgentApprovalRequest(result, entry);
   try {
     const current = JSON.parse(window.localStorage.getItem(storageKeys.agentTraceLog) || "[]");
     const next = [entry, ...(Array.isArray(current) ? current : [])].slice(0, 50);
@@ -18348,6 +18435,7 @@ function renderAgentTraceHistoryRows(traces = [], limit = 12) {
         <code>${escapeHtml(trace.trace_id || "trace pending")}</code>
         <small>${escapeHtml(trace.request_id || "")}</small>
       </div>
+      ${renderAgentTraceChain(trace)}
       ${trace.artifact_path || trace.detail ? `
         <div class="agent-trace-artifact">
           ${trace.artifact_path ? `<code>${escapeHtml(trace.artifact_path)}</code>` : ""}
@@ -18357,6 +18445,24 @@ function renderAgentTraceHistoryRows(traces = [], limit = 12) {
     </article>
   `;
   }).join("");
+}
+
+function renderAgentTraceChain(trace = {}) {
+  const actorTraceId = trace.actor_trace_id || (trace.agent_id === "actor_twin" ? trace.trace_id : "");
+  const handoffTraceId = trace.handoff_trace_id || (trace.agent_id !== "actor_twin" ? trace.trace_id : "");
+  const decision = trace.route_decision || "";
+  const target = trace.target_agent || trace.agent_id || "";
+  const status = trace.handoff_status || trace.status || "";
+  if (!actorTraceId && !handoffTraceId && !decision && !target && !status) return "";
+  return `
+    <div class="agent-trace-chain" aria-label="Actor-to-target trace chain">
+      ${decision ? `<span><strong>${escapeHtml(labelizeGraph(decision))}</strong><small>route decision</small></span>` : ""}
+      ${target ? `<span><strong>${escapeHtml(agentDisplayName(target))}</strong><small>target</small></span>` : ""}
+      ${status ? `<span><strong>${escapeHtml(labelizeGraph(status))}</strong><small>handoff status</small></span>` : ""}
+      ${actorTraceId ? `<span><code>${escapeHtml(actorTraceId)}</code><small>actor trace</small></span>` : ""}
+      ${handoffTraceId ? `<span><code>${escapeHtml(handoffTraceId)}</code><small>target trace</small></span>` : ""}
+    </div>
+  `;
 }
 
 function outputFromN8nData(data) {
@@ -28944,6 +29050,100 @@ function safeJsonParse(text = "", fallback = null) {
   }
 }
 
+function readAgentApprovalQueue() {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(storageKeys.agentApprovalQueue) || "[]");
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAgentApprovalQueue(items = []) {
+  try {
+    window.localStorage.setItem(storageKeys.agentApprovalQueue, JSON.stringify(items.slice(0, 25)));
+  } catch (error) {
+    console.warn("Agent approval queue persistence failed", error);
+  }
+}
+
+function persistAgentApprovalRequest(result = {}, traceEntry = {}) {
+  const response = result.response || {};
+  const approval = response.approval || {};
+  if (response.status !== "approval_required" && approval.required !== true) return;
+  const trace = response.trace || {};
+  const requestId = response.request_id || result.request?.request_id || traceEntry.request_id || "";
+  const traceId = trace.trace_id || result.trace_id || traceEntry.trace_id || requestId;
+  const routeDecision = trace.route_decision || result.runtime_chain?.route_decision || response.output?.route_decision?.decision || "";
+  const item = {
+    approval_id: `appr_${traceId || requestId}`.replace(/[^\w-]/g, "_"),
+    timestamp: new Date().toISOString(),
+    agent_id: response.agent_id || result.agent_id || "",
+    agent_name: result.agent_name || agentDisplayName(response.agent_id || result.agent_id || ""),
+    request_id: requestId,
+    trace_id: traceId,
+    actor_trace_id: trace.actor_trace_id || result.runtime_chain?.actor_trace_id || "",
+    handoff_trace_id: trace.handoff_trace_id || result.runtime_chain?.handoff_trace_id || "",
+    target_agent: trace.target_agent || result.runtime_chain?.target_agent || response.agent_id || result.agent_id || "",
+    route_decision: routeDecision,
+    gate: approval.gate || "requires_human_action",
+    summary: approval.summary || "Human approval is required before this action can continue.",
+    proposed_action: approval.proposed_action || "",
+    status: "pending_human_approval",
+    resume_boundary: "frontend_scaffold_backend_proxy_required",
+  };
+  const current = readAgentApprovalQueue();
+  const next = [item, ...current.filter((existing) => existing.approval_id !== item.approval_id && existing.trace_id !== item.trace_id)];
+  writeAgentApprovalQueue(next);
+}
+
+function agentApprovalByTrace(traceId = "") {
+  if (!traceId) return null;
+  return readAgentApprovalQueue().find((item) => item.trace_id === traceId || item.handoff_trace_id === traceId || item.request_id === traceId) || null;
+}
+
+function buildAgentApprovalResumePayload(approval = {}) {
+  const now = new Date().toISOString();
+  return {
+    envelope_version: "0.1.0",
+    request_id: `resume_${approval.request_id || approval.trace_id || Date.now().toString(36)}`,
+    timestamp: now,
+    agent_id: approval.agent_id || "agentic_butler",
+    intent: "resume_after_approval",
+    principal: activePrincipal(),
+    input: {
+      original_request_id: approval.request_id || "",
+      original_trace_id: approval.trace_id || "",
+      approved: true,
+      approval_note: "Human-in-the-loop approval prepared from MeIDs frontend.",
+    },
+    context: {
+      actor_trace_id: approval.actor_trace_id || "",
+      handoff_trace_id: approval.handoff_trace_id || approval.trace_id || "",
+      route_decision: approval.route_decision || "",
+      target_agent: approval.target_agent || approval.agent_id || "",
+      resume_boundary: approval.resume_boundary || "frontend_scaffold_backend_proxy_required",
+      backend_proxy_endpoint: "/api/agents/approvals/{approval_id}/resume",
+    },
+    approval: {
+      required: false,
+      decision: "approved",
+      approved_by: "human-in-loop",
+      approved_at: now,
+      original_gate: approval.gate || "",
+      original_summary: approval.summary || "",
+      proposed_action: approval.proposed_action || "",
+    },
+    expected_response: {
+      status: "completed",
+      trace: {
+        stored: true,
+        parent_trace_id: approval.trace_id || "",
+      },
+    },
+  };
+}
+
 function renderProductionN8nHandoffPacket(missing = []) {
   const docs = [
     "docs/n8n-live-url-configuration.md",
@@ -31937,13 +32137,14 @@ function renderAgentContractChatCard(result = {}) {
       </div>
       ${renderAgentResponseRouteCard(result)}
       ${isApproval ? `
-        <div class="approval-card agent-approval-gate" data-approval-summary="${escapeHtml(approval.summary || "")}" data-approval-action="${escapeHtml(approval.proposed_action || "")}">
+        <div class="approval-card agent-approval-gate" data-approval-summary="${escapeHtml(approval.summary || "")}" data-approval-action="${escapeHtml(approval.proposed_action || "")}" data-trace-id="${escapeHtml(traceKey)}" data-request-id="${escapeHtml(response.request_id || result.request?.request_id || "")}">
           <strong>${escapeHtml(approval.gate || "human_gate")}</strong>
           <p>${escapeHtml(approval.summary || "Human approval is required before this action can continue.")}</p>
           <small>${escapeHtml(approval.proposed_action || "No proposed action supplied.")}</small>
           <div class="button-row tight">
             <button class="secondary small" type="button" data-chat-action="ack-agent-approval">Acknowledge gate</button>
             <button class="secondary small" type="button" data-chat-action="copy-agent-approval">Copy approval note</button>
+            <button class="secondary small" type="button" data-chat-action="copy-agent-resume" data-trace-id="${escapeHtml(traceKey)}">Copy resume payload</button>
           </div>
         </div>
       ` : ""}
@@ -32121,6 +32322,28 @@ async function copyAgentApproval(button) {
     showToast("Approval note copied", "Paste it into the review or n8n UAT record.", "success");
   } catch {
     showToast("Approval note", note, "warning");
+  }
+}
+
+async function copyAgentApprovalResumePayload(button) {
+  const card = button.closest(".agent-approval-gate");
+  const traceId = button.dataset.traceId || card?.dataset.traceId || "";
+  const approval = agentApprovalByTrace(traceId) || {
+    trace_id: traceId,
+    request_id: card?.dataset.requestId || "",
+    agent_id: "agentic_butler",
+    target_agent: "agentic_butler",
+    gate: "requires_human_action",
+    summary: card?.dataset.approvalSummary || "Human approval is required before this action can continue.",
+    proposed_action: card?.dataset.approvalAction || "",
+  };
+  const payload = buildAgentApprovalResumePayload(approval);
+  const text = JSON.stringify(payload, null, 2);
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Resume payload copied", "Use it with the backend approval resume endpoint or n8n UAT resume branch.", "success");
+  } catch {
+    showToast("Resume payload", text, "warning");
   }
 }
 

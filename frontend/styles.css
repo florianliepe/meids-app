@@ -10251,6 +10251,41 @@ body.theme-dark .agent-probe-replay-grid p {
   color: var(--ink);
 }
 
+.agent-trace-chain {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 66%, transparent);
+  padding-top: 8px;
+}
+
+.agent-trace-chain span {
+  display: grid;
+  gap: 1px;
+  max-width: min(100%, 260px);
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-quiet) 76%, transparent);
+  padding: 5px 9px;
+}
+
+.agent-trace-chain strong,
+.agent-trace-chain code {
+  color: var(--ink);
+  font-size: 0.75rem;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-trace-chain small {
+  color: var(--muted);
+  font-size: 0.66rem;
+  line-height: 1.1;
+  margin: 0;
+}
+
 .agent-trace-artifact {
   grid-column: 1 / -1;
   display: grid;
