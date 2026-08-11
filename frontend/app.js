@@ -13373,6 +13373,7 @@ function renderZielmodus4LiveHandoffGrid() {
           <span><strong>${escapeHtml(preflight.status || "unknown")}</strong><small>${escapeHtml(Object.keys(blockerSummary).length ? Object.entries(blockerSummary).map(([key, count]) => `${key}: ${count}`).join(" · ") : "no blockers")}</small></span>
         </div>
       ` : ""}
+      ${renderZielmodus4StrictReadinessOperatorPanel(agentIds)}
       <div class="zielmodus-live-handoff-grid">
         ${agentIds.map((agentId) => {
           const runtime = agentRuntimeReadiness(agentId);
@@ -13409,6 +13410,98 @@ function renderZielmodus4LiveHandoffGrid() {
         }).join("")}
       </div>
       ${renderZielmodus4CompletionChecklist()}
+    </div>
+  `;
+}
+
+function renderZielmodus4StrictReadinessOperatorPanel(agentIds = []) {
+  const handoff = state.n8nLiveHandoffCommands || {};
+  const handoffAgents = Array.isArray(handoff.agents) ? handoff.agents : [];
+  const probeAgents = Array.isArray(state.n8nLiveProbeEvidenceStatus?.agents)
+    ? state.n8nLiveProbeEvidenceStatus.agents
+    : [];
+  const preflightAgents = Array.isArray(state.n8nLiveReadinessPreflight?.agents)
+    ? state.n8nLiveReadinessPreflight.agents
+    : [];
+  const strictCommands = Array.isArray(handoff.summary?.strict_gate_commands)
+    ? handoff.summary.strict_gate_commands
+    : [
+      "node scripts/write-n8n-runtime-readiness-status.cjs --check",
+      "node scripts/write-n8n-live-readiness-preflight.cjs --check",
+      "node scripts/write-zielmodus-4-live-completion-checklist.cjs --check",
+      "node scripts/validate-zielmodus-4-readiness.cjs --require-live-probes",
+      "node scripts/check-zielmodus-4-public-safe.cjs",
+    ];
+  const finalStrictGate = strictCommands.find((command) => command.includes("validate-zielmodus-4-readiness.cjs"))
+    || "node scripts/validate-zielmodus-4-readiness.cjs --require-live-probes";
+  const rows = agentIds.map((agentId) => {
+    const runtime = agentRuntimeReadiness(agentId);
+    const handoffAgent = handoffAgents.find((agent) => agent.agent_id === agentId) || {};
+    const persistedProbe = probeAgents.find((agent) => agent.agent_id === agentId) || {};
+    const preflightAgent = preflightAgents.find((agent) => agent.agent_id === agentId) || {};
+    const sessionProbe = state.n8nLiveProbeResults?.[agentId] || {};
+    const expectedStatus = handoffAgent.expected_response_status || persistedProbe.expected_response_status || "completed";
+    const probeStatus = sessionProbe.status || persistedProbe.status || preflightAgent.live_probe?.status || "awaiting_probe";
+    const traceId = sessionProbe.trace_id || persistedProbe.trace_id || preflightAgent.live_probe?.trace_id || "";
+    const probeReady = Boolean(traceId && persistedProbe.demo !== true && String(probeStatus).toLowerCase().includes("connected"));
+    const setupCommand = handoffAgent.commands?.local_public_uat_url
+      || preflightAgent.commands?.set_url
+      || `node scripts/set-n8n-agent-url.cjs --agent ${agentId} --url https://YOUR-N8N-HOST/webhook/YOUR-${agentId.toUpperCase().replace(/_/g, "-")}-UAT-PATH`;
+    const evidenceCommand = persistedProbe.record_command_template
+      || handoffAgent.commands?.record_probe
+      || preflightAgent.commands?.record_probe_evidence
+      || `node scripts/record-n8n-live-probe-evidence.cjs --agent ${agentId} --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status ${expectedStatus}`;
+    const nextCommand = !runtime.configured ? setupCommand : !probeReady ? evidenceCommand : finalStrictGate;
+    const nextLabel = !runtime.configured
+      ? "Configure live URL"
+      : !probeReady
+        ? "Record probe evidence"
+        : "Ready for strict gate";
+    return {
+      agentId,
+      name: agentDisplayName(agentId),
+      state: !runtime.configured ? "blocked" : probeReady ? "ready" : "pending",
+      nextLabel,
+      nextCommand,
+      expectedStatus,
+      probeFile: `assets/n8n-live-probes/${agentId.replaceAll("_", "-")}.json`,
+      detail: !runtime.configured
+        ? runtime.nextAction || preflightAgent.runtime_url?.next_action || "Configure the public UAT webhook URL."
+        : !probeReady
+          ? persistedProbe.next_action || preflightAgent.live_probe?.next_action || "Run live probe and record the returned trace evidence."
+          : "Live evidence exists for this agent. Continue with the strict readiness gate.",
+    };
+  });
+  const readyCount = rows.filter((row) => row.state === "ready").length;
+  return `
+    <div class="zielmodus-strict-operator-panel" aria-label="Strict readiness operator commands">
+      <div class="zielmodus-strict-operator-head">
+        <div>
+          <span class="badge">Strict readiness operator panel</span>
+          <strong>${escapeHtml(`${readyCount}/${rows.length} agents ready for strict gate`)}</strong>
+          <p>Run the next command per agent. When all three are ready, run the final strict gate command.</p>
+        </div>
+        <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(finalStrictGate)}">Copy final strict gate</button>
+      </div>
+      <div class="zielmodus-strict-command-grid">
+        ${rows.map((row) => `
+          <article class="${escapeHtml(row.state)}">
+            <span>${escapeHtml(row.nextLabel)}</span>
+            <strong>${escapeHtml(row.name)}</strong>
+            <p>${escapeHtml(row.detail)}</p>
+            <code>${escapeHtml(row.nextCommand)}</code>
+            <div class="button-row tight">
+              <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(row.nextCommand)}">Copy next command</button>
+              <a class="secondary small" href="${escapeHtml(row.probeFile)}" target="_blank" rel="noreferrer">Open probe file</a>
+            </div>
+            <small>Expected response: ${escapeHtml(row.expectedStatus)}</small>
+          </article>
+        `).join("")}
+      </div>
+      <div class="zielmodus-strict-final-gate">
+        <span>Final gate</span>
+        <code>${escapeHtml(finalStrictGate)}</code>
+      </div>
     </div>
   `;
 }

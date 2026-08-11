@@ -6037,6 +6037,105 @@ body.theme-dark .repo-responsibility-lane {
   border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
 }
 
+.zielmodus-strict-operator-panel {
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, var(--surface-quiet));
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.zielmodus-strict-operator-head {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.zielmodus-strict-operator-head strong {
+  color: var(--ink);
+  display: block;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.zielmodus-strict-operator-head p,
+.zielmodus-strict-command-grid article p {
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 3px 0 0;
+}
+
+.zielmodus-strict-command-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.zielmodus-strict-command-grid article {
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-quiet) 84%, transparent);
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.zielmodus-strict-command-grid article.ready {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+}
+
+.zielmodus-strict-command-grid article.pending {
+  border-color: color-mix(in srgb, var(--warn) 34%, var(--line));
+}
+
+.zielmodus-strict-command-grid article.blocked {
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--line));
+}
+
+.zielmodus-strict-command-grid article > span,
+.zielmodus-strict-final-gate span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.zielmodus-strict-command-grid article strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.zielmodus-strict-command-grid code,
+.zielmodus-strict-final-gate code {
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--app-bg) 74%, var(--surface));
+  color: var(--ink);
+  display: block;
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  padding: 8px;
+  white-space: pre-wrap;
+}
+
+.zielmodus-strict-command-grid small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.zielmodus-strict-final-gate {
+  border: 1px dashed color-mix(in srgb, var(--accent) 38%, var(--line));
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  padding: 9px 10px;
+}
+
 .zielmodus-live-handoff-grid article {
   border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
   border-radius: 8px;
@@ -6184,12 +6283,14 @@ body.theme-dark .repo-responsibility-lane {
   .zielmodus-readiness-metrics,
   .zielmodus-preflight-summary,
   .zielmodus-handoff-command-summary,
+  .zielmodus-strict-command-grid,
   .zielmodus-live-handoff-grid,
   .zielmodus-completion-items {
     grid-template-columns: 1fr;
   }
 
-  .zielmodus-live-handoff-head {
+  .zielmodus-live-handoff-head,
+  .zielmodus-strict-operator-head {
     display: grid;
   }
 }
