@@ -10,7 +10,7 @@ const agents = [
     implementation: "actor-twin.ai-agent.workflow.json",
     aiNode: "Actor Twin AI Agent",
     modelNode: "Actor Twin Chat Model",
-    responseNode: "Staging contract response",
+    responseNode: "Contract response normalizer",
     promptRefs: ["prompts/actor-twin/system.md", "prompts/actor-twin/critic.md"],
   },
   {
@@ -19,7 +19,7 @@ const agents = [
     implementation: "knowledge-fabric-agent.ai-agent.workflow.json",
     aiNode: "Knowledge Fabric AI Agent",
     modelNode: "Knowledge Fabric Chat Model",
-    responseNode: "Staging contract response",
+    responseNode: "Contract response normalizer",
     promptRefs: [
       "prompts/knowledge-fabric-agent/system.md",
       "prompts/knowledge-fabric-agent/graph-curator.md",
@@ -32,7 +32,7 @@ const agents = [
     implementation: "agentic-butler.ai-agent.workflow.json",
     aiNode: "Agentic Butler AI Agent",
     modelNode: "Agentic Butler Chat Model",
-    responseNode: "Staging contract response",
+    responseNode: "Contract response normalizer",
     promptRefs: [
       "prompts/agentic-butler/system.md",
       "prompts/agentic-butler/skill-orchestrator.md",
@@ -128,4 +128,3 @@ for (const agent of agents) {
 }
 
 console.log(`n8n AI-agent workflow validation passed: ${agents.length} agents`);
-

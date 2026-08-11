@@ -11537,6 +11537,75 @@ body.theme-dark .graph-actor-context-status > span {
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
 }
 
+.agent-approval-cockpit {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  padding: 18px;
+  margin: 18px 0;
+}
+
+.agent-approval-cockpit.empty {
+  background: var(--surface-2);
+}
+
+.agent-approval-cockpit-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.agent-approval-cockpit-head strong {
+  display: block;
+  font-size: 1.05rem;
+  margin-top: 6px;
+}
+
+.agent-approval-cockpit-head p {
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+
+.agent-approval-cockpit-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.agent-approval-cockpit-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
+  padding: 14px;
+}
+
+.agent-approval-cockpit-card strong {
+  display: block;
+  margin-top: 6px;
+}
+
+.agent-approval-cockpit-card p {
+  color: var(--text);
+  margin: 6px 0;
+}
+
+.agent-approval-cockpit-card small {
+  color: var(--muted);
+}
+
+.agent-approval-cockpit.compact {
+  padding: 14px;
+}
+
+.agent-approval-cockpit.compact .agent-approval-cockpit-card {
+  grid-template-columns: 1fr;
+}
+
 .agent-response-card .todo-table {
   display: grid;
   gap: 8px;

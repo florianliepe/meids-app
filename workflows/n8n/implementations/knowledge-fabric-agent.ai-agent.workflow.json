@@ -26,17 +26,17 @@
     },
     {
       "parameters": {
-        "jsCode": "const inputRoot = $('Receive request').first().json;\nconst input = inputRoot.body ?? inputRoot;\nconst ai = $json;\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nconst requestId = input.request_id || input.live_probe?.request_id || `req_${executionId}`;\nconst aiText = ai.output || ai.text || ai.response || ai.message || '';\nconst response = {\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: requestId,\n  agent_id: 'knowledge_fabric_agent',\n  status: 'completed',\n  output: {\n    summary: aiText || 'Knowledge Fabric AI node completed. Candidate concepts remain pending review before promotion.',\n    created_candidates: [],\n    review_state: 'pending-review',\n    ai_agent: { integrated: true, node: 'Knowledge Fabric AI Agent' }\n  },\n  trace: { stored: true, trace_id: `n8n_exec_${executionId}`, used_agents: ['knowledge_fabric_agent_ai_agent'] }\n};\nreturn [{ json: response }];"
+        "jsCode": "const inputRoot = $('Receive request').first().json;\nconst input = inputRoot.body ?? inputRoot;\nconst ai = $json;\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nconst requestId = input.request_id || input.live_probe?.request_id || `req_${executionId}`;\nconst aiText = ai.output || ai.text || ai.response || ai.message || '';\nconst response = {\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: requestId,\n  agent_id: 'knowledge_fabric_agent',\n  status: 'completed',\n  output: {\n    summary: aiText || 'Knowledge Fabric AI Agent completed. Candidate concepts remain pending review before promotion.',\n    created_candidates: input.input?.created_candidates || [],\n    review_state: 'pending-review',\n    graph_curator_trigger: 'candidate_edges_pending_review',\n    vector_refresh: 'deferred_until_approval',\n    contract_stage: 'ai_agent_normalized',\n    ai_agent: { integrated: true, node: 'Knowledge Fabric AI Agent' }\n  },\n  trace: { stored: true, trace_id: `n8n_exec_${executionId}`, used_agents: ['knowledge_fabric_agent_ai_agent', 'graph_curator_boundary', 'vector_refresh_boundary'], target_agent: 'knowledge_fabric_agent', route_decision: 'update_knowledge', handoff_status: 'handoff_completed', ai_agent_integrated: true }\n};\nreturn [{ json: response }];"
       },
       "id": "meids-knowledge-fabric-ingest-contract",
-      "name": "Staging contract response",
+      "name": "Contract response normalizer",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         580,
         0
       ],
-      "notes": "MeIDs contract shell patched by Codex. Insert AI Agent/LLM nodes before this response node for production intelligence."
+      "notes": "Normalizes real AI Agent node output into the MeIDs agent contract. Keep this node after the AI Agent and before Return JSON."
     },
     {
       "parameters": {
@@ -114,18 +114,7 @@
       "main": [
         [
           {
-            "node": "Staging contract response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Staging contract response": {
-      "main": [
-        [
-          {
-            "node": "Return JSON",
+            "node": "Contract response normalizer",
             "type": "main",
             "index": 0
           }
@@ -138,6 +127,17 @@
           {
             "node": "Knowledge Fabric AI Agent",
             "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contract response normalizer": {
+      "main": [
+        [
+          {
+            "node": "Return JSON",
+            "type": "main",
             "index": 0
           }
         ]

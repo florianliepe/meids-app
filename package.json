@@ -1,0 +1,14 @@
+{
+  "name": "meids-app-public",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MeIDs public frontend plus production agent backend proxy scaffold.",
+  "scripts": {
+    "start": "node backend/server.js",
+    "check:backend": "node --check backend/server.js && node scripts/validate-agent-backend-contract.cjs",
+    "check:agents": "node scripts/validate-n8n-fixtures.cjs && node scripts/replay-n8n-fixtures.cjs && node scripts/validate-agent-runtime-handoffs.cjs && node scripts/validate-actor-twin-routing.cjs && node scripts/validate-n8n-ai-agent-workflows.cjs && node scripts/validate-agent-backend-contract.cjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

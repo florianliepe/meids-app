@@ -23,7 +23,7 @@ Each live n8n workflow must follow this active path:
 5. Return JSON.
 6. Preserve trace id / execution id for cockpit evidence.
 
-The response normalizer must stay after the AI Agent. It is acceptable that the normalizer is named “Staging contract response” during UAT, but it must consume real AI Agent output and return it inside the contract envelope.
+The response normalizer must stay after the AI Agent. The promoted workflow artifacts use `Contract response normalizer`; it must consume real AI Agent output and return it inside the contract envelope.
 
 ## Verification Gates
 

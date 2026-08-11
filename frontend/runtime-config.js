@@ -1,5 +1,7 @@
 window.INTELLECTUAL_TWIN_CONFIG = {
   apiBaseUrl: "",
+  agentBackendBaseUrl: "",
+  agentBackendProxyEnabled: true,
   assetBaseUrl: "/static",
   n8nChatWebhookUrl: "https://eraneos-agentic-platform.azurewebsites.net/webhook/af44a40b-6bd8-49f4-9d39-73a14d3678dd/chat",
   n8nActorTwinWebhookUrl: "https://eraneos-agentic-platform.azurewebsites.net/webhook/af44a40b-6bd8-49f4-9d39-73a14d3678dd/chat",

@@ -175,7 +175,11 @@ function parseArgs(argv) {
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  const files = fs.readdirSync(fixtureDir).filter((file) => file.endsWith(".json") && file !== "actor-twin-routing.json").sort();
+  const files = fs.readdirSync(fixtureDir).filter((file) => {
+    if (!file.endsWith(".json") || file === "actor-twin-routing.json") return false;
+    const fixture = JSON.parse(fs.readFileSync(path.join(fixtureDir, file), "utf8"));
+    return requiredAgents.includes(fixture.agent_id);
+  }).sort();
   const agents = files.map((file) => replayFixture(path.join(fixtureDir, file)));
   const seen = new Set(agents.map((agent) => agent.agent_id));
   const missing = requiredAgents.filter((agent) => !seen.has(agent));

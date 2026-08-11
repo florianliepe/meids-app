@@ -224,6 +224,9 @@
   chatContractActionResult: null,
   okfValidationStatus: null,
   n8nLiveProbeResults: {},
+  backendAgentApprovals: [],
+  backendAgentTraces: [],
+  backendAgentRuntimeLoadedAt: "",
   knowledgeFabricDryRunResult: null,
   skillInputPresets: [],
   selectedSkillId: null,
@@ -263,6 +266,8 @@
 
 const runtimeConfig = window.INTELLECTUAL_TWIN_CONFIG || {};
 const apiBaseUrl = normalizeBaseUrl(runtimeConfig.apiBaseUrl || "");
+const agentBackendBaseUrl = normalizeBaseUrl(runtimeConfig.agentBackendBaseUrl || runtimeConfig.agentApiBaseUrl || "");
+const agentBackendProxyEnabled = Boolean(agentBackendBaseUrl) && runtimeConfig.agentBackendProxyEnabled !== false;
 const staticPagesMode = Boolean(runtimeConfig.staticPagesMode) && !apiBaseUrl;
 const configuredAssetBase = Object.prototype.hasOwnProperty.call(runtimeConfig, "assetBaseUrl")
   ? runtimeConfig.assetBaseUrl
@@ -8179,6 +8184,14 @@ function bindChat() {
       copyAgentApprovalResumePayload(action);
       return;
     }
+    if (action.dataset.chatAction === "resume-agent-approval") {
+      resumeAgentApproval(action);
+      return;
+    }
+    if (action.dataset.chatAction === "refresh-agent-runtime-state") {
+      safeRefreshBackendAgentRuntimeState();
+      return;
+    }
     if (action.dataset.chatAction === "open-agent-trace") {
       openAgentTraceFromChat(action.dataset.traceId || action.dataset.requestId || "");
     }
@@ -10573,6 +10586,7 @@ async function refreshAll() {
   await safeRefreshSkillRuns();
   await safeRefreshSkillRefinements();
   await safeRefreshSkillTelemetry();
+  await safeRefreshBackendAgentRuntimeState();
   renderChatLatestAgentTraces();
 }
 
@@ -10628,6 +10642,7 @@ function refreshStaticPagesWorkspace() {
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticZielmodus4ReadinessStatus();
   safeRefreshStaticOkfValidationStatus();
+  safeRefreshBackendAgentRuntimeState();
   renderAgentTraceHistoryPanel();
   renderChatLatestAgentTraces();
   state.reviewDashboard = buildStaticPagesReviewDashboard();
@@ -10639,6 +10654,24 @@ function refreshStaticPagesWorkspace() {
   renderProductionProgressHeader();
   renderProductionKnowledgeRepoReadiness();
   renderQualityCockpit();
+}
+
+async function safeRefreshBackendAgentRuntimeState() {
+  if (!agentBackendProxyEnabled) return;
+  try {
+    const [approvals, traces] = await Promise.all([
+      getAgentBackendJson("/api/agents/approvals"),
+      getAgentBackendJson("/api/agents/traces?limit=100"),
+    ]);
+    state.backendAgentApprovals = Array.isArray(approvals?.approvals) ? approvals.approvals : [];
+    state.backendAgentTraces = Array.isArray(traces?.traces) ? traces.traces : [];
+    state.backendAgentRuntimeLoadedAt = new Date().toISOString();
+    renderAgentTraceHistoryPanel();
+    renderDashboardAgentTraceHistory();
+    renderChatLatestAgentTraces();
+  } catch (error) {
+    console.warn("Backend agent runtime state unavailable", error);
+  }
 }
 
 function buildStaticPagesStatus() {
@@ -16418,6 +16451,10 @@ function attachAgentRuntimeChain(result = {}, { actorResult = null, route = null
 }
 
 async function postAgentContractEnvelope(agentId, envelope, fallbackFactory) {
+  if (shouldUseAgentBackendProxy(agentId)) {
+    const data = await postAgentBackendJson(agentBackendProxyPath(agentId), envelope);
+    return normalizeAgentContractResponse(agentId, data, envelope, "backend proxy");
+  }
   const webhookUrl = getAgentWebhook(agentId);
   if (!webhookUrl) return fallbackFactory(envelope, "fixture fallback");
   const body = isN8nChatWebhook(webhookUrl)
@@ -16441,6 +16478,41 @@ async function postAgentContractEnvelope(agentId, envelope, fallbackFactory) {
   if (!response.ok) throw new Error(raw || `${agentId} returned ${response.status}`);
   const data = parseMaybeJson(raw);
   return normalizeAgentContractResponse(agentId, data, envelope, "n8n connected");
+}
+
+function shouldUseAgentBackendProxy(agentId = "") {
+  return Boolean(agentBackendProxyEnabled && agentBackendProxyPath(agentId));
+}
+
+function agentBackendProxyPath(agentId = "") {
+  if (agentId === "actor_twin") return "/api/agents/actor-twin/chat";
+  if (agentId === "knowledge_fabric_agent") return "/api/agents/knowledge-fabric/ingest";
+  if (agentId === "agentic_butler") return "/api/agents/agentic-butler/run";
+  return "";
+}
+
+function agentBackendUrl(path = "") {
+  if (!agentBackendBaseUrl || /^https?:\/\//i.test(path)) return path;
+  return `${agentBackendBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+async function requestAgentBackendJson(path, options = {}) {
+  const response = await fetch(agentBackendUrl(path), options);
+  const raw = await response.text();
+  if (!response.ok) throw new Error(raw || `Agent backend returned ${response.status}`);
+  return parseMaybeJson(raw);
+}
+
+async function getAgentBackendJson(path) {
+  return requestAgentBackendJson(path);
+}
+
+async function postAgentBackendJson(path, body) {
+  return requestAgentBackendJson(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 function isN8nChatWebhook(url) {
@@ -16532,12 +16604,24 @@ function persistAgentTrace(result = {}) {
     const current = JSON.parse(window.localStorage.getItem(storageKeys.agentTraceLog) || "[]");
     const next = [entry, ...(Array.isArray(current) ? current : [])].slice(0, 50);
     window.localStorage.setItem(storageKeys.agentTraceLog, JSON.stringify(next));
+    persistAgentTraceToBackend(entry, result);
     renderChatLatestAgentTraces();
     renderAgentTraceHistoryPanel();
     renderDashboardAgentTraceHistory();
   } catch (error) {
     console.warn("Agent trace persistence failed", error);
   }
+}
+
+function persistAgentTraceToBackend(entry = {}, result = {}) {
+  if (!agentBackendProxyEnabled) return;
+  postAgentBackendJson("/api/agents/traces", {
+    trace: entry,
+    response: result.response || null,
+    request: result.request || null,
+  }).catch((error) => {
+    console.warn("Backend agent trace persistence failed", error);
+  });
 }
 
 function persistAgentProbeTrace(agentId, envelope = {}, probe = {}, options = {}) {
@@ -17841,6 +17925,18 @@ function renderKnowledgeFabricQueueLifecyclePreview(item = {}) {
 }
 
 function readAgentTraceLog() {
+  const backendItems = Array.isArray(state.backendAgentTraces) ? state.backendAgentTraces : [];
+  const localItems = readLocalAgentTraceLog();
+  const seen = new Set();
+  return [...backendItems, ...localItems].filter((trace) => {
+    const key = trace.trace_id || trace.request_id || JSON.stringify(trace);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function readLocalAgentTraceLog() {
   try {
     const value = JSON.parse(window.localStorage.getItem(storageKeys.agentTraceLog) || "[]");
     if (Array.isArray(value) && value.length) return value;
@@ -17993,17 +18089,18 @@ function renderAgentTraceHistoryPanel() {
   renderAgentTraceFilterControls();
   const handoffTimeline = renderAgentTraceHandoffTimeline(traces);
   const setupNotice = renderAgentTraceSetupNotice();
+  const approvalCockpit = renderAgentApprovalQueueCockpit();
   const sourceTraceSummary = renderKnowledgeFabricSourceTraceSummary();
   const sourceLifecycle = renderKnowledgeFabricLifecycleTracePanel();
   if (!traces.length) {
-    target.innerHTML = `${handoffTimeline}${setupNotice}${sourceTraceSummary}${sourceLifecycle}<p class="empty">No local agent handoffs yet. Run Actor Twin, Knowledge Fabric, or Agentic Butler from Chat to populate this trace history.</p>`;
+    target.innerHTML = `${handoffTimeline}${setupNotice}${approvalCockpit}${sourceTraceSummary}${sourceLifecycle}<p class="empty">No local agent handoffs yet. Run Actor Twin, Knowledge Fabric, or Agentic Butler from Chat to populate this trace history.</p>`;
     return;
   }
   if (!filtered.length) {
-    target.innerHTML = `${handoffTimeline}${setupNotice}${sourceTraceSummary}${sourceLifecycle}<p class="empty">No traces match this filter.</p>`;
+    target.innerHTML = `${handoffTimeline}${setupNotice}${approvalCockpit}${sourceTraceSummary}${sourceLifecycle}<p class="empty">No traces match this filter.</p>`;
     return;
   }
-  target.innerHTML = `${handoffTimeline}${setupNotice}${sourceTraceSummary}${sourceLifecycle}${renderAgentTraceHistoryRows(filtered, 12)}`;
+  target.innerHTML = `${handoffTimeline}${setupNotice}${approvalCockpit}${sourceTraceSummary}${sourceLifecycle}${renderAgentTraceHistoryRows(filtered, 12)}`;
 }
 
 function renderDashboardAgentTraceHistory() {
@@ -18012,13 +18109,62 @@ function renderDashboardAgentTraceHistory() {
   if (!target) return;
   const traces = readComposedAgentTraces();
   const handoffTimeline = renderAgentTraceHandoffTimeline(traces, { compact: true });
+  const approvalCockpit = renderAgentApprovalQueueCockpit({ compact: true });
   const sourceTraceSummary = renderKnowledgeFabricSourceTraceSummary({ compact: true });
   const sourceLifecycle = renderKnowledgeFabricLifecycleTracePanel({ compact: true });
   if (!traces.length) {
-    target.innerHTML = `${handoffTimeline}${sourceTraceSummary}${sourceLifecycle}${renderEmptyState("No local n8n handoffs yet.", "Open agent contracts", "openProductionCockpit")}`;
+    target.innerHTML = `${handoffTimeline}${approvalCockpit}${sourceTraceSummary}${sourceLifecycle}${renderEmptyState("No local n8n handoffs yet.", "Open agent contracts", "openProductionCockpit")}`;
     return;
   }
-  target.innerHTML = `${handoffTimeline}${renderAgentTraceSetupNotice({ compact: true })}${sourceTraceSummary}${sourceLifecycle}${renderAgentTraceHistoryRows(traces, 8)}`;
+  target.innerHTML = `${handoffTimeline}${renderAgentTraceSetupNotice({ compact: true })}${approvalCockpit}${sourceTraceSummary}${sourceLifecycle}${renderAgentTraceHistoryRows(traces, 8)}`;
+}
+
+function renderAgentApprovalQueueCockpit(options = {}) {
+  const compact = Boolean(options.compact);
+  const approvals = readAgentApprovalQueue()
+    .filter((item) => !item.status || ["pending_human_approval", "pending", "approval_required"].includes(item.status))
+    .slice(0, compact ? 3 : 8);
+  if (!approvals.length) {
+    return compact ? "" : `
+      <section class="agent-approval-cockpit empty">
+        <div>
+          <span class="badge">Approval queue</span>
+          <strong>No pending approvals</strong>
+          <p>Agentic Butler approval gates will appear here when a skill run pauses before a risky action.</p>
+        </div>
+      </section>
+    `;
+  }
+  return `
+    <section class="agent-approval-cockpit ${compact ? "compact" : ""}">
+      <div class="agent-approval-cockpit-head">
+        <div>
+          <span class="badge">Approval queue</span>
+          <strong>${escapeHtml(`${approvals.length} pending ${approvals.length === 1 ? "approval" : "approvals"}`)}</strong>
+          <p>${escapeHtml(agentBackendProxyEnabled
+            ? "Backend proxy can resume approved Agentic Butler runs."
+            : "Static mode can prepare resume payloads; hosted backend is required for execution.")}</p>
+        </div>
+        <button class="secondary small" type="button" data-chat-action="refresh-agent-runtime-state">Refresh traces</button>
+      </div>
+      <div class="agent-approval-cockpit-grid">
+        ${approvals.map((approval) => `
+          <article class="agent-approval-cockpit-card" data-trace-id="${escapeHtml(approval.trace_id || "")}" data-request-id="${escapeHtml(approval.request_id || "")}">
+            <div>
+              <span class="agent-trace-agent-chip ${safeGraphClass(approval.agent_id || approval.target_agent || "")}">${escapeHtml(agentDisplayName(approval.agent_id || approval.target_agent || "agentic_butler"))}</span>
+              <strong>${escapeHtml(approval.gate || "requires_human_action")}</strong>
+              <p>${escapeHtml(approval.summary || "Human approval is required before this action can continue.")}</p>
+              <small>${escapeHtml(approval.proposed_action || "No proposed action supplied.")}</small>
+            </div>
+            <div class="button-row tight">
+              <button class="secondary small" type="button" data-chat-action="copy-agent-resume" data-trace-id="${escapeHtml(approval.trace_id || approval.request_id || "")}">Copy resume payload</button>
+              ${agentBackendProxyEnabled ? `<button class="primary small" type="button" data-chat-action="resume-agent-approval" data-trace-id="${escapeHtml(approval.trace_id || approval.request_id || "")}">Resume via backend</button>` : ""}
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function renderChatLatestAgentTraces() {
@@ -29051,6 +29197,18 @@ function safeJsonParse(text = "", fallback = null) {
 }
 
 function readAgentApprovalQueue() {
+  const backendItems = Array.isArray(state.backendAgentApprovals) ? state.backendAgentApprovals : [];
+  const localItems = readLocalAgentApprovalQueue();
+  const seen = new Set();
+  return [...backendItems, ...localItems].filter((item) => {
+    const key = item.approval_id || item.trace_id || item.request_id || JSON.stringify(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function readLocalAgentApprovalQueue() {
   try {
     const value = JSON.parse(window.localStorage.getItem(storageKeys.agentApprovalQueue) || "[]");
     return Array.isArray(value) ? value : [];
@@ -29095,6 +29253,14 @@ function persistAgentApprovalRequest(result = {}, traceEntry = {}) {
   const current = readAgentApprovalQueue();
   const next = [item, ...current.filter((existing) => existing.approval_id !== item.approval_id && existing.trace_id !== item.trace_id)];
   writeAgentApprovalQueue(next);
+  persistAgentApprovalToBackend(item);
+}
+
+function persistAgentApprovalToBackend(item = {}) {
+  if (!agentBackendProxyEnabled) return;
+  postAgentBackendJson("/api/agents/approvals", item).catch((error) => {
+    console.warn("Backend agent approval persistence failed", error);
+  });
 }
 
 function agentApprovalByTrace(traceId = "") {
@@ -32145,6 +32311,7 @@ function renderAgentContractChatCard(result = {}) {
             <button class="secondary small" type="button" data-chat-action="ack-agent-approval">Acknowledge gate</button>
             <button class="secondary small" type="button" data-chat-action="copy-agent-approval">Copy approval note</button>
             <button class="secondary small" type="button" data-chat-action="copy-agent-resume" data-trace-id="${escapeHtml(traceKey)}">Copy resume payload</button>
+            ${agentBackendProxyEnabled ? `<button class="primary small" type="button" data-chat-action="resume-agent-approval" data-trace-id="${escapeHtml(traceKey)}">Resume via backend</button>` : ""}
           </div>
         </div>
       ` : ""}
@@ -32344,6 +32511,37 @@ async function copyAgentApprovalResumePayload(button) {
     showToast("Resume payload copied", "Use it with the backend approval resume endpoint or n8n UAT resume branch.", "success");
   } catch {
     showToast("Resume payload", text, "warning");
+  }
+}
+
+async function resumeAgentApproval(button) {
+  const card = button.closest(".agent-approval-gate");
+  const traceId = button.dataset.traceId || card?.dataset.traceId || "";
+  const approval = agentApprovalByTrace(traceId);
+  if (!approval) {
+    showToast("Approval not found", "Refresh the trace cockpit and try again.", "warning");
+    return;
+  }
+  if (!agentBackendProxyEnabled) {
+    await copyAgentApprovalResumePayload(button);
+    return;
+  }
+  button.disabled = true;
+  const previousLabel = button.textContent;
+  button.textContent = "Resuming...";
+  try {
+    const payload = buildAgentApprovalResumePayload(approval);
+    const data = await postAgentBackendJson(`/api/agents/approvals/${encodeURIComponent(approval.approval_id)}/resume`, payload);
+    const responsePayload = data.response ? data : { response: data };
+    const result = normalizeAgentContractResponse("agentic_butler", responsePayload, payload, "backend proxy · resumed");
+    persistAgentTrace(result);
+    addMessage("assistant", renderAgentContractChatCard(result), true);
+    await safeRefreshBackendAgentRuntimeState();
+    showToast("Butler run resumed", "The approval gate was sent through the backend proxy.", "success");
+  } catch (error) {
+    showToast("Resume failed", error.message || "Backend approval resume failed.", "error");
+    button.disabled = false;
+    button.textContent = previousLabel;
   }
 }
 

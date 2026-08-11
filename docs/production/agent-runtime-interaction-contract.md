@@ -57,7 +57,13 @@ Each target-agent response must preserve the Actor route context in `trace`:
 
 ## Approval Resume
 
-When Agentic Butler returns `approval_required`, the frontend creates a local resume envelope but does not execute it. Production execution belongs behind the backend proxy:
+When Agentic Butler returns `approval_required`, the frontend creates a resume envelope. In static GitHub Pages mode the payload can be copied for UAT. In hosted mode the payload is sent through the backend proxy:
+
+- `POST /api/agents/approvals/:approval_id/resume`
+- backend forwards `resume_after_approval` to Agentic Butler
+- backend persists the resumed trace chain
+
+Production execution belongs behind the backend proxy:
 
 - `POST /api/agents/approvals/{approval_id}/resume`
 - Backend verifies approver identity, original trace, gate, and target agent.
