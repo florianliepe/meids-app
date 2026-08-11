@@ -18,6 +18,9 @@ const requiredPaths = [
   "assets/okf-validation-status.json",
   "assets/zielmodus-4-readiness-status.json",
   "assets/zielmodus-4-live-completion-checklist.json",
+  "assets/n8n-live-probes/actor-twin.json",
+  "assets/n8n-live-probes/knowledge-fabric-agent.json",
+  "assets/n8n-live-probes/agentic-butler.json",
 ];
 
 const requiredN8nAgents = ["actor_twin", "knowledge_fabric_agent", "agentic_butler"];
@@ -68,6 +71,7 @@ function requireProbeStatusCommand(command, agentId, source) {
 
 function checkContractArtifacts(root) {
   const assetsRoot = path.join(root, "assets");
+  const probeRoot = path.join(assetsRoot, "n8n-live-probes");
   const runtime = readJson(path.join(assetsRoot, "agent-runtime-config.json"));
   const runtimeReadiness = readJson(path.join(assetsRoot, "n8n-runtime-readiness-status.json"));
   const probeEvidence = readJson(path.join(assetsRoot, "n8n-live-probe-evidence.json"));
@@ -76,6 +80,11 @@ function checkContractArtifacts(root) {
   const okfStatus = readJson(path.join(assetsRoot, "okf-validation-status.json"));
   const zielmodus = readJson(path.join(assetsRoot, "zielmodus-4-readiness-status.json"));
   const completionChecklist = readJson(path.join(assetsRoot, "zielmodus-4-live-completion-checklist.json"));
+  const standaloneProbeFiles = {
+    actor_twin: "actor-twin.json",
+    knowledge_fabric_agent: "knowledge-fabric-agent.json",
+    agentic_butler: "agentic-butler.json",
+  };
 
   requireObject(runtime.n8nAgentWebhooks, "agent-runtime-config.json n8nAgentWebhooks");
   requireArray(runtimeReadiness.agents, "n8n-runtime-readiness-status.json agents");
@@ -116,6 +125,13 @@ function checkContractArtifacts(root) {
     requireProbeStatusCommand(checklistProbe?.command, agentId, "completion checklist command");
     if (handoffAgent?.expected_response_status !== expectedN8nProbeStatuses[agentId]) {
       throw new Error(`handoff expected_response_status for ${agentId} must be ${expectedN8nProbeStatuses[agentId]}`);
+    }
+    const probeArtifact = readJson(path.join(probeRoot, standaloneProbeFiles[agentId]));
+    if (probeArtifact.agent_id !== agentId) throw new Error(`standalone live probe agent_id mismatch for ${agentId}`);
+    if (probeArtifact.live_probe?.intent !== "live_probe") throw new Error(`standalone live probe intent mismatch for ${agentId}`);
+    if (probeArtifact.live_probe?.input?.execute !== false) throw new Error(`standalone live probe execute flag must be false for ${agentId}`);
+    if (probeArtifact.live_probe?.expected_response?.status !== expectedN8nProbeStatuses[agentId]) {
+      throw new Error(`standalone live probe expected_response.status for ${agentId} must be ${expectedN8nProbeStatuses[agentId]}`);
     }
   }
 

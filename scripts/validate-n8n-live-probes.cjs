@@ -4,6 +4,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const fixtureDir = path.join(root, "contracts", "n8n", "fixtures");
 const probeDir = path.join(root, "contracts", "n8n", "live-probes");
+const frontendProbeDir = path.join(root, "frontend", "assets", "n8n-live-probes");
 
 const expectedAgents = {
   actor_twin: {
@@ -64,8 +65,11 @@ function assertProbeEnvelope(agentId, probe) {
 
 function validateProbe(agentId, config) {
   const probePath = path.join(probeDir, config.file);
+  const frontendProbePath = path.join(frontendProbeDir, config.file);
   if (!fs.existsSync(probePath)) fail(`${agentId}: missing standalone live probe ${config.file}`);
+  if (!fs.existsSync(frontendProbePath)) fail(`${agentId}: missing frontend live probe asset ${config.file}`);
   const artifact = readJson(probePath);
+  const frontendArtifact = readJson(frontendProbePath);
   const fixture = readJson(path.join(fixtureDir, config.file));
 
   if (artifact.schema_version !== "0.1.0") fail(`${agentId}: schema_version must be 0.1.0`);
@@ -74,6 +78,9 @@ function validateProbe(agentId, config) {
   if (artifact.source_fixture !== fixture.source) fail(`${agentId}: source_fixture mismatch`);
   if (stableJson(artifact.live_probe) !== stableJson(fixture.live_probe)) {
     fail(`${agentId}: standalone live probe drifted from fixture.live_probe`);
+  }
+  if (stableJson(frontendArtifact) !== stableJson(artifact)) {
+    fail(`${agentId}: frontend live probe asset drifted from contracts/n8n/live-probes/${config.file}`);
   }
   assertProbeEnvelope(agentId, artifact.live_probe);
 

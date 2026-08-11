@@ -46,6 +46,15 @@ function copyDirectory(source, target) {
   fs.cpSync(source, target, { recursive: true });
 }
 
+function copyLiveProbePayloads(assetsDir) {
+  const source = path.join(root, "contracts", "n8n", "live-probes");
+  const target = path.join(assetsDir, "n8n-live-probes");
+  if (!fs.existsSync(source)) {
+    throw new Error(`Missing n8n live probe payload directory: ${rel(source)}`);
+  }
+  copyDirectory(source, target);
+}
+
 function assertNoSecrets(file, content) {
   for (const pattern of forbiddenPatterns) {
     if (pattern.test(content)) {
@@ -132,6 +141,7 @@ function build() {
   fs.writeFileSync(runtimeConfigPath, runtimeConfig, "utf8");
 
   const assetsDir = path.join(args.output, "assets");
+  copyLiveProbePayloads(assetsDir);
   shell("scripts/write-pages-agent-runtime-config.cjs", ["--output", path.join(assetsDir, "agent-runtime-config.json")]);
   shell("scripts/write-n8n-runtime-readiness-status.cjs", [
     "--config",

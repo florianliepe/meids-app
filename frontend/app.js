@@ -10790,6 +10790,8 @@ function buildStaticPagesN8nAgentContracts() {
       agent_name: "Actor Twin",
       source: "contracts/n8n/fixtures/actor-twin.json",
       source_url: `${repoBase}/contracts/n8n/fixtures/actor-twin.json`,
+      live_probe_source: "assets/n8n-live-probes/actor-twin.json",
+      live_probe_url: frontendAssetUrl("assets/n8n-live-probes/actor-twin.json"),
       workflow_source: "workflows/n8n/actor-twin.workflow.json",
       workflow_url: `${repoBase}/workflows/n8n/actor-twin.workflow.json`,
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
@@ -10808,6 +10810,8 @@ function buildStaticPagesN8nAgentContracts() {
       agent_name: "Knowledge Fabric Agent",
       source: "contracts/n8n/fixtures/knowledge-fabric-agent.json",
       source_url: `${repoBase}/contracts/n8n/fixtures/knowledge-fabric-agent.json`,
+      live_probe_source: "assets/n8n-live-probes/knowledge-fabric-agent.json",
+      live_probe_url: frontendAssetUrl("assets/n8n-live-probes/knowledge-fabric-agent.json"),
       workflow_source: "workflows/n8n/knowledge-fabric-agent.workflow.json",
       workflow_url: `${repoBase}/workflows/n8n/knowledge-fabric-agent.workflow.json`,
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
@@ -10826,6 +10830,8 @@ function buildStaticPagesN8nAgentContracts() {
       agent_name: "Agentic Butler",
       source: "contracts/n8n/fixtures/agentic-butler.json",
       source_url: `${repoBase}/contracts/n8n/fixtures/agentic-butler.json`,
+      live_probe_source: "assets/n8n-live-probes/agentic-butler.json",
+      live_probe_url: frontendAssetUrl("assets/n8n-live-probes/agentic-butler.json"),
       workflow_source: "workflows/n8n/agentic-butler.workflow.json",
       workflow_url: `${repoBase}/workflows/n8n/agentic-butler.workflow.json`,
       backlog_url: `${repoBase}/docs/backlog/implementation-backlog.md`,
@@ -27919,6 +27925,8 @@ function productionAgentUrlReadiness() {
       urlSourceLabel: readiness.urlSourceLabel || "missing URL",
       runtimeSnippet: buildSingleAgentRuntimeConfigSnippet(agentId),
       liveProbePayload: contract.live_probe_payload || agentLiveProbePayload(agentId),
+      liveProbeSource: contract.live_probe_source || "",
+      liveProbeUrl: contract.live_probe_url || "",
     };
   });
 }
@@ -28072,6 +28080,7 @@ function renderProductionAgentUrlReadiness(agents = []) {
               <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(agent.githubSecret)}">Copy secret</button>
               ${agent.runtimeSnippet ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(agent.runtimeSnippet)}">Copy JSON</button>` : ""}
               ${agent.liveProbePayload ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(agent.liveProbePayload, null, 2))}">Copy probe payload</button>` : ""}
+              ${agent.liveProbeUrl ? `<a class="secondary small" href="${escapeHtml(agent.liveProbeUrl)}" target="_blank" rel="noreferrer">Open probe file</a>` : ""}
               <a class="secondary small" href="${escapeHtml(liveUrlGuide)}" target="_blank" rel="noreferrer">Live URL guide</a>
               <a class="secondary small" href="${escapeHtml(runtimeAsset)}" target="_blank" rel="noreferrer">Runtime asset</a>
             </div>
@@ -28304,6 +28313,7 @@ function renderProductionAgentMissingUrlSetup(missing = []) {
                 <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(row.github_secret)}">Copy secret</button>
                 <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(row.runtime_config_snippet, null, 2))}">Copy JSON</button>
                 <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(row.probe_payload, null, 2))}">Copy probe</button>
+                ${row.probe_payload_url ? `<a class="secondary small" href="${escapeHtml(row.probe_payload_url)}" target="_blank" rel="noreferrer">Open probe</a>` : ""}
               </div>
               ${renderAgentWebhookOverrideControl(row.agent_id)}
             </article>
@@ -28346,6 +28356,8 @@ function productionAgentMissingUrlSetupRow(agent = {}) {
     next_probe: nextProbeByAgent[agentId] || "Run live probe and retain trace evidence.",
     runtime_config_snippet: safeJsonParse(buildSingleAgentRuntimeConfigSnippet(agentId), {}),
     probe_payload: agent.liveProbePayload || agentLiveProbePayload(agentId),
+    probe_payload_source: agent.liveProbeSource || "",
+    probe_payload_url: agent.liveProbeUrl || "",
   };
 }
 
@@ -28388,6 +28400,7 @@ function renderProductionN8nHandoffPacket(missing = []) {
             <dl>
               <div><dt>Workflow brief</dt><dd>${escapeHtml(agent.workflow_brief)}</dd></div>
               <div><dt>Fixture contract</dt><dd><a href="${escapeHtml(githubBlobUrl(agent.fixture_contract))}" target="_blank" rel="noreferrer">${escapeHtml(agent.fixture_contract)}</a></dd></div>
+              <div><dt>Probe file</dt><dd>${agent.probe_payload_url ? `<a href="${escapeHtml(agent.probe_payload_url)}" target="_blank" rel="noreferrer">${escapeHtml(agent.probe_payload_source || "live probe payload")}</a>` : escapeHtml(agent.probe_payload_source || "embedded fixture probe")}</dd></div>
               <div><dt>Runtime key</dt><dd><code>${escapeHtml(agent.runtime_config_key)}</code></dd></div>
               <div><dt>GitHub secret</dt><dd><code>${escapeHtml(agent.github_secret)}</code></dd></div>
             </dl>
@@ -28397,6 +28410,7 @@ function renderProductionN8nHandoffPacket(missing = []) {
             <div class="button-row tight">
               <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(agent, null, 2))}">Copy agent brief</button>
               <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(agent.probe_payload, null, 2))}">Copy probe</button>
+              ${agent.probe_payload_url ? `<a class="secondary small" href="${escapeHtml(agent.probe_payload_url)}" target="_blank" rel="noreferrer">Open probe</a>` : ""}
               <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(agent.github_secret)}">Copy secret</button>
             </div>
           </article>
@@ -28481,6 +28495,8 @@ function productionN8nHandoffAgentBrief(agent = {}) {
       : row.agent_id === "knowledge_fabric_agent"
         ? "contracts/n8n/fixtures/knowledge-fabric-agent.json"
         : "contracts/n8n/fixtures/actor-twin.json",
+    probe_payload_source: row.probe_payload_source,
+    probe_payload_url: row.probe_payload_url,
     workflow_target: agent.workflow || `workflows/n8n/${String(agentId).replace(/_/g, "-")}.workflow.json`,
     github_secret: row.github_secret,
     runtime_config_key: row.runtime_key,
@@ -28523,6 +28539,7 @@ function renderProductionAgentLiveGateBoard(agents = []) {
             <span role="cell">
               <small>${escapeHtml(row.nextGate)}</small>
               ${row.probePayload ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(row.probePayload, null, 2))}">Copy probe payload</button>` : ""}
+              ${row.probePayloadUrl ? `<a class="secondary small" href="${escapeHtml(row.probePayloadUrl)}" target="_blank" rel="noreferrer">Open probe</a>` : ""}
             </span>
           </div>
         `).join("")}
@@ -28572,6 +28589,7 @@ function productionAgentLiveGateRow(agent = {}) {
         : "No trace evidence recorded yet.",
     nextGate,
     probePayload: agent.liveProbePayload || agentLiveProbePayload(agent.agentId || ""),
+    probePayloadUrl: agent.liveProbeUrl || "",
   };
 }
 
