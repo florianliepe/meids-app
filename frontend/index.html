@@ -79,8 +79,14 @@
     <script>
       if (window.__MEIDS_FILE_PROTOCOL__) {
         document.documentElement.classList.add("file-protocol");
+        document.addEventListener("DOMContentLoaded", function () {
+          var warning = document.querySelector(".file-open-warning");
+          if (warning) warning.hidden = false;
+        });
       } else {
         document.addEventListener("DOMContentLoaded", function () {
+          var warning = document.querySelector(".file-open-warning");
+          if (warning) warning.hidden = true;
           document.querySelectorAll("[data-static-src]").forEach(function (node) {
             node.setAttribute("src", window.__MEIDS_ASSET_URL__(node.getAttribute("data-static-src")));
           });
@@ -89,7 +95,7 @@
     </script>
   </head>
   <body>
-    <section class="file-open-warning">
+    <section class="file-open-warning" hidden aria-hidden="true">
       <article>
         <p class="eyebrow">MeIDs</p>
         <h1>Start the local MVP server.</h1>

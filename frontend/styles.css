@@ -42,6 +42,10 @@ body {
     var(--bg);
 }
 
+.file-open-warning[hidden] {
+  display: none !important;
+}
+
 body.theme-dark {
   background:
     radial-gradient(circle at 50% -6%, rgba(122, 216, 191, 0.08), transparent 32%),
@@ -3128,6 +3132,12 @@ body.cockpit-mode .main {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.4;
+}
+
+.production-progress-header small,
+.production-progress-header code,
+.production-progress-header span {
+  overflow-wrap: anywhere;
 }
 
 .production-handoff-summary > span {
@@ -28062,7 +28072,7 @@ body.cockpit-mode .workspace-signal {
 .knowledge-fabric-path-flow {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .knowledge-fabric-path-flow button {
@@ -28076,9 +28086,10 @@ body.cockpit-mode .workspace-signal {
   display: grid;
   gap: 5px;
   min-width: 0;
-  min-height: 112px;
+  min-height: 104px;
   padding: 10px;
   text-align: left;
+  white-space: normal;
 }
 
 .knowledge-fabric-path-flow button.ready {
@@ -28122,7 +28133,7 @@ body.cockpit-mode .workspace-signal {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 .knowledge-fabric-path-boundary {
