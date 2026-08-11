@@ -9,6 +9,8 @@
       "status": "awaiting_probe",
       "trace_id": "",
       "demo": false,
+      "expected_response_status": "completed",
+      "record_command_template": "node scripts/record-n8n-live-probe-evidence.cjs --agent actor_twin --trace-id TRACE_ID_FROM_N8N --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed --url-source github-pages-secret",
       "next_action": "Run Actor Twin live probe and record returned trace id."
     },
     {
@@ -17,6 +19,8 @@
       "status": "awaiting_probe",
       "trace_id": "",
       "demo": false,
+      "expected_response_status": "completed",
+      "record_command_template": "node scripts/record-n8n-live-probe-evidence.cjs --agent knowledge_fabric_agent --trace-id TRACE_ID_FROM_N8N --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed --url-source github-pages-secret",
       "next_action": "Configure public UAT URL, run no-write ingest probe, and record returned trace id."
     },
     {
@@ -25,6 +29,8 @@
       "status": "awaiting_probe",
       "trace_id": "",
       "demo": false,
+      "expected_response_status": "approval_required",
+      "record_command_template": "node scripts/record-n8n-live-probe-evidence.cjs --agent agentic_butler --trace-id TRACE_ID_FROM_N8N --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status approval_required --url-source github-pages-secret",
       "next_action": "Configure public UAT URL, run approval-gated skill probe, and record returned trace id."
     }
   ]

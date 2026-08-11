@@ -13389,8 +13389,8 @@ function renderZielmodus4LiveHandoffGrid() {
             agentic_butler: "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
           }[agentId] || "GH_PAGES_N8N_WEBHOOK_URL";
           const setupCommand = handoffAgent.commands?.local_public_uat_url || `node scripts/set-n8n-agent-url.cjs --agent ${agentId} --url https://YOUR-N8N-HOST/webhook/YOUR-${agentId.toUpperCase().replace(/_/g, "-")}-UAT-PATH`;
-          const recordCommand = handoffAgent.commands?.record_probe || `node scripts/record-n8n-live-probe-evidence.cjs --agent ${agentId} --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status ${handoffAgent.expected_response_status || "completed"}`;
-          const expectedStatus = handoffAgent.expected_response_status || "completed";
+          const expectedStatus = handoffAgent.expected_response_status || persistedProbe.expected_response_status || "completed";
+          const recordCommand = persistedProbe.record_command_template || handoffAgent.commands?.record_probe || `node scripts/record-n8n-live-probe-evidence.cjs --agent ${agentId} --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status ${expectedStatus}`;
           return `
             <article class="${escapeHtml(className)}">
               <span>${escapeHtml(className === "ready" ? "connected" : runtime.configured ? "probe pending" : "URL blocked")}</span>
@@ -13401,6 +13401,7 @@ function renderZielmodus4LiveHandoffGrid() {
                 <div><dt>Expected</dt><dd>${escapeHtml(expectedStatus)}</dd></div>
               </dl>
               <p>${escapeHtml(connected ? "Live probe evidence is recorded." : runtime.nextAction || persistedProbe.next_action || "Run live probe and record trace evidence.")}</p>
+              <small>Evidence command records only public-safe trace id, execution URL, URL source, and expected status.</small>
               ${runtime.configured ? "" : `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(setupCommand)}">Copy URL setup command</button>`}
               <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(recordCommand)}">Copy evidence command</button>
             </article>

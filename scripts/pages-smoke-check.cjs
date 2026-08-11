@@ -115,11 +115,16 @@ function checkContractArtifacts(root) {
 
   for (const agentId of requiredN8nAgents) {
     const preflightAgent = getAgent(preflight.agents, agentId);
+    const probeEvidenceAgent = getAgent(probeEvidence.agents, agentId);
     const preflightAction = getAgent(preflight.next_actions, agentId);
     const handoffAgent = getAgent(handoffCommands.agents, agentId);
     const checklistAgent = getAgent(completionChecklist.agents, agentId);
     const checklistProbe = (checklistAgent?.open_items || []).find((item) => item.type === "live_probe");
     requireProbeStatusCommand(preflightAgent?.commands?.record_probe_evidence, agentId, "preflight agent command");
+    requireProbeStatusCommand(probeEvidenceAgent?.record_command_template, agentId, "probe evidence command template");
+    if (probeEvidenceAgent?.expected_response_status && probeEvidenceAgent.expected_response_status !== expectedN8nProbeStatuses[agentId]) {
+      throw new Error(`probe evidence expected_response_status for ${agentId} must be ${expectedN8nProbeStatuses[agentId]}`);
+    }
     requireProbeStatusCommand(preflightAction?.record_probe_evidence, agentId, "preflight next action command");
     requireProbeStatusCommand(handoffAgent?.commands?.record_probe, agentId, "handoff command");
     requireProbeStatusCommand(checklistProbe?.command, agentId, "completion checklist command");

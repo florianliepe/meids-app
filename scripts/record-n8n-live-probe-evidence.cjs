@@ -10,6 +10,12 @@ const agents = {
   agentic_butler: "Agentic Butler",
 };
 
+const expectedResponseStatusByAgent = {
+  actor_twin: "completed",
+  knowledge_fabric_agent: "completed",
+  agentic_butler: "approval_required",
+};
+
 function readArg(name) {
   const prefix = `--${name}=`;
   const inline = args.find((arg) => arg.startsWith(prefix));
@@ -85,6 +91,11 @@ if (!allowedStatuses.has(responseStatus)) {
   fail(`Invalid --response-status. Expected one of: ${Array.from(allowedStatuses).join(", ")}`);
 }
 
+const expectedResponseStatus = expectedResponseStatusByAgent[agentId];
+if (responseStatus !== "failed" && responseStatus !== expectedResponseStatus) {
+  fail(`${agentId} live probe evidence must use --response-status ${expectedResponseStatus}. Received ${responseStatus}.`);
+}
+
 if (Number.isNaN(Date.parse(checkedAt))) fail("--checked-at must be an ISO-compatible timestamp.");
 
 const defaultArtifact = {
@@ -97,6 +108,8 @@ const defaultArtifact = {
     status: "awaiting_probe",
     trace_id: "",
     demo: false,
+    expected_response_status: expectedResponseStatusByAgent[id],
+    record_command_template: `node scripts/record-n8n-live-probe-evidence.cjs --agent ${id} --trace-id TRACE_ID_FROM_N8N --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status ${expectedResponseStatusByAgent[id]} --url-source github-pages-secret`,
     next_action: `Run ${name} live probe and record returned trace id.`,
   })),
 };
@@ -118,6 +131,7 @@ const entry = {
   url_source: urlSource,
   evidence: {
     response_status: responseStatus,
+    expected_response_status: expectedResponseStatus,
   },
 };
 
