@@ -109,7 +109,13 @@
       "reason": "Readiness probe only; no durable action or external side effect."
     },
     "expected_response": {
-      "status": "completed",
+      "status": "approval_required",
+      "approval": {
+        "required": true,
+        "gate": "requires_human_action",
+        "summary": "The approval-gated skill activation probe must stop before any external action.",
+        "proposed_action": "Prepare a skill activation plan but pause before sending messages, creating meetings, or writing to external systems."
+      },
       "output": {
         "readiness": "connected",
         "side_effects": "none",

@@ -5,6 +5,11 @@ const root = path.resolve(__dirname, "..");
 const fixtureDir = path.join(root, "contracts", "n8n", "fixtures");
 const requiredAgents = ["actor_twin", "knowledge_fabric_agent", "agentic_butler"];
 const requiredSections = ["request", "response", "approval_required", "failure"];
+const liveProbeExpectedStatus = {
+  actor_twin: "completed",
+  knowledge_fabric_agent: "completed",
+  agentic_butler: "approval_required",
+};
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
@@ -72,7 +77,19 @@ function validateLiveProbeFixture(fixture) {
     fail(`${fixture.agent_id}: live_probe.context.expected_capabilities incomplete`);
   }
   const expected = liveProbe.expected_response || {};
-  if (expected.status !== "completed") fail(`${fixture.agent_id}: live_probe.expected_response.status must be completed`);
+  const expectedStatus = liveProbeExpectedStatus[fixture.agent_id];
+  if (expected.status !== expectedStatus) {
+    fail(`${fixture.agent_id}: live_probe.expected_response.status must be ${expectedStatus}`);
+  }
+  if (expectedStatus === "approval_required") {
+    if (expected.approval?.required !== true) {
+      fail(`${fixture.agent_id}: live_probe.expected_response.approval.required must be true`);
+    }
+    if (!expected.approval?.gate) fail(`${fixture.agent_id}: live_probe.expected_response.approval.gate missing`);
+    if (!expected.approval?.proposed_action) {
+      fail(`${fixture.agent_id}: live_probe.expected_response.approval.proposed_action missing`);
+    }
+  }
   if (expected.output?.side_effects !== "none") {
     fail(`${fixture.agent_id}: live_probe.expected_response.output.side_effects must be none`);
   }
