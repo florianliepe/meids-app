@@ -1,0 +1,62 @@
+{
+  "schema_version": "0.1.0",
+  "purpose": "Import or copy this node after Knowledge Fabric human approval. It calls the MeIDs backend vector refresh endpoint; the backend owns Azure Search and embedding secrets.",
+  "boundary": "No Azure keys belong in n8n. n8n sends approved OKF documents to the backend proxy only.",
+  "node": {
+    "parameters": {
+      "method": "POST",
+      "url": "={{ $env.MEIDS_BACKEND_URL }}/api/vector-index/rebuild",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "sendBody": true,
+      "specifyBody": "json",
+      "jsonBody": "={{ JSON.stringify($json.output?.vector_refresh_request?.body || $json.vector_refresh_request?.body || $json) }}"
+    },
+    "id": "meids-knowledge-fabric-vector-refresh",
+    "name": "Refresh Azure Vector Index",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [
+      820,
+      0
+    ],
+    "notes": "Run only after OKF concept/evidence has passed human approval or selected-pending policy explicitly allows working-index refresh."
+  },
+  "expected_input": {
+    "operation": "upsert",
+    "organization_id": "default",
+    "twin_id": "florian",
+    "source_policy": "approved_only",
+    "documents": [
+      {
+        "concept_id": "cpt_approved_example_001",
+        "repo_path": "concepts/florian/client-delivery/2026-08-09-client-delivery-steering.md",
+        "review_state": "approved",
+        "text": "Approved OKF text to embed and upsert.",
+        "metadata": {
+          "cluster": "client-delivery",
+          "type": "Decision Principle",
+          "visibility_scope": "private",
+          "evidence_refs": [
+            "evidence/florian/uploads/2026-08-09/source-001.yaml#source-claim"
+          ],
+          "evidence_review_states": [
+            "approved"
+          ]
+        }
+      }
+    ]
+  },
+  "expected_response": {
+    "status": "upserted",
+    "provider": "azure_ai_search",
+    "operation": "upsert"
+  }
+}

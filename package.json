@@ -5,9 +5,13 @@
   "description": "MeIDs public frontend plus production agent backend proxy scaffold.",
   "scripts": {
     "start": "node backend/server.js",
-    "check:backend": "node --check backend/server.js && node scripts/validate-agent-backend-contract.cjs",
-    "check:agents": "node scripts/validate-n8n-fixtures.cjs && node scripts/replay-n8n-fixtures.cjs && node scripts/validate-agent-runtime-handoffs.cjs && node scripts/validate-actor-twin-routing.cjs && node scripts/validate-n8n-ai-agent-workflows.cjs && node scripts/validate-agent-backend-contract.cjs",
-    "uat:chat:n8n": "node scripts/validate-chat-live-n8n-uat.cjs"
+    "check:backend": "node --check backend/server.js && node --check backend/azureSearch.js && node --check scripts/setup-azure-search-indexes.cjs && node --check scripts/run-first-vector-upsert.cjs && node --check scripts/write-azure-vector-readiness-status.cjs && node --check scripts/write-azure-vector-live-activation-status.cjs && node scripts/validate-agent-backend-contract.cjs && node scripts/validate-azure-search-contracts.cjs && node scripts/write-azure-vector-readiness-status.cjs --check && node scripts/write-azure-vector-live-activation-status.cjs --check",
+    "setup:azure-search": "node scripts/setup-azure-search-indexes.cjs",
+    "vector:readiness": "node scripts/write-azure-vector-readiness-status.cjs --write && node scripts/write-azure-vector-live-activation-status.cjs",
+    "vector:first-upsert": "node scripts/run-first-vector-upsert.cjs",
+    "check:agents": "node scripts/validate-n8n-fixtures.cjs && node scripts/replay-n8n-fixtures.cjs && node scripts/validate-agent-runtime-handoffs.cjs && node scripts/validate-actor-twin-routing.cjs && node scripts/validate-pages-agent-interaction-fixes.cjs && node scripts/write-actor-twin-orchestration-readiness-status.cjs --check && node scripts/validate-n8n-ai-agent-workflows.cjs && node scripts/validate-agent-backend-contract.cjs",
+    "uat:chat:n8n": "node scripts/validate-chat-live-n8n-uat.cjs",
+    "uat:agents:live": "node scripts/run-agent-interaction-uat.cjs && node scripts/validate-chat-live-n8n-uat.cjs --file docs/uat/agent-interaction-uat-results.json"
   },
   "engines": {
     "node": ">=18"

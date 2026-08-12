@@ -217,12 +217,15 @@
   n8nAiAgentReadinessStatus: null,
   n8nBrowserRuntimeShapeStatus: null,
   actorTwinRoutingReadinessStatus: null,
+  actorTwinOrchestrationReadinessStatus: null,
   lastActorTwinRouteDecision: null,
   zielmodus4LiveCompletionChecklist: null,
   zielmodus4ReadinessStatus: null,
   n8nContractTestResult: null,
   chatContractActionResult: null,
   okfValidationStatus: null,
+  azureVectorReadinessStatus: null,
+  azureVectorLiveActivationStatus: null,
   n8nLiveProbeResults: {},
   backendAgentApprovals: [],
   backendAgentTraces: [],
@@ -287,9 +290,13 @@ const N8N_PRODUCTION_ADAPTER_STATUS_PATH = "assets/n8n-production-adapter-status
 const N8N_AI_AGENT_READINESS_STATUS_PATH = "assets/n8n-ai-agent-readiness-status.json";
 const N8N_BROWSER_RUNTIME_SHAPE_PATH = "assets/n8n-browser-runtime-shape.json";
 const ACTOR_TWIN_ROUTING_READINESS_STATUS_PATH = "assets/actor-twin-routing-readiness-status.json";
+const ACTOR_TWIN_ORCHESTRATION_READINESS_STATUS_PATH = "assets/actor-twin-orchestration-readiness-status.json";
 const ZIELMODUS_4_LIVE_COMPLETION_CHECKLIST_PATH = "assets/zielmodus-4-live-completion-checklist.json";
 const ZIELMODUS_4_READINESS_STATUS_PATH = "assets/zielmodus-4-readiness-status.json";
 const OKF_VALIDATION_STATUS_PATH = "assets/okf-validation-status.json";
+const AZURE_VECTOR_READINESS_STATUS_PATH = "assets/azure-vector-readiness-status.json";
+const AZURE_VECTOR_LIVE_ACTIVATION_STATUS_PATH = "assets/azure-vector-live-activation-status.json";
+const AZURE_VECTOR_GUIDE_URL = "https://github.com/florianliepe/meids-app/blob/main/docs/azure-vector-search-integration.md";
 const storageKeys = {
   theme: "intellectualTwin.theme",
   landingDismissed: "intellectualTwin.landing.dismissed",
@@ -297,6 +304,7 @@ const storageKeys = {
   agentTraceLog: "intellectualTwin.agentTraceLog",
   agentApprovalQueue: "intellectualTwin.agentApprovalQueue",
   knowledgeFabricIngestQueue: "intellectualTwin.knowledgeFabricIngestQueue",
+  skillDrafts: "intellectualTwin.skillDrafts",
   agentWebhookOverrides: "intellectualTwin.agentWebhookOverrides",
 };
 
@@ -10645,10 +10653,12 @@ function refreshStaticPagesWorkspace() {
   safeRefreshStaticN8nAiAgentReadinessStatus();
   safeRefreshStaticN8nBrowserRuntimeShapeStatus();
   safeRefreshStaticActorTwinRoutingReadinessStatus();
+  safeRefreshStaticActorTwinOrchestrationReadinessStatus();
   safeRefreshStaticZielmodus4LiveCompletionChecklist();
   safeRefreshStaticN8nReplayStatus();
   safeRefreshStaticZielmodus4ReadinessStatus();
   safeRefreshStaticOkfValidationStatus();
+  safeRefreshStaticAzureVectorReadinessStatus();
   safeRefreshBackendAgentRuntimeState();
   renderAgentTraceHistoryPanel();
   renderChatLatestAgentTraces();
@@ -10710,7 +10720,7 @@ function buildStaticPagesTwins() {
 }
 
 function buildStaticPagesSkills() {
-  return [
+  const base = [
     {
       skill_id: "project-management-support-steering",
       name: "Project Management Support & Steering",
@@ -10720,6 +10730,19 @@ function buildStaticPagesSkills() {
       version: "0.1.0",
     },
   ];
+  try {
+    const drafts = JSON.parse(window.localStorage.getItem(storageKeys.skillDrafts) || "[]");
+    if (Array.isArray(drafts) && drafts.length) {
+      const byId = new Map(base.map((skill) => [skill.skill_id, skill]));
+      drafts.forEach((skill) => {
+        if (skill?.skill_id) byId.set(skill.skill_id, skill);
+      });
+      return Array.from(byId.values());
+    }
+  } catch (error) {
+    console.warn("Static skill draft read failed", error);
+  }
+  return base;
 }
 
 function buildStaticPagesAgentOperatingModel() {
@@ -13125,6 +13148,19 @@ async function safeRefreshStaticActorTwinRoutingReadinessStatus() {
   }
 }
 
+async function safeRefreshStaticActorTwinOrchestrationReadinessStatus() {
+  if (!staticPagesMode) return;
+  try {
+    state.actorTwinOrchestrationReadinessStatus = await fetchFrontendAssetJson(ACTOR_TWIN_ORCHESTRATION_READINESS_STATUS_PATH, { optional: true });
+    renderAgentOperatingModelPanel();
+    renderProductionProgressHeader();
+  } catch (error) {
+    state.actorTwinOrchestrationReadinessStatus = null;
+    renderAgentOperatingModelPanel();
+    console.warn("Static Actor Twin orchestration readiness status refresh failed", error);
+  }
+}
+
 async function safeRefreshStaticZielmodus4LiveCompletionChecklist() {
   if (!staticPagesMode) return;
   try {
@@ -13414,6 +13450,7 @@ function renderZielmodus4LiveHandoffGrid() {
       ${renderN8nAiAgentReadinessSummary()}
       ${renderN8nBrowserRuntimeShapeSummary()}
       ${renderActorTwinRoutingReadinessSummary()}
+      ${renderActorTwinOrchestrationReadinessSummary()}
       ${renderZielmodus4StrictReadinessOperatorPanel(agentIds)}
       <div class="zielmodus-live-handoff-grid">
         ${agentIds.map((agentId) => {
@@ -13604,6 +13641,69 @@ function renderActorTwinRoutingReadinessSummary() {
         <span><strong>${escapeHtml(summary.chat_diagnostics_policy || "unknown")}</strong><small>Chat diagnostics</small></span>
         <span><strong>${escapeHtml(summary.chat_manual_agent_activation_disabled ? "disabled" : "check")}</strong><small>manual agent activation</small></span>
       </div>
+    </section>
+  `;
+}
+
+function renderActorTwinOrchestrationReadinessSummary() {
+  const readiness = state.actorTwinOrchestrationReadinessStatus || {};
+  if (!readiness.schema_version) return "";
+  const status = readiness.status || "unknown";
+  const summary = readiness.summary || {};
+  const indicators = Array.isArray(readiness.cockpit_indicators) ? readiness.cockpit_indicators : [];
+  const delegatedAgents = Array.isArray(readiness.orchestration_model?.delegated_agents)
+    ? readiness.orchestration_model.delegated_agents
+    : [];
+  const requiredSteps = Array.isArray(readiness.required_steps) ? readiness.required_steps : [];
+  const requiredNodeCount = Number(summary.required_node_count || 0);
+  const missingNodeCount = Number(summary.missing_node_count || 0);
+  const readyNodeCount = Math.max(0, requiredNodeCount - missingNodeCount);
+  const className = summary.direct_n8n_orchestration_ready_for_uat ? "ready" : "pending";
+  const statusArtifact = githubBlobUrl("frontend/assets/actor-twin-orchestration-readiness-status.json");
+  const zielmodus = githubBlobUrl("docs/production/actor-twin-direct-orchestration-zielmodus.md");
+  const blueprint = githubBlobUrl(readiness.artifacts?.direct_orchestrator_blueprint || "workflows/n8n/implementations/actor-twin-direct-orchestrator.workflow.json");
+  return `
+    <section class="n8n-ai-agent-readiness ${className}" aria-label="Actor Twin direct orchestration readiness">
+      <div class="n8n-ai-agent-readiness-head">
+        <div>
+          <span class="badge">Actor Twin orchestration</span>
+          <strong>${escapeHtml(status.replaceAll("_", " "))}</strong>
+          <p>${escapeHtml(readiness.key_point || "Actor Twin decides, delegates, reviews, and shapes the final response.")}</p>
+        </div>
+        <div class="button-row tight">
+          <a class="secondary small" href="${escapeHtml(statusArtifact)}" target="_blank" rel="noreferrer">Open status</a>
+          <a class="secondary small" href="${escapeHtml(zielmodus)}" target="_blank" rel="noreferrer">Open Zielmodus</a>
+          <a class="secondary small" href="${escapeHtml(blueprint)}" target="_blank" rel="noreferrer">Open blueprint</a>
+        </div>
+      </div>
+      <div class="zielmodus-preflight-summary ${className}">
+        <span><strong>${escapeHtml(String(summary.delegated_route_count ?? 0))}</strong><small>delegated routes</small></span>
+        <span><strong>${escapeHtml(String(readyNodeCount))}/${escapeHtml(String(requiredNodeCount))}</strong><small>blueprint nodes</small></span>
+        <span><strong>${escapeHtml(String(summary.required_step_count ?? requiredSteps.length))}</strong><small>target steps</small></span>
+        <span><strong>${escapeHtml(summary.backend_orchestration_deferred_for_hardening ? "deferred" : "check")}</strong><small>backend hardening</small></span>
+      </div>
+      <div class="n8n-ai-agent-readiness-grid">
+        ${delegatedAgents.map((agent) => `
+          <article class="ready">
+            <span>${escapeHtml(agent.call_method || "n8n direct")}</span>
+            <strong>${escapeHtml(agentDisplayName(agent.agent_id))}</strong>
+            <p>${escapeHtml((agent.called_for || []).join(", "))}</p>
+            <small>${escapeHtml(agent.webhook_env || "workflow URL env")}</small>
+          </article>
+        `).join("")}
+        ${indicators.map((item) => `
+          <article class="${escapeHtml(item.status === "deferred" ? "pending" : item.status === "blocked" ? "blocked" : "ready")}">
+            <span>${escapeHtml(item.status || "unknown")}</span>
+            <strong>${escapeHtml(item.label || item.key)}</strong>
+            <p>${escapeHtml(item.detail || "")}</p>
+          </article>
+        `).join("")}
+      </div>
+      ${requiredSteps.length ? `
+        <ol class="zielmodus-readiness-actions">
+          ${requiredSteps.slice(0, 8).map((step) => `<li>${escapeHtml(step)}</li>`).join("")}
+        </ol>
+      ` : ""}
     </section>
   `;
 }
@@ -14467,6 +14567,21 @@ async function probeAgentContract(agentId) {
     renderChatContractSurfaces();
     renderProductionKnowledgeRepoReadiness();
     showToast("Live probe failed", `${agentDisplayName(agentId)}: ${compactError(error.message)}`, "error");
+  }
+}
+
+async function safeRefreshStaticAzureVectorReadinessStatus() {
+  if (!staticPagesMode) return;
+  try {
+    state.azureVectorReadinessStatus = await fetchFrontendAssetJson(AZURE_VECTOR_READINESS_STATUS_PATH, { optional: true });
+    state.azureVectorLiveActivationStatus = await fetchFrontendAssetJson(AZURE_VECTOR_LIVE_ACTIVATION_STATUS_PATH, { optional: true });
+    renderProductionKnowledgeRepoReadiness();
+    renderProductionProgressHeader();
+    renderQualityCockpit();
+  } catch (error) {
+    state.azureVectorReadinessStatus = null;
+    state.azureVectorLiveActivationStatus = null;
+    console.warn("Static Azure vector readiness refresh failed", error);
   }
 }
 
@@ -16142,7 +16257,7 @@ function decideActorTwinRoute(query) {
   const createSkillIntent = /\b(create|build|define|design|shape|draft|new)\b.*\b(skill|capability|agent)\b|\bteach\b.*\bskill\b|\bmissing skill\b/i.test(query);
   const ingestIntent = sourcePresent || /\b(remember|save|ingest|stage|upload|transcript|source|capture|add this|store this)\b/i.test(query);
   const retrieveIntent = /\b(find|retrieve|search|evidence|source|context|what do i know|approved|knowledge|graph|citation)\b/i.test(query);
-  const executionIntent = approvedSkillAvailable || /\b(plan my day|prepare|draft|summari[sz]e for|activate skill|use skill|run skill|brief|todo|to-do|workstream|meeting)\b/i.test(query);
+  const executionIntent = /\b(plan my day|prepare|draft|summari[sz]e for|activate skill|use skill|run skill|brief|todo|to-do|workstream|meeting)\b/i.test(query);
   const riskyExternalAction = /\b(send|email|mail|invite|schedule|book|publish|commit|approve|delete)\b/i.test(query);
   const ambiguous = normalized.length < 8 || /\b(do the thing|handle it|make it happen)\b/i.test(query);
   const base = {
@@ -16257,7 +16372,54 @@ function selectedApprovedChatSkill() {
     .find((skill) => skill?.status === "approved") || null;
 }
 
+function compactVectorContext(result = null) {
+  if (!result || result.status !== "completed") return null;
+  const hits = (result.results || []).flatMap((bucket) => (bucket.value || []).map((item) => ({
+    index: bucket.index,
+    score: item["@search.score"] || item["@search.rerankerScore"] || 0,
+    title: item.title || item.okf_concept_id || "",
+    summary: item.summary || "",
+    chunk_text: String(item.chunk_text || "").slice(0, 1200),
+    okf_concept_id: item.okf_concept_id || "",
+    okf_type: item.okf_type || "",
+    repo_path: item.repo_path || "",
+    evidence_id: item.evidence_id || "",
+    graph_node_id: item.graph_node_id || "",
+    graph_cluster_id: item.graph_cluster_id || "",
+    knowledge_state: item.knowledge_state || "",
+    visibility_scope: item.visibility_scope || "",
+    tags: Array.isArray(item.tags) ? item.tags : [],
+  })));
+  return {
+    provider: result.provider || "azure_ai_search",
+    retrieval_mode: result.retrieval_mode || "unknown",
+    source_policy: result.source_policy || "approved_only",
+    filter: result.filter || "",
+    hits,
+  };
+}
+
+async function safeSearchVectorContext(query, route = null) {
+  const text = String(query || "").trim();
+  if (!text || staticPagesMode) return null;
+  try {
+    const result = await postJson("/api/vector-index/search", {
+      query: text,
+      twin_id: state.activeTwin,
+      organization_id: runtimeConfig.organizationId || "default",
+      source_policy: route?.decision === "retrieve_knowledge" ? "approved_only" : "approved_only",
+      include_shared: true,
+      top: 5,
+    });
+    return compactVectorContext(result);
+  } catch (error) {
+    console.info("Vector context enrichment skipped", error);
+    return null;
+  }
+}
+
 async function routeActorTwinFromChat(query, route = null) {
+  const vectorContext = await safeSearchVectorContext(query, route);
   const envelope = buildAgentContractEnvelope(
     "actor_twin",
     "route_request",
@@ -16275,6 +16437,8 @@ async function routeActorTwinFromChat(query, route = null) {
       ],
       okf_refs: [],
       graph_refs: [],
+      vector_retrieval: vectorContext,
+      retrieval_sources: vectorContext ? ["azure_ai_search", "okf_local"] : ["okf_local"],
       source_context: chatSourceContext(),
       retrieval_policy: "approved_first_include_pending_as_draft",
     },
@@ -16404,6 +16568,26 @@ async function runActorTwinRuntimeInteraction(query, fallbackRoute = null) {
       chainContext,
     });
   }
+  const delegate = actorResult.response?.output?.delegate_result;
+  if (delegate && typeof delegate === "object") {
+    return attachAgentRuntimeChain({
+      ...actorResult,
+      response: {
+        ...(actorResult.response || {}),
+        status: delegate.status || actorResult.response?.status || "completed",
+        approval: delegate.approval || actorResult.response?.approval || null,
+        output: {
+          ...(actorResult.response?.output || {}),
+          delegate_result: delegate,
+        },
+      },
+    }, {
+      actorResult,
+      route,
+      handoffStatus: delegate.status || "delegated_in_actor_workflow",
+      chainContext,
+    });
+  }
   persistAgentTrace(attachAgentRuntimeChain(actorResult, {
     actorResult,
     route,
@@ -16523,6 +16707,17 @@ function actorRouteFromRuntime(actorResult = {}, fallbackRoute = null) {
 function routeDecisionFromActorText(text = "", fallbackRoute = null) {
   const normalized = String(text || "").toLowerCase();
   if (!normalized) return null;
+  if (fallbackRoute?.decision === "answer_direct") {
+    const explicitRouteMarker = normalized.includes("route_decision")
+      || normalized.includes("target_agent")
+      || normalized.includes("target:")
+      || normalized.includes("handoff_required")
+      || normalized.includes("create_skill")
+      || normalized.includes("activate_skill")
+      || normalized.includes("ingest_or_stage_knowledge")
+      || normalized.includes("retrieve_knowledge");
+    if (!explicitRouteMarker) return null;
+  }
   const mentionsKnowledgeRoute = normalized.includes("ingest_or_stage_knowledge")
     || normalized.includes("retrieve_knowledge")
     || (normalized.includes("knowledge fabric") && (normalized.includes("pending okf") || normalized.includes("staged as pending")));
@@ -16714,6 +16909,8 @@ function normalizeAgentContractResponse(agentId, data, envelope, runtime) {
   const response = data?.response || data?.data || data || {};
   const status = response.status || data?.status || "completed";
   const normalizedOutput = normalizeAgentOutput(response.output || data?.output || outputFromN8nData(data));
+  if (response.delegate_result && !normalizedOutput.delegate_result) normalizedOutput.delegate_result = response.delegate_result;
+  if (data?.delegate_result && !normalizedOutput.delegate_result) normalizedOutput.delegate_result = data.delegate_result;
   const normalizedApproval = response.approval || data?.approval || normalizedOutput.approval || null;
   const normalizedTrace = response.trace || data?.trace || normalizedOutput.trace || { trace_id: response.trace_id || data?.trace_id || envelope.request_id, stored: false };
   return {
@@ -16738,6 +16935,16 @@ function normalizeAgentContractResponse(agentId, data, envelope, runtime) {
 
 function normalizeAgentOutput(output = {}) {
   if (!output || typeof output !== "object") return output;
+  if (output.answer && typeof output.answer === "object") {
+    const answerObject = output.answer.output && typeof output.answer.output === "object" ? output.answer.output : output.answer;
+    return {
+      ...output,
+      ...answerObject,
+      answer: answerObject.answer || answerObject.summary || JSON.stringify(answerObject),
+      approval: output.answer.approval || output.approval,
+      trace: output.answer.trace || output.trace,
+    };
+  }
   const embedded = parseEmbeddedJsonObject(output.answer || output.text || output.message || "");
   if (!embedded || typeof embedded !== "object") return output;
   const embeddedOutput = embedded.output && typeof embedded.output === "object" ? embedded.output : embedded;
@@ -18798,6 +19005,9 @@ function renderAgentTraceChain(trace = {}) {
 }
 
 function outputFromN8nData(data) {
+  if (Array.isArray(data) && data[0]?.json) return outputFromN8nData(data[0].json);
+  if (data?.json) return outputFromN8nData(data.json);
+  if (data?.output) return data.output;
   if (typeof data === "string") return { answer: data };
   if (data?.answer || data?.text || data?.message) return { answer: data.answer || data.text || data.message };
   return data && typeof data === "object" ? data : {};
@@ -19177,6 +19387,16 @@ async function elicitSkill() {
     return;
   }
   $("#skillResult").textContent = "Creating SkillSpec...";
+  if (staticPagesMode) {
+    const result = createStaticSkillDraft(description, $("#skillNameHint").value.trim() || "");
+    $("#skillResult").textContent = formatSkillActionResult(result);
+    renderSkills();
+    state.reviewDashboard = buildStaticPagesReviewDashboard();
+    renderReviewDashboard(state.reviewDashboard);
+    selectSkill(result.skill.skill_id);
+    showToast("Skill draft staged", "Static Pages stores the draft locally until backend deployment.", "success");
+    return;
+  }
   try {
     const result = await postJson("/api/skills/elicit", {
       description,
@@ -23050,9 +23270,57 @@ async function safeRefreshVectorIndexStatus() {
   try {
     await refreshVectorIndexStatus();
   } catch (error) {
+    state.vectorIndex = {
+      status: "backend_unavailable",
+      available: false,
+      provider: "azure_ai_search",
+      missing: ["hosted backend proxy"],
+      policy: {
+        default_answer_scope: "approved_private_plus_org_shared",
+        cross_twin_sharing: "approved_org_shared_only",
+      },
+      next_action: "Host backend proxy and configure Azure AI Search secrets.",
+    };
     $("#vectorIndexStatus").textContent = "Vector cache endpoint unavailable. Restart the local MVP server.";
     console.warn("Vector index status failed", error);
   }
+}
+
+function createStaticSkillDraft(description, nameHint = "") {
+  const name = nameHint || description.split(/[.\n]/)[0] || "New skill";
+  const skillId = slugify(name).slice(0, 64) || `skill-${Date.now().toString(36)}`;
+  const now = new Date().toISOString();
+  const skill = {
+    skill_id: skillId,
+    name,
+    description,
+    status: "pending_approval",
+    risk_class: "medium",
+    version: "0.1.0",
+    source: "github-pages-local-draft",
+    created_at: now,
+    spec: {
+      description,
+      elicitation_questions: [
+        "When should this skill trigger, and when should it not?",
+        "Which inputs are required, and where should they come from?",
+        "Which actions must always require human approval?",
+      ],
+      approval_policy: "never_auto_approve_generated_skills",
+    },
+  };
+  const next = [skill, ...state.skills.filter((item) => item.skill_id !== skill.skill_id)].slice(0, 25);
+  state.skills = next;
+  try {
+    window.localStorage.setItem(storageKeys.skillDrafts, JSON.stringify(next.filter((item) => item.source === "github-pages-local-draft")));
+  } catch (error) {
+    console.warn("Static skill draft persistence failed", error);
+  }
+  return {
+    status: "staged_locally",
+    message: "SkillSpec draft created locally. Backend deployment is required for repository persistence and decomposition.",
+    skill,
+  };
 }
 
 async function refreshSyncStatus() {
@@ -28762,7 +29030,19 @@ function productionTrustedRetrievalReadiness() {
   const blockedPromotions = promotions.filter((item) => ["rejected", "needs-rework", "blocked"].includes(String(item.review_state || item.decision || "").toLowerCase()));
   const okf = state.okfValidationStatus || {};
   const summary = okf.summary || {};
-  const vectorFixtureReady = Number(summary.vector_request_fixture_count || 0) > 0;
+  const azureVector = state.vectorIndex || {};
+  const azureStatic = state.azureVectorReadinessStatus || {};
+  const azureLive = state.azureVectorLiveActivationStatus || {};
+  const azureStaticSummary = azureStatic.summary || {};
+  const azureLiveReadiness = azureLive.readiness || {};
+  const azureLivePortal = azureLive.portal_observation || {};
+  const azureConfigured = Boolean(azureVector.available || azureVector.status === "configured");
+  const azureEmbeddingConfigured = Boolean(azureVector.embedding?.status === "configured");
+  const azureServiceObserved = Boolean(azureLiveReadiness.azure_search_service_ready || azureLivePortal.search_endpoint);
+  const azureIndexesObserved = Boolean(azureLiveReadiness.azure_search_indexes_ready);
+  const azureMissing = Array.isArray(azureVector.missing) ? azureVector.missing : [];
+  const azureContractReady = azureStatic.status === "ready_for_secret_activation";
+  const vectorFixtureReady = Number(summary.vector_request_fixture_count || 0) > 0 || azureContractReady;
   const repoSyncReady = Number(summary.repo_sync_package_fixture_count || 0) > 0;
   const postgresGraphReady = Number(summary.postgres_graph_schema_count || 0) > 0;
   const agentReadiness = productionAgentUrlReadiness();
@@ -28803,12 +29083,22 @@ function productionTrustedRetrievalReadiness() {
     },
     {
       key: "vector",
-      label: "Vector adapter boundary",
-      value: vectorReadyForHandoff ? "handoff ready" : vectorFixtureReady ? "fixture only" : "deferred",
-      state: vectorReadyForHandoff ? "ready" : vectorFixtureReady ? "warning" : "pending",
-      detail: vectorReadyForHandoff
-        ? "Adapter request shape is validated without Azure credentials."
-        : "Vector refresh remains staged until OKF repo-sync and credentials are available.",
+      label: "Azure vector boundary",
+      value: azureConfigured
+        ? "backend configured"
+        : azureServiceObserved
+          ? azureIndexesObserved ? "service + indexes observed" : "service observed"
+          : azureContractReady ? "secret activation ready" : vectorFixtureReady ? "contract ready" : "deferred",
+      state: azureConfigured && azureEmbeddingConfigured ? "ready" : azureServiceObserved || vectorFixtureReady ? "warning" : "pending",
+      detail: azureConfigured
+        ? `${escapeHtml(azureVector.approved_index || azureVector.indexes?.approved || "approved index")} · ${escapeHtml(azureVector.working_index || azureVector.indexes?.working || "working index")}`
+        : azureServiceObserved
+          ? `${azureLivePortal.search_service || "Azure Search"} running; indexes/backend/embedding activation still required.`
+        : azureMissing.length
+          ? `Backend secrets missing: ${azureMissing.join(", ")}.`
+          : azureContractReady
+            ? `${azureStaticSummary.ready_check_count || 0}/${azureStaticSummary.check_count || 0} local vector readiness checks pass; backend secrets still required.`
+            : "Vector refresh remains staged until backend Azure secrets are available.",
     },
     {
       key: "projection",
@@ -28846,7 +29136,17 @@ function productionTrustedRetrievalReadiness() {
       fixture_ready: vectorFixtureReady,
       repo_sync_ready: repoSyncReady,
       postgres_graph_ready: postgresGraphReady,
-      credentials_required_now: false,
+      azure_search_configured: azureConfigured,
+      azure_embedding_configured: azureEmbeddingConfigured,
+      azure_contract_ready: azureContractReady,
+      azure_search_service_observed: azureServiceObserved,
+      azure_search_indexes_observed: azureIndexesObserved,
+      azure_live_activation_status: azureLive.status || "",
+      credentials_required_now: !azureConfigured,
+      indexes: {
+        approved: azureVector.approved_index || azureVector.indexes?.approved || "meids-okf-approved-v1",
+        working: azureVector.working_index || azureVector.indexes?.working || "meids-okf-working-v1",
+      },
     },
     live_agent_summary: {
       knowledge_fabric_agent: knowledgeAgent.configured ? "configured" : "awaiting_url",
@@ -28877,6 +29177,14 @@ function renderProductionTrustedRetrievalReadiness() {
             <small>${escapeHtml(card.detail)}</small>
           </article>
         `).join("")}
+      </div>
+      <div class="trusted-retrieval-actions">
+        <a class="secondary small" href="${AZURE_VECTOR_GUIDE_URL}" target="_blank" rel="noreferrer">Open Azure vector guide</a>
+        <span>${escapeHtml(readiness.vector_summary.azure_search_configured
+          ? "Azure AI Search configured in backend"
+          : readiness.vector_summary.azure_search_service_observed
+            ? "Azure AI Search service observed; backend secrets and index setup pending"
+            : "Azure AI Search waits for backend secrets")}</span>
       </div>
       <small>Use rule: approved OKF and accepted evidence-backed graph relations can inform trusted answers. Drafts and inferred edges require visible attribution or human review.</small>
     </section>
@@ -31408,6 +31716,16 @@ async function openAnswerTraceDrawer(path) {
   $("#conceptDrawer").classList.add("open");
   $("#conceptDrawer").setAttribute("aria-hidden", "false");
   $("#drawerBackdrop").hidden = false;
+  if (staticPagesMode) {
+    const trace = findStaticTraceDetail(path);
+    if (trace) {
+      renderAnswerTraceDetail(trace);
+      return;
+    }
+    $("#drawerTitle").textContent = "Trace unavailable";
+    $("#drawerContent").innerHTML = '<p class="empty">This trace is not stored in the static Pages session. Run a Chat UAT prompt first, then reopen Traces.</p>';
+    return;
+  }
   try {
     const detail = await postJson("/api/answer-traces/detail", { path });
     renderAnswerTraceDetail(detail);
@@ -32687,6 +33005,30 @@ async function copyAgentApproval(button) {
   }
 }
 
+function findStaticTraceDetail(path = "") {
+  const traces = readComposedAgentTraces();
+  const trace = traces.find((item) => item.path === path || item.trace_id === path || item.request_id === path || item.artifact_path === path);
+  if (!trace) return null;
+  return {
+    path: trace.path || trace.artifact_path || trace.trace_id || "",
+    title: trace.title || `${agentDisplayName(trace.agent_id)} trace`,
+    timestamp: trace.timestamp || "",
+    twin: trace.twin || state.activeTwin || "",
+    confidence: trace.confidence || "",
+    retrieval_mode: trace.retrieval_mode || trace.runtime || "",
+    source_count: trace.source_count || 0,
+    guardrail_statuses: trace.guardrail_statuses || [],
+    review_state: trace.review_state || "unreviewed",
+    reviewed_by: trace.reviewed_by || "",
+    reviewed_at: trace.reviewed_at || "",
+    quality_tags: trace.quality_tags || [],
+    provenance_hash: trace.provenance_hash || "",
+    query: trace.query || trace.request?.input?.query || "",
+    answer: trace.answer || trace.detail || trace.status || "Static trace evidence is available in this browser session.",
+    sources: trace.sources || [],
+  };
+}
+
 async function copyAgentApprovalResumePayload(button) {
   const card = button.closest(".agent-approval-gate");
   const traceId = button.dataset.traceId || card?.dataset.traceId || "";
@@ -32742,6 +33084,22 @@ async function resumeAgentApproval(button) {
 
 function renderAgentContractOutput(output = {}) {
   if (!output || typeof output !== "object" || !Object.keys(output).length) return "";
+  const delegate = output.delegate_result && typeof output.delegate_result === "object" ? output.delegate_result : null;
+  const delegateOutput = delegate?.output && typeof delegate.output === "object" ? delegate.output : {};
+  const delegateSummary = delegateOutput.summary || delegateOutput.answer || delegateOutput.markdown || delegate?.approval?.summary || "";
+  const delegatePanel = delegate ? `
+    <section class="agent-delegate-output">
+      <div>
+        <span class="badge">${escapeHtml(agentDisplayName(delegate.agent_id || "delegated_agent"))}</span>
+        <strong>${escapeHtml(labelizeGraph(delegate.status || "delegated"))}</strong>
+        <p>${escapeHtml(String(delegateSummary || "Delegated agent returned a structured response.").slice(0, 420))}</p>
+      </div>
+      <div class="agent-trace-chain compact">
+        ${delegate.trace?.trace_id ? `<span><code>${escapeHtml(delegate.trace.trace_id)}</code><small>delegate trace</small></span>` : ""}
+        ${delegate.request_id ? `<span><code>${escapeHtml(delegate.request_id)}</code><small>delegate request</small></span>` : ""}
+      </div>
+    </section>
+  ` : "";
   if (output.concept_path || output.evidence_path || output.crud_log_path || output.graph_curator_trigger) {
     const artifacts = [
       ["Concept", output.concept_path],
@@ -32767,6 +33125,7 @@ function renderAgentContractOutput(output = {}) {
           </div>
         ` : ""}
       </section>
+      ${delegatePanel}
     `;
   }
   if (Array.isArray(output.todos)) {
@@ -32780,6 +33139,7 @@ function renderAgentContractOutput(output = {}) {
           </article>
         `).join("")}
       </div>
+      ${delegatePanel}
     `;
   }
   if (Array.isArray(output.candidate_edges)) {
@@ -32787,9 +33147,11 @@ function renderAgentContractOutput(output = {}) {
       <div class="agent-consumer-list">
         ${output.candidate_edges.slice(0, 6).map((edge) => `<span>${escapeHtml(`${edge.relation_type || "edge"} · ${edge.confidence ?? "-"} confidence`)}</span>`).join("")}
       </div>
+      ${delegatePanel}
     `;
   }
-  return `<pre class="output compact-output">${escapeHtml(JSON.stringify(output, null, 2))}</pre>`;
+  const displayOutput = delegate ? Object.fromEntries(Object.entries(output).filter(([key]) => key !== "delegate_result")) : output;
+  return `${delegatePanel}<pre class="output compact-output">${escapeHtml(JSON.stringify(displayOutput, null, 2))}</pre>`;
 }
 
 function renderSkillRunCard(metadata) {

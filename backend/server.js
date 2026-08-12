@@ -2,6 +2,13 @@ const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const {
+  azureSearchConfigFromEnv,
+  statusFromConfig: azureSearchStatusFromConfig,
+  getIndexReadiness,
+  upsertVectorDocuments,
+  searchVectorKnowledge,
+} = require("./azureSearch");
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = path.resolve(process.env.MEIDS_DATA_DIR || path.join(process.cwd(), ".data"));
@@ -117,6 +124,16 @@ function outputFromN8nData(data = {}) {
 
 function normalizeAgentOutput(output = {}) {
   if (!output || typeof output !== "object") return { answer: String(output || "") };
+  if (output.answer && typeof output.answer === "object") {
+    const answerObject = output.answer.output && typeof output.answer.output === "object" ? output.answer.output : output.answer;
+    return {
+      ...output,
+      ...answerObject,
+      answer: answerObject.answer || answerObject.summary || JSON.stringify(answerObject),
+      approval: output.answer.approval || output.approval,
+      trace: output.answer.trace || output.trace,
+    };
+  }
   const embedded = parseEmbeddedJsonObject(output.answer || output.text || output.message || output.response || "");
   if (!embedded || typeof embedded !== "object") return output;
   const embeddedOutput = embedded.output && typeof embedded.output === "object" ? embedded.output : embedded;
@@ -140,16 +157,46 @@ function normalizeTraceChain(value = null) {
   return { trace_chain_id: "", steps: [] };
 }
 
+function targetAgentForRouteDecision(decision = "", fallbackAgent = "actor_twin") {
+  if (["retrieve_knowledge", "ingest_or_stage_knowledge", "update_knowledge"].includes(decision)) return "knowledge_fabric_agent";
+  if (["activate_skill", "create_skill", "resume_after_approval"].includes(decision)) return "agentic_butler";
+  if (decision === "request_human_clarification") return "human";
+  if (decision === "answer_direct") return "actor_twin";
+  return fallbackAgent || "actor_twin";
+}
+
+function visibleStateForRouteDecision(decision = "") {
+  return {
+    answer_direct: "answering",
+    retrieve_knowledge: "using_knowledge",
+    ingest_or_stage_knowledge: "using_knowledge",
+    update_knowledge: "capturing_knowledge",
+    activate_skill: "activating_skill",
+    create_skill: "drafting_new_skill",
+    resume_after_approval: "resuming_approved_work",
+    request_human_clarification: "approval_required",
+  }[decision] || "answering";
+}
+
+function normalizeRouteDecisionInput(value = null) {
+  if (!value) return null;
+  if (typeof value === "string") return { decision: value };
+  if (typeof value === "object") return value;
+  return null;
+}
+
 function defaultRouteDecision(agentId, output = {}, envelope = {}) {
-  const explicit = output.route_decision || output.routing || output.route || envelope.context?.route_decision || null;
-  if (explicit && typeof explicit === "object") {
+  const explicit = normalizeRouteDecisionInput(output.route_decision || output.routing || output.route || envelope.context?.route_decision || null);
+  if (explicit) {
+    const decision = explicit.decision || explicit.route_decision || explicit.intent_decision || "answer_direct";
+    const targetAgent = explicit.target_agent || explicit.targetAgent || output.target_agent || targetAgentForRouteDecision(decision, agentId);
     return {
-      decision: explicit.decision || "answer_direct",
-      target_agent: explicit.target_agent || agentId,
+      decision,
+      target_agent: targetAgent,
       intent: explicit.intent || envelope.intent || "answer_question",
-      visible_state: explicit.visible_state || "answering",
-      approval_required: Boolean(explicit.approval_required),
-      handoff_required: Boolean(explicit.handoff_required ?? (explicit.target_agent && explicit.target_agent !== "actor_twin")),
+      visible_state: explicit.visible_state || visibleStateForRouteDecision(decision),
+      approval_required: Boolean(explicit.approval_required ?? ["create_skill", "request_human_clarification"].includes(decision)),
+      handoff_required: Boolean(explicit.handoff_required ?? (targetAgent && targetAgent !== "actor_twin")),
       reason: explicit.reason || "Route decision supplied by agent response.",
     };
   }
@@ -192,14 +239,18 @@ function normalizeAgentResponse(agentId, data, envelope = {}, runtime = "backend
   const output = normalizeAgentOutput(response.output || parsed.output || outputFromN8nData(parsed));
   if (!output.route_decision && response.route_decision) output.route_decision = response.route_decision;
   if (!output.route_decision && parsed.route_decision) output.route_decision = parsed.route_decision;
+  if (!output.delegate_result && response.delegate_result) output.delegate_result = response.delegate_result;
+  if (!output.delegate_result && parsed.delegate_result) output.delegate_result = parsed.delegate_result;
   const routeDecision = defaultRouteDecision(agentId, output, envelope);
   const inboundTraceChain = normalizeTraceChain(envelope.context?.trace_chain);
   const responseTraceChain = normalizeTraceChain(response.trace?.trace_chain || parsed.trace?.trace_chain || output.trace?.trace_chain);
-  const traceChainId = response.trace?.trace_chain_id || parsed.trace?.trace_chain_id || output.trace?.trace_chain_id || envelope.context?.trace_chain_id || inboundTraceChain.trace_chain_id || responseTraceChain.trace_chain_id || "";
+  const delegateResult = output.delegate_result && typeof output.delegate_result === "object" ? output.delegate_result : null;
+  const delegateTrace = delegateResult?.trace || {};
+  const traceChainId = response.trace?.trace_chain_id || parsed.trace?.trace_chain_id || output.trace?.trace_chain_id || envelope.context?.trace_chain_id || inboundTraceChain.trace_chain_id || responseTraceChain.trace_chain_id || delegateTrace.trace_chain_id || "";
   const traceChainSteps = responseTraceChain.steps.length ? responseTraceChain.steps : inboundTraceChain.steps;
   const traceId = response.trace?.trace_id || parsed.trace?.trace_id || output.trace?.trace_id || makeId("trace");
   const currentStepExists = traceChainSteps.some((step) => step.trace_id && step.trace_id === traceId);
-  const fullTraceChainSteps = currentStepExists
+  const baseTraceChainSteps = currentStepExists
     ? traceChainSteps
     : [
         ...traceChainSteps,
@@ -213,6 +264,22 @@ function normalizeAgentResponse(agentId, data, envelope = {}, runtime = "backend
           status: response.status || parsed.status || "",
         },
       ];
+  const delegateTraceId = delegateTrace.trace_id || delegateResult?.trace_id || "";
+  const delegateStepExists = delegateTraceId && baseTraceChainSteps.some((step) => step.trace_id === delegateTraceId);
+  const fullTraceChainSteps = delegateTraceId && !delegateStepExists
+    ? [
+        ...baseTraceChainSteps,
+        {
+          timestamp: new Date().toISOString(),
+          agent_id: delegateResult.agent_id || routeDecision.target_agent || "",
+          request_id: delegateResult.request_id || "",
+          trace_id: delegateTraceId,
+          route_decision: routeDecision.decision,
+          target_agent: routeDecision.target_agent,
+          status: delegateResult.status || "",
+        },
+      ]
+    : baseTraceChainSteps;
   const approval = response.approval || parsed.approval || output.approval || (
     response.status === "approval_required" || routeDecision.approval_required
       ? {
@@ -233,7 +300,8 @@ function normalizeAgentResponse(agentId, data, envelope = {}, runtime = "backend
       steps: fullTraceChainSteps,
     },
     actor_trace_id: response.trace?.actor_trace_id || parsed.trace?.actor_trace_id || output.trace?.actor_trace_id || envelope.context?.actor_trace_id || "",
-    handoff_trace_id: response.trace?.handoff_trace_id || parsed.trace?.handoff_trace_id || output.trace?.handoff_trace_id || envelope.context?.handoff_trace_id || "",
+    handoff_trace_id: response.trace?.handoff_trace_id || parsed.trace?.handoff_trace_id || output.trace?.handoff_trace_id || envelope.context?.handoff_trace_id || delegateTraceId || "",
+    delegate_trace_id: delegateTraceId,
     target_agent: routeDecision.target_agent,
     route_decision: routeDecision.decision,
     handoff_status: routeDecision.handoff_required ? (approval?.required ? "approval_required" : "handoff_completed") : "not_required",
@@ -486,12 +554,52 @@ function buildTraceRecord(agentId, envelope, response) {
   };
 }
 
+function buildTraceRecords(agentId, envelope, response) {
+  const parent = buildTraceRecord(agentId, envelope, response);
+  const delegate = response.output?.delegate_result && typeof response.output.delegate_result === "object"
+    ? response.output.delegate_result
+    : null;
+  const delegateTrace = delegate?.trace || {};
+  const delegateTraceId = delegateTrace.trace_id || delegate?.trace_id || parent.handoff_trace_id || "";
+  if (!delegate || !delegateTraceId || delegateTraceId === parent.trace_id) return [parent];
+  const routeDecision = parent.route_decision || response.output?.route_decision?.decision || "";
+  const targetAgent = delegate.agent_id || parent.target_agent || targetAgentForRouteDecision(routeDecision, "agentic_butler");
+  const chain = normalizeTraceChain(response.trace?.trace_chain || parent.trace_chain);
+  return [
+    parent,
+    {
+      timestamp: new Date().toISOString(),
+      agent_id: targetAgent,
+      agent_name: AGENTS[targetAgent]?.label || targetAgent,
+      status: delegate.status || "",
+      runtime: response.runtime || "backend proxy · delegated",
+      request_id: delegate.request_id || parent.request_id || "",
+      trace_id: delegateTraceId,
+      trace_chain_id: parent.trace_chain_id || delegateTrace.trace_chain_id || "",
+      trace_chain: chain.steps,
+      actor_trace_id: parent.actor_trace_id || parent.trace_id || "",
+      handoff_trace_id: delegateTraceId,
+      target_agent: targetAgent,
+      route_decision: routeDecision,
+      handoff_status: delegate.status || parent.handoff_status || "",
+      approval_required: delegate.status === "approval_required" || Boolean(delegate.approval?.required || response.approval?.required),
+      response: delegate,
+      request: envelope,
+      parent_trace_id: parent.trace_id || "",
+    },
+  ];
+}
+
 function buildApprovalRecord(agentId, envelope, response, traceRecord) {
   if (response.status !== "approval_required" && response.approval?.required !== true) return null;
   const approval = response.approval || {};
   const trace = response.trace || {};
   const normalizedChain = normalizeTraceChain(trace.trace_chain || envelope.context?.trace_chain);
   const traceId = trace.trace_id || traceRecord.trace_id || response.request_id;
+  const delegate = response.output?.delegate_result && typeof response.output.delegate_result === "object"
+    ? response.output.delegate_result
+    : null;
+  const delegateTrace = delegate?.trace || {};
   return {
     approval_id: `appr_${traceId || response.request_id}`.replace(/[^\w-]/g, "_"),
     timestamp: new Date().toISOString(),
@@ -501,14 +609,16 @@ function buildApprovalRecord(agentId, envelope, response, traceRecord) {
     trace_chain_id: trace.trace_chain_id || envelope.context?.trace_chain_id || normalizedChain.trace_chain_id || "",
     trace_chain: normalizedChain.steps,
     actor_trace_id: trace.actor_trace_id || envelope.context?.actor_trace_id || "",
-    handoff_trace_id: trace.handoff_trace_id || envelope.context?.handoff_trace_id || "",
-    target_agent: trace.target_agent || response.agent_id || agentId,
+    handoff_trace_id: trace.handoff_trace_id || envelope.context?.handoff_trace_id || delegateTrace.trace_id || delegate?.trace_id || "",
+    target_agent: trace.target_agent || delegate?.agent_id || response.agent_id || agentId,
     route_decision: trace.route_decision || response.output?.route_decision?.decision || "",
     gate: approval.gate || "requires_human_action",
     summary: approval.summary || "Human approval is required before this action can continue.",
     proposed_action: approval.proposed_action || "Resume the gated run after approval.",
     status: "pending_human_approval",
     original_request: envelope,
+    original_response: response,
+    delegate_result: delegate,
   };
 }
 
@@ -650,8 +760,9 @@ async function proxyToN8n(agentId, envelope) {
 async function handleAgentProxy(req, res, agentId) {
   const envelope = await readBody(req);
   const response = await proxyToN8n(agentId, envelope);
-  const traceRecord = buildTraceRecord(agentId, envelope, response);
-  await appendTrace(traceRecord);
+  const traceRecords = buildTraceRecords(agentId, envelope, response);
+  const traceRecord = traceRecords[0];
+  for (const record of traceRecords) await appendTrace(record);
   await storeApproval(buildApprovalRecord(agentId, envelope, response, traceRecord));
   jsonResponse(res, 200, { agent_id: agentId, response, trace: traceRecord });
 }
@@ -697,8 +808,9 @@ async function handleResumeApproval(req, res, approvalId) {
     },
   };
   const response = await proxyToN8n("agentic_butler", resumeEnvelope);
-  const traceRecord = buildTraceRecord("agentic_butler", resumeEnvelope, response);
-  await appendTrace(traceRecord);
+  const traceRecords = buildTraceRecords("agentic_butler", resumeEnvelope, response);
+  const traceRecord = traceRecords[0];
+  for (const record of traceRecords) await appendTrace(record);
   const updated = await updateApproval(approvalId, {
     status: "resumed",
     resumed_trace_id: traceRecord.trace_id,
@@ -730,6 +842,99 @@ async function handleManualApproval(req, res) {
   jsonResponse(res, 200, { status: "stored", approval: record });
 }
 
+async function handleVectorStatus(req, res) {
+  const config = azureSearchConfigFromEnv();
+  const readiness = await getIndexReadiness(config);
+  jsonResponse(res, 200, {
+    ...azureSearchStatusFromConfig(config),
+    indexes: {
+      approved: config.approvedIndex,
+      working: config.workingIndex,
+    },
+    index_readiness: readiness,
+    next_action: config.configured
+      ? config.embeddingConfigured
+        ? "Run Knowledge Fabric vector refresh with approved OKF concepts."
+        : "Configure Azure OpenAI embedding deployment before semantic vector upserts."
+      : "Configure Azure AI Search backend environment variables.",
+  });
+}
+
+async function handleVectorRebuild(req, res) {
+  const body = await readBody(req);
+  const config = azureSearchConfigFromEnv();
+  const dryRun = body.dry_run === true || body.dryRun === true || !config.configured;
+  const request = {
+    operation: body.operation || "upsert",
+    organization_id: body.organization_id || "default",
+    user_id: body.user_id || "",
+    twin_id: body.twin_id || body.twin || "unknown",
+    source_policy: body.source_policy || (body.mode === "approved" ? "approved_only" : "selected_pending"),
+    repo_name: body.repo_name || "",
+    commit_sha: body.commit_sha || "",
+    documents: Array.isArray(body.documents) ? body.documents : [],
+  };
+  if (!request.documents.length) {
+    jsonResponse(res, 400, {
+      status: "failed",
+      error: "Vector rebuild requires a non-empty documents array.",
+      expected_contract: "contracts/okf/examples/vector/upsert-request.json",
+    });
+    return;
+  }
+  if (dryRun) {
+    jsonResponse(res, 200, {
+      status: config.configured ? "dry_run" : "blocked",
+      provider: "azure_ai_search",
+      operation: request.operation,
+      document_count: request.documents.length,
+      approved_index: config.approvedIndex,
+      working_index: config.workingIndex,
+      missing: config.missing,
+      note: "No Azure write was executed.",
+    });
+    return;
+  }
+  const requiresEmbedding = request.documents.some((document) => !Array.isArray(document.content_vector));
+  if (requiresEmbedding && !config.embeddingConfigured) {
+    jsonResponse(res, 503, {
+      status: "blocked",
+      provider: "azure_ai_search",
+      operation: request.operation,
+      document_count: request.documents.length,
+      embedding: {
+        status: "blocked",
+        missing: config.embeddingMissing,
+      },
+      fallback: "Provide content_vector per document or configure Azure OpenAI embeddings before live vector upsert.",
+    });
+    return;
+  }
+  const result = await upsertVectorDocuments(request, config);
+  jsonResponse(res, 200, {
+    ...result,
+    provider: "azure_ai_search",
+    approved_index: config.approvedIndex,
+    working_index: config.workingIndex,
+  });
+}
+
+async function handleVectorSearch(req, res) {
+  const body = await readBody(req);
+  const config = azureSearchConfigFromEnv();
+  if (!config.configured) {
+    jsonResponse(res, 503, {
+      status: "blocked",
+      provider: "azure_ai_search",
+      missing: config.missing,
+      fallback: "Use local OKF keyword retrieval until Azure AI Search backend secrets are configured.",
+    });
+    return;
+  }
+  const result = await searchVectorKnowledge(body, config);
+  jsonResponse(res, 200, result);
+}
+
 async function routeRequest(req, res) {
   const url = new URL(req.url, "http://localhost");
   if (req.method === "OPTIONS") {
@@ -752,6 +957,7 @@ async function routeRequest(req, res) {
           status: adminGate.ready ? "ready" : "blocked",
           missing: adminGate.missing,
         },
+        vector_search: azureSearchStatusFromConfig(azureSearchConfigFromEnv()),
         agents: Object.fromEntries(Object.values(AGENTS).map((agent) => [
           agent.id,
           { configured: Boolean(process.env[agent.urlEnv]), url_env: agent.urlEnv },
@@ -781,6 +987,18 @@ async function routeRequest(req, res) {
     }
     if (req.method === "POST" && url.pathname === "/api/agents/approvals") {
       await handleManualApproval(req, res);
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/vector-index/status") {
+      await handleVectorStatus(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/vector-index/rebuild") {
+      await handleVectorRebuild(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/vector-index/search") {
+      await handleVectorSearch(req, res);
       return;
     }
     const resumeMatch = url.pathname.match(/^\/api\/agents\/approvals\/([^/]+)\/resume$/);

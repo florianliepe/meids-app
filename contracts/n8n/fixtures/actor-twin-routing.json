@@ -5,6 +5,26 @@
   "agent_id": "actor_twin",
   "agent_name": "Actor Twin",
   "purpose": "Public-safe routing contract for Actor Twin as the single Chat routing authority.",
+  "orchestration_model": {
+    "phase": "uat_n8n_direct_orchestration",
+    "key_point": "Actor Twin is the decision authority, not the worker. It decides what should happen, delegates execution to Knowledge Fabric Agent or Agentic Butler, then reviews and shapes the returned result before responding to the user.",
+    "target_pattern": "Actor Twin workflow calls Knowledge Fabric Agent and Agentic Butler workflows directly through n8n HTTP Request or Execute Workflow nodes.",
+    "production_hardening_later": "Move delegation through backend proxy endpoints after hosted secret storage, durable trace persistence, and approval resume are active.",
+    "delegated_agents": [
+      {
+        "agent_id": "knowledge_fabric_agent",
+        "called_for": ["retrieve_knowledge", "ingest_or_stage_knowledge"],
+        "call_method": "n8n_http_request_or_execute_workflow",
+        "webhook_env": "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL"
+      },
+      {
+        "agent_id": "agentic_butler",
+        "called_for": ["activate_skill", "create_skill"],
+        "call_method": "n8n_http_request_or_execute_workflow",
+        "webhook_env": "N8N_AGENTIC_BUTLER_WEBHOOK_URL"
+      }
+    ]
+  },
   "chat_surface_policy": {
     "diagnostics": "cockpit_only",
     "manual_knowledge_fabric_activation": false,
@@ -67,6 +87,8 @@
       "expected_delegate_envelope": {
         "agent_id": "knowledge_fabric_agent",
         "intent": "retrieve_context",
+        "call_method": "n8n_direct",
+        "called_by": "actor_twin",
         "input": {
           "retrieval_goal": "approved_evidence",
           "query": "Find the approved evidence about client delivery steering."
@@ -98,6 +120,8 @@
       "expected_delegate_envelope": {
         "agent_id": "knowledge_fabric_agent",
         "intent": "ingest_concept",
+        "call_method": "n8n_direct",
+        "called_by": "actor_twin",
         "input": {
           "target_state": "pending_review",
           "source_type": "chat_source_context"
@@ -130,6 +154,8 @@
       "expected_delegate_envelope": {
         "agent_id": "agentic_butler",
         "intent": "activate_skill",
+        "call_method": "n8n_direct",
+        "called_by": "actor_twin",
         "input": {
           "skill_id": "project-management-support-steering",
           "manual_trigger": false
@@ -162,6 +188,8 @@
       "expected_delegate_envelope": {
         "agent_id": "agentic_butler",
         "intent": "create_skill",
+        "call_method": "n8n_direct",
+        "called_by": "actor_twin",
         "input": {
           "skill_idea": "Create a new skill for preparing supplier negotiation briefs.",
           "manual_trigger": false

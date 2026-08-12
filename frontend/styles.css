@@ -11411,6 +11411,33 @@ body.theme-dark .graph-actor-context-status > span {
   background: color-mix(in srgb, var(--warn) 7%, var(--surface));
 }
 
+.agent-delegate-output {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+}
+
+.agent-delegate-output strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--ink);
+}
+
+.agent-delegate-output p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.agent-trace-chain.compact {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .agent-response-route-head {
   display: grid;
   gap: 5px;
@@ -14810,6 +14837,20 @@ body.theme-dark .graph-promotion-flow small {
 .trusted-retrieval-grid small {
   color: var(--muted);
   font-size: 0.76rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.trusted-retrieval-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.trusted-retrieval-actions span {
+  color: var(--muted);
+  font-size: 0.78rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
@@ -31725,6 +31766,10 @@ body.theme-dark .trusted-retrieval-grid small {
 
 body.theme-dark .trusted-retrieval-grid p {
   color: #f1ebdf;
+}
+
+body.theme-dark .trusted-retrieval-actions span {
+  color: #c9c0b3;
 }
 
 body.theme-dark .production-agent-url-readiness {

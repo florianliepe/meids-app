@@ -64,6 +64,34 @@
       "vector_refresh": {
         "status": "deferred",
         "reason": "Pending-review concepts are not pushed to trusted vector indexes without review policy approval."
+      },
+      "vector_refresh_request": {
+        "target_endpoint": "/api/vector-index/rebuild",
+        "method": "POST",
+        "execute_when": "after_human_approval_or_selected_pending_policy",
+        "body": {
+          "operation": "upsert",
+          "organization_id": "default",
+          "twin_id": "florian",
+          "source_policy": "selected_pending",
+          "documents": [
+            {
+              "concept_id": "cpt_example_001",
+              "repo_path": "concepts/florian/examples/2026-08-07-example-meeting-reflection.md",
+              "review_state": "pending-review",
+              "title": "Example meeting reflection",
+              "text": "Public-safe example transcript text for a client alignment reflection.",
+              "metadata": {
+                "cluster": "client-alignment",
+                "type": "Meeting Note",
+                "visibility_scope": "private",
+                "evidence_refs": [
+                  "evidence/florian/transcripts/2026-08-07-example-meeting-reflection.yaml"
+                ]
+              }
+            }
+          ]
+        }
       }
     },
     "trace": {

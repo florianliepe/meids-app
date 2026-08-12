@@ -59,6 +59,20 @@ function validate() {
   if (directRoute.handoff_required !== false) fail("Actor Twin direct route must set handoff_required false");
   const fixture = readJson(fixturePath);
   if (fixture.agent_id !== "actor_twin") fail("routing fixture must belong to actor_twin");
+  if (fixture.orchestration_model?.phase !== "uat_n8n_direct_orchestration") {
+    fail("routing fixture must declare uat_n8n_direct_orchestration phase");
+  }
+  if (!String(fixture.orchestration_model?.key_point || "").includes("decision authority")) {
+    fail("routing fixture must highlight Actor Twin as decision authority");
+  }
+  const delegatedAgents = fixture.orchestration_model?.delegated_agents || [];
+  for (const agentId of ["knowledge_fabric_agent", "agentic_butler"]) {
+    const delegated = delegatedAgents.find((agent) => agent.agent_id === agentId);
+    if (!delegated) fail(`orchestration_model.delegated_agents missing ${agentId}`);
+    if (!["n8n_http_request_or_execute_workflow", "n8n_direct"].includes(delegated.call_method)) {
+      fail(`${agentId} must use direct n8n orchestration call method`);
+    }
+  }
   if (fixture.chat_surface_policy?.diagnostics !== "cockpit_only") {
     fail("Chat diagnostics policy must be cockpit_only");
   }
@@ -92,6 +106,8 @@ function validate() {
       if (!isObject(delegate)) fail(`${route.decision} missing expected_delegate_envelope`);
       if (delegate.agent_id !== route.target_agent) fail(`${route.decision} delegate agent_id mismatch`);
       if (delegate.intent !== route.intent) fail(`${route.decision} delegate intent mismatch`);
+      if (delegate.call_method !== "n8n_direct") fail(`${route.decision} delegate must set call_method n8n_direct`);
+      if (delegate.called_by !== "actor_twin") fail(`${route.decision} delegate must set called_by actor_twin`);
     }
     if (route.decision === "activate_skill") {
       if (item.request.selected_skill_status !== "approved") fail("activate_skill case must reference approved skill");

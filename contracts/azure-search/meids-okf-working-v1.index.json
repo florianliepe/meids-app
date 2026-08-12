@@ -1,0 +1,73 @@
+{
+  "name": "meids-okf-working-v1",
+  "fields": [
+    { "name": "id", "type": "Edm.String", "key": true, "filterable": true },
+    { "name": "organization_id", "type": "Edm.String", "filterable": true, "facetable": true },
+    { "name": "user_id", "type": "Edm.String", "filterable": true },
+    { "name": "twin_id", "type": "Edm.String", "filterable": true, "facetable": true },
+    { "name": "visibility_scope", "type": "Edm.String", "filterable": true, "facetable": true },
+    { "name": "knowledge_state", "type": "Edm.String", "filterable": true, "facetable": true },
+    { "name": "okf_concept_id", "type": "Edm.String", "filterable": true },
+    { "name": "okf_type", "type": "Edm.String", "filterable": true, "facetable": true, "searchable": true },
+    { "name": "title", "type": "Edm.String", "searchable": true },
+    { "name": "summary", "type": "Edm.String", "searchable": true },
+    { "name": "chunk_id", "type": "Edm.String", "filterable": true },
+    { "name": "chunk_text", "type": "Edm.String", "searchable": true },
+    { "name": "source_type", "type": "Edm.String", "filterable": true, "facetable": true },
+    { "name": "repo_name", "type": "Edm.String", "filterable": true },
+    { "name": "repo_path", "type": "Edm.String", "filterable": true, "searchable": true },
+    { "name": "commit_sha", "type": "Edm.String", "filterable": true },
+    { "name": "evidence_id", "type": "Edm.String", "filterable": true },
+    { "name": "graph_node_id", "type": "Edm.String", "filterable": true },
+    { "name": "graph_cluster_id", "type": "Edm.String", "filterable": true, "facetable": true },
+    { "name": "tags", "type": "Collection(Edm.String)", "filterable": true, "facetable": true, "searchable": true },
+    { "name": "permission_tags", "type": "Collection(Edm.String)", "filterable": true },
+    { "name": "created_at", "type": "Edm.DateTimeOffset", "filterable": true, "sortable": true },
+    { "name": "updated_at", "type": "Edm.DateTimeOffset", "filterable": true, "sortable": true },
+    {
+      "name": "content_vector",
+      "type": "Collection(Edm.Single)",
+      "searchable": true,
+      "dimensions": 1536,
+      "vectorSearchProfile": "meids-hnsw-profile"
+    }
+  ],
+  "vectorSearch": {
+    "algorithms": [
+      {
+        "name": "meids-hnsw",
+        "kind": "hnsw",
+        "hnswParameters": {
+          "metric": "cosine",
+          "m": 4,
+          "efConstruction": 400,
+          "efSearch": 500
+        }
+      }
+    ],
+    "profiles": [
+      {
+        "name": "meids-hnsw-profile",
+        "algorithm": "meids-hnsw"
+      }
+    ]
+  },
+  "semantic": {
+    "configurations": [
+      {
+        "name": "meids-semantic",
+        "prioritizedFields": {
+          "titleField": { "fieldName": "title" },
+          "prioritizedContentFields": [
+            { "fieldName": "summary" },
+            { "fieldName": "chunk_text" }
+          ],
+          "prioritizedKeywordsFields": [
+            { "fieldName": "tags" },
+            { "fieldName": "okf_type" }
+          ]
+        }
+      }
+    ]
+  }
+}

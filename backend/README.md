@@ -13,6 +13,9 @@ This backend is the production boundary for agent runtime calls. GitHub Pages ma
 - `GET /api/agents/approvals`
 - `POST /api/agents/approvals`
 - `POST /api/agents/approvals/:approval_id/resume`
+- `GET /api/vector-index/status`
+- `POST /api/vector-index/rebuild`
+- `POST /api/vector-index/search`
 
 ## Environment Variables
 
@@ -35,6 +38,26 @@ Optional:
 - `ALLOWED_FRONTEND_ORIGINS`: comma-separated allowed frontend origins.
 - `MEIDS_DATA_DIR`: persistence folder. Defaults to `.data`.
 - `PORT`: defaults to `8080`.
+
+Azure AI Search vector retrieval:
+
+- `AZURE_SEARCH_ENDPOINT`: Azure AI Search endpoint, for example `https://srch-intellectual-twin.search.windows.net`.
+- `AZURE_SEARCH_API_KEY`: backend-only Azure AI Search key. Do not expose it to static frontend assets.
+- `AZURE_SEARCH_APPROVED_INDEX`: defaults to `meids-okf-approved-v1`.
+- `AZURE_SEARCH_WORKING_INDEX`: defaults to `meids-okf-working-v1`.
+- `AZURE_SEARCH_API_VERSION`: defaults to `2025-09-01`.
+- `AZURE_OPENAI_ENDPOINT`: embedding endpoint used by the Knowledge Fabric refresh boundary.
+- `AZURE_OPENAI_API_KEY`: backend-only embedding key.
+- `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`: embedding deployment name.
+- `AZURE_OPENAI_API_VERSION`: defaults to `2024-02-01`.
+- `AZURE_OPENAI_EMBEDDING_DIMENSIONS`: defaults to `1536`.
+
+Create or update Azure AI Search indexes from the repository schemas with:
+
+```powershell
+npm run setup:azure-search -- --dry-run
+npm run setup:azure-search
+```
 
 ## Hosted Secret Handling
 
@@ -91,3 +114,13 @@ This is intentional for the MVP and local/Azure bootstrap. The production migrat
 - `agent_run_events`
 
 Set `DATABASE_URL` to activate Postgres mode. The frontend is already written against HTTP endpoints, so the storage mode can change without changing browser code.
+
+## Azure Vector Boundary
+
+The vector index is a derived retrieval layer, not the source of truth. OKF markdown/YAML plus Postgres metadata remain authoritative. Use:
+
+- `contracts/azure-search/meids-okf-approved-v1.index.json`
+- `contracts/azure-search/meids-okf-working-v1.index.json`
+- `docs/azure-vector-search-integration.md`
+
+Actor Twin retrieval defaults to approved private knowledge plus approved org/team shared knowledge. Pending/candidate knowledge goes to the working index and must be explicitly selected and attributed.

@@ -115,6 +115,14 @@ function validateKnowledgeFabricFixture(fixture) {
   if (!["deferred", "blocked"].includes(output.vector_refresh?.status)) {
     fail(`${fixture.agent_id}: vector_refresh.status must be deferred or blocked before approval`);
   }
+  const vectorRefreshRequest = output.vector_refresh_request || {};
+  if (vectorRefreshRequest.target_endpoint !== "/api/vector-index/rebuild") {
+    fail(`${fixture.agent_id}: vector_refresh_request.target_endpoint must call /api/vector-index/rebuild`);
+  }
+  if (vectorRefreshRequest.method !== "POST") fail(`${fixture.agent_id}: vector_refresh_request.method must be POST`);
+  if (!Array.isArray(vectorRefreshRequest.body?.documents) || !vectorRefreshRequest.body.documents.length) {
+    fail(`${fixture.agent_id}: vector_refresh_request.body.documents must be non-empty`);
+  }
   const examples = fixture.source_path_examples;
   if (!Array.isArray(examples) || examples.length < 2) {
     fail(`${fixture.agent_id}: source_path_examples must cover upload and transcript paths`);
