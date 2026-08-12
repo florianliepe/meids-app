@@ -25,9 +25,21 @@ Required for live production proxying:
 Optional:
 
 - `N8N_WEBHOOK_AUTH_TOKEN`: bearer token forwarded to n8n if webhook authentication is enabled.
+- `N8N_API_BASE_URL`: n8n instance base URL for backend-only workflow administration tools.
+- `N8N_API_KEY`: backend-only n8n API key. Use for workflow import/update/status automation only; never expose it to `frontend/runtime-config.js`, GitHub Pages assets, browser localStorage, or client-side JavaScript.
 - `ALLOWED_FRONTEND_ORIGINS`: comma-separated allowed frontend origins.
 - `MEIDS_DATA_DIR`: persistence folder. Defaults to `.data`.
 - `PORT`: defaults to `8080`.
+
+## Hosted Secret Handling
+
+For hosted deployment, store all n8n credentials as backend application settings or Key Vault references:
+
+- Azure App Service settings: `N8N_ACTOR_TWIN_WEBHOOK_URL`, `N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL`, `N8N_AGENTIC_BUTLER_WEBHOOK_URL`, optional `N8N_WEBHOOK_AUTH_TOKEN`, optional `N8N_API_BASE_URL`, optional `N8N_API_KEY`.
+- GitHub Actions secrets: use only for deployment-time injection into the backend host. Do not write resolved secret values into committed runtime assets.
+- GitHub Pages: may contain public UAT webhook URLs only. It must not contain `N8N_API_KEY` or private bearer tokens.
+
+Runtime Chat calls should use `/api/agents/*` once the backend is hosted. Direct browser-to-n8n calls are a staging fallback for public UAT only and cannot support secure approval resume or durable trace storage.
 
 ## Local Run
 

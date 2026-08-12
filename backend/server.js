@@ -125,8 +125,19 @@ function normalizeAgentOutput(output = {}) {
   };
 }
 
+function normalizeTraceChain(value = null) {
+  if (Array.isArray(value)) return { trace_chain_id: "", steps: value.filter(Boolean) };
+  if (value && typeof value === "object") {
+    return {
+      trace_chain_id: value.trace_chain_id || value.chain_id || "",
+      steps: Array.isArray(value.steps) ? value.steps.filter(Boolean) : [],
+    };
+  }
+  return { trace_chain_id: "", steps: [] };
+}
+
 function defaultRouteDecision(agentId, output = {}, envelope = {}) {
-  const explicit = output.route_decision || envelope.context?.route_decision || null;
+  const explicit = output.route_decision || output.routing || output.route || envelope.context?.route_decision || null;
   if (explicit && typeof explicit === "object") {
     return {
       decision: explicit.decision || "answer_direct",
@@ -175,7 +186,29 @@ function normalizeAgentResponse(agentId, data, envelope = {}, runtime = "backend
   const parsed = parseMaybeJson(data);
   const response = parsed.response || parsed.data || parsed || {};
   const output = normalizeAgentOutput(response.output || parsed.output || outputFromN8nData(parsed));
+  if (!output.route_decision && response.route_decision) output.route_decision = response.route_decision;
+  if (!output.route_decision && parsed.route_decision) output.route_decision = parsed.route_decision;
   const routeDecision = defaultRouteDecision(agentId, output, envelope);
+  const inboundTraceChain = normalizeTraceChain(envelope.context?.trace_chain);
+  const responseTraceChain = normalizeTraceChain(response.trace?.trace_chain || parsed.trace?.trace_chain || output.trace?.trace_chain);
+  const traceChainId = response.trace?.trace_chain_id || parsed.trace?.trace_chain_id || output.trace?.trace_chain_id || envelope.context?.trace_chain_id || inboundTraceChain.trace_chain_id || responseTraceChain.trace_chain_id || "";
+  const traceChainSteps = responseTraceChain.steps.length ? responseTraceChain.steps : inboundTraceChain.steps;
+  const traceId = response.trace?.trace_id || parsed.trace?.trace_id || output.trace?.trace_id || makeId("trace");
+  const currentStepExists = traceChainSteps.some((step) => step.trace_id && step.trace_id === traceId);
+  const fullTraceChainSteps = currentStepExists
+    ? traceChainSteps
+    : [
+        ...traceChainSteps,
+        {
+          timestamp: new Date().toISOString(),
+          agent_id: response.agent_id || agentId,
+          request_id: response.request_id || envelope.request_id || "",
+          trace_id: traceId,
+          route_decision: routeDecision.decision,
+          target_agent: routeDecision.target_agent,
+          status: response.status || parsed.status || "",
+        },
+      ];
   const approval = response.approval || parsed.approval || output.approval || (
     response.status === "approval_required" || routeDecision.approval_required
       ? {
@@ -189,7 +222,14 @@ function normalizeAgentResponse(agentId, data, envelope = {}, runtime = "backend
   const trace = {
     stored: true,
     ...(response.trace || parsed.trace || output.trace || {}),
-    trace_id: response.trace?.trace_id || parsed.trace?.trace_id || output.trace?.trace_id || makeId("trace"),
+    trace_id: traceId,
+    trace_chain_id: traceChainId,
+    trace_chain: {
+      trace_chain_id: traceChainId,
+      steps: fullTraceChainSteps,
+    },
+    actor_trace_id: response.trace?.actor_trace_id || parsed.trace?.actor_trace_id || output.trace?.actor_trace_id || envelope.context?.actor_trace_id || "",
+    handoff_trace_id: response.trace?.handoff_trace_id || parsed.trace?.handoff_trace_id || output.trace?.handoff_trace_id || envelope.context?.handoff_trace_id || "",
     target_agent: routeDecision.target_agent,
     route_decision: routeDecision.decision,
     handoff_status: routeDecision.handoff_required ? (approval?.required ? "approval_required" : "handoff_completed") : "not_required",
@@ -250,6 +290,7 @@ async function writeApprovals(items) {
 
 function buildTraceRecord(agentId, envelope, response) {
   const trace = response.trace || {};
+  const normalizedChain = normalizeTraceChain(trace.trace_chain || envelope.context?.trace_chain);
   return {
     timestamp: new Date().toISOString(),
     agent_id: response.agent_id || agentId,
@@ -257,6 +298,8 @@ function buildTraceRecord(agentId, envelope, response) {
     runtime: response.runtime || "backend proxy",
     request_id: response.request_id || envelope.request_id || "",
     trace_id: trace.trace_id || "",
+    trace_chain_id: trace.trace_chain_id || envelope.context?.trace_chain_id || normalizedChain.trace_chain_id || "",
+    trace_chain: normalizedChain.steps,
     actor_trace_id: trace.actor_trace_id || envelope.context?.actor_trace_id || "",
     handoff_trace_id: trace.handoff_trace_id || envelope.context?.handoff_trace_id || "",
     target_agent: trace.target_agent || response.agent_id || agentId,
@@ -272,6 +315,7 @@ function buildApprovalRecord(agentId, envelope, response, traceRecord) {
   if (response.status !== "approval_required" && response.approval?.required !== true) return null;
   const approval = response.approval || {};
   const trace = response.trace || {};
+  const normalizedChain = normalizeTraceChain(trace.trace_chain || envelope.context?.trace_chain);
   const traceId = trace.trace_id || traceRecord.trace_id || response.request_id;
   return {
     approval_id: `appr_${traceId || response.request_id}`.replace(/[^\w-]/g, "_"),
@@ -279,6 +323,8 @@ function buildApprovalRecord(agentId, envelope, response, traceRecord) {
     agent_id: response.agent_id || agentId,
     request_id: response.request_id || envelope.request_id || "",
     trace_id: traceId,
+    trace_chain_id: trace.trace_chain_id || envelope.context?.trace_chain_id || normalizedChain.trace_chain_id || "",
+    trace_chain: normalizedChain.steps,
     actor_trace_id: trace.actor_trace_id || envelope.context?.actor_trace_id || "",
     handoff_trace_id: trace.handoff_trace_id || envelope.context?.handoff_trace_id || "",
     target_agent: trace.target_agent || response.agent_id || agentId,
@@ -370,6 +416,11 @@ async function handleResumeApproval(req, res, approvalId) {
       ...(body.context || {}),
       actor_trace_id: approval.actor_trace_id,
       handoff_trace_id: approval.handoff_trace_id || approval.trace_id,
+      trace_chain_id: approval.trace_chain_id || body.context?.trace_chain_id || "",
+      trace_chain: {
+        trace_chain_id: approval.trace_chain_id || body.context?.trace_chain_id || "",
+        steps: normalizeTraceChain(approval.trace_chain || body.context?.trace_chain).steps,
+      },
       target_agent: approval.target_agent || "agentic_butler",
       route_decision: approval.route_decision,
       approval_id: approval.approval_id,

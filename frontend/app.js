@@ -16057,6 +16057,8 @@ function activePrincipal() {
 }
 
 function buildAgentContractEnvelope(agentId, intent, query, input = {}, context = {}, approval = null) {
+  const traceChain = normalizeTraceChain(context.trace_chain);
+  const traceChainId = context.trace_chain_id || traceChain.trace_chain_id || `chain_${Date.now().toString(36)}`;
   return {
     envelope_version: "0.1.0",
     request_id: `req_${agentId}_${Date.now().toString(36)}`,
@@ -16076,10 +16078,50 @@ function buildAgentContractEnvelope(agentId, intent, query, input = {}, context 
       concept_types: selectedConceptTypes(),
       websearch: state.webSearchEnabled,
       ...context,
+      trace_chain_id: traceChainId,
+      trace_chain: {
+        trace_chain_id: traceChainId,
+        steps: traceChain.steps,
+      },
     },
     approval: approval || {
       required: false,
       reason: "No external write action requested at submission time.",
+    },
+  };
+}
+
+function normalizeTraceChain(value = null) {
+  if (Array.isArray(value)) return { trace_chain_id: "", steps: value.filter(Boolean) };
+  if (value && typeof value === "object") {
+    return {
+      trace_chain_id: value.trace_chain_id || value.chain_id || "",
+      steps: Array.isArray(value.steps) ? value.steps.filter(Boolean) : [],
+    };
+  }
+  return { trace_chain_id: "", steps: [] };
+}
+
+function appendTraceChainStep(context = {}, step = {}) {
+  const normalized = normalizeTraceChain(context.trace_chain);
+  const chainId = context.trace_chain_id || normalized.trace_chain_id || `chain_${Date.now().toString(36)}`;
+  return {
+    ...context,
+    trace_chain_id: chainId,
+    trace_chain: {
+      trace_chain_id: chainId,
+      steps: [
+        ...normalized.steps,
+        {
+          timestamp: new Date().toISOString(),
+          agent_id: step.agent_id || "",
+          request_id: step.request_id || "",
+          trace_id: step.trace_id || "",
+          route_decision: step.route_decision || "",
+          target_agent: step.target_agent || "",
+          status: step.status || "",
+        },
+      ].filter((item) => item.agent_id || item.trace_id || item.route_decision),
     },
   };
 }
@@ -16233,7 +16275,7 @@ async function routeActorTwinFromChat(query, route = null) {
   return postAgentContractEnvelope("actor_twin", envelope, fallbackActorTwinResponse);
 }
 
-async function routeAgenticButlerFromChat(query, route = null) {
+async function routeAgenticButlerFromChat(query, route = null, chainContext = {}) {
   const selected = selectedApprovedChatSkill();
   if (!selected) throw new Error("Select one approved skill before activating Agentic Butler.");
   if (selected.status !== "approved") throw new Error("Agentic Butler can only activate approved skills.");
@@ -16253,6 +16295,7 @@ async function routeAgenticButlerFromChat(query, route = null) {
     },
     {
       route_decision: route,
+      ...chainContext,
       actor_checkpoint_policy: "consult_actor_twin_before_prioritization_and_before_human_gates",
       skill_orchestrator: "internal_component",
       allowed_outputs: ["daily_plan", "todo_table", "approval_queue"],
@@ -16261,7 +16304,7 @@ async function routeAgenticButlerFromChat(query, route = null) {
   return postAgentContractEnvelope("agentic_butler", envelope, fallbackAgenticButlerResponse);
 }
 
-async function routeAgenticButlerSkillCreationFromChat(query, route = null) {
+async function routeAgenticButlerSkillCreationFromChat(query, route = null, chainContext = {}) {
   const sourceContext = chatSourceContext();
   const envelope = buildAgentContractEnvelope(
     "agentic_butler",
@@ -16278,6 +16321,7 @@ async function routeAgenticButlerSkillCreationFromChat(query, route = null) {
     },
     {
       route_decision: route,
+      ...chainContext,
       elicitation_agent: "start_structured_interview",
       decomposition_agent: "blocked_until_skillspec_approved",
       skill_lifecycle: "draft_to_pending_approval",
@@ -16294,7 +16338,7 @@ async function routeAgenticButlerSkillCreationFromChat(query, route = null) {
   return postAgentContractEnvelope("agentic_butler", envelope, fallbackAgenticButlerSkillCreationResponse);
 }
 
-async function routeKnowledgeFabricFromChat(query, route = null) {
+async function routeKnowledgeFabricFromChat(query, route = null, chainContext = {}) {
   const sourceContext = chatSourceContext();
   const title = query.slice(0, 80) || "Chat source context";
   const retrieve = route?.decision === "retrieve_knowledge";
@@ -16320,6 +16364,7 @@ async function routeKnowledgeFabricFromChat(query, route = null) {
         },
     {
       route_decision: route,
+      ...chainContext,
       okf_namespace: `concepts/${state.activeTwin || "florian"}/inbox`,
       allowed_outputs: ["markdown", "yaml_frontmatter", "graph_candidate_edges"],
       vector_policy: "do_not_refresh_without_approved_storage",
@@ -16332,6 +16377,16 @@ async function routeKnowledgeFabricFromChat(query, route = null) {
 async function runActorTwinRuntimeInteraction(query, fallbackRoute = null) {
   const actorResult = await routeActorTwinFromChat(query, fallbackRoute);
   const route = actorRouteFromRuntime(actorResult, fallbackRoute);
+  const actorTraceId = actorResult.response?.trace?.trace_id || actorResult.trace_id || "";
+  const actorRequestId = actorResult.response?.request_id || actorResult.request?.request_id || "";
+  const chainContext = appendTraceChainStep(actorResult.request?.context || {}, {
+    agent_id: "actor_twin",
+    request_id: actorRequestId,
+    trace_id: actorTraceId,
+    route_decision: route?.decision || "",
+    target_agent: route?.target_agent || "",
+    status: actorResult.response?.status || "completed",
+  });
   state.lastActorTwinRouteDecision = route;
   renderSkillRoutingPanel();
   if (!route || ["answer_direct", "request_human_clarification"].includes(route.decision) || route.target_agent === "actor_twin") {
@@ -16339,32 +16394,51 @@ async function runActorTwinRuntimeInteraction(query, fallbackRoute = null) {
       actorResult,
       route,
       handoffStatus: "not_required",
+      chainContext,
     });
   }
   persistAgentTrace(attachAgentRuntimeChain(actorResult, {
     actorResult,
     route,
     handoffStatus: "route_decided",
+    chainContext,
   }));
   let targetResult;
   if (route.target_agent === "knowledge_fabric_agent") {
-    targetResult = await routeKnowledgeFabricFromChat(query, route);
+    targetResult = await routeKnowledgeFabricFromChat(query, route, {
+      ...chainContext,
+      actor_trace_id: actorTraceId,
+      actor_request_id: actorRequestId,
+      handoff_status: "route_decided",
+    });
     if (route.decision === "ingest_or_stage_knowledge") persistKnowledgeFabricIngest(targetResult);
   } else if (route.target_agent === "agentic_butler" && route.decision === "create_skill") {
-    targetResult = await routeAgenticButlerSkillCreationFromChat(query, route);
+    targetResult = await routeAgenticButlerSkillCreationFromChat(query, route, {
+      ...chainContext,
+      actor_trace_id: actorTraceId,
+      actor_request_id: actorRequestId,
+      handoff_status: "route_decided",
+    });
   } else if (route.target_agent === "agentic_butler") {
-    targetResult = await routeAgenticButlerFromChat(query, route);
+    targetResult = await routeAgenticButlerFromChat(query, route, {
+      ...chainContext,
+      actor_trace_id: actorTraceId,
+      actor_request_id: actorRequestId,
+      handoff_status: "route_decided",
+    });
   } else {
     return attachAgentRuntimeChain(actorResult, {
       actorResult,
       route,
       handoffStatus: "unsupported_target",
+      chainContext,
     });
   }
   return attachAgentRuntimeChain(targetResult, {
     actorResult,
     route,
     handoffStatus: targetResult.response?.status || "completed",
+    chainContext,
   });
 }
 
@@ -16424,10 +16498,29 @@ function visibleStateForRouteDecision(decision = "") {
   }[decision] || "answering";
 }
 
-function attachAgentRuntimeChain(result = {}, { actorResult = null, route = null, handoffStatus = "" } = {}) {
+function attachAgentRuntimeChain(result = {}, { actorResult = null, route = null, handoffStatus = "", chainContext = null } = {}) {
   const actorTrace = actorResult?.response?.trace?.trace_id || actorResult?.trace_id || "";
   const targetTrace = result.response?.trace?.trace_id || result.trace_id || "";
+  const normalized = normalizeTraceChain(chainContext?.trace_chain || result.request?.context?.trace_chain);
+  const traceChainId = chainContext?.trace_chain_id || result.request?.context?.trace_chain_id || normalized.trace_chain_id || "";
+  const existingTargetStep = normalized.steps.some((step) => step.trace_id && step.trace_id === targetTrace);
+  const steps = existingTargetStep || result.agent_id === "actor_twin"
+    ? normalized.steps
+    : [
+        ...normalized.steps,
+        {
+          timestamp: new Date().toISOString(),
+          agent_id: result.agent_id || result.response?.agent_id || "",
+          request_id: result.response?.request_id || result.request?.request_id || "",
+          trace_id: targetTrace,
+          route_decision: route?.decision || "",
+          target_agent: route?.target_agent || "",
+          status: result.response?.status || "completed",
+        },
+      ].filter((item) => item.agent_id || item.trace_id || item.route_decision);
   const chain = {
+    trace_chain_id: traceChainId,
+    trace_chain: steps,
     actor_trace_id: actorTrace,
     handoff_trace_id: result.agent_id === "actor_twin" ? "" : targetTrace,
     target_agent: route?.target_agent || result.agent_id || "",
@@ -16583,6 +16676,7 @@ function parseEmbeddedJsonObject(value = "") {
 function persistAgentTrace(result = {}) {
   const response = result.response || {};
   const trace = response.trace || {};
+  const normalizedChain = normalizeTraceChain(trace.trace_chain || result.runtime_chain?.trace_chain || result.request?.context?.trace_chain);
   const entry = {
     timestamp: new Date().toISOString(),
     twin: state.activeTwin || "",
@@ -16592,6 +16686,8 @@ function persistAgentTrace(result = {}) {
     runtime: result.runtime || "",
     request_id: response.request_id || result.request?.request_id || "",
     trace_id: trace.trace_id || result.trace_id || "",
+    trace_chain_id: trace.trace_chain_id || result.runtime_chain?.trace_chain_id || result.request?.context?.trace_chain_id || normalizedChain.trace_chain_id || "",
+    trace_chain: normalizedChain.steps,
     actor_trace_id: trace.actor_trace_id || result.runtime_chain?.actor_trace_id || "",
     handoff_trace_id: trace.handoff_trace_id || result.runtime_chain?.handoff_trace_id || "",
     target_agent: trace.target_agent || result.runtime_chain?.target_agent || "",
@@ -29230,6 +29326,7 @@ function persistAgentApprovalRequest(result = {}, traceEntry = {}) {
   const approval = response.approval || {};
   if (response.status !== "approval_required" && approval.required !== true) return;
   const trace = response.trace || {};
+  const normalizedChain = normalizeTraceChain(trace.trace_chain || result.runtime_chain?.trace_chain || result.request?.context?.trace_chain);
   const requestId = response.request_id || result.request?.request_id || traceEntry.request_id || "";
   const traceId = trace.trace_id || result.trace_id || traceEntry.trace_id || requestId;
   const routeDecision = trace.route_decision || result.runtime_chain?.route_decision || response.output?.route_decision?.decision || "";
@@ -29240,6 +29337,8 @@ function persistAgentApprovalRequest(result = {}, traceEntry = {}) {
     agent_name: result.agent_name || agentDisplayName(response.agent_id || result.agent_id || ""),
     request_id: requestId,
     trace_id: traceId,
+    trace_chain_id: trace.trace_chain_id || result.runtime_chain?.trace_chain_id || traceEntry.trace_chain_id || "",
+    trace_chain: normalizedChain.steps,
     actor_trace_id: trace.actor_trace_id || result.runtime_chain?.actor_trace_id || "",
     handoff_trace_id: trace.handoff_trace_id || result.runtime_chain?.handoff_trace_id || "",
     target_agent: trace.target_agent || result.runtime_chain?.target_agent || response.agent_id || result.agent_id || "",
@@ -29270,6 +29369,7 @@ function agentApprovalByTrace(traceId = "") {
 
 function buildAgentApprovalResumePayload(approval = {}) {
   const now = new Date().toISOString();
+  const normalizedChain = normalizeTraceChain(approval.trace_chain);
   return {
     envelope_version: "0.1.0",
     request_id: `resume_${approval.request_id || approval.trace_id || Date.now().toString(36)}`,
@@ -29286,6 +29386,11 @@ function buildAgentApprovalResumePayload(approval = {}) {
     context: {
       actor_trace_id: approval.actor_trace_id || "",
       handoff_trace_id: approval.handoff_trace_id || approval.trace_id || "",
+      trace_chain_id: approval.trace_chain_id || normalizedChain.trace_chain_id || "",
+      trace_chain: {
+        trace_chain_id: approval.trace_chain_id || normalizedChain.trace_chain_id || "",
+        steps: normalizedChain.steps,
+      },
       route_decision: approval.route_decision || "",
       target_agent: approval.target_agent || approval.agent_id || "",
       resume_boundary: approval.resume_boundary || "frontend_scaffold_backend_proxy_required",
@@ -32535,7 +32640,7 @@ async function resumeAgentApproval(button) {
     const responsePayload = data.response ? data : { response: data };
     const result = normalizeAgentContractResponse("agentic_butler", responsePayload, payload, "backend proxy · resumed");
     persistAgentTrace(result);
-    addMessage("assistant", renderAgentContractChatCard(result), true);
+    addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
     await safeRefreshBackendAgentRuntimeState();
     showToast("Butler run resumed", "The approval gate was sent through the backend proxy.", "success");
   } catch (error) {
