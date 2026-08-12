@@ -1,0 +1,53 @@
+{
+  "recorded_at": "2026-08-12T07:17:30.538Z",
+  "update_method": "n8n public API with short-lived API key captured in memory only",
+  "workflows": {
+    "actor_twin": {
+      "workflow_id": "fDn8yXo3W41hh3yR",
+      "backup": "C:/Users/e729958/Downloads/MeIDs-public-app-sanitized-20260806-01/meids-app-public/exports/n8n-live-backups/20260812-api-apply/actor-twin.live-before.json",
+      "payload": "C:/Users/e729958/Downloads/MeIDs-public-app-sanitized-20260806-01/meids-app-public/exports/n8n-live-backups/20260812-api-apply/actor-twin.update-payload.json"
+    },
+    "knowledge_fabric_agent": {
+      "workflow_id": "7Ci86PxXipwvYpKv",
+      "backup": "C:/Users/e729958/Downloads/MeIDs-public-app-sanitized-20260806-01/meids-app-public/exports/n8n-live-backups/20260812-api-apply/knowledge-fabric-agent.live-before.json",
+      "payload": "C:/Users/e729958/Downloads/MeIDs-public-app-sanitized-20260806-01/meids-app-public/exports/n8n-live-backups/20260812-api-apply/knowledge-fabric-agent.update-payload.json"
+    },
+    "agentic_butler": {
+      "workflow_id": "KZOqZRUAnVfFEAYJ",
+      "backup": "C:/Users/e729958/Downloads/MeIDs-public-app-sanitized-20260806-01/meids-app-public/exports/n8n-live-backups/20260812-api-apply/agentic-butler.live-before.json",
+      "payload": "C:/Users/e729958/Downloads/MeIDs-public-app-sanitized-20260806-01/meids-app-public/exports/n8n-live-backups/20260812-api-apply/agentic-butler.update-payload.json"
+    }
+  },
+  "probes": {
+    "actor_twin": {
+      "http_status": 200,
+      "agent_id": "actor_twin",
+      "status": "completed",
+      "trace_id": "n8n_exec_16322",
+      "ai_agent_integrated": true,
+      "route_decision_present": true,
+      "contract_stage_present": false,
+      "top_level_approval_present": false
+    },
+    "knowledge_fabric_agent": {
+      "http_status": 200,
+      "agent_id": "knowledge_fabric_agent",
+      "status": "completed",
+      "trace_id": "n8n_exec_16323",
+      "ai_agent_integrated": true,
+      "route_decision_present": false,
+      "contract_stage_present": true,
+      "top_level_approval_present": false
+    },
+    "agentic_butler": {
+      "http_status": 200,
+      "agent_id": "agentic_butler",
+      "status": "approval_required",
+      "trace_id": "n8n_exec_16324",
+      "ai_agent_integrated": true,
+      "route_decision_present": false,
+      "contract_stage_present": true,
+      "top_level_approval_present": true
+    }
+  }
+}
