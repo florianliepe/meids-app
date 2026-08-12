@@ -1,0 +1,46 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-12T09:28:00.000Z",
+  "purpose": "Browser-level UAT evidence for MeIDs Chat against live n8n routes.",
+  "browser_url": "http://127.0.0.1:8601/",
+  "boundary": "Public-safe staging prompts only. No private data, secrets, or files were transmitted.",
+  "known_findings": [
+    "Actor Twin live response can still include contradictory natural-language routing and structured answer_direct routing. Frontend now normalizes obvious handoff indicators, but the durable fix is to return output.route_decision as the single authority from n8n.",
+    "Agentic Butler create-skill route correctly returns approval_required; approval resume still requires hosted backend proxy."
+  ],
+  "cases": [
+    {
+      "case_id": "actor_answer",
+      "query": "Who is Florian in this staging twin? Answer briefly.",
+      "expected_target_agent": "actor_twin",
+      "expected_route_decision": "answer_direct",
+      "actual_target_agent": "actor_twin",
+      "route_decision": "answer_direct",
+      "status": "passed",
+      "response_status": "completed",
+      "status_strip": "n8n connected / completed / actor_twin"
+    },
+    {
+      "case_id": "knowledge_fabric_handoff",
+      "query": "Remember this source note as pending OKF evidence: Client alignment meeting moved to Friday and needs a decision log.",
+      "expected_target_agent": "knowledge_fabric_agent",
+      "expected_route_decision": "ingest_or_stage_knowledge",
+      "actual_target_agent": "knowledge_fabric_agent",
+      "route_decision": "ingest_or_stage_knowledge",
+      "status": "passed",
+      "response_status": "completed",
+      "status_strip": "n8n connected / completed / knowledge_fabric_agent"
+    },
+    {
+      "case_id": "agentic_butler_handoff",
+      "query": "Create a new skill for preparing a weekly executive steering update from email, calendar, and Teams exports.",
+      "expected_target_agent": "agentic_butler",
+      "expected_route_decision": "create_skill",
+      "actual_target_agent": "agentic_butler",
+      "route_decision": "create_skill",
+      "status": "passed",
+      "response_status": "approval_required",
+      "status_strip": "n8n connected / approval_required / agentic_butler"
+    }
+  ]
+}

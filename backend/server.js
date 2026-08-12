@@ -7,6 +7,10 @@ const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = path.resolve(process.env.MEIDS_DATA_DIR || path.join(process.cwd(), ".data"));
 const TRACE_FILE = path.join(DATA_DIR, "agent-traces.jsonl");
 const APPROVAL_FILE = path.join(DATA_DIR, "agent-approvals.json");
+const POSTGRES_SSL = String(process.env.DATABASE_SSL || "").toLowerCase() === "true";
+
+let pgPoolPromise = null;
+let pgSchemaReady = false;
 
 const AGENTS = {
   actor_twin: {
@@ -255,12 +259,171 @@ async function ensureDataDir() {
   await fs.mkdir(DATA_DIR, { recursive: true });
 }
 
+function storageMode() {
+  return String(process.env.MEIDS_STORAGE_MODE || (process.env.DATABASE_URL ? "postgres" : "file")).toLowerCase();
+}
+
+function postgresEnabled() {
+  return storageMode() === "postgres" && Boolean(process.env.DATABASE_URL);
+}
+
+function requirePg() {
+  try {
+    return require("pg");
+  } catch (error) {
+    const next = new Error("Postgres storage requires the optional 'pg' package. Run npm install before using MEIDS_STORAGE_MODE=postgres.");
+    next.statusCode = 503;
+    throw next;
+  }
+}
+
+async function getPgPool() {
+  if (!postgresEnabled()) return null;
+  if (!pgPoolPromise) {
+    const { Pool } = requirePg();
+    pgPoolPromise = Promise.resolve(new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: POSTGRES_SSL ? { rejectUnauthorized: false } : undefined,
+    }));
+  }
+  const pool = await pgPoolPromise;
+  await ensurePostgresSchema(pool);
+  return pool;
+}
+
+async function ensurePostgresSchema(pool) {
+  if (pgSchemaReady) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS agent_trace_chains (
+      trace_chain_id text PRIMARY KEY,
+      actor_trace_id text,
+      target_agent text,
+      route_decision text,
+      status text,
+      record jsonb NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS agent_traces (
+      trace_id text PRIMARY KEY,
+      trace_chain_id text,
+      request_id text,
+      agent_id text,
+      target_agent text,
+      route_decision text,
+      status text,
+      runtime text,
+      approval_required boolean NOT NULL DEFAULT false,
+      record jsonb NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS agent_approval_queue (
+      approval_id text PRIMARY KEY,
+      trace_id text,
+      trace_chain_id text,
+      request_id text,
+      agent_id text,
+      target_agent text,
+      status text,
+      record jsonb NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS agent_run_events (
+      event_id bigserial PRIMARY KEY,
+      trace_id text,
+      trace_chain_id text,
+      agent_id text,
+      event_type text NOT NULL,
+      record jsonb NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
+  pgSchemaReady = true;
+}
+
+async function upsertPostgresTrace(record) {
+  const pool = await getPgPool();
+  const traceId = record.trace_id || makeId("trace");
+  const chainId = record.trace_chain_id || traceId;
+  const payload = { ...record, trace_id: traceId, trace_chain_id: chainId };
+  await pool.query(
+    `INSERT INTO agent_trace_chains
+      (trace_chain_id, actor_trace_id, target_agent, route_decision, status, record, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, now())
+     ON CONFLICT (trace_chain_id)
+     DO UPDATE SET
+       actor_trace_id = EXCLUDED.actor_trace_id,
+       target_agent = EXCLUDED.target_agent,
+       route_decision = EXCLUDED.route_decision,
+       status = EXCLUDED.status,
+       record = EXCLUDED.record,
+       updated_at = now()`,
+    [
+      chainId,
+      payload.actor_trace_id || "",
+      payload.target_agent || payload.agent_id || "",
+      payload.route_decision || "",
+      payload.status || "",
+      JSON.stringify(payload),
+    ],
+  );
+  await pool.query(
+    `INSERT INTO agent_traces
+      (trace_id, trace_chain_id, request_id, agent_id, target_agent, route_decision, status, runtime, approval_required, record)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
+     ON CONFLICT (trace_id)
+     DO UPDATE SET
+       trace_chain_id = EXCLUDED.trace_chain_id,
+       request_id = EXCLUDED.request_id,
+       agent_id = EXCLUDED.agent_id,
+       target_agent = EXCLUDED.target_agent,
+       route_decision = EXCLUDED.route_decision,
+       status = EXCLUDED.status,
+       runtime = EXCLUDED.runtime,
+       approval_required = EXCLUDED.approval_required,
+       record = EXCLUDED.record`,
+    [
+      traceId,
+      chainId,
+      payload.request_id || "",
+      payload.agent_id || "",
+      payload.target_agent || payload.agent_id || "",
+      payload.route_decision || "",
+      payload.status || "",
+      payload.runtime || "",
+      Boolean(payload.approval_required),
+      JSON.stringify(payload),
+    ],
+  );
+  await pool.query(
+    `INSERT INTO agent_run_events (trace_id, trace_chain_id, agent_id, event_type, record)
+     VALUES ($1, $2, $3, $4, $5::jsonb)`,
+    [traceId, chainId, payload.agent_id || "", "trace_stored", JSON.stringify(payload)],
+  );
+}
+
 async function appendTrace(record) {
+  if (postgresEnabled()) {
+    await upsertPostgresTrace(record);
+    return;
+  }
   await ensureDataDir();
   await fs.appendFile(TRACE_FILE, `${JSON.stringify(record)}\n`, "utf8");
 }
 
 async function readTraces(limit = 100) {
+  if (postgresEnabled()) {
+    const pool = await getPgPool();
+    const result = await pool.query(
+      "SELECT record FROM agent_traces ORDER BY created_at DESC LIMIT $1",
+      [Math.max(1, Math.min(Number(limit) || 100, 500))],
+    );
+    return result.rows.map((row) => row.record);
+  }
   try {
     const raw = await fs.readFile(TRACE_FILE, "utf8");
     return raw.split(/\r?\n/)
@@ -274,6 +437,11 @@ async function readTraces(limit = 100) {
 }
 
 async function readApprovals() {
+  if (postgresEnabled()) {
+    const pool = await getPgPool();
+    const result = await pool.query("SELECT record FROM agent_approval_queue ORDER BY updated_at DESC, created_at DESC LIMIT 250");
+    return result.rows.map((row) => row.record);
+  }
   try {
     const raw = await fs.readFile(APPROVAL_FILE, "utf8");
     const parsed = JSON.parse(raw);
@@ -284,6 +452,13 @@ async function readApprovals() {
 }
 
 async function writeApprovals(items) {
+  if (postgresEnabled()) {
+    const pool = await getPgPool();
+    for (const item of items.slice(0, 250)) {
+      await upsertPostgresApproval(item);
+    }
+    return;
+  }
   await ensureDataDir();
   await fs.writeFile(APPROVAL_FILE, JSON.stringify(items.slice(0, 250), null, 2), "utf8");
 }
@@ -339,16 +514,111 @@ function buildApprovalRecord(agentId, envelope, response, traceRecord) {
 
 async function storeApproval(record) {
   if (!record) return;
+  if (postgresEnabled()) {
+    await upsertPostgresApproval(record);
+    return;
+  }
   const approvals = await readApprovals();
   const next = [record, ...approvals.filter((item) => item.approval_id !== record.approval_id && item.trace_id !== record.trace_id)];
   await writeApprovals(next);
 }
 
 async function updateApproval(approvalId, patch) {
+  if (postgresEnabled()) {
+    const approvals = await readApprovals();
+    const current = approvals.find((item) => item.approval_id === approvalId);
+    if (!current) return null;
+    const next = { ...current, ...patch, updated_at: new Date().toISOString() };
+    await upsertPostgresApproval(next);
+    return next;
+  }
   const approvals = await readApprovals();
   const next = approvals.map((item) => item.approval_id === approvalId ? { ...item, ...patch, updated_at: new Date().toISOString() } : item);
   await writeApprovals(next);
   return next.find((item) => item.approval_id === approvalId) || null;
+}
+
+async function upsertPostgresApproval(record) {
+  const pool = await getPgPool();
+  await pool.query(
+    `INSERT INTO agent_approval_queue
+      (approval_id, trace_id, trace_chain_id, request_id, agent_id, target_agent, status, record, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, now())
+     ON CONFLICT (approval_id)
+     DO UPDATE SET
+       trace_id = EXCLUDED.trace_id,
+       trace_chain_id = EXCLUDED.trace_chain_id,
+       request_id = EXCLUDED.request_id,
+       agent_id = EXCLUDED.agent_id,
+       target_agent = EXCLUDED.target_agent,
+       status = EXCLUDED.status,
+       record = EXCLUDED.record,
+       updated_at = now()`,
+    [
+      record.approval_id,
+      record.trace_id || "",
+      record.trace_chain_id || "",
+      record.request_id || "",
+      record.agent_id || "",
+      record.target_agent || "",
+      record.status || "",
+      JSON.stringify(record),
+    ],
+  );
+}
+
+function backendSecretStoreReady() {
+  return ["true", "ready", "enabled"].includes(String(process.env.MEIDS_SECRET_STORE_READY || "").toLowerCase())
+    || Boolean(process.env.AZURE_KEY_VAULT_URI);
+}
+
+function n8nAdminGate() {
+  const missing = [];
+  if (String(process.env.N8N_ADMIN_ENABLED || "").toLowerCase() !== "true") missing.push("N8N_ADMIN_ENABLED=true");
+  if (!backendSecretStoreReady()) missing.push("MEIDS_SECRET_STORE_READY=true or AZURE_KEY_VAULT_URI");
+  if (!process.env.N8N_API_BASE_URL) missing.push("N8N_API_BASE_URL");
+  if (!process.env.N8N_API_KEY) missing.push("N8N_API_KEY");
+  return { ready: missing.length === 0, missing };
+}
+
+async function handleN8nAdminStatus(req, res) {
+  const gate = n8nAdminGate();
+  if (!gate.ready) {
+    jsonResponse(res, 503, {
+      status: "blocked",
+      reason: "n8n admin endpoints are disabled until hosted secret storage and backend-only API credentials are configured.",
+      missing: gate.missing,
+    });
+    return;
+  }
+  const baseUrl = String(process.env.N8N_API_BASE_URL || "").replace(/\/+$/, "");
+  const response = await fetch(`${baseUrl}/api/v1/workflows`, {
+    headers: {
+      Accept: "application/json",
+      "X-N8N-API-KEY": process.env.N8N_API_KEY,
+    },
+  });
+  const raw = await response.text();
+  const data = parseMaybeJson(raw);
+  if (!response.ok) {
+    jsonResponse(res, response.status, {
+      status: "failed",
+      error: data.message || data.error || raw.slice(0, 240) || `n8n API returned ${response.status}`,
+    });
+    return;
+  }
+  const workflows = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
+  jsonResponse(res, 200, {
+    status: "ok",
+    workflow_count: workflows.length,
+    active_count: workflows.filter((workflow) => workflow.active).length,
+    workflows: workflows.slice(0, 100).map((workflow) => ({
+      id: workflow.id,
+      name: workflow.name,
+      active: Boolean(workflow.active),
+      updated_at: workflow.updatedAt || workflow.updated_at || "",
+    })),
+  });
 }
 
 async function proxyToN8n(agentId, envelope) {
@@ -469,14 +739,28 @@ async function routeRequest(req, res) {
   }
   try {
     if (req.method === "GET" && url.pathname === "/api/health") {
+      const adminGate = n8nAdminGate();
       jsonResponse(res, 200, {
         status: "ok",
         runtime: "meids-agent-backend-proxy",
+        storage: {
+          mode: postgresEnabled() ? "postgres" : "file",
+          postgres_configured: Boolean(process.env.DATABASE_URL),
+          data_dir: postgresEnabled() ? "" : DATA_DIR,
+        },
+        n8n_admin: {
+          status: adminGate.ready ? "ready" : "blocked",
+          missing: adminGate.missing,
+        },
         agents: Object.fromEntries(Object.values(AGENTS).map((agent) => [
           agent.id,
           { configured: Boolean(process.env[agent.urlEnv]), url_env: agent.urlEnv },
         ])),
       });
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/admin/n8n/status") {
+      await handleN8nAdminStatus(req, res);
       return;
     }
     if (req.method === "POST" && PATH_TO_AGENT[url.pathname]) {

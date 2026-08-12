@@ -26,10 +26,14 @@ const readme = read("backend/README.md");
   "/api/agents/knowledge-fabric/ingest",
   "/api/agents/agentic-butler/run",
   "/api/agents/approvals",
+  "/api/admin/n8n/status",
   "/resume",
   "N8N_ACTOR_TWIN_WEBHOOK_URL",
   "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
   "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+  "DATABASE_URL",
+  "MEIDS_SECRET_STORE_READY",
+  "N8N_ADMIN_ENABLED",
   "normalizeAgentResponse",
   "buildApprovalRecord",
 ].forEach((needle) => requireText("backend/server.js", backend, needle));
@@ -39,12 +43,14 @@ const readme = read("backend/README.md");
   "trace-chain persistence",
   "Postgres",
   "Azure App Service",
+  "n8n admin",
 ].forEach((needle) => requireText("docs/production/agent-backend-proxy.md", docs, needle));
 
 [
   "Local Run",
   "agentBackendProxyEnabled",
   "Persistence Boundary",
+  "Admin Boundary",
 ].forEach((needle) => requireText("backend/README.md", readme, needle));
 
 try {

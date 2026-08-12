@@ -17,6 +17,7 @@ on:
       - "scripts/validate-n8n-ai-agent-workflows.cjs"
       - "scripts/validate-agent-runtime-handoffs.cjs"
       - "scripts/probe-n8n-browser-runtime-shape.cjs"
+      - "scripts/validate-chat-live-n8n-uat.cjs"
       - "scripts/validate-okf-fixtures.cjs"
       - "scripts/validate-graph-promotions.cjs"
       - "scripts/validate-vector-adapter.cjs"
@@ -60,6 +61,9 @@ jobs:
 
       - name: Validate n8n browser runtime shape artifact
         run: node scripts/probe-n8n-browser-runtime-shape.cjs --check
+
+      - name: Validate Chat live n8n UAT artifact
+        run: node scripts/validate-chat-live-n8n-uat.cjs
 
       - name: Validate OKF contract fixtures
         run: node scripts/validate-okf-fixtures.cjs

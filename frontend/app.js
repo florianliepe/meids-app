@@ -303,7 +303,7 @@ const storageKeys = {
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
-document.addEventListener("DOMContentLoaded", async () => {
+async function bootMeidsApp() {
   applyStoredTheme();
   bindLanding();
   bindNavigation();
@@ -319,6 +319,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindDrawer();
   bindThemeToggle();
   bindKnowledgeFabricQueueActions();
+  exposeLocalAgentRuntimeUatHook();
   $("#backToMainBtn").addEventListener("click", showLanding);
   $("#refreshBtn").addEventListener("click", refreshWorkspace);
   $("#refreshActivityBtn").addEventListener("click", safeRefreshActivity);
@@ -328,7 +329,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   state.knowledgeFabricIngestQueue = readKnowledgeFabricIngestQueue();
   await refreshAll();
   applyInitialRoute();
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootMeidsApp);
+} else {
+  bootMeidsApp();
+}
 
 function bindViewFilters() {
   $$("[data-concept-review]").forEach((button) => {
@@ -16442,9 +16449,53 @@ async function runActorTwinRuntimeInteraction(query, fallbackRoute = null) {
   });
 }
 
+function exposeLocalAgentRuntimeUatHook() {
+  if (!["localhost", "127.0.0.1"].includes(window.location.hostname)) return;
+  window.__MEIDS_AGENT_RUNTIME_UAT__ = {
+    async run(query, options = {}) {
+      if (Array.isArray(options.appliedSkillIds)) {
+        state.appliedChatSkillIds = options.appliedSkillIds.filter(Boolean);
+        state.activeChatSkillId = state.appliedChatSkillIds[0] || N8N_CHAT_MODE;
+        state.activeChatInteractionMode = state.appliedChatSkillIds.length ? "skill_activation" : "actor_twin";
+      }
+      const sourceContext = options.sourceContext || {};
+      if ($("#chatSkillEmail") && sourceContext.email_input !== undefined) $("#chatSkillEmail").value = sourceContext.email_input;
+      if ($("#chatSkillCalendar") && sourceContext.calendar_input !== undefined) $("#chatSkillCalendar").value = sourceContext.calendar_input;
+      if ($("#chatSkillTeams") && sourceContext.teams_input !== undefined) $("#chatSkillTeams").value = sourceContext.teams_input;
+      if ($("#chatSkillKnowledge") && sourceContext.knowledge_context !== undefined) $("#chatSkillKnowledge").value = sourceContext.knowledge_context;
+      renderChatSkillMode();
+      const fallbackRoute = decideActorTwinRoute(query);
+      const result = await runActorTwinRuntimeInteraction(query, fallbackRoute);
+      persistAgentTrace(result);
+      return summarizeAgentRuntimeUatResult(result, fallbackRoute);
+    },
+  };
+}
+
+function summarizeAgentRuntimeUatResult(result = {}, fallbackRoute = {}) {
+  const response = result.response || {};
+  const route = result.route || response.output?.route_decision || fallbackRoute || {};
+  const trace = response.trace || result.trace || {};
+  const traceChain = normalizeTraceChain(trace.trace_chain || result.trace_chain);
+  return {
+    agent_id: response.agent_id || result.agent_id || "",
+    status: response.status || result.status || "",
+    route_decision: route.decision || "",
+    target_agent: route.target_agent || trace.target_agent || response.agent_id || "",
+    approval_required: Boolean(response.approval?.required || route.approval_required),
+    trace_id: trace.trace_id || result.trace_id || "",
+    trace_chain_id: trace.trace_chain_id || result.trace_chain_id || "",
+    trace_chain_steps: traceChain.steps.length,
+    runtime: response.runtime || result.runtime || "",
+    answer_preview: String(response.output?.answer || result.answer || "").slice(0, 240),
+  };
+}
+
 function actorRouteFromRuntime(actorResult = {}, fallbackRoute = null) {
   const output = actorResult.response?.output || {};
+  const textRoute = routeDecisionFromActorText(output.answer || output.text || output.message || "", fallbackRoute);
   const candidates = [
+    textRoute,
     output.route_decision,
     output.route,
     output.routing,
@@ -16467,6 +16518,45 @@ function actorRouteFromRuntime(actorResult = {}, fallbackRoute = null) {
     handoff_payload: route?.handoff_payload || output.handoff_payload || null,
     runtime: actorResult.runtime || fallbackRoute?.runtime || "actor_twin_runtime",
   });
+}
+
+function routeDecisionFromActorText(text = "", fallbackRoute = null) {
+  const normalized = String(text || "").toLowerCase();
+  if (!normalized) return null;
+  const mentionsKnowledgeRoute = normalized.includes("ingest_or_stage_knowledge")
+    || normalized.includes("retrieve_knowledge")
+    || (normalized.includes("knowledge fabric") && (normalized.includes("pending okf") || normalized.includes("staged as pending")));
+  if (mentionsKnowledgeRoute) {
+    const retrieve = normalized.includes("retrieve_knowledge");
+    return {
+      ...(fallbackRoute || {}),
+      decision: retrieve ? "retrieve_knowledge" : "ingest_or_stage_knowledge",
+      target_agent: "knowledge_fabric_agent",
+      intent: retrieve ? "retrieve_context" : "ingest_concept",
+      visible_state: "using_knowledge",
+      approval_required: false,
+      handoff_required: true,
+      reason: "Actor Twin response text indicated Knowledge Fabric handoff; normalized for runtime routing.",
+    };
+  }
+  const mentionsButlerRoute = normalized.includes("target: agentic butler")
+    || normalized.includes("agentic butler")
+    || normalized.includes("create_skill")
+    || normalized.includes("activate_skill");
+  if (mentionsButlerRoute) {
+    const createSkill = normalized.includes("create_skill") || normalized.includes("new skill") || normalized.includes("skill proposal");
+    return {
+      ...(fallbackRoute || {}),
+      decision: createSkill ? "create_skill" : "activate_skill",
+      target_agent: "agentic_butler",
+      intent: createSkill ? "create_skill" : "activate_skill",
+      visible_state: createSkill ? "drafting_new_skill" : "activating_skill",
+      approval_required: createSkill || Boolean(fallbackRoute?.approval_required),
+      handoff_required: true,
+      reason: "Actor Twin response text indicated Agentic Butler handoff; normalized for runtime routing.",
+    };
+  }
+  return null;
 }
 
 function targetAgentForRouteDecision(decision = "") {
