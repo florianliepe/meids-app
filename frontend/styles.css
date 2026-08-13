@@ -11559,6 +11559,27 @@ body.theme-dark .graph-actor-context-status > span {
   margin: 12px 0;
 }
 
+.agent-approval-gate .approval-gate-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.agent-approval-gate .approval-gate-copy strong {
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: var(--surface-2);
+  font-size: 0.76rem;
+}
+
+.agent-approval-gate .button-row.tight {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .agent-approval-gate.acknowledged {
   border-color: color-mix(in srgb, var(--accent) 44%, var(--line));
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));

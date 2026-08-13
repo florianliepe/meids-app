@@ -53,7 +53,7 @@ actorAgent.parameters = {
   promptType: "define",
   text: "=Request envelope:\n{{ JSON.stringify($json.body || $json) }}\n\nReturn ONLY valid JSON with this shape:\n{\n  \"answer\": \"short user-facing answer candidate\",\n  \"route_decision\": {\n    \"decision\": \"answer_direct|retrieve_knowledge|ingest_or_stage_knowledge|activate_skill|create_skill|request_human_clarification\",\n    \"target_agent\": \"actor_twin|knowledge_fabric_agent|agentic_butler|human\",\n    \"intent\": \"answer_question|retrieve_context|ingest_concept|activate_skill|create_skill|clarify\",\n    \"visible_state\": \"answering|using_knowledge|capturing_knowledge|activating_skill|approval_required\",\n    \"approval_required\": false,\n    \"handoff_required\": false,\n    \"reason\": \"why this route was selected\"\n  }\n}",
   options: {
-    systemMessage: "You are the MeIDs Actor Twin. You are the decision authority and orchestrator, not the worker. Interpret the user request, apply persona/risk/OKF context, and choose exactly one route_decision. Use answer_direct only when no downstream agent is needed. Use retrieve_knowledge or ingest_or_stage_knowledge for Knowledge Fabric Agent. Use activate_skill or create_skill for Agentic Butler. Never auto-approve generated skills or risky external actions. Return only valid JSON; no markdown fences.",
+    systemMessage: "You are the MeIDs Actor Twin. You are the decision authority and orchestrator, not the worker. Interpret the user's original request, apply persona/risk/OKF context, and choose exactly one route_decision. identity, purpose, self-description, and ordinary Q&A must be answer_direct unless the user explicitly asks for retrieval or execution. Use retrieve_knowledge or ingest_or_stage_knowledge for Knowledge Fabric Agent. Use activate_skill for normal work artifacts such as email drafts, meeting briefs, daily plans, prioritization, backlog/status updates, and approved skill execution. Use create_skill only when the user explicitly asks to create, design, define, build, or generate a new skill, agent, subagent, or task-agent. Delegation to Knowledge Fabric Agent or Agentic Butler is autonomous and does not require human approval. Human approval is required only before a generated skill, agent, subagent, or task-agent becomes active, or before an external write/send/schedule action is actually executed. Return only valid JSON; no markdown fences.",
   },
 };
 actorAgent.notes = "MeIDs Actor Twin AI Agent. Decides route_decision; direct execution stays delegated to Knowledge Fabric Agent or Agentic Butler.";
@@ -83,30 +83,46 @@ function normalizeDecision(raw, embedded) {
   return {};
 }
 
-function inferDecision(inputValue, embedded) {
-  const query = JSON.stringify(inputValue?.input || inputValue || {}).toLowerCase();
-  const embeddedText = JSON.stringify(embedded || {}).toLowerCase();
-  const combined = \`\${query} \${embeddedText}\`;
-  if (combined.includes('create skill') || combined.includes('new skill')) return 'create_skill';
-  if (combined.includes('activate_skill') || combined.includes('skill') || combined.includes('day plan') || combined.includes('project-management-support')) return 'activate_skill';
-  if (combined.includes('ingest') || combined.includes('upload') || combined.includes('transcript') || combined.includes('capture knowledge')) return 'ingest_or_stage_knowledge';
-  if (combined.includes('retrieve') || combined.includes('knowledge') || combined.includes('context')) return 'retrieve_knowledge';
+function textOfOriginalRequest(inputValue) {
+  return String(inputValue?.input?.query || inputValue?.input?.message || inputValue?.chatInput || inputValue?.message || '').toLowerCase();
+}
+
+function explicitSkillCreationIntent(text) {
+  return /\\b(create|shape|design|generate|build|define)\\b[\\s\\S]{0,64}\\b(new\\s+)?(skill|agent|task-agent|task agent|subagent|sub-agent)\\b/i.test(text)
+    || /\\b(new|additional)\\s+(skill|agent|task-agent|task agent|subagent|sub-agent)\\b/i.test(text)
+    || /\\b(skill|agent|task-agent|task agent|subagent|sub-agent)\\b[\\s\\S]{0,64}\\b(create|shape|design|generate|build|define)\\b/i.test(text);
+}
+
+function workArtifactIntent(text) {
+  return /\\b(write|draft|prepare|compose|create)\\b[\\s\\S]{0,96}\\b(email|mail|message|meeting|agenda|brief|summary|plan|backlog|minutes|memo|status update|client update)\\b/i.test(text)
+    || /\\b(plan my day|prioritized plan|daily plan|meeting prep|prepare for my next meeting)\\b/i.test(text);
+}
+
+function inferDecision(inputValue) {
+  const query = textOfOriginalRequest(inputValue);
+  if (explicitSkillCreationIntent(query)) return 'create_skill';
+  if (workArtifactIntent(query) || query.includes('activate_skill') || query.includes('project-management-support')) return 'activate_skill';
+  if (/\\b(ingest|upload|transcript|capture knowledge|save this|add this to knowledge)\\b/i.test(query)) return 'ingest_or_stage_knowledge';
+  if (/\\b(retrieve|search|knowledge|context|what do we know|find in okf)\\b/i.test(query)) return 'retrieve_knowledge';
   return 'answer_direct';
 }
 
 const embedded = safeJson(ai) || safeJson(aiText) || {};
-const explicit = input.context?.route_decision || normalizeDecision(null, embedded);
-const decision = explicit.decision || inferDecision(input, embedded);
+const actorRoute = normalizeDecision(null, embedded);
+const contextRoute = input.context?.route_decision || {};
+const inferredDecision = inferDecision(input);
+const decision = inferredDecision || actorRoute.decision || contextRoute.decision || 'answer_direct';
 const delegationTarget = embedded.delegation?.target || embedded.delegate?.target_agent || null;
-const targetAgent = explicit.target_agent || delegationTarget || (['retrieve_knowledge','ingest_or_stage_knowledge'].includes(decision) ? 'knowledge_fabric_agent' : ['activate_skill','create_skill'].includes(decision) ? 'agentic_butler' : decision === 'request_human_clarification' ? 'human' : 'actor_twin');
-const intent = explicit.intent || input.intent || (decision === 'activate_skill' ? 'activate_skill' : decision === 'create_skill' ? 'create_skill' : decision === 'ingest_or_stage_knowledge' ? 'ingest_concept' : decision === 'retrieve_knowledge' ? 'retrieve_context' : decision === 'request_human_clarification' ? 'clarify' : 'answer_question');
+const explicit = actorRoute.decision ? actorRoute : contextRoute;
+const targetAgent = delegationTarget || (['retrieve_knowledge','ingest_or_stage_knowledge'].includes(decision) ? 'knowledge_fabric_agent' : ['activate_skill','create_skill'].includes(decision) ? 'agentic_butler' : decision === 'request_human_clarification' ? 'human' : 'actor_twin');
+const intent = decision === 'activate_skill' ? 'activate_skill' : decision === 'create_skill' ? 'create_skill' : decision === 'ingest_or_stage_knowledge' ? 'ingest_concept' : decision === 'retrieve_knowledge' ? 'retrieve_context' : decision === 'request_human_clarification' ? 'clarify' : 'answer_question';
 
 const routeDecision = {
   decision,
   target_agent: targetAgent,
   intent,
   visible_state: explicit.visible_state || (decision === 'answer_direct' ? 'answering' : targetAgent === 'knowledge_fabric_agent' ? (decision === 'retrieve_knowledge' ? 'using_knowledge' : 'capturing_knowledge') : targetAgent === 'agentic_butler' ? 'activating_skill' : 'approval_required'),
-  approval_required: Boolean(explicit.approval_required || decision === 'create_skill' || decision === 'request_human_clarification'),
+  approval_required: Boolean((decision === 'create_skill' && explicitSkillCreationIntent(textOfOriginalRequest(input))) || decision === 'request_human_clarification'),
   handoff_required: Boolean(explicit.handoff_required ?? (targetAgent !== 'actor_twin' && targetAgent !== 'human')),
   reason: explicit.reason || embedded.notes || 'Actor Twin route decision normalized for direct n8n orchestration.'
 };

@@ -271,7 +271,8 @@ const runtimeConfig = window.INTELLECTUAL_TWIN_CONFIG || {};
 const apiBaseUrl = normalizeBaseUrl(runtimeConfig.apiBaseUrl || "");
 const agentBackendBaseUrl = normalizeBaseUrl(runtimeConfig.agentBackendBaseUrl || runtimeConfig.agentApiBaseUrl || "");
 const agentBackendProxyEnabled = Boolean(agentBackendBaseUrl) && runtimeConfig.agentBackendProxyEnabled !== false;
-const staticPagesMode = Boolean(runtimeConfig.staticPagesMode) && !apiBaseUrl;
+const githubPagesHost = /\.github\.io$/i.test(window.location.hostname || "");
+const staticPagesMode = (Boolean(runtimeConfig.staticPagesMode) || githubPagesHost || window.location.protocol === "file:") && !apiBaseUrl;
 const configuredAssetBase = Object.prototype.hasOwnProperty.call(runtimeConfig, "assetBaseUrl")
   ? runtimeConfig.assetBaseUrl
   : window.__MEIDS_ASSET_BASE__ || "/static";
@@ -16971,23 +16972,44 @@ function normalizeAgentContractResponse(agentId, data, envelope, runtime) {
 function shouldRequireHumanApprovalForAgentResult({ agentId = "", response = {}, output = {}, approval = {}, envelope = {}, trace = {} } = {}) {
   const route = output.route_decision || envelope.context?.route_decision || {};
   const decision = route.decision || trace.route_decision || envelope.intent || "";
-  const gate = approval?.gate || "";
-  const query = String(envelope.input?.query || envelope.input?.message || envelope.message || output.query || "");
+  const gate = approval?.gate || output.approval_request?.gate || "";
+  const query = originalAgentUserQuery({ envelope, output, response });
   if (response.status === "failed") return false;
-  return Boolean(
-    isExplicitSkillOrAgentCreationIntent(query, { decision, gate, intent: envelope.intent })
-    || gate === "new_agent_approval"
-  );
+  if (isWorkArtifactDraftIntent(query)) return false;
+  return Boolean(isExplicitSkillOrAgentCreationIntent(query, { decision, gate, intent: envelope.intent }));
+}
+
+function originalAgentUserQuery({ envelope = {}, output = {}, response = {} } = {}) {
+  const delegateInput = output.delegate_result?.input || output.delegate_result?.request?.input || {};
+  const values = [
+    envelope.input?.query,
+    envelope.input?.message,
+    envelope.message,
+    envelope.chatInput,
+    delegateInput.query,
+    delegateInput.message,
+    output.query,
+    response.query,
+  ];
+  return String(values.find((value) => String(value || "").trim()) || "");
+}
+
+function isWorkArtifactDraftIntent(query = "") {
+  const text = String(query || "").toLowerCase();
+  if (!text) return false;
+  return /\b(write|draft|prepare|compose|create)\b[\s\S]{0,80}\b(email|mail|message|meeting|agenda|brief|summary|plan|backlog|minutes|memo|status update|client update)\b/i.test(text)
+    || /\b(plan my day|prioritized plan|daily plan|meeting prep|prepare for my next meeting)\b/i.test(text);
 }
 
 function isExplicitSkillOrAgentCreationIntent(query = "", context = {}) {
-  const text = `${query || ""} ${context.decision || ""} ${context.intent || ""} ${context.gate || ""}`.toLowerCase();
+  const text = String(query || "").toLowerCase();
   if (context.gate === "new_agent_approval") return true;
-  if (context.decision === "create_skill" || context.intent === "create_skill" || context.gate === "skill_spec_approval") {
-    return /\b(create|shape|design|generate|build|define|draft)\s+(a\s+)?(new\s+)?(skill|agent|task-agent|task agent|subagent|sub-agent)\b/i.test(text)
-      || /\b(new|additional)\s+(skill|agent|task-agent|task agent|subagent|sub-agent)\b/i.test(text);
-  }
-  return false;
+  if (isWorkArtifactDraftIntent(text)) return false;
+  const explicitCreation = /\b(create|shape|design|generate|build|define)\b[\s\S]{0,48}\b(new\s+)?(skill|agent|task-agent|task agent|subagent|sub-agent)\b/i.test(text)
+    || /\b(new|additional)\s+(skill|agent|task-agent|task agent|subagent|sub-agent)\b/i.test(text)
+    || /\b(skill|agent|task-agent|task agent|subagent|sub-agent)\b[\s\S]{0,48}\b(create|shape|design|generate|build|define)\b/i.test(text);
+  if (!explicitCreation) return false;
+  return context.decision === "create_skill" || context.intent === "create_skill" || context.gate === "skill_spec_approval" || context.gate === "new_agent_approval";
 }
 
 function normalizeAgentOutput(output = {}) {
@@ -19142,18 +19164,21 @@ function fallbackAgenticButlerSkillCreationResponse(envelope, runtime) {
     approval: {
       required: true,
       gate: "skill_spec_approval",
-      summary: "SkillSpec draft is ready for human review.",
-      proposed_action: "Approve this SkillSpec for decomposition, or revise it.",
+      summary: "Generated skill or agent proposal is ready for human review.",
+      proposed_action: "Approve the proposal to stage SkillSpec decomposition and make the generated capability available through Agentic Butler orchestration.",
     },
     output: {
-      summary: "New skill draft prepared and held for approval.",
+      summary: "Agentic Butler prepared a skill or agent concept proposal for approval.",
       skill_creation: {
-        status: "pending_approval",
-        skill_status: "pending_approval",
+        status: "proposal_pending_approval",
+        skill_status: "proposal_pending_approval",
         auto_approved: false,
         skill_idea: idea,
+        mode_of_action: "Elicit the bounded work behavior, decompose it into task-agent responsibilities, and stage an orchestrated skill package.",
+        value_proposition: "Turns repeated work into a reusable Actor Twin-controlled capability.",
+        usp: "Distinct from ordinary chat because the approved result becomes an orchestratable work behavior with traceable task-agent duties.",
         elicitation_agent: "ready_to_interview",
-        decomposition_agent: "blocked_until_skillspec_approved",
+        decomposition_agent: "blocked_until_proposal_approved",
       },
       next_questions: [
         "When should this skill trigger, and when should it not?",
@@ -23038,13 +23063,60 @@ async function openConceptDrawer(path) {
   $("#conceptDrawer").classList.add("open");
   $("#conceptDrawer").setAttribute("aria-hidden", "false");
   $("#drawerBackdrop").hidden = false;
+  const staticDetail = findStaticConceptDetail(path);
+  if (staticPagesMode && staticDetail) {
+    renderConceptDetail(staticDetail);
+    return;
+  }
   try {
     const detail = await getJson(`/api/concepts/detail?path=${encodeURIComponent(path)}`);
     renderConceptDetail(detail);
   } catch (error) {
+    const fallback = staticDetail || findStaticConceptDetail(path);
+    if (fallback) {
+      renderConceptDetail(fallback);
+      return;
+    }
     $("#drawerTitle").textContent = "Review unavailable";
-    $("#drawerContent").innerHTML = `<p class="empty">Could not load concept: ${escapeHtml(error.message)}</p>`;
+    $("#drawerContent").innerHTML = `<p class="empty">Could not load concept detail in this static session. Use the hosted backend for editable metadata, or review the visible concept card.</p>`;
   }
+}
+
+function findStaticConceptDetail(path = "") {
+  const key = String(path || "").trim();
+  if (!key) return null;
+  const concepts = Array.isArray(state.concepts) && state.concepts.length ? state.concepts : buildStaticPagesConcepts();
+  const concept = concepts.find((item) => item.path === key || item.concept_id === key || item.title === key || item.source_deep_link === key);
+  if (!concept) return null;
+  return {
+    path: concept.path || concept.concept_id || concept.title,
+    metadata: {
+      title: concept.title || concept.path,
+      type: concept.type || "Concept",
+      okf_version: concept.okf_version || "static",
+      review_state: concept.review_state || "pending-review",
+      reviewed_by: concept.reviewed_by || "",
+      reviewed_at: concept.reviewed_at || "",
+      review_note: concept.review_note || concept.description || "",
+      guardrail_status: concept.guardrail_status || "documented",
+      confidence: concept.confidence || concept.score || "",
+      curation_method: concept.curation_method || concept.source || "github-pages-static",
+      cluster: concept.cluster || "",
+      tags: concept.tags || [],
+      fabric: concept.fabric || {},
+    },
+    content: concept.description || concept.summary || "",
+    linked_evidence: [
+      concept.source_anchor || concept.source_deep_link
+        ? {
+            type: "static_source",
+            path: concept.source_deep_link || concept.source_anchor,
+            title: concept.source_anchor || "Static source",
+            review_state: "documented",
+          }
+        : null,
+    ].filter(Boolean),
+  };
 }
 
 function closeConceptDrawer() {
@@ -32905,11 +32977,13 @@ function renderAgentContractChatCard(result = {}) {
       </div>
       ${isApproval ? `
         <div class="approval-card agent-approval-gate" data-approval-summary="${escapeHtml(approval.summary || "")}" data-approval-action="${escapeHtml(approval.proposed_action || "")}" data-trace-id="${escapeHtml(traceKey)}" data-request-id="${escapeHtml(response.request_id || result.request?.request_id || "")}">
-          <strong>${escapeHtml(approval.gate || "human_gate")}</strong>
-          <p>${escapeHtml(approval.summary || "Human approval is required before this action can continue.")}</p>
-          <small>${escapeHtml(approval.proposed_action || "No proposed action supplied.")}</small>
+          <div class="approval-gate-copy">
+            <strong>${escapeHtml(approval.gate || "proposal_approval")}</strong>
+            <p>${escapeHtml(approval.summary || "Human approval is required before a generated skill or agent design becomes active.")}</p>
+            <small>${escapeHtml(approval.proposed_action || "Approve the proposal to stage generation, or revise it in the Skills cockpit.")}</small>
+          </div>
           <div class="button-row tight">
-            <button class="secondary small" type="button" data-chat-action="ack-agent-approval">Acknowledge gate</button>
+            <button class="primary small" type="button" data-chat-action="ack-agent-approval">Approve proposal</button>
             <button class="secondary small" type="button" data-chat-action="copy-agent-approval">Copy approval note</button>
             <button class="secondary small" type="button" data-chat-action="copy-agent-resume" data-trace-id="${escapeHtml(traceKey)}">Copy resume payload</button>
             ${agentBackendProxyEnabled ? `<button class="primary small" type="button" data-chat-action="resume-agent-approval" data-trace-id="${escapeHtml(traceKey)}">Resume via backend</button>` : ""}
@@ -33064,10 +33138,28 @@ function agentResponseRouteMeta(agentId = "", output = {}, isApproval = false, s
 function acknowledgeAgentApproval(button) {
   const card = button.closest(".agent-approval-gate");
   if (!card) return;
+  const approval = {
+    trace_id: card.dataset.traceId || "",
+    request_id: card.dataset.requestId || "",
+    gate: card.querySelector("strong")?.textContent || "skill_spec_approval",
+    summary: card.dataset.approvalSummary || "",
+    proposed_action: card.dataset.approvalAction || "",
+  };
   card.classList.add("acknowledged");
   button.disabled = true;
-  button.textContent = "Acknowledged";
-  showToast("Approval gate acknowledged", "No external action was executed.", "success");
+  button.textContent = "Approved";
+  if (approval.gate === "skill_spec_approval" || approval.gate === "new_agent_approval") {
+    const sourceQuery = approval.proposed_action || approval.summary || "Approved generated skill or agent proposal";
+    const draft = createStaticSkillDraft(sourceQuery, "Approved generated capability");
+    addMessage("assistant", draft.message, {
+      confidence: 82,
+      retrieval_mode: "static approval",
+      sources: [{ path: draft.skill.skill_id, title: "Staged skill proposal", type: "Skill draft", score: 1 }],
+    });
+    showToast("Proposal approved", "A local SkillSpec draft was staged. Hosted persistence will generate the active workflow later.", "success");
+    return;
+  }
+  showToast("Approval acknowledged", "The gate was recorded locally; no external action was executed.", "success");
 }
 
 async function copyAgentApproval(button) {
