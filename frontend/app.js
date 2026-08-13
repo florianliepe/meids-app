@@ -8537,7 +8537,7 @@ function openAgentTraceFromChat(traceId = "") {
   if (traceKey) state.selectedAgentTraceId = traceKey;
   const trace = readComposedAgentTraces().find((item) => [item.trace_id, item.request_id].includes(traceKey));
   if (trace?.agent_id) state.agentTraceFilter = String(trace.agent_id || "").toLowerCase();
-  setView("quality");
+  showView("quality");
   setQualityGroup("production");
   renderAgentTraceHistoryPanel();
   const target = traceKey
@@ -16972,11 +16972,22 @@ function shouldRequireHumanApprovalForAgentResult({ agentId = "", response = {},
   const route = output.route_decision || envelope.context?.route_decision || {};
   const decision = route.decision || trace.route_decision || envelope.intent || "";
   const gate = approval?.gate || "";
+  const query = String(envelope.input?.query || envelope.input?.message || envelope.message || output.query || "");
   if (response.status === "failed") return false;
-  return decision === "create_skill"
-    || envelope.intent === "create_skill"
-    || gate === "skill_spec_approval"
-    || gate === "new_agent_approval";
+  return Boolean(
+    isExplicitSkillOrAgentCreationIntent(query, { decision, gate, intent: envelope.intent })
+    || gate === "new_agent_approval"
+  );
+}
+
+function isExplicitSkillOrAgentCreationIntent(query = "", context = {}) {
+  const text = `${query || ""} ${context.decision || ""} ${context.intent || ""} ${context.gate || ""}`.toLowerCase();
+  if (context.gate === "new_agent_approval") return true;
+  if (context.decision === "create_skill" || context.intent === "create_skill" || context.gate === "skill_spec_approval") {
+    return /\b(create|shape|design|generate|build|define|draft)\s+(a\s+)?(new\s+)?(skill|agent|task-agent|task agent|subagent|sub-agent)\b/i.test(text)
+      || /\b(new|additional)\s+(skill|agent|task-agent|task agent|subagent|sub-agent)\b/i.test(text);
+  }
+  return false;
 }
 
 function normalizeAgentOutput(output = {}) {
@@ -19105,29 +19116,16 @@ function fallbackActorTwinResponse(envelope, runtime) {
 }
 
 function fallbackAgenticButlerResponse(envelope, runtime) {
-  const proposesExternalAction = /send|mail|email|invite|meeting|schedule/i.test(envelope.input?.query || "");
-  if (proposesExternalAction) {
-    return normalizeAgentContractResponse("agentic_butler", {
-      status: "approval_required",
-      approval: {
-        required: true,
-        gate: "requires_human_action",
-        summary: "The skill request may create or send an external action.",
-        proposed_action: "Prepare the output, then pause before sending email or creating meetings.",
-      },
-      trace: { trace_id: `trace_${envelope.request_id}`, used_agents: ["skill_orchestrator", "actor_twin"], stored: false },
-    }, envelope, runtime);
-  }
   return normalizeAgentContractResponse("agentic_butler", {
     status: "completed",
     output: {
-      summary: "Daily plan generated from exported source context.",
+      summary: "Agentic Butler prepared the requested work artifact under Actor Twin steering.",
       todos: [
         {
-          what: "Prepare alignment brief",
-          how: "Summarize source context, open decisions, and stakeholder urgency.",
-          why: "Reduce decision latency and improve meeting quality.",
-          whom: "Client delivery / internal workstream",
+          what: "Prepare the requested draft or plan",
+          how: "Use the prompt, approved skill boundary, and available source context to structure the artifact.",
+          why: "Support the Actor Twin interaction without interrupting for internal agent work.",
+          whom: "Requesting user and relevant stakeholders",
           priority: "high",
         },
       ],
@@ -32812,6 +32810,10 @@ async function speakMessage(node, text) {
     status.className = "voice-status message-meta";
     actions.appendChild(status);
   }
+  if (staticPagesMode && !apiBaseUrl) {
+    status.textContent = "Voice playback requires the hosted voice backend.";
+    return;
+  }
   status.textContent = "Creating voice answer...";
   try {
     const result = await postJson("/api/voice/speak", {
@@ -33075,7 +33077,7 @@ async function copyAgentApproval(button) {
     "Approval required",
     `Summary: ${card.dataset.approvalSummary || "-"}`,
     `Proposed action: ${card.dataset.approvalAction || "-"}`,
-    "Boundary: Human approval required before external writes, sends, or meetings.",
+    "Boundary: Human approval required before a generated skill, task-agent, subagent, or agent version becomes active.",
   ].join("\n");
   try {
     await navigator.clipboard.writeText(note);

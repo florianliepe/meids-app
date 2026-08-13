@@ -50,8 +50,35 @@ requireSource(
 
 requireSource(
   /function shouldRequireHumanApprovalForAgentResult/,
-  "Agent approvals must be governed by explicit skill-creation or external-write criteria.",
+  "Agent approvals must be governed by explicit skill or generated-agent creation criteria.",
 );
+
+requireSource(
+  /function isExplicitSkillOrAgentCreationIntent/,
+  "Frontend must distinguish normal Butler work from new skill or generated-agent creation.",
+);
+
+requireSource(
+  /showView\("quality"\);[\s\S]*setQualityGroup\("production"\);/,
+  "Chat trace navigation must use the available showView helper before opening production trace cockpit.",
+);
+
+if (/setView\("quality"\)/.test(source)) {
+  fail("Chat trace navigation must not call undefined setView on GitHub Pages.");
+}
+
+requireSource(
+  /Voice playback requires the hosted voice backend\./,
+  "Static GitHub Pages must not call backend-only /api/voice/speak for voice playback.",
+);
+
+if (/Boundary: Human approval required before external writes, sends, or meetings\./.test(source)) {
+  fail("Approval note must not use the obsolete external-write boundary.");
+}
+
+if (/const proposesExternalAction = \/send\|mail\|email\|invite\|meeting\|schedule/.test(source)) {
+  fail("Agentic Butler fallback must not approval-gate normal email or meeting draft prompts.");
+}
 
 if (/renderAgentResponseRouteCard\(result\)/.test(source)) {
   fail("Actor Twin chat card must not render internal route diagnostics in the lean chat surface.");
@@ -107,5 +134,8 @@ console.log(JSON.stringify({
     "lean_actor_chat_no_route_diagnostics",
     "n8n_actor_route_precedence",
     "n8n_butler_autonomous_runs",
+    "static_pages_voice_backend_boundary",
+    "chat_trace_navigation_uses_show_view",
+    "butler_email_draft_not_approval_gated",
   ],
 }, null, 2));
