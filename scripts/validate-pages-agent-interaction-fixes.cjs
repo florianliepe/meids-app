@@ -72,6 +72,16 @@ requireSource(
   "Static GitHub Pages must not call backend-only /api/voice/speak for voice playback.",
 );
 
+requireSource(
+  /output\.email_draft[\s\S]*email-draft-artifact/,
+  "Agentic Butler email drafts must render as structured work artifacts, not raw JSON.",
+);
+
+requireSource(
+  /parseEmbeddedJsonObject\(output\.answer/,
+  "Agent response normalizer must unwrap fenced JSON returned as output.answer.",
+);
+
 if (/Boundary: Human approval required before external writes, sends, or meetings\./.test(source)) {
   fail("Approval note must not use the obsolete external-write boundary.");
 }
@@ -137,5 +147,7 @@ console.log(JSON.stringify({
     "static_pages_voice_backend_boundary",
     "chat_trace_navigation_uses_show_view",
     "butler_email_draft_not_approval_gated",
+    "butler_email_draft_renders_as_artifact",
+    "fenced_json_agent_answer_unwrapped",
   ],
 }, null, 2));

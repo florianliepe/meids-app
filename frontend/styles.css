@@ -11433,6 +11433,91 @@ body.theme-dark .graph-actor-context-status > span {
   line-height: 1.45;
 }
 
+.agent-work-artifact {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+}
+
+.agent-work-artifact-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.agent-work-artifact-head strong {
+  color: var(--ink);
+  line-height: 1.25;
+}
+
+.email-draft-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.email-draft-meta span {
+  display: inline-flex;
+  gap: 6px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.email-draft-body {
+  white-space: pre-wrap;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.agent-artifact-trace-summary {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+}
+
+.agent-artifact-trace-summary summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.agent-artifact-trace-summary div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.agent-artifact-trace-summary span {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.agent-artifact-trace-summary ol {
+  margin: 8px 0 0 18px;
+  padding: 0;
+}
+
+.agent-artifact-trace-summary p {
+  margin: 8px 0 0;
+}
+
 .agent-trace-chain.compact {
   border-top: 0;
   padding-top: 0;

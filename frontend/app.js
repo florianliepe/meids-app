@@ -16934,14 +16934,16 @@ function parseMaybeJson(raw) {
 function normalizeAgentContractResponse(agentId, data, envelope, runtime) {
   const response = data?.response || data?.data || data || {};
   const normalizedOutput = normalizeAgentOutput(response.output || data?.output || outputFromN8nData(data));
+  const structuredOutput = normalizeAgentOutput(normalizedOutput.output || normalizedOutput);
   if (response.delegate_result && !normalizedOutput.delegate_result) normalizedOutput.delegate_result = response.delegate_result;
   if (data?.delegate_result && !normalizedOutput.delegate_result) normalizedOutput.delegate_result = data.delegate_result;
-  const normalizedApproval = response.approval || data?.approval || normalizedOutput.approval || null;
-  const normalizedTrace = response.trace || data?.trace || normalizedOutput.trace || { trace_id: response.trace_id || data?.trace_id || envelope.request_id, stored: false };
+  if (normalizedOutput.delegate_result && !structuredOutput.delegate_result) structuredOutput.delegate_result = normalizedOutput.delegate_result;
+  const normalizedApproval = response.approval || data?.approval || structuredOutput.approval || normalizedOutput.approval || null;
+  const normalizedTrace = response.trace || data?.trace || structuredOutput.trace || normalizedOutput.trace || { trace_id: response.trace_id || data?.trace_id || envelope.request_id, stored: false };
   const status = shouldRequireHumanApprovalForAgentResult({
     agentId,
     response,
-    output: normalizedOutput.output || normalizedOutput,
+    output: structuredOutput,
     approval: normalizedApproval,
     envelope,
     trace: normalizedTrace,
@@ -16960,12 +16962,12 @@ function normalizeAgentContractResponse(agentId, data, envelope, runtime) {
       request_id: response.request_id || envelope.request_id,
       agent_id: response.agent_id || agentId,
       status,
-      output: normalizedOutput.output || normalizedOutput,
+      output: structuredOutput,
       approval,
       trace: normalizedTrace,
       error: response.error || data?.error || null,
     },
-    answer: extractAgentAnswer(normalizedOutput.output || normalizedOutput || data, status),
+    answer: extractAgentAnswer(structuredOutput || data, status),
   };
 }
 
@@ -17014,6 +17016,12 @@ function isExplicitSkillOrAgentCreationIntent(query = "", context = {}) {
 
 function normalizeAgentOutput(output = {}) {
   if (!output || typeof output !== "object") return output;
+  if (typeof output.output === "string") {
+    const embeddedOutputEnvelope = parseEmbeddedJsonObject(output.output);
+    if (embeddedOutputEnvelope && typeof embeddedOutputEnvelope === "object") {
+      return normalizeAgentOutput({ ...output, ...embeddedOutputEnvelope, output: embeddedOutputEnvelope.output || embeddedOutputEnvelope });
+    }
+  }
   if (output.answer && typeof output.answer === "object") {
     const answerObject = output.answer.output && typeof output.answer.output === "object" ? output.answer.output : output.answer;
     return {
@@ -17029,8 +17037,9 @@ function normalizeAgentOutput(output = {}) {
   const embeddedOutput = embedded.output && typeof embedded.output === "object" ? embedded.output : embedded;
   return {
     ...output,
+    ...embedded,
     ...embeddedOutput,
-    answer: embeddedOutput.answer || output.answer || output.text || output.message,
+    answer: embeddedOutput.answer || embeddedOutput.summary || embedded.answer || output.text || output.message || output.answer,
     approval: embedded.approval || output.approval,
     trace: embedded.trace || output.trace,
   };
@@ -17041,9 +17050,11 @@ function parseEmbeddedJsonObject(value = "") {
   if (!text) return null;
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = (fenced ? fenced[1] : text).trim();
-  if (!candidate.startsWith("{") || !candidate.endsWith("}")) return null;
+  const firstBrace = candidate.indexOf("{");
+  const lastBrace = candidate.lastIndexOf("}");
+  if (firstBrace < 0 || lastBrace <= firstBrace) return null;
   try {
-    return JSON.parse(candidate);
+    return JSON.parse(candidate.slice(firstBrace, lastBrace + 1));
   } catch {
     return null;
   }
@@ -19096,7 +19107,7 @@ function outputFromN8nData(data) {
   if (data?.json) return outputFromN8nData(data.json);
   if (data?.output) return data.output;
   if (typeof data === "string") return { answer: data };
-  if (data?.answer || data?.text || data?.message) return { answer: data.answer || data.text || data.message };
+  if (data?.answer || data?.text || data?.message) return { ...data, answer: data.answer || data.text || data.message };
   return data && typeof data === "object" ? data : {};
 }
 
@@ -19104,6 +19115,7 @@ function extractAgentAnswer(output, status = "completed") {
   if (status === "approval_required") return "Human approval is required before this action can continue.";
   if (typeof output === "string") return output;
   if (!output || typeof output !== "object") return "Agent completed.";
+  if (output.email_draft?.subject) return `Drafted email: ${output.email_draft.subject}`;
   return output.answer || output.summary || output.concept_path || "Agent completed.";
 }
 
@@ -32970,11 +32982,12 @@ function renderAgentContractChatCard(result = {}) {
     <div class="skill-run-card agent-response-card ${escapeHtml(status)} ${safeGraphClass(agentId)}">
       <div class="skill-run-head">
         <div>
-          <span class="badge">${escapeHtml(isApproval ? "Approval required" : delegated ? `Delegated via ${delegated}` : "Actor Twin")}</span>
+          <span class="badge">${escapeHtml(isApproval ? "Approval required" : delegated ? `Delegated via ${delegated}` : title)}</span>
           <h3>${escapeHtml(title)}</h3>
           <p>${escapeHtml(agentContractResponseText(result))}</p>
         </div>
       </div>
+      ${!isApproval ? renderAgentContractOutput(output) : ""}
       ${isApproval ? `
         <div class="approval-card agent-approval-gate" data-approval-summary="${escapeHtml(approval.summary || "")}" data-approval-action="${escapeHtml(approval.proposed_action || "")}" data-trace-id="${escapeHtml(traceKey)}" data-request-id="${escapeHtml(response.request_id || result.request?.request_id || "")}">
           <div class="approval-gate-copy">
@@ -33274,6 +33287,24 @@ function renderAgentContractOutput(output = {}) {
       </div>
     </section>
   ` : "";
+  if (output.email_draft && typeof output.email_draft === "object") {
+    const draft = output.email_draft;
+    return `
+      <section class="agent-work-artifact email-draft-artifact">
+        <div class="agent-work-artifact-head">
+          <span class="badge">Email draft</span>
+          <strong>${escapeHtml(draft.subject || "Draft email")}</strong>
+        </div>
+        <div class="email-draft-meta">
+          ${draft.to ? `<span><strong>To</strong>${escapeHtml(draft.to)}</span>` : ""}
+          ${draft.cc ? `<span><strong>Cc</strong>${escapeHtml(draft.cc)}</span>` : ""}
+        </div>
+        <pre class="email-draft-body">${escapeHtml(draft.body || "")}</pre>
+      </section>
+      ${renderAgentTraceSummaryOutput(output.trace_summary)}
+      ${delegatePanel}
+    `;
+  }
   if (output.concept_path || output.evidence_path || output.crud_log_path || output.graph_curator_trigger) {
     const artifacts = [
       ["Concept", output.concept_path],
@@ -33325,7 +33356,38 @@ function renderAgentContractOutput(output = {}) {
     `;
   }
   const displayOutput = delegate ? Object.fromEntries(Object.entries(output).filter(([key]) => key !== "delegate_result")) : output;
-  return `${delegatePanel}<pre class="output compact-output">${escapeHtml(JSON.stringify(displayOutput, null, 2))}</pre>`;
+  const publicKeys = ["summary", "answer", "next_suggested_action"].filter((key) => displayOutput[key]);
+  if (publicKeys.length) {
+    return `
+      <section class="agent-work-artifact">
+        ${publicKeys.map((key) => `
+          <div>
+            <span>${escapeHtml(labelizeGraph(key))}</span>
+            <p>${escapeHtml(String(displayOutput[key] || ""))}</p>
+          </div>
+        `).join("")}
+      </section>
+      ${renderAgentTraceSummaryOutput(displayOutput.trace_summary)}
+      ${delegatePanel}
+    `;
+  }
+  return `${delegatePanel}`;
+}
+
+function renderAgentTraceSummaryOutput(traceSummary = null) {
+  if (!traceSummary || typeof traceSummary !== "object") return "";
+  const steps = Array.isArray(traceSummary.steps) ? traceSummary.steps.slice(0, 4) : [];
+  return `
+    <details class="agent-artifact-trace-summary">
+      <summary>Work trace</summary>
+      <div>
+        ${traceSummary.skill_activated ? `<span><strong>Skill</strong>${escapeHtml(traceSummary.skill_activated)}</span>` : ""}
+        ${traceSummary.orchestration_model ? `<span><strong>Model</strong>${escapeHtml(traceSummary.orchestration_model)}</span>` : ""}
+      </div>
+      ${steps.length ? `<ol>${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>` : ""}
+      ${traceSummary.next_suggested_action ? `<p>${escapeHtml(traceSummary.next_suggested_action)}</p>` : ""}
+    </details>
+  `;
 }
 
 function renderSkillRunCard(metadata) {
