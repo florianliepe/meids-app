@@ -110,8 +110,13 @@ function validate() {
       if (delegate.called_by !== "actor_twin") fail(`${route.decision} delegate must set called_by actor_twin`);
     }
     if (route.decision === "activate_skill") {
-      if (item.request.selected_skill_status !== "approved") fail("activate_skill case must reference approved skill");
+      const approvedSkill = item.request.selected_skill_status === "approved";
+      const actorDirected = item.request.actor_directed_work_artifact === true;
+      if (!approvedSkill && !actorDirected) fail("activate_skill case must reference an approved skill or actor-directed work artifact mode");
       if (!item.expected_delegate_envelope?.input?.skill_id) fail("activate_skill delegate missing skill_id");
+      if (actorDirected && item.expected_delegate_envelope.input.skill_id !== "actor-directed-work-artifact") {
+        fail("actor-directed activate_skill delegate must use actor-directed-work-artifact skill_id");
+      }
     }
     if (route.decision === "create_skill") {
       if (route.approval_required !== true) fail("create_skill must require approval");

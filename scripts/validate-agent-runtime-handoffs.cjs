@@ -89,6 +89,13 @@ function validateCase(item) {
   if (route.decision === "activate_skill" && item.target_response.output?.skill_orchestrator !== "internal_component") {
     fail(`${item.case_id} activate_skill must keep skill_orchestrator as internal_component`);
   }
+  if (route.decision === "activate_skill" && item.target_response.status === "approval_required") {
+    fail(`${item.case_id} normal activate_skill handoff must not require approval`);
+  }
+  if (item.case_id === "actor_to_butler_email_draft_no_selected_skill") {
+    if (item.actor_response.output.route_decision.approval_required !== false) fail(`${item.case_id} must be autonomous`);
+    if (!item.target_response.output?.email_draft?.subject) fail(`${item.case_id} must return a structured email_draft`);
+  }
   if (route.decision === "ingest_or_stage_knowledge") {
     const output = item.target_response.output || {};
     if (output.review_state !== "pending_review") fail(`${item.case_id} staged knowledge must be pending_review`);

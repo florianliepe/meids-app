@@ -8,7 +8,7 @@
     "knowledge_fabric_manual_activation": false,
     "agentic_butler_manual_activation": false,
     "skill_orchestrator_boundary": "internal_component_of_agentic_butler",
-    "approval_policy": "never_auto_approve_generated_skills_or_external_actions"
+    "approval_policy": "autonomous_actor_delegation; approval only for generated skill or agent activation and real external irreversible actions"
   },
   "cases": [
     {
@@ -180,6 +180,58 @@
         "trace": {
           "stored": true,
           "trace_id": "trace_runtime_butler_skill",
+          "used_agents": ["agentic_butler", "skill_orchestrator", "actor_twin"]
+        }
+      },
+      "expected": {
+        "target_agent": "agentic_butler",
+        "handoff_required": true,
+        "handoff_status": "completed"
+      }
+    },
+    {
+      "case_id": "actor_to_butler_email_draft_no_selected_skill",
+      "user_query": "Write an email for the dev team to define the next MeIDs features.",
+      "actor_response": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_runtime_actor_email_draft",
+        "agent_id": "actor_twin",
+        "status": "completed",
+        "output": {
+          "answer": "I will ask Agentic Butler to prepare the draft as an Actor-directed work artifact.",
+          "route_decision": {
+            "decision": "activate_skill",
+            "target_agent": "agentic_butler",
+            "intent": "activate_skill",
+            "visible_state": "activating_skill",
+            "approval_required": false,
+            "handoff_required": true,
+            "reason": "Normal drafting is autonomous and does not require a manually selected skill."
+          }
+        },
+        "trace": {
+          "stored": true,
+          "trace_id": "trace_runtime_actor_email_draft",
+          "used_agents": ["actor_twin"]
+        }
+      },
+      "target_response": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_runtime_butler_email_draft",
+        "agent_id": "agentic_butler",
+        "status": "completed",
+        "output": {
+          "summary": "Drafted a planning email.",
+          "skill_orchestrator": "internal_component",
+          "email_draft": {
+            "to": "Dev Team",
+            "subject": "Planning Workshop: Next MeIDs Features",
+            "body": "Hi team,\n\nI would like to align on the next MeIDs feature priorities..."
+          }
+        },
+        "trace": {
+          "stored": true,
+          "trace_id": "trace_runtime_butler_email_draft",
           "used_agents": ["agentic_butler", "skill_orchestrator", "actor_twin"]
         }
       },

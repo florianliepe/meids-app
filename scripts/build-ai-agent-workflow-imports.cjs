@@ -8,12 +8,14 @@ const outDir = path.join(
   "n8n-live-backups",
   "20260812-ai-agent-activation"
 );
+const importReadyDir = path.join(repoRoot, "workflows", "n8n", "import-ready");
 
 const workflows = [
   {
     label: "Knowledge Fabric Agent",
     source: "workflows/n8n/implementations/knowledge-fabric-agent.ai-agent.workflow.json",
     importable: "knowledge-fabric-agent.ai-agent.importable.json",
+    importReady: "knowledge-fabric-agent.ai-agent.import.json",
     wrapped: "knowledge-fabric-agent.ai-agent.wrapped.json",
     requiredNodes: ["Receive request", "Knowledge Fabric AI Agent", "Knowledge Fabric Chat Model", "Contract response normalizer", "Return JSON"],
   },
@@ -21,6 +23,7 @@ const workflows = [
     label: "Agentic Butler",
     source: "workflows/n8n/implementations/agentic-butler.ai-agent.workflow.json",
     importable: "agentic-butler.ai-agent.importable.json",
+    importReady: "agentic-butler.ai-agent.import.json",
     wrapped: "agentic-butler.ai-agent.wrapped.json",
     requiredNodes: ["Receive request", "Agentic Butler AI Agent", "Agentic Butler Chat Model", "Contract response normalizer", "Return JSON"],
   },
@@ -59,6 +62,7 @@ function validateWorkflow(label, workflow, requiredNodes) {
 }
 
 fs.mkdirSync(outDir, { recursive: true });
+fs.mkdirSync(importReadyDir, { recursive: true });
 
 const results = workflows.map((item) => {
   const source = readJson(item.source);
@@ -67,6 +71,7 @@ const results = workflows.map((item) => {
 
   fs.writeFileSync(path.join(outDir, item.importable), JSON.stringify(importable, null, 2) + "\n");
   fs.writeFileSync(path.join(outDir, item.wrapped), JSON.stringify(source, null, 2) + "\n");
+  fs.writeFileSync(path.join(importReadyDir, item.importReady || item.importable), JSON.stringify(importable, null, 2) + "\n");
 
   const model = importable.nodes.find((node) => node.type === "@n8n/n8n-nodes-langchain.lmChatOpenAi");
   return {

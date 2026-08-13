@@ -23,6 +23,10 @@ if (/const executionIntent = approvedSkillAvailable \|\|/.test(source)) {
   fail("Plain Actor Twin questions must not route to Agentic Butler only because an approved skill exists.");
 }
 
+if (/if \(!selected\) throw new Error\("Select one approved skill before activating Agentic Butler\."\)/.test(source)) {
+  fail("Actor Twin must be able to delegate normal work artifacts to Agentic Butler without manual skill selection.");
+}
+
 requireSource(
   /fallbackRoute\?\.decision === "answer_direct"[\s\S]*explicitRouteMarker[\s\S]*if \(!explicitRouteMarker\) return null;/,
   "Actor text route parsing must not treat ordinary answer text as Butler/Knowledge delegation.",
@@ -78,8 +82,8 @@ requireSource(
 );
 
 requireSource(
-  /parseEmbeddedJsonObject\(output\.answer/,
-  "Agent response normalizer must unwrap fenced JSON returned as output.answer.",
+  /const textCarrier = output\.answer \|\| output\.summary \|\| output\.text \|\| output\.message \|\| output\.markdown/,
+  "Agent response normalizer must unwrap fenced JSON returned as output.answer/summary/text/message/markdown.",
 );
 
 if (/Boundary: Human approval required before external writes, sends, or meetings\./.test(source)) {
@@ -125,7 +129,10 @@ for (const workflowFile of workflowFiles) {
     if (!/status: approvalRequired \? 'approval_required' : 'completed'/.test(raw)) {
       fail(`${path.relative(root, workflowFile)} must allow autonomous completed Butler runs.`);
     }
-    if (!/Only return approval_required when creating a new skill/.test(raw) || /external write actions/.test(raw)) {
+    if (workflowFile.includes("ai-agent") && !/cleanParsedOutput/.test(raw)) {
+      fail(`${path.relative(root, workflowFile)} must parse AI JSON text into structured Butler output.`);
+    }
+    if (!/Only return approval_required[\s\S]{0,160}(new skill|skill|agent)/.test(raw) || /external write actions/.test(raw)) {
       fail(`${path.relative(root, workflowFile)} must limit Butler approval to new skill or generated agent activation.`);
     }
   }
@@ -148,6 +155,6 @@ console.log(JSON.stringify({
     "chat_trace_navigation_uses_show_view",
     "butler_email_draft_not_approval_gated",
     "butler_email_draft_renders_as_artifact",
-    "fenced_json_agent_answer_unwrapped",
+    "fenced_json_agent_answer_or_summary_unwrapped",
   ],
 }, null, 2));

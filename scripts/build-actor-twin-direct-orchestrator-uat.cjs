@@ -6,6 +6,7 @@ const currentPath = path.join(root, "workflows", "n8n", "actor-twin.workflow.jso
 const blueprintPath = path.join(root, "workflows", "n8n", "implementations", "actor-twin-direct-orchestrator.workflow.json");
 const outDir = path.join(root, "exports", "n8n-live-backups", "20260812-direct-orchestration");
 const repoOutPath = path.join(root, "workflows", "n8n", "implementations", "actor-twin-direct-orchestrator.uat-live-urls.workflow.json");
+const importReadyPath = path.join(root, "workflows", "n8n", "import-ready", "actor-twin-direct-orchestrator.uat-live-urls.import.json");
 
 const knowledgeUrl = "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/knowledge-fabric/ingest";
 const butlerUrl = "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/agentic-butler/run";
@@ -102,7 +103,7 @@ function inferDecision(inputValue) {
   const query = textOfOriginalRequest(inputValue);
   if (explicitSkillCreationIntent(query)) return 'create_skill';
   if (workArtifactIntent(query) || query.includes('activate_skill') || query.includes('project-management-support')) return 'activate_skill';
-  if (/\\b(ingest|upload|transcript|capture knowledge|save this|add this to knowledge)\\b/i.test(query)) return 'ingest_or_stage_knowledge';
+  if (/\\b(remember|ingest|upload|transcript|capture knowledge|save this|stage this|stage as|pending okf|okf evidence|source note|add this to knowledge)\\b/i.test(query)) return 'ingest_or_stage_knowledge';
   if (/\\b(retrieve|search|knowledge|context|what do we know|find in okf)\\b/i.test(query)) return 'retrieve_knowledge';
   return 'answer_direct';
 }
@@ -151,6 +152,80 @@ return [{ json: {
   route_decision: routeDecision,
   delegate_envelope: delegateEnvelope,
   actor_answer_candidate: embedded.output?.answer || embedded.answer || aiText
+} }];`;
+finalizeResponse.parameters.jsCode = `const current = $json;
+const normalized = current.route_decision ? current : $('Normalize route decision').first().json;
+const delegate = current.agent_id && current.agent_id !== 'actor_twin' ? current : null;
+const route = normalized.route_decision || { decision: 'answer_direct', target_agent: 'actor_twin', intent: 'answer_question', approval_required: false, handoff_required: false };
+
+function safeJson(value) {
+  if (value && typeof value === 'object') return value;
+  const text = String(value || '').trim();
+  if (!text) return null;
+  const fenced = text.match(/\`\`\`(?:json)?\\s*([\\s\\S]*?)\`\`\`/i);
+  const candidate = (fenced ? fenced[1] : text).trim();
+  const firstBrace = candidate.indexOf('{');
+  const lastBrace = candidate.lastIndexOf('}');
+  if (firstBrace < 0 || lastBrace <= firstBrace) return null;
+  try { return JSON.parse(candidate.slice(firstBrace, lastBrace + 1)); } catch { return null; }
+}
+
+function normalizeOutput(value) {
+  if (!value) return {};
+  if (typeof value === 'string') {
+    const parsed = safeJson(value);
+    return parsed ? normalizeOutput(parsed.output || parsed) : { summary: value };
+  }
+  if (typeof value !== 'object') return { summary: String(value) };
+  const carriers = [value.output, value.answer, value.summary, value.text, value.message, value.markdown];
+  for (const carrier of carriers) {
+    if (typeof carrier === 'string') {
+      const parsed = safeJson(carrier);
+      if (parsed) return { ...value, ...parsed, ...(parsed.output && typeof parsed.output === 'object' ? parsed.output : {}) };
+    }
+  }
+  if (value.output && typeof value.output === 'object') return { ...value, ...value.output };
+  return value;
+}
+
+function outputAnswer(output) {
+  if (output.email_draft?.subject) return output.summary || 'Drafted email: ' + output.email_draft.subject;
+  if (output.todo_table?.length || output.todos?.length) return output.summary || 'Prepared the requested plan.';
+  if (output.concept_path || output.evidence_path) return output.summary || 'Knowledge Fabric staged the requested knowledge artifact.';
+  return output.answer || output.summary || output.markdown || output.text || '';
+}
+
+const delegateOutput = normalizeOutput(delegate?.output || delegate?.answer || delegate?.summary || null);
+const delegateApproval = delegate?.approval || delegateOutput.approval || {};
+const skillActivationApproval = route.decision === 'create_skill' || delegateApproval.gate === 'skill_spec_approval' || delegateApproval.gate === 'new_agent_approval';
+const approvalRequired = Boolean(skillActivationApproval);
+const finalRoute = { ...route, approval_required: approvalRequired };
+const publicAnswer = delegate ? outputAnswer(delegateOutput) : (normalized.actor_answer_candidate || 'Actor Twin completed orchestration.');
+return [{ json: {
+  envelope_version: normalized.input?.envelope_version || '0.1.0',
+  request_id: normalized.request_id,
+  agent_id: 'actor_twin',
+  status: approvalRequired ? 'approval_required' : 'completed',
+  output: {
+    answer: publicAnswer || 'Agent completed.',
+    route_decision: finalRoute,
+    delegate_result: delegate ? { ...delegate, output: delegateOutput } : null,
+    ...delegateOutput,
+    confidence: delegateOutput.confidence || 0.78,
+    citations: delegateOutput.citations || [],
+    actor_review: delegate ? 'Actor Twin delegated autonomous worker execution, then shaped the final response boundary.' : 'Actor Twin answered directly.'
+  },
+  approval: approvalRequired ? (delegateApproval.required ? delegateApproval : { required: true, gate: finalRoute.intent, summary: finalRoute.reason, proposed_action: 'Human review required before generated capability activation.' }) : { required: false },
+  trace: {
+    stored: true,
+    trace_id: 'n8n_actor_orchestration_' + Date.now(),
+    orchestration_model: 'uat_n8n_direct',
+    used_agents: ['actor_twin'].concat(finalRoute.target_agent && !['actor_twin','human'].includes(finalRoute.target_agent) ? [finalRoute.target_agent] : []),
+    route_decision: finalRoute.decision,
+    target_agent: finalRoute.target_agent,
+    delegate_trace_id: delegate?.trace?.trace_id || '',
+    handoff_status: delegate ? (approvalRequired ? 'approval_required' : 'delegated_autonomous') : 'not_required'
+  }
 } }];`;
 callKnowledge.parameters.url = knowledgeUrl;
 callKnowledge.notes = "UAT direct call to published Knowledge Fabric Agent. Replace with env var or backend proxy for production hardening.";
@@ -203,13 +278,16 @@ const wrapped = {
 };
 
 fs.mkdirSync(outDir, { recursive: true });
+fs.mkdirSync(path.dirname(importReadyPath), { recursive: true });
 fs.writeFileSync(path.join(outDir, "actor-twin.direct-orchestrator.importable.json"), JSON.stringify(workflow, null, 2));
 fs.writeFileSync(path.join(outDir, "actor-twin.direct-orchestrator.wrapped.json"), JSON.stringify(wrapped, null, 2));
 fs.writeFileSync(repoOutPath, JSON.stringify(wrapped, null, 2));
+fs.writeFileSync(importReadyPath, JSON.stringify(workflow, null, 2) + "\n");
 
 console.log(JSON.stringify({
   status: "created",
   importable: path.join(outDir, "actor-twin.direct-orchestrator.importable.json"),
+  import_ready: importReadyPath,
   wrapped: path.join(outDir, "actor-twin.direct-orchestrator.wrapped.json"),
   repo_blueprint: repoOutPath,
 }, null, 2));

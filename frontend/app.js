@@ -16448,17 +16448,22 @@ async function routeActorTwinFromChat(query, route = null) {
 
 async function routeAgenticButlerFromChat(query, route = null, chainContext = {}) {
   const selected = selectedApprovedChatSkill();
-  if (!selected) throw new Error("Select one approved skill before activating Agentic Butler.");
-  if (selected.status !== "approved") throw new Error("Agentic Butler can only activate approved skills.");
+  if (selected && selected.status !== "approved") throw new Error("Agentic Butler can only activate approved skills.");
+  const skillContext = selected || {
+    skill_id: "actor-directed-work-artifact",
+    name: "Actor-directed work artifact",
+    status: "approved",
+  };
   const sourceContext = chatSourceContext();
   const envelope = buildAgentContractEnvelope(
     "agentic_butler",
     "activate_skill",
     query,
     {
-      skill_id: selected.skill_id,
-      skill_name: selected.name,
+      skill_id: skillContext.skill_id,
+      skill_name: skillContext.name,
       manual_trigger: false,
+      actor_directed_work_artifact: !selected,
       email_export: sourceContext.email_input,
       calendar_export: sourceContext.calendar_input,
       teams_export: sourceContext.teams_input,
@@ -16469,7 +16474,8 @@ async function routeAgenticButlerFromChat(query, route = null, chainContext = {}
       ...chainContext,
       actor_checkpoint_policy: "consult_actor_twin_before_prioritization_and_before_human_gates",
       skill_orchestrator: "internal_component",
-      allowed_outputs: ["daily_plan", "todo_table", "approval_queue"],
+      approval_policy: "autonomous_for_work_artifacts_gate_only_new_skill_or_real_external_write",
+      allowed_outputs: ["email_draft", "meeting_brief", "daily_plan", "todo_table", "backlog_plan", "approval_queue"],
     },
   );
   return postAgentContractEnvelope("agentic_butler", envelope, fallbackAgenticButlerResponse);
@@ -17015,6 +17021,11 @@ function isExplicitSkillOrAgentCreationIntent(query = "", context = {}) {
 }
 
 function normalizeAgentOutput(output = {}) {
+  if (typeof output === "string") {
+    const embeddedString = parseEmbeddedJsonObject(output);
+    if (embeddedString && typeof embeddedString === "object") return normalizeAgentOutput(embeddedString.output || embeddedString);
+    return { summary: output };
+  }
   if (!output || typeof output !== "object") return output;
   if (typeof output.output === "string") {
     const embeddedOutputEnvelope = parseEmbeddedJsonObject(output.output);
@@ -17032,14 +17043,16 @@ function normalizeAgentOutput(output = {}) {
       trace: output.answer.trace || output.trace,
     };
   }
-  const embedded = parseEmbeddedJsonObject(output.answer || output.text || output.message || "");
+  const textCarrier = output.answer || output.summary || output.text || output.message || output.markdown || "";
+  const embedded = parseEmbeddedJsonObject(textCarrier);
   if (!embedded || typeof embedded !== "object") return output;
   const embeddedOutput = embedded.output && typeof embedded.output === "object" ? embedded.output : embedded;
   return {
     ...output,
     ...embedded,
     ...embeddedOutput,
-    answer: embeddedOutput.answer || embeddedOutput.summary || embedded.answer || output.text || output.message || output.answer,
+    answer: embeddedOutput.answer || embeddedOutput.summary || embedded.answer || output.answer || output.text || output.message,
+    summary: embeddedOutput.summary || embedded.summary || output.summary,
     approval: embedded.approval || output.approval,
     trace: embedded.trace || output.trace,
   };
@@ -19113,9 +19126,11 @@ function outputFromN8nData(data) {
 
 function extractAgentAnswer(output, status = "completed") {
   if (status === "approval_required") return "Human approval is required before this action can continue.";
+  output = normalizeAgentOutput(output);
   if (typeof output === "string") return output;
   if (!output || typeof output !== "object") return "Agent completed.";
   if (output.email_draft?.subject) return `Drafted email: ${output.email_draft.subject}`;
+  if (output.delegate_result?.output) return extractAgentAnswer(output.delegate_result.output, output.delegate_result.status || status);
   return output.answer || output.summary || output.concept_path || "Agent completed.";
 }
 
@@ -23078,6 +23093,11 @@ async function openConceptDrawer(path) {
   const staticDetail = findStaticConceptDetail(path);
   if (staticPagesMode && staticDetail) {
     renderConceptDetail(staticDetail);
+    return;
+  }
+  if (staticPagesMode) {
+    $("#drawerTitle").textContent = "Review unavailable";
+    $("#drawerContent").innerHTML = `<p class="empty">Concept detail requires the hosted backend or a static concept detail snapshot. The visible card remains available for review context.</p>`;
     return;
   }
   try {
@@ -32894,7 +32914,15 @@ async function speakMessage(node, text) {
     status.className = "voice-status message-meta";
     actions.appendChild(status);
   }
-  if (staticPagesMode && !apiBaseUrl) {
+  const apiUrlIsPagesHost = (() => {
+    if (!apiBaseUrl) return false;
+    try {
+      return /github\.io$/i.test(new URL(apiBaseUrl, window.location.href).hostname);
+    } catch {
+      return false;
+    }
+  })();
+  if (staticPagesMode || githubPagesHost || apiUrlIsPagesHost) {
     status.textContent = "Voice playback requires the hosted voice backend.";
     return;
   }

@@ -134,11 +134,11 @@
     },
     {
       "case_id": "route_activate_skill",
-      "description": "Work-execution request matching an approved skill; Actor Twin delegates execution to Agentic Butler.",
+      "description": "Work-execution request; Actor Twin delegates execution to Agentic Butler. A manually selected skill is optional for normal Actor-directed work artifacts.",
       "request": {
-        "query": "Plan my day from the exported email and calendar context.",
-        "selected_approved_skill_ids": ["project-management-support-steering"],
-        "selected_skill_status": "approved",
+        "query": "Write an email for the dev team to define the next MeIDs features.",
+        "selected_approved_skill_ids": [],
+        "actor_directed_work_artifact": true,
         "source_context_present": true,
         "approved_knowledge_available": true,
         "risk_posture": "balanced"
@@ -149,7 +149,7 @@
         "intent": "activate_skill",
         "visible_state": "activating_skill",
         "approval_required": false,
-        "reason": "An approved skill can run for planning outputs; external actions still require a gate."
+        "reason": "Normal drafting and planning artifacts can run autonomously under Actor Twin steering."
       },
       "expected_delegate_envelope": {
         "agent_id": "agentic_butler",
@@ -157,12 +157,14 @@
         "call_method": "n8n_direct",
         "called_by": "actor_twin",
         "input": {
-          "skill_id": "project-management-support-steering",
+          "skill_id": "actor-directed-work-artifact",
+          "actor_directed_work_artifact": true,
           "manual_trigger": false
         },
         "context": {
           "skill_orchestrator": "internal_component",
-          "actor_checkpoint_policy": "consult_actor_twin_before_prioritization_and_before_human_gates"
+          "actor_checkpoint_policy": "consult_actor_twin_before_prioritization_and_before_human_gates",
+          "approval_policy": "autonomous_for_work_artifacts_gate_only_new_skill_or_real_external_write"
         }
       }
     },
