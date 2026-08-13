@@ -43,6 +43,54 @@ requireSource(
   "Trace review must support static/local trace lookup on GitHub Pages.",
 );
 
+requireSource(
+  /function reconcileActorRouteFromAnswer/,
+  "Actor Twin must reconcile known n8n route-mismatch responses back to answer_direct.",
+);
+
+requireSource(
+  /function shouldRequireHumanApprovalForAgentResult/,
+  "Agent approvals must be governed by explicit skill-creation or external-write criteria.",
+);
+
+if (/renderAgentResponseRouteCard\(result\)/.test(source)) {
+  fail("Actor Twin chat card must not render internal route diagnostics in the lean chat surface.");
+}
+
+const workflowFiles = [
+  path.join(root, "workflows", "n8n", "implementations", "actor-twin-direct-orchestrator.uat-live-urls.workflow.json"),
+  path.join(root, "workflows", "n8n", "implementations", "actor-twin-direct-orchestrator.workflow.json"),
+  path.join(root, "workflows", "n8n", "agentic-butler.workflow.json"),
+  path.join(root, "workflows", "n8n", "implementations", "agentic-butler.ai-agent.workflow.json"),
+];
+
+for (const workflowFile of workflowFiles) {
+  if (!fs.existsSync(workflowFile)) continue;
+  const raw = fs.readFileSync(workflowFile, "utf8");
+  if (workflowFile.includes("actor-twin-direct-orchestrator")) {
+    if (!/const actorRoute = normalizeDecision/.test(raw)) {
+      fail(`${path.relative(root, workflowFile)} must normalize Actor Twin AI route before context fallback.`);
+    }
+    if (/const explicit = input\.context\?\.route_decision \|\| normalizeDecision/.test(raw)) {
+      fail(`${path.relative(root, workflowFile)} must not let context route override Actor Twin AI route.`);
+    }
+    if (!/identity, purpose, self-description/.test(raw)) {
+      fail(`${path.relative(root, workflowFile)} must instruct identity/purpose questions to answer directly.`);
+    }
+    if (/delegate\?\.status === 'approval_required'/.test(raw)) {
+      fail(`${path.relative(root, workflowFile)} must not treat every delegated approval_required status as final approval.`);
+    }
+  }
+  if (workflowFile.includes("agentic-butler")) {
+    if (!/status: approvalRequired \? 'approval_required' : 'completed'/.test(raw)) {
+      fail(`${path.relative(root, workflowFile)} must allow autonomous completed Butler runs.`);
+    }
+    if (!/Only return approval_required when creating a new skill/.test(raw)) {
+      fail(`${path.relative(root, workflowFile)} must define the limited Butler approval boundary.`);
+    }
+  }
+}
+
 console.log(JSON.stringify({
   status: process.exitCode ? "failed" : "passed",
   checks: [
@@ -51,5 +99,10 @@ console.log(JSON.stringify({
     "actor_delegate_result_not_double_called",
     "static_skill_elicitation_fallback",
     "static_trace_detail_fallback",
+    "actor_route_mismatch_reconciliation",
+    "approval_governance_boundary",
+    "lean_actor_chat_no_route_diagnostics",
+    "n8n_actor_route_precedence",
+    "n8n_butler_autonomous_runs",
   ],
 }, null, 2));

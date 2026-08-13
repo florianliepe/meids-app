@@ -16254,12 +16254,13 @@ function decideActorTwinRoute(query) {
   const sourcePresent = Object.values(sourceContext).some((value) => String(value || "").trim());
   const selectedApprovedSkill = selectedApprovedChatSkill();
   const approvedSkillAvailable = Boolean(selectedApprovedSkill);
+  const identityIntent = /\b(who are you|what are you|what is your purpose|what's your purpose|describe yourself|introduce yourself)\b/i.test(query);
   const createSkillIntent = /\b(create|build|define|design|shape|draft|new)\b.*\b(skill|capability|agent)\b|\bteach\b.*\bskill\b|\bmissing skill\b/i.test(query);
-  const ingestIntent = sourcePresent || /\b(remember|save|ingest|stage|upload|transcript|source|capture|add this|store this)\b/i.test(query);
-  const retrieveIntent = /\b(find|retrieve|search|evidence|source|context|what do i know|approved|knowledge|graph|citation)\b/i.test(query);
+  const ingestIntent = !identityIntent && (sourcePresent || /\b(remember|save|ingest|stage|upload|transcript|capture|add this|store this)\b/i.test(query));
+  const retrieveIntent = !identityIntent && /\b(find|retrieve|search|evidence|source document|source file|what do i know|approved knowledge|knowledge graph|citation)\b/i.test(query);
   const executionIntent = /\b(plan my day|prepare|draft|summari[sz]e for|activate skill|use skill|run skill|brief|todo|to-do|workstream|meeting)\b/i.test(query);
   const riskyExternalAction = /\b(send|email|mail|invite|schedule|book|publish|commit|approve|delete)\b/i.test(query);
-  const ambiguous = normalized.length < 8 || /\b(do the thing|handle it|make it happen)\b/i.test(query);
+  const ambiguous = !identityIntent && (normalized.length < 8 || /\b(do the thing|handle it|make it happen)\b/i.test(query));
   const base = {
     query,
     source_context_present: sourcePresent,
@@ -16689,19 +16690,44 @@ function actorRouteFromRuntime(actorResult = {}, fallbackRoute = null) {
   const route = candidates.find((item) => item && typeof item === "object") || null;
   const decision = route?.decision || route?.route_decision || route?.intent_decision || fallbackRoute?.decision || "answer_direct";
   const target = route?.target_agent || route?.targetAgent || output.target_agent || fallbackRoute?.target_agent || targetAgentForRouteDecision(decision);
+  const reconciled = reconcileActorRouteFromAnswer(output.answer || output.text || output.message || "", { ...(fallbackRoute || {}), ...(route || {}), decision, target_agent: target });
   return actorRoute({
     ...(fallbackRoute || {}),
     ...(route || {}),
-    decision,
-    target_agent: target,
-    intent: route?.intent || fallbackRoute?.intent || intentForRouteDecision(decision),
-    visible_state: route?.visible_state || fallbackRoute?.visible_state || visibleStateForRouteDecision(decision),
-    approval_required: Boolean(route?.approval_required ?? fallbackRoute?.approval_required ?? decision === "create_skill"),
-    reason: route?.reason || fallbackRoute?.reason || "Actor Twin runtime route decision.",
-    handoff_required: Boolean(route?.handoff_required ?? !["answer_direct", "request_human_clarification"].includes(decision)),
+    ...(reconciled || {}),
+    decision: reconciled?.decision || decision,
+    target_agent: reconciled?.target_agent || target,
+    intent: reconciled?.intent || route?.intent || fallbackRoute?.intent || intentForRouteDecision(decision),
+    visible_state: reconciled?.visible_state || route?.visible_state || fallbackRoute?.visible_state || visibleStateForRouteDecision(decision),
+    approval_required: Boolean(reconciled?.approval_required ?? route?.approval_required ?? fallbackRoute?.approval_required ?? decision === "create_skill"),
+    reason: reconciled?.reason || route?.reason || fallbackRoute?.reason || "Actor Twin runtime route decision.",
+    handoff_required: Boolean(reconciled?.handoff_required ?? route?.handoff_required ?? !["answer_direct", "request_human_clarification"].includes(decision)),
     handoff_payload: route?.handoff_payload || output.handoff_payload || null,
     runtime: actorResult.runtime || fallbackRoute?.runtime || "actor_twin_runtime",
   });
+}
+
+function reconcileActorRouteFromAnswer(text = "", route = {}) {
+  const normalized = String(text || "").toLowerCase();
+  if (!normalized || route.decision === "answer_direct") return null;
+  const explicitAnswerDirect = normalized.includes("route mismatch")
+    && normalized.includes("answer_direct")
+    && (
+      normalized.includes("do not activate")
+      || normalized.includes("no skill activation")
+      || normalized.includes("no skill activation warranted")
+      || normalized.includes("return control to actor twin")
+    );
+  if (!explicitAnswerDirect) return null;
+  return {
+    decision: "answer_direct",
+    target_agent: "actor_twin",
+    intent: "answer_question",
+    visible_state: "answering",
+    approval_required: false,
+    handoff_required: false,
+    reason: "Reconciled from Actor Twin/Butler route-mismatch output: direct answer is authoritative for this request.",
+  };
 }
 
 function routeDecisionFromActorText(text = "", fallbackRoute = null) {
@@ -16735,7 +16761,8 @@ function routeDecisionFromActorText(text = "", fallbackRoute = null) {
     };
   }
   const mentionsButlerRoute = normalized.includes("target: agentic butler")
-    || normalized.includes("agentic butler")
+    || normalized.includes("target_agent\":\"agentic_butler")
+    || normalized.includes("target_agent: agentic_butler")
     || normalized.includes("create_skill")
     || normalized.includes("activate_skill");
   if (mentionsButlerRoute) {
@@ -16907,12 +16934,22 @@ function parseMaybeJson(raw) {
 
 function normalizeAgentContractResponse(agentId, data, envelope, runtime) {
   const response = data?.response || data?.data || data || {};
-  const status = response.status || data?.status || "completed";
   const normalizedOutput = normalizeAgentOutput(response.output || data?.output || outputFromN8nData(data));
   if (response.delegate_result && !normalizedOutput.delegate_result) normalizedOutput.delegate_result = response.delegate_result;
   if (data?.delegate_result && !normalizedOutput.delegate_result) normalizedOutput.delegate_result = data.delegate_result;
   const normalizedApproval = response.approval || data?.approval || normalizedOutput.approval || null;
   const normalizedTrace = response.trace || data?.trace || normalizedOutput.trace || { trace_id: response.trace_id || data?.trace_id || envelope.request_id, stored: false };
+  const status = shouldRequireHumanApprovalForAgentResult({
+    agentId,
+    response,
+    output: normalizedOutput.output || normalizedOutput,
+    approval: normalizedApproval,
+    envelope,
+    trace: normalizedTrace,
+  })
+    ? "approval_required"
+    : (response.status === "failed" || data?.status === "failed" ? "failed" : "completed");
+  const approval = status === "approval_required" ? normalizedApproval : { required: false };
   return {
     agent_id: agentId,
     agent_name: agentDisplayName(agentId),
@@ -16925,12 +16962,27 @@ function normalizeAgentContractResponse(agentId, data, envelope, runtime) {
       agent_id: response.agent_id || agentId,
       status,
       output: normalizedOutput.output || normalizedOutput,
-      approval: normalizedApproval,
+      approval,
       trace: normalizedTrace,
       error: response.error || data?.error || null,
     },
     answer: extractAgentAnswer(normalizedOutput.output || normalizedOutput || data, status),
   };
+}
+
+function shouldRequireHumanApprovalForAgentResult({ agentId = "", response = {}, output = {}, approval = {}, envelope = {}, trace = {} } = {}) {
+  const route = output.route_decision || envelope.context?.route_decision || {};
+  const decision = route.decision || trace.route_decision || envelope.intent || "";
+  const gate = approval?.gate || "";
+  const proposed = `${approval?.summary || ""} ${approval?.proposed_action || ""} ${JSON.stringify(output || {})}`.toLowerCase();
+  if (response.status === "failed") return false;
+  if (decision === "request_human_clarification") return true;
+  if (decision === "create_skill" || envelope.intent === "create_skill" || gate === "skill_spec_approval") return true;
+  if (agentId === "agentic_butler" || response.agent_id === "agentic_butler") {
+    return /\b(send|sending|email|mail|invite|meeting|calendar|schedule|publish|commit|delete|external write|creates a new skill|create a new skill|new skill version)\b/i.test(proposed)
+      && !/\b(no external action|not required|internal only|do not activate any skill)\b/i.test(proposed);
+  }
+  return Boolean(approval?.required && (gate === "requires_human_action" || gate === "human_approval"));
 }
 
 function normalizeAgentOutput(output = {}) {
@@ -16974,6 +17026,14 @@ function persistAgentTrace(result = {}) {
   const response = result.response || {};
   const trace = response.trace || {};
   const normalizedChain = normalizeTraceChain(trace.trace_chain || result.runtime_chain?.trace_chain || result.request?.context?.trace_chain);
+  const approvalRequired = shouldRequireHumanApprovalForAgentResult({
+    agentId: result.agent_id || response.agent_id || "",
+    response,
+    output: response.output || {},
+    approval: response.approval || {},
+    envelope: result.request || {},
+    trace,
+  });
   const entry = {
     timestamp: new Date().toISOString(),
     twin: state.activeTwin || "",
@@ -16990,7 +17050,7 @@ function persistAgentTrace(result = {}) {
     target_agent: trace.target_agent || result.runtime_chain?.target_agent || "",
     route_decision: trace.route_decision || result.runtime_chain?.route_decision || "",
     handoff_status: trace.handoff_status || result.runtime_chain?.handoff_status || "",
-    approval_required: response.status === "approval_required" || Boolean(response.approval?.required),
+    approval_required: approvalRequired,
   };
   persistAgentApprovalRequest(result, entry);
   try {
@@ -29722,8 +29782,15 @@ function writeAgentApprovalQueue(items = []) {
 function persistAgentApprovalRequest(result = {}, traceEntry = {}) {
   const response = result.response || {};
   const approval = response.approval || {};
-  if (response.status !== "approval_required" && approval.required !== true) return;
   const trace = response.trace || {};
+  if (!shouldRequireHumanApprovalForAgentResult({
+    agentId: result.agent_id || response.agent_id || "",
+    response,
+    output: response.output || {},
+    approval,
+    envelope: result.request || {},
+    trace,
+  })) return;
   const normalizedChain = normalizeTraceChain(trace.trace_chain || result.runtime_chain?.trace_chain || result.request?.context?.trace_chain);
   const requestId = response.request_id || result.request?.request_id || traceEntry.request_id || "";
   const traceId = trace.trace_id || result.trace_id || traceEntry.trace_id || requestId;
@@ -32797,24 +32864,27 @@ function renderAgentContractChatCard(result = {}) {
   const approval = response.approval || {};
   const trace = response.trace || {};
   const status = response.status || result.status || "completed";
-  const isApproval = status === "approval_required";
+  const isApproval = shouldRequireHumanApprovalForAgentResult({
+    agentId: result.agent_id || response.agent_id || "",
+    response,
+    output,
+    approval,
+    envelope: result.request || {},
+    trace,
+  });
   const agentId = response.agent_id || result.agent_id || "";
   const title = result.agent_name || agentDisplayName(agentId) || "Agent";
   const traceKey = trace.trace_id || result.trace_id || response.request_id || result.request?.request_id || "";
+  const delegated = output.delegate_result?.agent_id ? agentDisplayName(output.delegate_result.agent_id) : "";
   return `
     <div class="skill-run-card agent-response-card ${escapeHtml(status)} ${safeGraphClass(agentId)}">
       <div class="skill-run-head">
         <div>
-          <span class="badge">${escapeHtml(isApproval ? "Approval required" : "Agent response")}</span>
+          <span class="badge">${escapeHtml(isApproval ? "Approval required" : delegated ? `Delegated via ${delegated}` : "Actor Twin")}</span>
           <h3>${escapeHtml(title)}</h3>
           <p>${escapeHtml(agentContractResponseText(result))}</p>
         </div>
-        <div class="run-id-block">
-          <span>Trace</span>
-          <code>${escapeHtml(traceKey || "-")}</code>
-        </div>
       </div>
-      ${renderAgentResponseRouteCard(result)}
       ${isApproval ? `
         <div class="approval-card agent-approval-gate" data-approval-summary="${escapeHtml(approval.summary || "")}" data-approval-action="${escapeHtml(approval.proposed_action || "")}" data-trace-id="${escapeHtml(traceKey)}" data-request-id="${escapeHtml(response.request_id || result.request?.request_id || "")}">
           <strong>${escapeHtml(approval.gate || "human_gate")}</strong>
@@ -32828,14 +32898,8 @@ function renderAgentContractChatCard(result = {}) {
           </div>
         </div>
       ` : ""}
-      ${renderAgentContractOutput(output)}
-      <div class="agent-contract-status-strip" aria-label="Agent runtime statuses">
-        <span>${escapeHtml(result.runtime || "fixture fallback")}</span>
-        <span>${escapeHtml(status)}</span>
-        <span>${escapeHtml(response.agent_id || result.agent_id || "")}</span>
-      </div>
       <div class="message-actions">
-        ${traceKey ? `<button class="secondary small" type="button" data-chat-action="open-agent-trace" data-trace-id="${escapeHtml(traceKey)}">Open trace cockpit</button>` : ""}
+        ${traceKey ? `<button class="secondary small" type="button" data-chat-action="open-agent-trace" data-trace-id="${escapeHtml(traceKey)}">Trace</button>` : ""}
         <button class="secondary small speak-message-btn" type="button">Play voice</button>
       </div>
     </div>
