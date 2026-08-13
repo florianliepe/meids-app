@@ -43,6 +43,11 @@ requireSource(
 );
 
 requireSource(
+  /async function safeRefreshSkillRefinements\(\) \{[\s\S]*if \(staticPagesMode\) \{[\s\S]*Refinement proposals require the hosted backend[\s\S]*return;/,
+  "GitHub Pages must not call backend-only /api/skills/refinements.",
+);
+
+requireSource(
   /function findStaticTraceDetail/,
   "Trace review must support static/local trace lookup on GitHub Pages.",
 );

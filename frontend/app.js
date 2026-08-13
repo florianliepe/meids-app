@@ -12943,6 +12943,19 @@ async function refreshSkillRefinements() {
 }
 
 async function safeRefreshSkillRefinements() {
+  if (staticPagesMode) {
+    state.skillRefinements = [];
+    const target = $("#skillRefinements");
+    if (target) {
+      target.innerHTML = renderStateCard(
+        "info",
+        "Refinement proposals require the hosted backend",
+        "GitHub Pages can stage skill drafts locally, but proposal persistence, review, and decomposition need the backend skill registry.",
+      );
+    }
+    renderSkillsCockpit();
+    return;
+  }
   try {
     await refreshSkillRefinements();
   } catch (error) {
