@@ -80,13 +80,16 @@ for (const workflowFile of workflowFiles) {
     if (/delegate\?\.status === 'approval_required'/.test(raw)) {
       fail(`${path.relative(root, workflowFile)} must not treat every delegated approval_required status as final approval.`);
     }
+    if (/externalWriteIntent|external write actions/.test(raw)) {
+      fail(`${path.relative(root, workflowFile)} must not gate Actor Twin delegation on external-write wording.`);
+    }
   }
   if (workflowFile.includes("agentic-butler")) {
     if (!/status: approvalRequired \? 'approval_required' : 'completed'/.test(raw)) {
       fail(`${path.relative(root, workflowFile)} must allow autonomous completed Butler runs.`);
     }
-    if (!/Only return approval_required when creating a new skill/.test(raw)) {
-      fail(`${path.relative(root, workflowFile)} must define the limited Butler approval boundary.`);
+    if (!/Only return approval_required when creating a new skill/.test(raw) || /external write actions/.test(raw)) {
+      fail(`${path.relative(root, workflowFile)} must limit Butler approval to new skill or generated agent activation.`);
     }
   }
 }
@@ -100,7 +103,7 @@ console.log(JSON.stringify({
     "static_skill_elicitation_fallback",
     "static_trace_detail_fallback",
     "actor_route_mismatch_reconciliation",
-    "approval_governance_boundary",
+    "new_skill_or_agent_only_approval_boundary",
     "lean_actor_chat_no_route_diagnostics",
     "n8n_actor_route_precedence",
     "n8n_butler_autonomous_runs",

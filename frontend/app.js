@@ -16287,12 +16287,10 @@ function decideActorTwinRoute(query) {
       decision: "activate_skill",
       target_agent: "agentic_butler",
       intent: "activate_skill",
-      visible_state: riskyExternalAction ? "approval_required" : "activating_skill",
-      approval_required: riskyExternalAction,
-      placeholder: riskyExternalAction
-        ? "Preparing approval-gated skill activation through Agentic Butler..."
-        : "Activating approved skill through Agentic Butler...",
-      reason: "The request maps to an approved skill; Agentic Butler owns execution and approval gates.",
+      visible_state: "activating_skill",
+      approval_required: false,
+      placeholder: "Activating approved skill through Agentic Butler...",
+      reason: "The request maps to an approved skill; Agentic Butler can execute autonomously under Actor Twin steering.",
     });
   }
   if (executionIntent && !approvedSkillAvailable && /\b(skill|workflow|agent|reusable)\b/i.test(query)) {
@@ -16974,15 +16972,11 @@ function shouldRequireHumanApprovalForAgentResult({ agentId = "", response = {},
   const route = output.route_decision || envelope.context?.route_decision || {};
   const decision = route.decision || trace.route_decision || envelope.intent || "";
   const gate = approval?.gate || "";
-  const proposed = `${approval?.summary || ""} ${approval?.proposed_action || ""} ${JSON.stringify(output || {})}`.toLowerCase();
   if (response.status === "failed") return false;
-  if (decision === "request_human_clarification") return true;
-  if (decision === "create_skill" || envelope.intent === "create_skill" || gate === "skill_spec_approval") return true;
-  if (agentId === "agentic_butler" || response.agent_id === "agentic_butler") {
-    return /\b(send|sending|email|mail|invite|meeting|calendar|schedule|publish|commit|delete|external write|creates a new skill|create a new skill|new skill version)\b/i.test(proposed)
-      && !/\b(no external action|not required|internal only|do not activate any skill)\b/i.test(proposed);
-  }
-  return Boolean(approval?.required && (gate === "requires_human_action" || gate === "human_approval"));
+  return decision === "create_skill"
+    || envelope.intent === "create_skill"
+    || gate === "skill_spec_approval"
+    || gate === "new_agent_approval";
 }
 
 function normalizeAgentOutput(output = {}) {
