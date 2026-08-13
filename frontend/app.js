@@ -19225,6 +19225,17 @@ function slugify(value) {
 function agentContractResponseText(result = {}) {
   const response = result.response || {};
   const output = response.output || {};
+  const rawAnswer = String(result.answer || output.answer || output.summary || "");
+  const query = String(result.request?.input?.query || result.request?.input?.message || result.request?.message || "");
+  const route = output.route_decision || {};
+  if (
+    route.decision === "answer_direct"
+    && /route mismatch/i.test(rawAnswer)
+    && /answer_direct/i.test(rawAnswer)
+    && /do not activate|no skill activation|return control to actor twin/i.test(rawAnswer)
+  ) {
+    return actorDirectFallbackAnswer(query);
+  }
   if (response.status === "approval_required") {
     if (output.skill_creation) {
       const questions = Array.isArray(output.next_questions) ? `\n\nNext elicitation questions:\n- ${output.next_questions.join("\n- ")}` : "";
@@ -19233,6 +19244,17 @@ function agentContractResponseText(result = {}) {
     return response.approval?.summary || "Human approval is required before this action can continue.";
   }
   return result.answer || output.answer || output.summary || output.concept_path || `${result.agent_name || "Agent"} completed.`;
+}
+
+function actorDirectFallbackAnswer(query = "") {
+  const normalized = String(query || "").toLowerCase();
+  if (/\b(who are you|what are you|introduce yourself|describe yourself)\b/i.test(normalized)) {
+    return "I am the Actor Twin for the active MeIDs profile. I answer from persona, approved knowledge, and governed context, and I delegate work to specialist agents only when execution is actually needed.";
+  }
+  if (/\b(purpose|why do you exist|what do you do)\b/i.test(normalized)) {
+    return "My purpose is to help scale the active twin's identity and work style: answer from trusted knowledge, route source work to the Knowledge Fabric Agent, and activate Agentic Butler only for approved skill execution or new skill design.";
+  }
+  return "I can answer this directly as the Actor Twin. No skill activation is needed for this request.";
 }
 
 async function saveChatInputPreset() {
