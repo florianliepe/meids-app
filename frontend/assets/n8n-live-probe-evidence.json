@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "status": "complete",
+  "status": "partial",
   "boundary": "Public-safe live probe evidence placeholder. Replace awaiting entries only after public UAT probes reach n8n and return non-demo trace ids.",
   "agents": [
     {
@@ -42,27 +42,30 @@
     {
       "agent_id": "agentic_butler",
       "agent_name": "Agentic Butler",
-      "status": "connected",
-      "checked_at": "2026-08-11T16:09:59.467Z",
-      "trace_id": "n8n_exec_16275",
+      "status": "awaiting_probe",
+      "checked_at": "2026-08-13T14:26:23.632Z",
+      "trace_id": "",
       "demo": false,
-      "url_source": "browser-local",
+      "url_source": "github-pages-secret",
       "evidence": {
-        "response_status": "approval_required",
-        "expected_response_status": "approval_required",
-        "n8n_execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/KZOqZRUAnVfFEAYJ/executions/16275",
-        "approval_gate_confirmed": true
+        "response_status": "awaiting_probe",
+        "expected_response_status": "completed",
+        "n8n_execution_url": "",
+        "previous_stale_status": "approval_required"
       },
       "ai_agent": {
         "integrated": true,
         "node": "Agentic Butler AI Agent"
-      }
+      },
+      "record_command_template": "node scripts/record-n8n-live-probe-evidence.cjs --agent agentic_butler --trace-id TRACE_ID_FROM_N8N --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed --url-source github-pages-secret"
     }
   ],
-  "updated_at": "2026-08-11T16:09:59.471Z",
+  "updated_at": "2026-08-13T14:26:23.633Z",
   "summary": {
     "agent_count": 3,
-    "connected_agent_count": 3,
-    "missing_probe_agents": []
+    "connected_agent_count": 2,
+    "missing_probe_agents": [
+      "agentic_butler"
+    ]
   }
 }

@@ -13,7 +13,7 @@ const agents = {
 const expectedResponseStatusByAgent = {
   actor_twin: "completed",
   knowledge_fabric_agent: "completed",
-  agentic_butler: "approval_required",
+  agentic_butler: "completed",
 };
 
 function readArg(name) {

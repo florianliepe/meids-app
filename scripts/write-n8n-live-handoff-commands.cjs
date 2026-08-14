@@ -41,8 +41,8 @@ const requiredAgents = [
     agent_id: "agentic_butler",
     agent_name: "Agentic Butler",
     secret: "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
-    expected_response_status: "approval_required",
-    probe: "approval-required skill activation fixture",
+    expected_response_status: "completed",
+    probe: "autonomous no-write Actor Twin delegated work-artifact fixture",
   },
 ];
 

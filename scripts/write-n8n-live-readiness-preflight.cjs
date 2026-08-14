@@ -39,7 +39,7 @@ const requiredAgents = [
     agent_id: "agentic_butler",
     agent_name: "Agentic Butler",
     secret: "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
-    expected_response_status: "approval_required",
+    expected_response_status: "completed",
   },
 ];
 
