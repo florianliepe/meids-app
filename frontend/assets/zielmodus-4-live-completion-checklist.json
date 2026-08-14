@@ -1,15 +1,15 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-11T16:10:38.535Z",
-  "status": "ready_for_strict_gate",
+  "generated_at": "2026-08-13T14:35:45.283Z",
+  "status": "live_probe_evidence_pending",
   "boundary": "Public-safe checklist. It contains no secrets and does not call n8n; it derives the remaining completion work from committed readiness artifacts.",
   "summary": {
     "agent_count": 3,
     "missing_live_url_count": 0,
-    "missing_probe_trace_count": 0,
+    "missing_probe_trace_count": 1,
     "estimated_remaining_after_urls_exist": "45-90 minutes",
     "zielmodus_status": "complete",
-    "preflight_status": "ready_for_production_review"
+    "preflight_status": "live_probe_evidence_pending"
   },
   "artifacts": {
     "completion_plan": "docs/production/zielmodus-4-live-completion-plan.md",
@@ -47,14 +47,23 @@
     {
       "agent_id": "agentic_butler",
       "agent_name": "Agentic Butler",
-      "status": "ready_for_final_gate",
+      "status": "open",
       "runtime_url_status": "configured",
       "url_configured": true,
-      "live_probe_status": "connected",
-      "live_probe_connected": true,
-      "blockers": [],
+      "live_probe_status": "awaiting_probe",
+      "live_probe_connected": false,
+      "blockers": [
+        "live_probe_evidence_missing"
+      ],
       "estimate_minutes_after_url": "15-25",
-      "open_items": []
+      "open_items": [
+        {
+          "type": "live_probe",
+          "label": "Record Agentic Butler non-demo probe evidence",
+          "probe": "autonomous no-write Actor Twin delegated work-artifact fixture",
+          "command": "node scripts/record-n8n-live-probe-evidence.cjs --agent agentic_butler --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
+        }
+      ]
     }
   ],
   "final_gate_commands": [
