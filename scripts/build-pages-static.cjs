@@ -114,7 +114,7 @@ function runtimeConfigJs() {
     agentic_butler: {
       status: ${quoted(status(butlerUrl))},
       probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
-      next_action: ${quoted(butlerUrl ? "Run Agentic Butler UAT with approval-gated skill activation fixture." : "Set GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL.")}
+      next_action: ${quoted(butlerUrl ? "Run Agentic Butler UAT with autonomous no-write work-artifact fixture." : "Set GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL.")}
     }
   },
   n8nChatEnabled: ${Boolean(chatUrl || actorUrl)},

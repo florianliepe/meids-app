@@ -122,7 +122,7 @@ jobs:
               agentic_butler: {
                 status: "$butler_status",
                 probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
-                next_action: "Run Agentic Butler UAT with approval-gated skill activation fixture.",
+                next_action: "Run Agentic Butler UAT with autonomous no-write work-artifact fixture.",
               },
             },
             n8nChatEnabled: "$GH_PAGES_N8N_CHAT_WEBHOOK_URL" !== "" || "$ACTOR_TWIN_WEBHOOK_URL" !== "",

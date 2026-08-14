@@ -29,7 +29,7 @@ const requiredN8nAgents = ["actor_twin", "knowledge_fabric_agent", "agentic_butl
 const expectedN8nProbeStatuses = {
   actor_twin: "completed",
   knowledge_fabric_agent: "completed",
-  agentic_butler: "approval_required",
+  agentic_butler: "completed",
 };
 
 function readJson(filePath) {
