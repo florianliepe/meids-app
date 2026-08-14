@@ -307,6 +307,11 @@ const storageKeys = {
   knowledgeFabricIngestQueue: "intellectualTwin.knowledgeFabricIngestQueue",
   skillDrafts: "intellectualTwin.skillDrafts",
   agentWebhookOverrides: "intellectualTwin.agentWebhookOverrides",
+  twins: "intellectualTwin.static.twins",
+  activeTwin: "intellectualTwin.static.activeTwin",
+  twinActivity: "intellectualTwin.static.twinActivity",
+  concepts: "intellectualTwin.static.concepts",
+  activity: "intellectualTwin.static.activity",
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -8311,6 +8316,11 @@ function bindTwinSwitch() {
   $("#twinSelect").addEventListener("change", async (event) => {
     const twin = event.target.value;
     try {
+      if (staticPagesMode) {
+        state.selectedTwinId = twin;
+        await activateSelectedTwin();
+        return;
+      }
       markTwinSwitch(state.activeTwin);
       await postJson("/api/twins/active", { twin_id: twin, actor: "local-user" });
       state.activeTwin = twin;
@@ -8360,6 +8370,27 @@ function bindIngest() {
     if (!(await confirmTwinScopedAction("ingest this text"))) return;
     showIngest("Creating concept...");
     try {
+      if (staticPagesMode) {
+        const result = createStaticConceptFromSource({
+          title: text.split(/\r?\n/).find((line) => line.trim()) || "Manual text intake",
+          description: text,
+          type: "Manual Note",
+          sourceType: "manual-paste",
+          sourceName: "manual-paste",
+          content: text,
+        });
+        showIngest(formatIngestResult(result));
+        persistLocalKnowledgeFabricIngest(result, {
+          sourceType: "manual-paste",
+          sourceName: "manual-paste",
+          fallbackTitle: text.slice(0, 90),
+        });
+        $("#textIngest").value = "";
+        refreshConcepts();
+        safeRefreshActivity();
+        showToast("Text stored locally", "Pending OKF concept created in this browser.", "success");
+        return;
+      }
       const result = await postJson("/api/ingest/text", {
         text,
         source: "manual-paste",
@@ -8388,6 +8419,31 @@ function bindIngest() {
     form.append("twin", state.activeTwin);
     showIngest(`Uploading ${file.name}...`);
     try {
+      if (staticPagesMode) {
+        let content = "";
+        if (/^(text\/|application\/json|application\/xml|text\/markdown)/i.test(file.type || "") || /\.(txt|md|markdown|json|csv|yaml|yml)$/i.test(file.name)) {
+          content = await file.text();
+        }
+        const result = createStaticConceptFromSource({
+          title: file.name.replace(/\.[^.]+$/, ""),
+          description: content || `Uploaded file metadata staged locally: ${file.name} (${file.type || "unknown type"}, ${file.size} bytes).`,
+          type: "Document Upload",
+          sourceType: file.name.split(".").pop() || "document",
+          sourceName: file.name,
+          content,
+        });
+        showIngest(formatIngestResult(result));
+        persistLocalKnowledgeFabricIngest(result, {
+          sourceType: file.name.split(".").pop() || "document",
+          sourceName: file.name,
+          fallbackTitle: file.name,
+        });
+        $("#documentInput").value = "";
+        refreshConcepts();
+        safeRefreshActivity();
+        showToast("Document staged locally", "Pending OKF concept created in this browser.", "success");
+        return;
+      }
       const result = await postForm("/api/ingest/document", form);
       showIngest(formatIngestResult(result));
       persistLocalKnowledgeFabricIngest(result, {
@@ -10608,10 +10664,9 @@ async function refreshAll() {
 
 function refreshStaticPagesWorkspace() {
   const status = buildStaticPagesStatus();
+  refreshStaticTwinState();
   state.backendStatus = status;
-  state.activeTwin = status.active_twin;
   state.selectedTwinId = state.selectedTwinId || state.activeTwin;
-  state.twins = buildStaticPagesTwins();
   state.skills = buildStaticPagesSkills();
   state.concepts = buildStaticPagesConcepts();
   state.okfGraph = buildStaticPagesGraph();
@@ -10631,7 +10686,8 @@ function refreshStaticPagesWorkspace() {
   $("#statusN8nChat").textContent = status.n8n_chat?.configured ? "webhook active" : "fixture mode";
   $("#statusGuardrails").textContent = status.guardrail_policy || "-";
   $("#statusVersion").textContent = status.app_version || "-";
-  $("#workspaceSignal").textContent = `Florian · GitHub Pages · ${state.n8nAgentContracts.configured_count}/${state.n8nAgentContracts.contract_count} n8n URLs`;
+  const activeProfile = state.twins.find((twin) => twin.twin_id === state.activeTwin);
+  $("#workspaceSignal").textContent = `${activeProfile?.display_name || state.activeTwin} · GitHub Pages · ${state.n8nAgentContracts.configured_count}/${state.n8nAgentContracts.contract_count} n8n URLs`;
   $("#voiceReadiness").textContent = "Static staging: voice recording UI is visible; transcription requires the local backend or a hosted API.";
   $("#voiceReadiness").className = "readiness missing";
   updateLandingStatus();
@@ -10693,9 +10749,10 @@ async function safeRefreshBackendAgentRuntimeState() {
 }
 
 function buildStaticPagesStatus() {
+  const store = readStaticTwinStore();
   return {
     status: "static",
-    active_twin: "florian",
+    active_twin: store.active_twin,
     ai_provider: "n8n",
     openai_configured: false,
     guardrail_policy: "approval-gated",
@@ -10707,7 +10764,7 @@ function buildStaticPagesStatus() {
   };
 }
 
-function buildStaticPagesTwins() {
+function buildStaticPagesTwinSeed() {
   return [
     {
       twin_id: "florian",
@@ -10716,8 +10773,115 @@ function buildStaticPagesTwins() {
       purpose: "Public staging twin for visual QA and n8n contract validation.",
       role_context: "Actor Twin staging profile",
       default_language: "en",
+      risk_posture: "balanced",
+      profile_completeness: 0.42,
     },
   ];
+}
+
+function buildStaticPagesTwins() {
+  return readStaticTwinStore().twins;
+}
+
+function safeParseLocalJson(key, fallback) {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) || "null");
+    return value === null ? fallback : value;
+  } catch {
+    return fallback;
+  }
+}
+
+function staticTwinSlug(value) {
+  const slug = String(value || "twin")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return slug || `twin-${Date.now().toString(36)}`;
+}
+
+function calculateTwinCompleteness(twin) {
+  const fields = [
+    "display_name",
+    "purpose",
+    "role_context",
+    "tone",
+    "workstreams",
+    "stakeholders",
+    "decision_principles",
+    "escalation_boundaries",
+    "source_intake_notes",
+    "success_metrics",
+  ];
+  const filled = fields.filter((field) => String(twin?.[field] || "").trim()).length;
+  return Math.max(0.05, Math.min(1, filled / fields.length));
+}
+
+function normalizeStaticTwin(input = {}, existing = {}) {
+  const now = new Date().toISOString();
+  const twin = {
+    ...existing,
+    ...input,
+    twin_id: input.twin_id || existing.twin_id || staticTwinSlug(input.display_name),
+    display_name: input.display_name || existing.display_name || "New twin",
+    status: input.status || existing.status || "active",
+    default_language: input.default_language || existing.default_language || "en",
+    risk_posture: input.risk_posture || existing.risk_posture || "balanced",
+    created_at: existing.created_at || input.created_at || now,
+    updated_at: now,
+  };
+  twin.profile_completeness = calculateTwinCompleteness(twin);
+  return twin;
+}
+
+function readStaticTwinStore() {
+  const seed = buildStaticPagesTwinSeed().map((twin) => normalizeStaticTwin(twin));
+  const storedTwins = safeParseLocalJson(storageKeys.twins, seed);
+  const twins = Array.isArray(storedTwins) && storedTwins.length
+    ? storedTwins.map((twin) => normalizeStaticTwin(twin, twin))
+    : seed;
+  const storedActive = window.localStorage.getItem(storageKeys.activeTwin) || "florian";
+  const activeTwin = twins.some((twin) => twin.twin_id === storedActive && twin.status === "active")
+    ? storedActive
+    : twins.find((twin) => twin.status === "active")?.twin_id || twins[0]?.twin_id || "florian";
+  const activity = safeParseLocalJson(storageKeys.twinActivity, []);
+  return {
+    twins,
+    active_twin: activeTwin,
+    activity: Array.isArray(activity) ? activity.slice(0, 50) : [],
+  };
+}
+
+function writeStaticTwinStore(twins, activeTwin, activity = state.twinActivity) {
+  const normalized = twins.map((twin) => normalizeStaticTwin(twin, twin));
+  window.localStorage.setItem(storageKeys.twins, JSON.stringify(normalized));
+  window.localStorage.setItem(storageKeys.activeTwin, activeTwin || normalized.find((twin) => twin.status === "active")?.twin_id || "florian");
+  window.localStorage.setItem(storageKeys.twinActivity, JSON.stringify((activity || []).slice(0, 50)));
+}
+
+function appendStaticTwinActivity(action, twinId, detail = "") {
+  const entry = {
+    action,
+    twin_id: twinId,
+    detail,
+    actor: "local-user",
+    timestamp: new Date().toISOString(),
+    mode: "github-pages-local",
+  };
+  state.twinActivity = [entry, ...(state.twinActivity || [])].slice(0, 50);
+  return state.twinActivity;
+}
+
+function refreshStaticTwinState() {
+  const store = readStaticTwinStore();
+  state.twins = store.twins;
+  state.twinActivity = store.activity;
+  state.activeTwin = store.active_twin;
+  if (!state.selectedTwinId || !state.twins.some((twin) => twin.twin_id === state.selectedTwinId)) {
+    state.selectedTwinId = state.activeTwin;
+  }
 }
 
 function buildStaticPagesSkills() {
@@ -10862,6 +11026,12 @@ function buildStaticPagesN8nAgentContracts() {
 }
 
 function buildStaticPagesConcepts() {
+  const stored = safeParseLocalJson(storageKeys.concepts, null);
+  if (Array.isArray(stored) && stored.length) return stored;
+  return buildStaticPagesConceptSeed();
+}
+
+function buildStaticPagesConceptSeed() {
   return [
     {
       path: "okf/static/actor-twin.md",
@@ -11161,6 +11331,19 @@ async function refreshWorkspace() {
 }
 
 async function refreshTwins() {
+  if (staticPagesMode) {
+    refreshStaticTwinState();
+    renderTwinOptions();
+    renderTwinCatalog(state.twinActivity);
+    fillTwinForm(state.selectedTwinId);
+    updateLandingStatus();
+    renderTwinContextNotices();
+    renderWorkspaceIntro();
+    renderSkillRoutingPanel();
+    renderSetupStepDetail();
+    renderDesignCockpitBoard();
+    return;
+  }
   const result = await getJson("/api/twins?include_archived=true");
   state.twins = result.twins || [];
   state.twinActivity = result.activity || [];
@@ -11836,6 +12019,25 @@ function setupStepDetails(twin) {
 
 async function createTwin() {
   try {
+    if (staticPagesMode) {
+      const form = readTwinForm();
+      const existingIds = new Set(state.twins.map((twin) => twin.twin_id));
+      let twinId = staticTwinSlug(form.display_name);
+      let suffix = 2;
+      while (existingIds.has(twinId)) {
+        twinId = `${staticTwinSlug(form.display_name)}-${suffix}`;
+        suffix += 1;
+      }
+      const twin = normalizeStaticTwin({ ...form, twin_id: twinId, status: "active" });
+      state.twins = [twin, ...state.twins];
+      state.selectedTwinId = twin.twin_id;
+      appendStaticTwinActivity("created", twin.twin_id, "Created in GitHub Pages local registry.");
+      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+      $("#twinResult").textContent = JSON.stringify({ status: "created_local", twin }, null, 2);
+      await refreshTwins();
+      showToast("Twin created locally", twin.display_name || twin.twin_id, "success");
+      return;
+    }
     const result = await postJson("/api/twins", readTwinForm());
     state.selectedTwinId = result.twin?.twin_id || result.active_twin;
     $("#twinResult").textContent = JSON.stringify(result, null, 2);
@@ -11850,6 +12052,18 @@ async function createTwin() {
 async function updateSelectedTwin() {
   if (!state.selectedTwinId) return;
   try {
+    if (staticPagesMode) {
+      const index = state.twins.findIndex((twin) => twin.twin_id === state.selectedTwinId);
+      if (index === -1) throw new Error("Selected twin is not available in the local registry.");
+      const updated = normalizeStaticTwin(readTwinForm(), state.twins[index]);
+      state.twins[index] = updated;
+      appendStaticTwinActivity("updated", updated.twin_id, "Updated in GitHub Pages local registry.");
+      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+      $("#twinResult").textContent = JSON.stringify({ status: "updated_local", twin: updated }, null, 2);
+      await refreshTwins();
+      showToast("Twin updated locally", updated.display_name || updated.twin_id, "success");
+      return;
+    }
     const result = await postJson("/api/twins/update", {
       twin_id: state.selectedTwinId,
       ...readTwinForm(),
@@ -11866,6 +12080,18 @@ async function updateSelectedTwin() {
 async function activateSelectedTwin() {
   if (!state.selectedTwinId) return;
   try {
+    if (staticPagesMode) {
+      const selected = state.twins.find((twin) => twin.twin_id === state.selectedTwinId);
+      if (!selected || selected.status !== "active") throw new Error("Only active twins can be selected.");
+      markTwinSwitch(state.activeTwin);
+      state.activeTwin = state.selectedTwinId;
+      appendStaticTwinActivity("activated", state.activeTwin, "Activated in GitHub Pages local registry.");
+      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+      $("#twinResult").textContent = JSON.stringify({ status: "activated_local", active_twin: state.activeTwin }, null, 2);
+      await refreshStaticPagesWorkspace();
+      showToast("Active twin switched locally", state.activeTwin, "success");
+      return;
+    }
     markTwinSwitch(state.activeTwin);
     const result = await postJson("/api/twins/active", { twin_id: state.selectedTwinId, actor: "local-user" });
     $("#twinResult").textContent = JSON.stringify(result, null, 2);
@@ -11892,6 +12118,21 @@ async function archiveSelectedTwin() {
     return;
   }
   try {
+    if (staticPagesMode) {
+      const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
+      if (index === -1) throw new Error("Selected twin is not available in the local registry.");
+      state.twins[index] = normalizeStaticTwin({ status: "archived" }, state.twins[index]);
+      appendStaticTwinActivity("archived", state.selectedTwinId, $("#twinArchiveRationale").value.trim() || "Archived from Twins cockpit.");
+      if (state.activeTwin === state.selectedTwinId) {
+        state.activeTwin = state.twins.find((item) => item.status === "active")?.twin_id || state.twins[index].twin_id;
+      }
+      state.selectedTwinId = state.activeTwin;
+      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+      $("#twinResult").textContent = JSON.stringify({ status: "archived_local", active_twin: state.activeTwin }, null, 2);
+      await refreshTwins();
+      showToast("Twin archived locally", label, "success");
+      return;
+    }
     const result = await postJson("/api/twins/archive", {
       twin_id: state.selectedTwinId,
       actor: "local-user",
@@ -11910,6 +12151,17 @@ async function archiveSelectedTwin() {
 async function restoreSelectedTwin() {
   if (!state.selectedTwinId) return;
   try {
+    if (staticPagesMode) {
+      const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
+      if (index === -1) throw new Error("Selected twin is not available in the local registry.");
+      state.twins[index] = normalizeStaticTwin({ status: "active" }, state.twins[index]);
+      appendStaticTwinActivity("restored", state.selectedTwinId, "Restored in GitHub Pages local registry.");
+      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+      $("#twinResult").textContent = JSON.stringify({ status: "restored_local", twin: state.twins[index] }, null, 2);
+      await refreshTwins();
+      showToast("Twin restored locally", state.selectedTwinId, "success");
+      return;
+    }
     const result = await postJson("/api/twins/restore", { twin_id: state.selectedTwinId, actor: "local-user" });
     state.selectedTwinId = result.active_twin || state.selectedTwinId;
     $("#twinResult").textContent = JSON.stringify(result, null, 2);
@@ -11943,6 +12195,15 @@ function renderSelectedTwinPictureFocusPreview() {
   previewImage.style.objectPosition = `${$("#twinPictureFocusX").value}% ${$("#twinPictureFocusY").value}%`;
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("Could not read selected image."));
+    reader.readAsDataURL(file);
+  });
+}
+
 async function uploadTwinPicture() {
   if (!state.selectedTwinId) return;
   const file = $("#twinPictureInput").files[0];
@@ -11956,6 +12217,33 @@ async function uploadTwinPicture() {
   form.append("file", file);
   $("#twinResult").textContent = `Uploading picture for ${state.selectedTwinId}...`;
   try {
+    if (staticPagesMode) {
+      if (file.size > 1_200_000) {
+        throw new Error("Static Pages can store small profile pictures only. Choose an image under 1.2 MB or use the hosted backend.");
+      }
+      const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
+      if (index === -1) throw new Error("Selected twin is not available in the local registry.");
+      const dataUrl = await readFileAsDataUrl(file);
+      state.twins[index] = normalizeStaticTwin(
+        {
+          picture_path: dataUrl,
+          picture_uploaded_at: new Date().toISOString(),
+          picture_focus_x: Number($("#twinPictureFocusX").value) || 50,
+          picture_focus_y: Number($("#twinPictureFocusY").value) || 50,
+        },
+        state.twins[index],
+      );
+      appendStaticTwinActivity("picture_updated", state.selectedTwinId, "Profile picture stored in browser local registry.");
+      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+      $("#twinResult").textContent = JSON.stringify({ status: "picture_updated_local", twin_id: state.selectedTwinId }, null, 2);
+      if (state.twinPicturePreviewUrl) {
+        URL.revokeObjectURL(state.twinPicturePreviewUrl);
+        state.twinPicturePreviewUrl = "";
+      }
+      await refreshTwins();
+      showToast("Twin picture stored locally", state.selectedTwinId, "success");
+      return;
+    }
     const result = await postForm("/api/twins/picture", form);
     $("#twinResult").textContent = JSON.stringify(result, null, 2);
     if (state.twinPicturePreviewUrl) {
@@ -11987,6 +12275,25 @@ async function removeTwinPicture() {
   });
   if (!confirmed) return;
   try {
+    if (staticPagesMode) {
+      const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
+      if (index === -1) throw new Error("Selected twin is not available in the local registry.");
+      state.twins[index] = normalizeStaticTwin(
+        {
+          picture_path: "",
+          picture_uploaded_at: "",
+          picture_focus_x: 50,
+          picture_focus_y: 50,
+        },
+        state.twins[index],
+      );
+      appendStaticTwinActivity("picture_removed", state.selectedTwinId, "Profile picture removed from browser local registry.");
+      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+      $("#twinResult").textContent = JSON.stringify({ status: "picture_removed_local", twin_id: state.selectedTwinId }, null, 2);
+      await refreshTwins();
+      showToast("Twin picture removed locally", label, "success");
+      return;
+    }
     const result = await deleteJson("/api/twins/picture", { twin_id: state.selectedTwinId, actor: "local-user" });
     $("#twinResult").textContent = JSON.stringify(result, null, 2);
     await safeRefreshTwins();
@@ -12000,6 +12307,23 @@ async function removeTwinPicture() {
 async function saveTwinPicturePosition() {
   if (!state.selectedTwinId) return;
   try {
+    if (staticPagesMode) {
+      const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
+      if (index === -1) throw new Error("Selected twin is not available in the local registry.");
+      state.twins[index] = normalizeStaticTwin(
+        {
+          picture_focus_x: Number($("#twinPictureFocusX").value),
+          picture_focus_y: Number($("#twinPictureFocusY").value),
+        },
+        state.twins[index],
+      );
+      appendStaticTwinActivity("picture_focus_updated", state.selectedTwinId, "Profile picture focus stored in browser local registry.");
+      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+      $("#twinResult").textContent = JSON.stringify({ status: "picture_focus_updated_local", twin_id: state.selectedTwinId }, null, 2);
+      await refreshTwins();
+      showToast("Picture focus saved locally", state.selectedTwinId, "success");
+      return;
+    }
     const result = await postJson("/api/twins/picture/position", {
       twin_id: state.selectedTwinId,
       focus_x: Number($("#twinPictureFocusX").value),
@@ -15541,6 +15865,97 @@ function chatModeButtonDefinitions() {
   ];
 }
 
+function writeStaticConceptStore(concepts = state.concepts) {
+  window.localStorage.setItem(storageKeys.concepts, JSON.stringify((concepts || []).slice(0, 250)));
+}
+
+function staticConceptPath(twin, type, title) {
+  const day = new Date().toISOString().slice(0, 10);
+  const folder = staticTwinSlug(type || "concept");
+  const slug = staticTwinSlug(title || `concept-${Date.now().toString(36)}`);
+  return `okf/static/generated/concepts/${staticTwinSlug(twin || "twin")}/${folder}/${day}-${slug}.md`;
+}
+
+function createStaticConceptFromSource({ title, description, type = "Source Upload", sourceType = "manual", sourceName = "manual source", content = "" } = {}) {
+  const now = new Date().toISOString();
+  const safeTitle = String(title || sourceName || "Untitled source").trim().slice(0, 120) || "Untitled source";
+  const body = String(content || description || "").trim();
+  const concept = {
+    path: staticConceptPath(state.activeTwin, type, safeTitle),
+    title: safeTitle,
+    type,
+    cluster: "source-intake",
+    tags: [staticTwinSlug(sourceType), "pending-review"].filter(Boolean),
+    description: body ? compactText(body, 220) : `Static Pages source intake for ${safeTitle}.`,
+    body,
+    review_state: "pending-review",
+    source_anchor: sourceName,
+    source_deep_link: `browser-local://${staticTwinSlug(sourceName)}`,
+    curation_method: "github-pages-local",
+    created_at: now,
+    updated_at: now,
+    fabric: {
+      okf_layer: "concept",
+      okf_maturity: "draft",
+      retrieval_profiles: ["facts"],
+      actor_signal: "pending-source-review",
+      evidence_strength: "browser-local",
+      vector_state: "deferred",
+    },
+  };
+  state.concepts = [concept, ...(state.concepts || buildStaticPagesConcepts())];
+  writeStaticConceptStore(state.concepts);
+  appendStaticActivity("ingest", {
+    action: "created_local_concept",
+    title: safeTitle,
+    path: concept.path,
+    source: sourceName,
+    timestamp: now,
+  });
+  return {
+    status: "created_local",
+    mode: "github-pages-local",
+    concept,
+    concept_path: concept.path,
+    review_state: concept.review_state,
+    note: "Stored in browser-local staging. Hosted backend is required for repository persistence.",
+  };
+}
+
+function readStaticActivityStore() {
+  const activity = safeParseLocalJson(storageKeys.activity, { crud: [], ingest: [], evidence: [], answer_traces: [] });
+  return {
+    crud: Array.isArray(activity.crud) ? activity.crud : [],
+    ingest: Array.isArray(activity.ingest) ? activity.ingest : [],
+    evidence: Array.isArray(activity.evidence) ? activity.evidence : [],
+    answer_traces: Array.isArray(activity.answer_traces) ? activity.answer_traces : [],
+  };
+}
+
+function writeStaticActivityStore(activity) {
+  window.localStorage.setItem(storageKeys.activity, JSON.stringify({
+    crud: (activity.crud || []).slice(0, 100),
+    ingest: (activity.ingest || []).slice(0, 100),
+    evidence: (activity.evidence || []).slice(0, 100),
+    answer_traces: (activity.answer_traces || []).slice(0, 100),
+  }));
+}
+
+function appendStaticActivity(kind, entry = {}) {
+  const activity = readStaticActivityStore();
+  const item = {
+    ...entry,
+    twin: state.activeTwin,
+    actor: entry.actor || "local-user",
+    timestamp: entry.timestamp || new Date().toISOString(),
+    mode: "github-pages-local",
+  };
+  const bucket = Array.isArray(activity[kind]) ? kind : "crud";
+  activity[bucket] = [item, ...activity[bucket]].slice(0, 100);
+  writeStaticActivityStore(activity);
+  return activity;
+}
+
 function switchChatInteractionMode(mode) {
   state.activeChatInteractionMode = mode || "actor_twin";
   state.chatContractActionResult = null;
@@ -17054,6 +17469,15 @@ function normalizeAgentOutput(output = {}) {
       answer: answerObject.answer || answerObject.summary || JSON.stringify(answerObject),
       approval: output.answer.approval || output.approval,
       trace: output.answer.trace || output.trace,
+    };
+  }
+  if (output.delegate_result?.output) {
+    output = {
+      ...output,
+      delegate_result: {
+        ...output.delegate_result,
+        output: normalizeAgentOutput(output.delegate_result.output),
+      },
     };
   }
   const textCarrier = output.answer || output.summary || output.text || output.message || output.markdown || "";
@@ -19281,7 +19705,7 @@ function slugify(value) {
 
 function agentContractResponseText(result = {}) {
   const response = result.response || {};
-  const output = response.output || {};
+  const output = normalizeAgentOutput(response.output || {});
   const rawAnswer = String(result.answer || output.answer || output.summary || "");
   const query = String(result.request?.input?.query || result.request?.input?.message || result.request?.message || "");
   const route = output.route_decision || {};
@@ -19300,7 +19724,43 @@ function agentContractResponseText(result = {}) {
     }
     return response.approval?.summary || "Human approval is required before this action can continue.";
   }
-  return result.answer || output.answer || output.summary || output.concept_path || `${result.agent_name || "Agent"} completed.`;
+  if (output.email_draft?.subject) {
+    const recipient = output.email_draft.to ? ` to ${output.email_draft.to}` : "";
+    return `${output.summary || "Drafted email"}${recipient}: ${output.email_draft.subject}`;
+  }
+  const delegateOutput = normalizeAgentOutput(output.delegate_result?.output || {});
+  if (delegateOutput.email_draft?.subject) {
+    const recipient = delegateOutput.email_draft.to ? ` to ${delegateOutput.email_draft.to}` : "";
+    return `${delegateOutput.summary || "Drafted email"}${recipient}: ${delegateOutput.email_draft.subject}`;
+  }
+  if (delegateOutput.todo_table?.length || delegateOutput.todos?.length) {
+    return delegateOutput.summary || "Prepared the requested plan.";
+  }
+  if (delegateOutput.summary && !looksLikeJsonEnvelope(delegateOutput.summary)) {
+    return delegateOutput.summary;
+  }
+  if (output.delegate_result?.output) {
+    return agentContractResponseText({
+      ...result,
+      response: {
+        ...response,
+        status: output.delegate_result.status || response.status,
+        output: output.delegate_result.output,
+        approval: output.delegate_result.approval || response.approval,
+      },
+      answer: extractAgentAnswer(output.delegate_result.output, output.delegate_result.status || response.status),
+    });
+  }
+  const structuredAnswer = output.answer || output.summary || output.concept_path || "";
+  if (structuredAnswer && !looksLikeJsonEnvelope(structuredAnswer)) return structuredAnswer;
+  const fallbackAnswer = String(result.answer || "").trim();
+  if (fallbackAnswer && !looksLikeJsonEnvelope(fallbackAnswer)) return fallbackAnswer;
+  return `${result.agent_name || "Agent"} completed.`;
+}
+
+function looksLikeJsonEnvelope(value = "") {
+  const text = String(value || "").trim();
+  return /^\s*```(?:json)?\s*[{[]/i.test(text) || /^\s*[{[]/.test(text);
 }
 
 function actorDirectFallbackAnswer(query = "") {
@@ -19526,7 +19986,7 @@ async function elicitSkill() {
     return;
   }
   $("#skillResult").textContent = "Creating SkillSpec...";
-  if (staticPagesMode) {
+  if (isStaticFrontendSession()) {
     const result = createStaticSkillDraft(description, $("#skillNameHint").value.trim() || "");
     $("#skillResult").textContent = formatSkillActionResult(result);
     renderSkills();
@@ -22063,6 +22523,11 @@ async function openSkillsView() {
 }
 
 async function refreshConcepts() {
+  if (staticPagesMode) {
+    state.concepts = buildStaticPagesConcepts();
+    renderConcepts();
+    return;
+  }
   const result = await getJson(`/api/concepts?twin=${encodeURIComponent(state.activeTwin)}`);
   state.concepts = result.concepts;
   renderConcepts();
@@ -23082,6 +23547,20 @@ async function deleteConcept(path) {
   });
   if (!confirmed) return;
   try {
+    if (staticPagesMode) {
+      state.concepts = (state.concepts || buildStaticPagesConcepts()).filter((concept) => concept.path !== path);
+      writeStaticConceptStore(state.concepts);
+      appendStaticActivity("crud", {
+        action: "deleted_local_concept",
+        path,
+        detail: "Removed from browser-local staging only.",
+      });
+      closeConceptDrawer();
+      renderConcepts();
+      safeRefreshActivity();
+      showToast("Concept deleted locally", path, "success");
+      return;
+    }
     await deleteJson("/api/concepts", { path, actor: "local-user" });
     await refreshConcepts();
     await safeRefreshActivity();
@@ -23104,11 +23583,11 @@ async function openConceptDrawer(path) {
   $("#conceptDrawer").setAttribute("aria-hidden", "false");
   $("#drawerBackdrop").hidden = false;
   const staticDetail = findStaticConceptDetail(path);
-  if (staticPagesMode && staticDetail) {
+  if (isStaticFrontendSession() && staticDetail) {
     renderConceptDetail(staticDetail);
     return;
   }
-  if (staticPagesMode) {
+  if (isStaticFrontendSession()) {
     $("#drawerTitle").textContent = "Review unavailable";
     $("#drawerContent").innerHTML = `<p class="empty">Concept detail requires the hosted backend or a static concept detail snapshot. The visible card remains available for review context.</p>`;
     return;
@@ -23123,7 +23602,7 @@ async function openConceptDrawer(path) {
       return;
     }
     $("#drawerTitle").textContent = "Review unavailable";
-    $("#drawerContent").innerHTML = `<p class="empty">Could not load concept detail in this static session. Use the hosted backend for editable metadata, or review the visible concept card.</p>`;
+    $("#drawerContent").innerHTML = `<p class="empty">${escapeHtml(compactError(error.message))}. Use the hosted backend for editable metadata, or review the visible concept card.</p>`;
   }
 }
 
@@ -23259,6 +23738,36 @@ async function updateConceptReview(path, reviewState) {
   if (!path || !reviewState) return;
   const note = $("#reviewNoteInput")?.value || "";
   try {
+    if (staticPagesMode) {
+      const concepts = state.concepts || buildStaticPagesConcepts();
+      const index = concepts.findIndex((concept) => concept.path === path);
+      if (index === -1) throw new Error("Concept is not available in this static session.");
+      concepts[index] = {
+        ...concepts[index],
+        review_state: reviewState,
+        review_note: note,
+        reviewed_by: "local-user",
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      state.concepts = concepts;
+      writeStaticConceptStore(state.concepts);
+      appendStaticActivity("crud", {
+        action: "reviewed_local_concept",
+        path,
+        review_state: reviewState,
+        detail: note || "Review state changed in browser-local staging.",
+      });
+      $("#drawerContent").insertAdjacentHTML(
+        "afterbegin",
+        `<p class="readiness ready">Review state updated locally: ${escapeHtml(reviewState)}</p>`,
+      );
+      renderConcepts();
+      safeRefreshActivity();
+      renderConceptDetail(findStaticConceptDetail(path));
+      showToast("Concept review saved locally", reviewState, "success");
+      return;
+    }
     const result = await postJson("/api/concepts/review", {
       path,
       review_state: reviewState,
@@ -23357,6 +23866,19 @@ function handleCopySideEffect(button, copied) {
 }
 
 async function refreshActivity() {
+  if (staticPagesMode) {
+    const result = readStaticActivityStore();
+    const traces = result.answer_traces || buildStaticPagesAgentTraceLog();
+    const total = result.crud.length + result.ingest.length + result.evidence.length + traces.length;
+    $("#activityCount").textContent = `${total} recent trace event${total === 1 ? "" : "s"}`;
+    renderTraceCockpitSummary(result, traces, total);
+    renderActivityList("#crudActivity", result.crud, "No local CRUD activity yet.");
+    renderActivityList("#ingestActivity", result.ingest, "No local ingest activity yet.");
+    renderEvidenceList(result.evidence);
+    renderAnswerTraceList(traces);
+    applyActivityFilter();
+    return;
+  }
   const result = await getJson(`/api/activity?twin=${encodeURIComponent(state.activeTwin)}&limit=50`);
   const traces = result.answer_traces || [];
   const total = result.crud.length + result.ingest.length + result.evidence.length + traces.length;
@@ -30102,10 +30624,10 @@ function productionN8nHandoffAgentBrief(agent = {}) {
       "Return response with concept status pending-review and trace metadata.",
     ],
     agentic_butler: [
-      "Webhook receives skill activation envelope from Chat.",
+      "Webhook receives Actor Twin delegated work or skill creation envelope.",
       "Validate skill is approved/active and source context is available.",
-      "Run internal Skill Orchestrator and task-agent steps within max step budget.",
-      "Pause and return approval_required before emails, meetings, external commitments, or requires_human actions.",
+      "Run internal Skill Orchestrator and task-agent steps autonomously for drafts, plans, briefs, and internal work artifacts.",
+      "Return approval_required only for generated skill/agent activation or future irreversible external write actions.",
       "Return skill output, approval request, trace metadata, and suggested knowledge capture candidates.",
     ],
     actor_twin: [
@@ -30118,7 +30640,7 @@ function productionN8nHandoffAgentBrief(agent = {}) {
   };
   const approvalBoundaryByAgent = {
     knowledge_fabric_agent: "May create pending concepts and candidate edges. Must not approve concepts, promote graph edges, or refresh trusted production retrieval without review policy approval.",
-    agentic_butler: "May draft and orchestrate approved skills. Must pause before external actions, meeting creation, email sending, irreversible commitments, or any requires_human step.",
+    agentic_butler: "May draft, plan, summarize, and orchestrate approved skills autonomously when delegated by Actor Twin. Must pause only before activating generated skills/agents or before future irreversible external write actions.",
     actor_twin: "May answer and steer. Must not execute work or external actions directly; execution routes to Agentic Butler.",
   };
   return {
@@ -31914,7 +32436,7 @@ async function openAnswerTraceDrawer(path) {
   $("#conceptDrawer").classList.add("open");
   $("#conceptDrawer").setAttribute("aria-hidden", "false");
   $("#drawerBackdrop").hidden = false;
-  if (staticPagesMode) {
+  if (isStaticFrontendSession()) {
     const trace = findStaticTraceDetail(path);
     if (trace) {
       renderAnswerTraceDetail(trace);
@@ -31929,7 +32451,7 @@ async function openAnswerTraceDrawer(path) {
     renderAnswerTraceDetail(detail);
   } catch (error) {
     $("#drawerTitle").textContent = "Trace unavailable";
-    $("#drawerContent").innerHTML = `<p class="empty">Could not load trace: ${escapeHtml(error.message)}</p>`;
+    $("#drawerContent").innerHTML = `<p class="empty">Could not load trace: ${escapeHtml(compactError(error.message))}</p>`;
   }
 }
 
@@ -32927,15 +33449,7 @@ async function speakMessage(node, text) {
     status.className = "voice-status message-meta";
     actions.appendChild(status);
   }
-  const apiUrlIsPagesHost = (() => {
-    if (!apiBaseUrl) return false;
-    try {
-      return /github\.io$/i.test(new URL(apiBaseUrl, window.location.href).hostname);
-    } catch {
-      return false;
-    }
-  })();
-  if (staticPagesMode || githubPagesHost || apiUrlIsPagesHost) {
+  if (isStaticFrontendSession()) {
     status.textContent = "Voice playback requires the hosted voice backend.";
     return;
   }
@@ -32961,11 +33475,27 @@ async function speakMessage(node, text) {
 }
 
 function compactError(message) {
+  const text = String(message || "unknown error");
+  if (/<html|<!doctype|<body|<h1/i.test(text)) {
+    if (/405 Not Allowed/i.test(text)) return "Hosted backend endpoint is not available from GitHub Pages.";
+    if (/404/i.test(text)) return "Hosted backend resource is not available in this static session.";
+    return "Hosted backend returned an HTML error page.";
+  }
   try {
-    const parsed = JSON.parse(message);
-    return parsed.detail || message;
+    const parsed = JSON.parse(text);
+    return parsed.detail || text;
   } catch {
-    return String(message || "unknown error").slice(0, 180);
+    return text.slice(0, 180);
+  }
+}
+
+function isStaticFrontendSession() {
+  if (staticPagesMode || githubPagesHost || window.location.protocol === "file:") return true;
+  if (!apiBaseUrl) return false;
+  try {
+    return /github\.io$/i.test(new URL(apiBaseUrl, window.location.href).hostname);
+  } catch {
+    return false;
   }
 }
 
@@ -33003,7 +33533,7 @@ function removeLastAssistantPlaceholder() {
 
 function renderAgentContractChatCard(result = {}) {
   const response = result.response || {};
-  const output = response.output || {};
+  const output = normalizeAgentOutput(response.output || {});
   const approval = response.approval || {};
   const trace = response.trace || {};
   const status = response.status || result.status || "completed";
@@ -33015,17 +33545,28 @@ function renderAgentContractChatCard(result = {}) {
     envelope: result.request || {},
     trace,
   });
+  const effectiveStatus = isApproval ? "approval_required" : status === "failed" ? "failed" : "completed";
+  const displayResponse = {
+    ...response,
+    status: effectiveStatus,
+    output,
+    approval: isApproval ? approval : { required: false },
+  };
+  const displayResult = { ...result, response: displayResponse };
   const agentId = response.agent_id || result.agent_id || "";
   const title = result.agent_name || agentDisplayName(agentId) || "Agent";
   const traceKey = trace.trace_id || result.trace_id || response.request_id || result.request?.request_id || "";
   const delegated = output.delegate_result?.agent_id ? agentDisplayName(output.delegate_result.agent_id) : "";
+  const voiceButton = isStaticFrontendSession()
+    ? ""
+    : `<button class="secondary small speak-message-btn" type="button">Play voice</button>`;
   return `
-    <div class="skill-run-card agent-response-card ${escapeHtml(status)} ${safeGraphClass(agentId)}">
+    <div class="skill-run-card agent-response-card ${escapeHtml(effectiveStatus)} ${safeGraphClass(agentId)}">
       <div class="skill-run-head">
         <div>
           <span class="badge">${escapeHtml(isApproval ? "Approval required" : delegated ? `Delegated via ${delegated}` : title)}</span>
           <h3>${escapeHtml(title)}</h3>
-          <p>${escapeHtml(agentContractResponseText(result))}</p>
+          <p>${escapeHtml(agentContractResponseText(displayResult))}</p>
         </div>
       </div>
       ${!isApproval ? renderAgentContractOutput(output) : ""}
@@ -33046,7 +33587,7 @@ function renderAgentContractChatCard(result = {}) {
       ` : ""}
       <div class="message-actions">
         ${traceKey ? `<button class="secondary small" type="button" data-chat-action="open-agent-trace" data-trace-id="${escapeHtml(traceKey)}">Trace</button>` : ""}
-        <button class="secondary small speak-message-btn" type="button">Play voice</button>
+        ${voiceButton}
       </div>
     </div>
   `;
@@ -33054,11 +33595,21 @@ function renderAgentContractChatCard(result = {}) {
 
 function renderAgentResponseRouteCard(result = {}) {
   const response = result.response || {};
-  const output = response.output || {};
+  const output = normalizeAgentOutput(response.output || {});
   const request = result.request || {};
+  const approval = response.approval || {};
+  const trace = response.trace || {};
   const agentId = response.agent_id || result.agent_id || "";
   const status = response.status || result.status || "completed";
-  const isApproval = status === "approval_required" || Boolean(response.approval?.required);
+  const isApproval = shouldRequireHumanApprovalForAgentResult({
+    agentId,
+    response,
+    output,
+    approval,
+    envelope: request,
+    trace,
+  });
+  const effectiveStatus = isApproval ? "approval_required" : status === "failed" ? "failed" : "completed";
   const sourceContext = request.context?.source_context || {};
   const sourceCount = ["email_input", "calendar_input", "teams_input", "knowledge_context"]
     .filter((key) => String(sourceContext[key] || request.input?.[key] || "").trim()).length;
@@ -33066,7 +33617,7 @@ function renderAgentResponseRouteCard(result = {}) {
   const stages = agentContractStatusesFor(agentId);
   const contract = chatAgentContractStatusFor(agentId);
   return `
-    <section class="agent-response-route-card ${safeGraphClass(agentId)} ${safeGraphClass(status)}">
+    <section class="agent-response-route-card ${safeGraphClass(agentId)} ${safeGraphClass(effectiveStatus)}">
       <div class="agent-response-route-head">
         <span class="badge">${escapeHtml(route.badge)}</span>
         <strong>${escapeHtml(route.title)}</strong>
@@ -33313,21 +33864,22 @@ async function resumeAgentApproval(button) {
 function renderAgentContractOutput(output = {}) {
   if (!output || typeof output !== "object" || !Object.keys(output).length) return "";
   const delegate = output.delegate_result && typeof output.delegate_result === "object" ? output.delegate_result : null;
-  const delegateOutput = delegate?.output && typeof delegate.output === "object" ? delegate.output : {};
+  const delegateOutput = normalizeAgentOutput(delegate?.output && typeof delegate.output === "object" ? delegate.output : {});
   const delegateSummary = delegateOutput.summary || delegateOutput.answer || delegateOutput.markdown || delegate?.approval?.summary || "";
   const delegatePanel = delegate ? `
     <section class="agent-delegate-output">
       <div>
         <span class="badge">${escapeHtml(agentDisplayName(delegate.agent_id || "delegated_agent"))}</span>
         <strong>${escapeHtml(labelizeGraph(delegate.status || "delegated"))}</strong>
-        <p>${escapeHtml(String(delegateSummary || "Delegated agent returned a structured response.").slice(0, 420))}</p>
-      </div>
-      <div class="agent-trace-chain compact">
-        ${delegate.trace?.trace_id ? `<span><code>${escapeHtml(delegate.trace.trace_id)}</code><small>delegate trace</small></span>` : ""}
-        ${delegate.request_id ? `<span><code>${escapeHtml(delegate.request_id)}</code><small>delegate request</small></span>` : ""}
+        <p>${escapeHtml(leanAgentSummary(delegateSummary || "Delegated agent returned a structured response."))}</p>
       </div>
     </section>
   ` : "";
+  const directArtifactKeys = ["email_draft", "concept_path", "evidence_path", "crud_log_path", "graph_curator_trigger", "todos", "candidate_edges"]
+    .some((key) => output[key]);
+  if (delegate && !directArtifactKeys && Object.keys(delegateOutput).length) {
+    return `${renderAgentContractOutput({ ...delegateOutput, delegate_result: null })}${delegatePanel}`;
+  }
   if (output.email_draft && typeof output.email_draft === "object") {
     const draft = output.email_draft;
     return `
@@ -33342,17 +33894,9 @@ function renderAgentContractOutput(output = {}) {
         </div>
         <pre class="email-draft-body">${escapeHtml(draft.body || "")}</pre>
       </section>
-      ${renderAgentTraceSummaryOutput(output.trace_summary)}
-      ${delegatePanel}
     `;
   }
   if (output.concept_path || output.evidence_path || output.crud_log_path || output.graph_curator_trigger) {
-    const artifacts = [
-      ["Concept", output.concept_path],
-      ["Evidence", output.evidence_path],
-      ["Transcript", output.transcript_path],
-      ["CRUD log", output.crud_log_path],
-    ].filter(([, value]) => value);
     return `
       <section class="knowledge-fabric-output">
         <div class="ingest-contract-grid compact">
@@ -33360,11 +33904,6 @@ function renderAgentContractOutput(output = {}) {
           <span><strong>${escapeHtml(output.graph_curator_trigger || "not queued")}</strong><small>graph curator</small></span>
           <span><strong>${escapeHtml(output.vector_refresh || "deferred")}</strong><small>vector boundary</small></span>
         </div>
-        ${artifacts.length ? `
-          <div class="knowledge-fabric-artifact-list">
-            ${artifacts.map(([label, value]) => renderKnowledgeFabricArtifactLink(label, value)).join("")}
-          </div>
-        ` : ""}
         ${Array.isArray(output.candidate_edges) && output.candidate_edges.length ? `
           <div class="agent-consumer-list">
             ${output.candidate_edges.slice(0, 6).map((edge) => `<span>${escapeHtml(`${edge.relation_type || "edge"} · ${edge.confidence ?? "-"} confidence`)}</span>`).join("")}
@@ -33404,15 +33943,26 @@ function renderAgentContractOutput(output = {}) {
         ${publicKeys.map((key) => `
           <div>
             <span>${escapeHtml(labelizeGraph(key))}</span>
-            <p>${escapeHtml(String(displayOutput[key] || ""))}</p>
+            <p>${escapeHtml(leanAgentSummary(displayOutput[key]))}</p>
           </div>
         `).join("")}
       </section>
-      ${renderAgentTraceSummaryOutput(displayOutput.trace_summary)}
       ${delegatePanel}
     `;
   }
   return `${delegatePanel}`;
+}
+
+function leanAgentSummary(value = "") {
+  const text = String(value || "").trim();
+  const embedded = parseEmbeddedJsonObject(text);
+  if (embedded && typeof embedded === "object") {
+    const output = normalizeAgentOutput(embedded.output || embedded);
+    return output.email_draft?.subject
+      ? `Drafted email: ${output.email_draft.subject}`
+      : output.summary || output.answer || "Agent completed.";
+  }
+  return text.slice(0, 520);
 }
 
 function renderAgentTraceSummaryOutput(traceSummary = null) {
