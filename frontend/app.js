@@ -10706,7 +10706,7 @@ function refreshStaticPagesWorkspace() {
   $("#statusGuardrails").textContent = status.guardrail_policy || "-";
   $("#statusVersion").textContent = status.app_version || "-";
   const activeProfile = state.twins.find((twin) => twin.twin_id === state.activeTwin);
-  $("#workspaceSignal").textContent = `${activeProfile?.display_name || state.activeTwin} · GitHub Pages · ${state.n8nAgentContracts.configured_count}/${state.n8nAgentContracts.contract_count} n8n URLs`;
+  $("#workspaceSignal").textContent = `${activeProfile?.display_name || state.activeTwin} · GitHub Pages · Actor Twin embedded chat`;
   $("#voiceReadiness").textContent = "Static staging: voice recording UI is visible; transcription requires the local backend or a hosted API.";
   $("#voiceReadiness").className = "readiness missing";
   updateLandingStatus();
@@ -10987,7 +10987,8 @@ function buildStaticPagesN8nAgentContracts() {
       webhook_env_var: "N8N_ACTOR_TWIN_WEBHOOK_URL",
       github_pages_secret: "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
       production_secret: "N8N_ACTOR_TWIN_WEBHOOK_URL",
-      webhook_configured: hasAgentWebhook("actor_twin"),
+      webhook_configured: agentRuntimeReadiness("actor_twin").configured,
+      runtime_configured: agentRuntimeReadiness("actor_twin").configured,
       runtime_status: agentRuntimeReadiness("actor_twin").status,
       webhook_url_configured: hasAgentWebhook("actor_twin"),
       statuses: agentContractStatusesFor("actor_twin"),
@@ -11007,12 +11008,13 @@ function buildStaticPagesN8nAgentContracts() {
       webhook_env_var: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
       github_pages_secret: "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
       production_secret: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
-      webhook_configured: hasAgentWebhook("knowledge_fabric_agent"),
+      webhook_configured: agentRuntimeReadiness("knowledge_fabric_agent").configured,
+      runtime_configured: agentRuntimeReadiness("knowledge_fabric_agent").configured,
       runtime_status: agentRuntimeReadiness("knowledge_fabric_agent").status,
       webhook_url_configured: hasAgentWebhook("knowledge_fabric_agent"),
       statuses: agentContractStatusesFor("knowledge_fabric_agent"),
       approval_boundary: "Creates pending-review concepts and candidate graph edges only. Trusted promotion and vector refresh require review policy approval.",
-      blocker: "Live Knowledge Fabric Agent workflow URL is missing; vector DB credentials remain pending.",
+      blocker: "Direct public Knowledge Fabric URL is optional; Actor Twin should call it inside n8n as a workflow tool.",
     },
     {
       agent_id: "agentic_butler",
@@ -11027,12 +11029,13 @@ function buildStaticPagesN8nAgentContracts() {
       webhook_env_var: "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
       github_pages_secret: "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
       production_secret: "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
-      webhook_configured: hasAgentWebhook("agentic_butler"),
+      webhook_configured: agentRuntimeReadiness("agentic_butler").configured,
+      runtime_configured: agentRuntimeReadiness("agentic_butler").configured,
       runtime_status: agentRuntimeReadiness("agentic_butler").status,
       webhook_url_configured: hasAgentWebhook("agentic_butler"),
       statuses: agentContractStatusesFor("agentic_butler"),
-      approval_boundary: "Activates approved skills and drafts outputs. External actions, meetings, emails, and requires_human steps must pause.",
-      blocker: "Live Agentic Butler workflow URL is missing; skill execution remains approval-gated.",
+      approval_boundary: "Activates approved skills and drafts outputs autonomously. New skill or task-agent designs stay pending until human approval.",
+      blocker: "Direct public Agentic Butler URL is optional; Actor Twin should call it inside n8n as a workflow tool.",
     },
   ];
   return {
@@ -11205,7 +11208,7 @@ function buildStaticPagesReviewDashboard() {
         status: "static-fixture",
         blockers: state.n8nAgentContracts?.configured_count === state.n8nAgentContracts?.contract_count
           ? []
-          : ["Knowledge Fabric Agent and Agentic Butler live n8n URLs are not configured in public runtime config."],
+          : ["Actor Twin embedded chat is the frontend entrypoint. Knowledge Fabric Agent and Agentic Butler run as internal n8n workflow tools unless direct UAT URLs are explicitly configured."],
       },
       canary_packages: {
         packages: [],
@@ -11217,9 +11220,9 @@ function buildStaticPagesReviewDashboard() {
     },
     actions: [
       {
-        title: "Connect remaining n8n URLs",
-        detail: "Add Knowledge Fabric Agent and Agentic Butler webhook URLs to runtime config when ready.",
-        status: "blocked",
+        title: "Verify Actor Twin tool calls",
+        detail: "Confirm the Actor Twin n8n workflow has Knowledge Fabric Agent and Agentic Butler connected as callable workflow tools.",
+        status: "pending-review",
       },
       {
         title: "Review candidate graph relations",
@@ -16368,6 +16371,19 @@ function agentRuntimeReadiness(agentId) {
     knowledge_fabric_agent: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
     agentic_butler: "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
   }[agentId] || "N8N_WEBHOOK_URL";
+  if (runtimeStatus?.runtime_ready && runtimeStatus.status === "internal_tool_via_actor_twin") {
+    return {
+      status: "internal n8n tool",
+      label: "Actor Twin workflow tool",
+      detail: runtimeStatus.detail || slot.probe_boundary || "Called by the embedded Actor Twin workflow inside n8n; no direct public worker URL is required for the frontend.",
+      nextAction: runtimeStatus.next_action || slot.next_action || "Verify the Actor Twin n8n workflow calls this worker as a workflow tool during UAT.",
+      configured: true,
+      envVar,
+      runtimeStatus,
+      urlSource: "internal-n8n-tool",
+      urlSourceLabel: "internal n8n tool",
+    };
+  }
   if (probe?.status === "connected") {
     return {
       status: "n8n connected",
@@ -26892,16 +26908,17 @@ function renderN8nRuntimeReadinessMini() {
   const agents = Array.isArray(readiness.agents) ? readiness.agents : [];
   if (!agents.length) return "";
   const configured = summary.configured_count ?? agents.filter((agent) => agent.url_configured).length;
+  const runtimeReady = summary.runtime_ready_count ?? agents.filter((agent) => agent.runtime_ready || agent.url_configured).length;
   const total = summary.agent_count ?? agents.length;
   const awaiting = summary.awaiting_url_count ?? agents.filter((agent) => agent.status === "awaiting_url").length;
-  const status = readiness.status || (configured === total ? "ready" : configured > 0 ? "partial" : "blocked");
-  const nextAgent = agents.find((agent) => agent.status !== "configured") || agents[0];
+  const status = readiness.status || (runtimeReady === total ? "ready" : configured > 0 ? "partial" : "blocked");
+  const nextAgent = agents.find((agent) => !(agent.runtime_ready || agent.url_configured)) || agents[0];
   return `
     <aside class="production-runtime-readiness-mini ${escapeHtml(status)}" aria-label="n8n runtime readiness">
       <div>
         <span class="badge">n8n contracts</span>
-        <strong>${escapeHtml(configured)}/${escapeHtml(total)} live URL slots configured</strong>
-        <p>${escapeHtml(awaiting ? `${awaiting} agent workflow URL(s) still awaiting public UAT endpoint.` : "All configured agent URLs have a public webhook shape.")}</p>
+        <strong>${escapeHtml(runtimeReady)}/${escapeHtml(total)} runtime paths ready</strong>
+        <p>${escapeHtml(awaiting ? `${awaiting} optional direct URL(s) still awaiting public UAT endpoint.` : "Actor Twin embedded chat is the frontend entrypoint; worker agents are internal n8n tools unless exposed for direct UAT.")}</p>
       </div>
       <div class="production-runtime-readiness-agents">
         ${agents.map((agent) => `
@@ -29921,8 +29938,8 @@ function productionTrustedRetrievalReadiness() {
       value: liveReady ? "configured" : "fixture gated",
       state: liveReady ? "ready" : "blocked",
       detail: liveReady
-        ? "Knowledge Fabric Agent and Agentic Butler URLs are configured."
-        : "Live n8n URL slots for Knowledge Fabric Agent and Agentic Butler are still required.",
+        ? "Actor Twin can reach Knowledge Fabric Agent and Agentic Butler through the configured runtime path."
+        : "Actor Twin embedded chat must be verified with internal Knowledge Fabric and Butler tool calls.",
     },
   ];
   return {
@@ -30168,18 +30185,18 @@ function renderProductionAgentUrlReadiness(agents = []) {
     <section class="production-agent-url-readiness">
       <div class="production-agent-url-head">
         <div>
-          <span class="badge">Agent URL readiness</span>
-          <strong>${escapeHtml(`${configuredCount}/${agents.length} live URLs configured`)}</strong>
+          <span class="badge">Agent runtime readiness</span>
+          <strong>${escapeHtml(`${runtimeSummary.runtime_ready_count ?? configuredCount}/${runtimeSummary.agent_count ?? agents.length} runtime paths ready`)}</strong>
           <p>${escapeHtml(missing.length
-            ? "Knowledge Fabric Agent and Agentic Butler stay fixture-only until their public UAT or hosted backend webhook URLs are configured."
-            : "All top-level agent URLs are configured. Run live probes before production approval.")}</p>
+            ? "Actor Twin embedded chat is the frontend route. Direct public worker URLs are optional; verify internal workflow tools in n8n."
+            : "All configured runtime paths are ready. Run live probes before production approval.")}</p>
         </div>
         ${missingConfig ? `<button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(missingConfig)}">Copy missing JSON</button>` : ""}
       </div>
       ${runtimeStatus.schema_version ? `
         <div class="production-agent-runtime-artifact">
           <span>${escapeHtml(runtimeStatus.status || "runtime status")}</span>
-          <strong>${escapeHtml(`${runtimeSummary.configured_count ?? configuredCount}/${runtimeSummary.agent_count ?? agents.length} URLs validated from runtime asset`)}</strong>
+          <strong>${escapeHtml(`${runtimeSummary.runtime_ready_count ?? runtimeSummary.configured_count ?? configuredCount}/${runtimeSummary.agent_count ?? agents.length} runtime paths validated from runtime asset`)}</strong>
           <small>${escapeHtml(runtimeStatus.boundary || "Runtime readiness validates URL slots but does not prove live connectivity.")}</small>
           <a class="secondary small" href="${escapeHtml(runtimeStatusAsset)}" target="_blank" rel="noreferrer">Open readiness artifact</a>
           <a class="secondary small" href="${escapeHtml(liveOperatorChecklist)}" target="_blank" rel="noreferrer">Open live checklist</a>

@@ -9,6 +9,7 @@ const agents = [
   {
     agent_id: "actor_twin",
     agent_name: "Actor Twin",
+    frontend_required: true,
     env_var: "N8N_ACTOR_TWIN_WEBHOOK_URL",
     top_level_url_key: "n8nActorTwinWebhookUrl",
     github_pages_secret: "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
@@ -17,6 +18,7 @@ const agents = [
   {
     agent_id: "knowledge_fabric_agent",
     agent_name: "Knowledge Fabric Agent",
+    frontend_required: false,
     env_var: "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
     top_level_url_key: "n8nKnowledgeFabricWebhookUrl",
     github_pages_secret: "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
@@ -25,10 +27,11 @@ const agents = [
   {
     agent_id: "agentic_butler",
     agent_name: "Agentic Butler",
+    frontend_required: false,
     env_var: "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
     top_level_url_key: "n8nAgenticButlerWebhookUrl",
     github_pages_secret: "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
-    required_capabilities: ["approved_skill_activation", "approval_gate_detection", "trace_response"],
+    required_capabilities: ["autonomous_work_artifact_execution", "new_skill_activation_gate", "trace_response"],
   },
 ];
 
@@ -104,11 +107,15 @@ function readinessForAgent(config, agent) {
   const urlConfigured = Boolean(url);
   const urlValid = validWebhookUrl(url);
   const slotStatus = String(slot.status || "").trim();
+  const internalTool = !agent.frontend_required && !urlConfigured && slotStatus === "internal_tool_via_actor_twin";
   const status = urlConfigured && urlValid
     ? "configured"
+    : internalTool
+      ? "internal_tool_via_actor_twin"
     : slotStatus === "awaiting_url"
       ? "awaiting_url"
       : "missing_url";
+  const runtimeReady = (urlConfigured && urlValid) || internalTool;
   const gates = [
     {
       gate: "runtime_asset",
@@ -117,8 +124,10 @@ function readinessForAgent(config, agent) {
     },
     {
       gate: "webhook_url",
-      ready: urlConfigured && urlValid,
-      detail: urlConfigured
+      ready: runtimeReady,
+      detail: internalTool
+        ? "Direct public frontend URL is optional; Actor Twin calls this agent inside n8n."
+        : urlConfigured
         ? (urlValid ? "Webhook URL has public https webhook shape." : "URL exists but does not match expected https webhook shape.")
         : "No public UAT webhook URL configured.",
     },
@@ -137,15 +146,18 @@ function readinessForAgent(config, agent) {
     agent_id: agent.agent_id,
     agent_name: agent.agent_name,
     status,
-    status_label: status === "configured" ? "URL configured" : status === "awaiting_url" ? "awaiting URL" : "missing URL",
+    status_label: status === "configured" ? "URL configured" : status === "internal_tool_via_actor_twin" ? "internal n8n tool" : status === "awaiting_url" ? "awaiting URL" : "missing URL",
     url_configured: urlConfigured && urlValid,
+    runtime_ready: runtimeReady,
+    frontend_required: agent.frontend_required,
+    invocation_mode: internalTool ? "actor_twin_workflow_tool" : "public_webhook",
     url_origin: urlConfigured && urlValid ? new URL(url).origin : "",
     url_shape: urlConfigured ? (urlValid ? "valid_public_webhook" : "invalid_webhook_shape") : "empty",
     env_var: agent.env_var,
     github_pages_secret: agent.github_pages_secret,
     top_level_url_key: agent.top_level_url_key,
     probe_slot_status: slotStatus || "missing",
-    detail: urlConfigured && urlValid
+    detail: runtimeReady
       ? (slot.probe_boundary || "Public UAT webhook configured; run live probe and capture trace evidence.")
       : (slot.probe_boundary || "Fixture replay remains available until a public UAT webhook is configured."),
     next_action: slot.next_action || (urlConfigured && urlValid
@@ -162,19 +174,25 @@ function buildArtifact(configPath) {
   assertNoSecrets(configPath, serialized);
   const readiness = agents.map((agent) => readinessForAgent(config, agent));
   const configured = readiness.filter((agent) => agent.url_configured);
+  const runtimeReady = readiness.filter((agent) => agent.runtime_ready);
+  const frontendReady = readiness.filter((agent) => agent.frontend_required ? agent.runtime_ready : true);
   const awaiting = readiness.filter((agent) => agent.status === "awaiting_url");
   return {
     schema_version: "0.1.0",
     generated_at: new Date().toISOString(),
     source: safeRelative(configPath),
-    status: configured.length === agents.length ? "configured" : "partial",
+    orchestration_mode: config.orchestration_mode || "actor_twin_embedded_chat",
+    status: runtimeReady.length === agents.length ? "runtime_ready" : configured.length === agents.length ? "configured" : "partial",
     summary: {
       agent_count: agents.length,
       configured_count: configured.length,
+      runtime_ready_count: runtimeReady.length,
+      frontend_required_count: readiness.filter((agent) => agent.frontend_required).length,
+      frontend_ready_count: frontendReady.length,
       awaiting_url_count: awaiting.length,
       missing_count: readiness.length - configured.length - awaiting.length,
     },
-    boundary: "Public-safe runtime readiness artifact. It validates URL slots and probe metadata, but it does not call n8n and does not prove live connectivity.",
+    boundary: "Public-safe runtime readiness artifact. It validates the embedded Actor Twin chat entrypoint plus optional direct public webhook slots. Knowledge Fabric Agent and Agentic Butler may be runtime-ready as internal Actor Twin workflow tools without public Pages URLs.",
     agents: readiness,
   };
 }
@@ -186,7 +204,7 @@ function main() {
     fs.mkdirSync(path.dirname(args.output), { recursive: true });
     fs.writeFileSync(args.output, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
   }
-  console.log(`n8n runtime readiness: ${artifact.summary.configured_count}/${artifact.summary.agent_count} URLs configured`);
+  console.log(`n8n runtime readiness: ${artifact.summary.runtime_ready_count}/${artifact.summary.agent_count} runtime paths ready (${artifact.summary.configured_count}/${artifact.summary.agent_count} direct URLs configured)`);
   if (args.write) console.log(`runtime readiness written: ${safeRelative(args.output)}`);
 }
 

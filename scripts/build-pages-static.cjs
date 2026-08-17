@@ -100,6 +100,7 @@ function runtimeConfigJs() {
   return `window.INTELLECTUAL_TWIN_CONFIG = {
   apiBaseUrl: ${quoted(apiBaseUrl)},
   assetBaseUrl: "",
+  orchestrationMode: "actor_twin_embedded_chat",
   n8nChatWebhookUrl: ${quoted(chatUrl)},
   n8nActorTwinWebhookUrl: ${quoted(actorUrl)},
   n8nKnowledgeFabricWebhookUrl: ${quoted(knowledgeUrl)},
@@ -116,14 +117,14 @@ function runtimeConfigJs() {
       next_action: ${quoted(actorUrl ? "Run Actor Twin UAT and capture n8n trace evidence." : "Set GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL or GH_PAGES_N8N_CHAT_WEBHOOK_URL.")}
     },
     knowledge_fabric_agent: {
-      status: ${quoted(status(knowledgeUrl))},
-      probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
-      next_action: ${quoted(knowledgeUrl ? "Run Knowledge Fabric Agent UAT with upload/transcript fixture." : "Set GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL.")}
+      status: ${quoted(knowledgeUrl ? "configured" : "internal_tool_via_actor_twin")},
+      probe_boundary: ${quoted(knowledgeUrl ? "Optional direct public Knowledge Fabric webhook configured for UAT." : "Knowledge Fabric Agent is called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional.")},
+      next_action: ${quoted(knowledgeUrl ? "Run Knowledge Fabric Agent direct UAT with upload/transcript fixture." : "Verify the Actor Twin n8n workflow has the Knowledge Fabric workflow tool connected and published.")}
     },
     agentic_butler: {
-      status: ${quoted(status(butlerUrl))},
-      probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
-      next_action: ${quoted(butlerUrl ? "Run Agentic Butler UAT with autonomous no-write work-artifact fixture." : "Set GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL.")}
+      status: ${quoted(butlerUrl ? "configured" : "internal_tool_via_actor_twin")},
+      probe_boundary: ${quoted(butlerUrl ? "Optional direct public Agentic Butler webhook configured for UAT." : "Agentic Butler is called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional.")},
+      next_action: ${quoted(butlerUrl ? "Run Agentic Butler direct UAT with autonomous no-write work-artifact fixture." : "Verify the Actor Twin n8n workflow has the Agentic Butler workflow tool connected and published.")}
     }
   },
   n8nChatEnabled: ${Boolean(chatUrl || actorUrl)},

@@ -63,8 +63,11 @@ function buildConfig() {
   const butlerUrl = env("GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL");
 
   return {
-    purpose: "GitHub Pages generated public runtime endpoints for top-level n8n agents. Values come from repository secrets during deployment.",
+    purpose: "GitHub Pages generated public runtime endpoints for the MeIDs n8n agent runtime. Actor Twin embedded chat is the frontend entrypoint; Knowledge Fabric and Agentic Butler are normally called inside n8n as workflow tools.",
     generated_at: new Date().toISOString(),
+    orchestration_mode: "actor_twin_embedded_chat",
+    frontend_required_agents: ["actor_twin"],
+    internal_n8n_tool_agents: ["knowledge_fabric_agent", "agentic_butler"],
     n8nAgentWebhooks: {
       actor_twin: actorUrl,
       knowledge_fabric_agent: knowledgeUrl,
@@ -77,14 +80,22 @@ function buildConfig() {
         actorUrl ? "Run Actor Twin UAT and capture n8n trace evidence." : "Set GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL or GH_PAGES_N8N_CHAT_WEBHOOK_URL.",
       ),
       knowledge_fabric_agent: slot(
-        configuredStatus(knowledgeUrl),
-        "GitHub Pages runtime config generated from repository secrets.",
-        knowledgeUrl ? "Run Knowledge Fabric Agent UAT with upload/transcript fixture." : "Set GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL.",
+        knowledgeUrl ? "configured" : "internal_tool_via_actor_twin",
+        knowledgeUrl
+          ? "Optional direct public Knowledge Fabric webhook configured for UAT."
+          : "Knowledge Fabric Agent is expected to be called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional.",
+        knowledgeUrl
+          ? "Run Knowledge Fabric Agent direct UAT with upload/transcript fixture."
+          : "Verify the Actor Twin n8n workflow has the Knowledge Fabric workflow tool connected and published.",
       ),
       agentic_butler: slot(
-        configuredStatus(butlerUrl),
-        "GitHub Pages runtime config generated from repository secrets.",
-        butlerUrl ? "Run Agentic Butler UAT with autonomous no-write work-artifact fixture." : "Set GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL.",
+        butlerUrl ? "configured" : "internal_tool_via_actor_twin",
+        butlerUrl
+          ? "Optional direct public Agentic Butler webhook configured for UAT."
+          : "Agentic Butler is expected to be called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional.",
+        butlerUrl
+          ? "Run Agentic Butler direct UAT with autonomous no-write work-artifact fixture."
+          : "Verify the Actor Twin n8n workflow has the Agentic Butler workflow tool connected and published.",
       ),
     },
     n8nActorTwinWebhookUrl: actorUrl,

@@ -1,15 +1,19 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-11T10:52:25.999Z",
+  "generated_at": "2026-08-17T10:38:55.013Z",
   "source": "frontend/assets/agent-runtime-config.json",
-  "status": "configured",
+  "orchestration_mode": "actor_twin_embedded_chat",
+  "status": "runtime_ready",
   "summary": {
     "agent_count": 3,
     "configured_count": 3,
+    "runtime_ready_count": 3,
+    "frontend_required_count": 1,
+    "frontend_ready_count": 3,
     "awaiting_url_count": 0,
     "missing_count": 0
   },
-  "boundary": "Public-safe runtime readiness artifact. It validates URL slots and probe metadata, but it does not call n8n and does not prove live connectivity.",
+  "boundary": "Public-safe runtime readiness artifact. It validates the embedded Actor Twin chat entrypoint plus optional direct public webhook slots. Knowledge Fabric Agent and Agentic Butler may be runtime-ready as internal Actor Twin workflow tools without public Pages URLs.",
   "agents": [
     {
       "agent_id": "actor_twin",
@@ -17,6 +21,9 @@
       "status": "configured",
       "status_label": "URL configured",
       "url_configured": true,
+      "runtime_ready": true,
+      "frontend_required": true,
+      "invocation_mode": "public_webhook",
       "url_origin": "https://eraneos-agentic-platform.azurewebsites.net",
       "url_shape": "valid_public_webhook",
       "env_var": "N8N_ACTOR_TWIN_WEBHOOK_URL",
@@ -59,6 +66,9 @@
       "status": "configured",
       "status_label": "URL configured",
       "url_configured": true,
+      "runtime_ready": true,
+      "frontend_required": false,
+      "invocation_mode": "public_webhook",
       "url_origin": "https://eraneos-agentic-platform.azurewebsites.net",
       "url_shape": "valid_public_webhook",
       "env_var": "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
@@ -102,6 +112,9 @@
       "status": "configured",
       "status_label": "URL configured",
       "url_configured": true,
+      "runtime_ready": true,
+      "frontend_required": false,
+      "invocation_mode": "public_webhook",
       "url_origin": "https://eraneos-agentic-platform.azurewebsites.net",
       "url_shape": "valid_public_webhook",
       "env_var": "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
@@ -109,10 +122,10 @@
       "top_level_url_key": "n8nAgenticButlerWebhookUrl",
       "probe_slot_status": "configured",
       "detail": "Public UAT webhook configured through scripts/set-n8n-agent-url.cjs. Live workflow proof still requires cockpit probe or n8n execution trace.",
-      "next_action": "Run Agentic Butler UAT with approval-gated skill activation fixture.",
+      "next_action": "Run Agentic Butler UAT with autonomous no-write work-artifact fixture.",
       "required_capabilities": [
-        "approved_skill_activation",
-        "approval_gate_detection",
+        "autonomous_work_artifact_execution",
+        "new_skill_activation_gate",
         "trace_response"
       ],
       "gates": [

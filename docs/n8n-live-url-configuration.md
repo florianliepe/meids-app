@@ -4,15 +4,15 @@ Date: 2026-08-09
 
 ## Purpose
 
-MeIDs can run in GitHub Pages fixture mode without live n8n workflows. For production-style UAT, each top-level agent needs a live n8n webhook URL in `frontend/runtime-config.js` or the hosted runtime config equivalent.
+MeIDs can run in GitHub Pages fixture mode without live n8n workflows. The current public frontend model uses the embedded n8n Actor Twin chat as the only required user-facing runtime path. Knowledge Fabric Agent and Agentic Butler are expected to run behind the Actor Twin as n8n workflow tools unless they are intentionally exposed for direct UAT.
 
-## Required Agent URLs
+## Required Runtime Paths
 
 | Agent | Runtime key | Current status |
 |---|---|---|
-| Actor Twin | `n8nActorTwinWebhookUrl` / `n8nAgentWebhooks.actor_twin` | configured for public staging |
-| Knowledge Fabric Agent | `n8nKnowledgeFabricWebhookUrl` / `n8nAgentWebhooks.knowledge_fabric_agent` | missing URL |
-| Agentic Butler | `n8nAgenticButlerWebhookUrl` / `n8nAgentWebhooks.agentic_butler` | missing URL |
+| Actor Twin | `n8nChatWebhookUrl` / `n8nActorTwinWebhookUrl` / `n8nAgentWebhooks.actor_twin` | required frontend entrypoint |
+| Knowledge Fabric Agent | internal Actor Twin n8n workflow tool; optional `n8nAgentWebhooks.knowledge_fabric_agent` for direct UAT | runtime-ready when Actor Twin tool call is configured |
+| Agentic Butler | internal Actor Twin n8n workflow tool; optional `n8nAgentWebhooks.agentic_butler` for direct UAT | runtime-ready when Actor Twin tool call is configured |
 
 ## GitHub Pages Secrets
 
@@ -28,20 +28,21 @@ This keeps Chat mode routing, cockpit status badges, and the public readiness su
 |---|---|
 | `GH_PAGES_N8N_CHAT_WEBHOOK_URL` | Embedded n8n chat / Actor Twin chat widget URL |
 | `GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL` | Optional explicit Actor Twin contract webhook; falls back to chat webhook |
-| `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` | Knowledge Fabric Agent ingest / graph / vector handoff webhook |
-| `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` | Agentic Butler approved skill activation webhook |
+| `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` | Optional direct-UAT Knowledge Fabric Agent ingest / graph / vector handoff webhook |
+| `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` | Optional direct-UAT Agentic Butler autonomous work-artifact and skill proposal webhook |
 
-If a secret is empty, the generated runtime config should keep that agent in `awaiting_url` state. The Actor Twin URL should fall back to `GH_PAGES_N8N_CHAT_WEBHOOK_URL` when the explicit Actor Twin secret is empty.
+If the optional worker-agent secrets are empty, the generated runtime config should mark those agents as `internal_tool_via_actor_twin`, not as frontend blockers. The Actor Twin URL should fall back to `GH_PAGES_N8N_CHAT_WEBHOOK_URL` when the explicit Actor Twin secret is empty.
 
 Secrets must be configured in GitHub at:
 
 `Settings -> Secrets and variables -> Actions -> Repository secrets`
 
-Current credential boundary: the public app can already use `frontend/assets/agent-runtime-config.json` for intentionally public UAT URLs. Workflow-secret injection is applied in `.github/workflows/intellectual-twin-pages.yml`. The missing live work remains to provide values for Knowledge Fabric Agent and Agentic Butler when those n8n workflows are ready.
+Current credential boundary: the public app can already use `frontend/assets/agent-runtime-config.json` for intentionally public UAT URLs. Workflow-secret injection is applied in `.github/workflows/intellectual-twin-pages.yml`. The primary missing live proof is now Actor Twin UAT that demonstrates internal calls to Knowledge Fabric Agent and Agentic Butler through n8n workflow tools.
 
 Runtime URL readiness is also exported to `frontend/assets/n8n-runtime-readiness-status.json`. This generated artifact is public-safe and validates:
 
-- each top-level agent URL slot,
+- the Actor Twin embedded chat URL slot,
+- optional direct worker-agent URL slots,
 - expected HTTPS `/webhook/` URL shape,
 - probe-slot metadata,
 - absence of obvious secret-like values.
@@ -73,15 +74,15 @@ Use this only for intentionally public UAT endpoints:
 | Asset key | Purpose |
 |---|---|
 | `n8nAgentWebhooks.actor_twin` | Actor Twin chat / intent contract endpoint |
-| `n8nAgentWebhooks.knowledge_fabric_agent` | Knowledge Fabric ingest / curation endpoint |
-| `n8nAgentWebhooks.agentic_butler` | Agentic Butler skill activation endpoint |
+| `n8nAgentWebhooks.knowledge_fabric_agent` | Optional direct-UAT Knowledge Fabric ingest / curation endpoint |
+| `n8nAgentWebhooks.agentic_butler` | Optional direct-UAT Agentic Butler skill activation endpoint |
 | `n8nAgentProbeSlots.actor_twin` | Public metadata for cockpit probe state and next action |
 | `n8nAgentProbeSlots.knowledge_fabric_agent` | Public metadata for the Knowledge Fabric Agent live URL handoff |
 | `n8nAgentProbeSlots.agentic_butler` | Public metadata for the Agentic Butler live URL handoff |
 
 | Generated artifact | Purpose |
 |---|---|
-| `frontend/assets/n8n-runtime-readiness-status.json` | Cockpit-visible validation summary of configured versus awaiting live agent URLs. |
+| `frontend/assets/n8n-runtime-readiness-status.json` | Cockpit-visible validation summary of the embedded Actor Twin path plus optional direct worker URLs. |
 | `frontend/assets/n8n-live-handoff-commands.json` | Public-safe operator command bundle for configuring URL slots, recording probe evidence, and running strict readiness gates. |
 
 Do not put private credentials, API keys, bearer tokens, or internal-only URLs in this file. Private production URLs should move to the hosted backend or workflow-generated runtime config.
@@ -102,31 +103,31 @@ The cockpit uses this distinction to avoid treating planned, fixture-only agents
 | `missing URL` | No URL and no explicit probe-slot status. | Configuration is incomplete or stale. |
 | `n8n connected` | A probe or live interaction reached the workflow and produced trace evidence. | Candidate for production readiness, still subject to approval gates. |
 
-## Current Missing Live Endpoints
+## Internal Worker Agent Runtime
 
-The Actor Twin is configured for public staging. The following live endpoints are still missing and remain fixture-only until real n8n webhook URLs are available:
+The Actor Twin is configured as the public staging entrypoint. Knowledge Fabric Agent and Agentic Butler should normally be called by the Actor Twin inside n8n through workflow tools. They do not need to be shown as missing frontend URLs when direct public UAT endpoints are not configured.
 
-| Agent | Required public UAT key | UI setup action |
+| Agent | Primary runtime path | Optional direct-UAT key |
 |---|---|---|
-| Knowledge Fabric Agent | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` or fallback `n8nAgentWebhooks.knowledge_fabric_agent` | Review Cockpit -> Knowledge-to-Graph Handoff -> Copy setup packet |
-| Agentic Butler | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` or fallback `n8nAgentWebhooks.agentic_butler` | Review Cockpit -> Knowledge-to-Graph Handoff -> Copy setup packet |
+| Knowledge Fabric Agent | Actor Twin `Call n8n Workflow Tool` / sub-workflow | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` or fallback `n8nAgentWebhooks.knowledge_fabric_agent` |
+| Agentic Butler | Actor Twin `Call n8n Workflow Tool` / sub-workflow | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` or fallback `n8nAgentWebhooks.agentic_butler` |
 
-Public-safe workflow blueprints for these missing live workflows are already prepared:
+Public-safe workflow blueprints for these worker workflows are prepared:
 
 | Agent | Blueprint | Validator |
 |---|---|---|
 | Knowledge Fabric Agent | `workflows/n8n/knowledge-fabric-agent.workflow.json` | `node scripts/validate-agent-config-export.cjs` |
 | Agentic Butler | `workflows/n8n/agentic-butler.workflow.json` | `node scripts/validate-agent-config-export.cjs` |
 
-These files are implementation blueprints, not live n8n exports. They define the webhook trigger, minimum node responsibilities, approval boundary, trace fields, and live-probe return shape. When building the actual n8n workflows, use the blueprint plus the matching fixture in `contracts/n8n/fixtures/`.
+These files are implementation blueprints, not live n8n exports. They define the workflow trigger, minimum node responsibilities, approval boundary, trace fields, and direct-UAT return shape. When building the actual n8n workflows, use the blueprint plus the matching fixture in `contracts/n8n/fixtures/`.
 
-The Production/Review Cockpit also shows a **Missing live URL setup** panel when either URL is absent. Use it as the operational handoff:
+The Production/Review Cockpit should only show a direct worker URL setup panel when direct-UAT mode is required. For the embedded Actor Twin path, use this operational handoff:
 
-1. Copy the setup packet for the missing agent.
-2. Create or publish the matching n8n workflow as a public UAT webhook, or expose it through the hosted backend.
-3. Add the URL to the matching GitHub Pages secret or to `frontend/assets/agent-runtime-config.json` for public UAT.
-4. Rerun the Pages workflow or regenerate `frontend/assets/n8n-runtime-readiness-status.json`.
-5. Run the cockpit live probe and retain the n8n execution trace before production approval.
+1. Confirm the embedded Actor Twin chat URL is published and reachable.
+2. Confirm Actor Twin has workflow tools for Knowledge Fabric Agent and Agentic Butler.
+3. Run Actor Twin UAT prompts that require knowledge lookup and skill execution.
+4. Capture n8n execution traces showing the internal tool calls.
+5. Only add direct worker URLs when a separate direct-UAT probe is needed.
 
 Minimal public staging JSON shape:
 
@@ -144,8 +145,8 @@ Minimal public staging JSON shape:
     },
     "agentic_butler": {
       "status": "configured",
-      "probe_boundary": "Public UAT webhook configured; run approval-gated skill activation probe and capture n8n execution trace.",
-      "next_action": "Run Agentic Butler UAT with approved skill activation fixture."
+      "probe_boundary": "Public UAT webhook configured; run autonomous no-write work-artifact probe and capture n8n execution trace.",
+      "next_action": "Run Agentic Butler UAT with autonomous no-write work-artifact fixture."
     }
   },
   "n8nKnowledgeFabricWebhookUrl": "PASTE_PUBLIC_UAT_WEBHOOK_URL_HERE",
@@ -214,7 +215,7 @@ node scripts\record-n8n-live-probe-evidence.cjs `
   --agent agentic_butler `
   --trace-id "TRACE_ID_FROM_N8N" `
   --execution-url "https://YOUR-N8N-HOST/workflow/.../executions/..." `
-  --response-status approval_required `
+  --response-status completed `
   --url-source github-pages-secret
 ```
 
