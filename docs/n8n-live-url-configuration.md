@@ -288,17 +288,57 @@ $env:NODE_PATH="C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dep
 & "C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\browser-chat-local-url-setup-qa.cjs frontend docs\visual-qa\chat-local-url-setup
 ```
 
-## Chat-Level Contract Actions
+## Embedded Chat Metadata Contract
 
-The Chat interaction setup now exposes the active agent contract directly beside the mode selector:
+The Actor Twin page must stay a lean n8n chat surface. It must not expose local
+fallback prompts, raw probe buttons, JSON payload buttons, or direct worker-agent
+activation controls. Those diagnostics belong in Production, Review, Traces, or
+the n8n execution view.
 
-- Embedded chat response inspection for Actor Twin. The legacy local answer composer is hidden in the public frontend; inspect n8n execution traces for raw payloads.
-- `Show ingest payload` for Knowledge Fabric Agent.
-- `Show skill payload` for Agentic Butler.
-- `Probe live` for the selected mode.
-- `Copy key` / `Copy JSON` when the selected mode is missing a live URL.
+The only Actor Twin interaction input is the embedded n8n chat. The MeIDs
+interaction setup panel provides metadata that the embedded chat can use for
+routing and retrieval:
 
-This keeps the primary workspace aligned with the Production/Review Cockpit: users can see whether the selected interaction is using a live n8n URL, a fixture fallback, or a missing URL slot before submitting work.
+| Metadata | Purpose |
+|---|---|
+| `posture` | Tells Actor Twin whether to answer in balanced, bold, concise, or careful mode. |
+| `applied_skills` | Gives Actor Twin skill hints without forcing Agentic Butler activation. |
+| `source_scopes` | Indicates whether skills, tasks, curricula, and core concepts should be considered. |
+| `retrieval_mode` | Selects `keyword`, `vector-cache`, or `graph` as the preferred knowledge access mode. |
+| `keyword_hints` | Optional routing terms for keyword retrieval or focused graph/vector expansion. |
+| `websearch_enabled` | Signals whether external search is allowed. |
+| `voice_answer_requested` | Signals whether the final answer should be prepared for voice playback. |
+
+The Actor Twin owns routing. It decides whether to answer directly, call
+Knowledge Fabric Agent, or call Agentic Butler. The frontend must not ask the user
+to manually activate Knowledge Fabric or Agentic Butler from the Actor Twin page.
+
+## Live n8n Alignment Actions
+
+To make the live workflow match the frontend contract:
+
+1. Open the live `MeIDs Actor Twin - staging` workflow.
+2. Confirm `When chat message received` is set to Embedded Chat and published.
+3. Confirm the public chat URL matches `n8nChatWebhookUrl`.
+4. In the Actor Twin AI Agent, keep Knowledge Fabric Agent and Agentic Butler as
+   callable n8n workflow tools, not as separate frontend routes.
+5. Use the Knowledge Fabric tool for retrieval, source ingestion, transcript
+   staging, pending OKF concepts, evidence/audit updates, graph relation
+   suggestions, and vector-refresh boundaries. Pending staging is autonomous.
+6. Use the Agentic Butler tool for work-artifact creation, approved skill runs,
+   and new skill or agent concept proposals. Drafts, plans, and email text that
+   are not sent are autonomous.
+7. Require approval only before a generated skill/agent becomes active or before
+   a true external side effect such as send, schedule, publish, delete, commit, or
+   external write.
+8. Repair and publish the worker workflows before rerunning live UAT:
+   - Knowledge Fabric Agent must not fail on memory-node setup.
+   - Agentic Butler must not reference missing workflow nodes.
+9. Rerun:
+
+```powershell
+npm run uat:agents:live
+```
 
 ## Current Static Fallback
 

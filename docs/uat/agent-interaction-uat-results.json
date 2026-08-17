@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-08-17T14:12:41.010Z",
+  "generated_at": "2026-08-17T14:36:12.042Z",
   "purpose": "Executable UAT evidence for Actor Twin direct orchestration through live n8n.",
   "boundary": "Public-safe test prompts only. No private knowledge, secrets, or external write actions.",
   "actor_twin_webhook_host": "eraneos-agentic-platform.azurewebsites.net",
@@ -11,7 +11,7 @@
     "status": "failed",
     "live_alignment_required": true
   },
-  "next_action": "Actor Twin embedded chat is reachable, but downstream n8n worker workflows need repair: remove or correctly wire the Knowledge Fabric Simple Memory node, and repair the Agentic Butler workflow/tool reference that returns 'Referenced node does not exist'. Then rerun npm run uat:agents:live.",
+  "next_action": "Import and publish workflows/n8n/import-ready/actor-twin-direct-orchestrator.uat-live-urls.import.json into the active Actor Twin workflow for webhook path meids/actor-twin/chat, then import/publish the Knowledge Fabric and Agentic Butler AI-agent workflows and rerun npm run uat:agents:live.",
   "cases": [
     {
       "case_id": "actor_answer",
@@ -22,8 +22,8 @@
       "expected_response_status": "completed",
       "query": "Who is Florian in this public-safe staging twin? Answer briefly without creating work.",
       "status": "passed",
-      "started_at": "2026-08-17T14:10:48.914Z",
-      "completed_at": "2026-08-17T14:10:57.129Z",
+      "started_at": "2026-08-17T14:34:48.206Z",
+      "completed_at": "2026-08-17T14:34:53.269Z",
       "http_status": 200,
       "actual_target_agent": "actor_twin",
       "route_decision": "answer_direct",
@@ -33,9 +33,9 @@
       "delegate_agent_id": "",
       "delegate_status": "",
       "delegate_trace_id": "",
-      "answer_preview": "In this public-safe staging twin, \"Florian\" is {person} — the individual whose Intellectual Twin I am. I'm operating as the Actor representing his judgment, grounded strictly in the approved Persona Context Block and kno",
+      "answer_preview": "In this public-safe staging twin, \"Florian\" refers to the twin's persona owner/principal — I'm operating as the Intellectual Twin *of* Florian at {organization}, not Florian himself. I speak and steer as his documented j",
       "response_shape": "object(output)",
-      "raw_response_preview": "{\"output\":\"In this public-safe staging twin, \\\"Florian\\\" is {person} — the individual whose Intellectual Twin I am. I'm operating as the Actor representing his judgment, grounded strictly in the approved Persona Context Block and knowledge concepts made available to me in this session.\\n\\nA few honest caveats, since this is a staging/public-safe context:\\n\\n- I don't have a specific biographical concept in front of me (role, title, org details beyond {organization}) that I can cite — so anything more specific than \\\"the person this twin represents\\\" would be extrapolation, not grounded fact.\\n- I won't reconstruct or infer identity details from memory of other sessions/channels — consent scope rules mean I only use what's available right here.\\n- Per self-disclosure norms: yes, I'm an AI twin, not Florian himself — acting on his behalf, never instead of him.\\n\\nIf you want a fuller answer (role, background, remit), I'd need to either pull an approved concept via the Knowledge Agent or ",
+      "raw_response_preview": "{\"output\":\"In this public-safe staging twin, \\\"Florian\\\" refers to the twin's persona owner/principal — I'm operating as the Intellectual Twin *of* Florian at {organization}, not Florian himself. I speak and steer as his documented judgment and approved knowledge concepts direct, but I never claim to *be* him, and I flag clearly whenever I'm inferring beyond what's actually grounded in his approved context.\\n\\nI don't have a broader biographical concept pack loaded in this staging/public-safe scope to say more about who Florian is personally (role details, background, etc.) — that would be **unknown/out of scope** here rather than something I should guess at.\\n\\nNo retrieval or work triggered, per your request.\"}",
       "request_shape": "embedded_n8n_chat",
       "findings": []
     },
@@ -48,8 +48,8 @@
       "expected_response_status": "completed",
       "query": "Remember this public-safe source note as pending OKF evidence: Client alignment meeting moved to Friday and needs a decision log.",
       "status": "failed",
-      "started_at": "2026-08-17T14:10:57.129Z",
-      "completed_at": "2026-08-17T14:11:19.122Z",
+      "started_at": "2026-08-17T14:34:53.269Z",
+      "completed_at": "2026-08-17T14:35:12.146Z",
       "http_status": 200,
       "actual_target_agent": "knowledge_fabric_agent",
       "route_decision": "ingest_or_stage_knowledge",
@@ -59,12 +59,12 @@
       "delegate_agent_id": "",
       "delegate_status": "",
       "delegate_trace_id": "",
-      "answer_preview": "Logged the attempt, but it didn't go through — here's where things stand:\n\n**Status: Failed to stage.** The Knowledge Fabric Agent returned an error both times I tried (\"Error in sub-node Simple Memory1\"). This looks lik",
+      "answer_preview": "Quick status update, in plain terms:\n\n**What I did:** I routed your note to the Knowledge Fabric Agent to be staged as **pending** OKF evidence — explicitly flagged as public-safe, low-risk, unconfirmed, and not to be au",
       "response_shape": "object(output)",
-      "raw_response_preview": "{\"output\":\"Logged the attempt, but it didn't go through — here's where things stand:\\n\\n**Status: Failed to stage.** The Knowledge Fabric Agent returned an error both times I tried (\\\"Error in sub-node Simple Memory1\\\"). This looks like a transient system/infrastructure issue on their end, not a rejection of the content or a boundary conflict.\\n\\n**What I attempted to record:**\\n- Note: \\\"Client alignment meeting moved to Friday and needs a decision log.\\\"\\n- Status requested: pending / unverified, low sensitivity, public-safe, flagged for human review before being treated as a grounded fact.\\n\\n**What this means right now:** This note is **not yet in the OKF**. Until it's successfully staged, I have no grounded basis to reference \\\"Friday\\\" or \\\"decision log\\\" as an established fact in future answers — if asked, I'd flag it as ungrounded/pending.\\n\\n**Recommended next step:** Retry the ingest shortly, or if the error persists, flag it to whoever manages the Knowledge Fabric Agent's in",
+      "raw_response_preview": "{\"output\":\"Quick status update, in plain terms:\\n\\n**What I did:** I routed your note to the Knowledge Fabric Agent to be staged as **pending** OKF evidence — explicitly flagged as public-safe, low-risk, unconfirmed, and not to be auto-approved. Delegation itself needs no human sign-off, so I went ahead.\\n\\n**What happened:** The ingestion call failed on the Knowledge Agent's side (a memory-node error), so the note is **not yet staged**. Nothing was lost on my end — I still have your original text and steering context ready to resend.\\n\\n**Current state:**\\n- Decision: stage as pending OKF evidence\\n- Evidence: your instruction, public-safe classification\\n- Confidence: high (this is a clear ingestion request, no judgment call needed)\\n- Human sign-off: not required for staging as pending (only required later if this gets promoted to approved knowledge or triggers an actual scheduled/sent action)\\n\\n**Next step:** I'll retry the ingestion. If it fails again, I'll flag it as a system is",
       "request_shape": "embedded_n8n_chat",
       "findings": [
-        "knowledge_fabric_n8n_memory_error: Simple Memory node failed"
+        "n8n_delegate_failure: embedded chat reported downstream workflow failure"
       ]
     },
     {
@@ -76,23 +76,25 @@
       "expected_response_status": "completed",
       "query": "Write an email for the dev team to define the next features for the MeIDs app. Draft only; do not send.",
       "status": "failed",
-      "started_at": "2026-08-17T14:11:19.123Z",
-      "completed_at": "2026-08-17T14:11:55.992Z",
+      "started_at": "2026-08-17T14:35:12.146Z",
+      "completed_at": "2026-08-17T14:35:27.038Z",
       "http_status": 200,
-      "actual_target_agent": "agentic_butler",
-      "route_decision": "activate_skill",
+      "actual_target_agent": "actor_twin",
+      "route_decision": "answer_direct",
       "response_status": "completed",
       "approval_required": false,
       "trace_id": "",
       "delegate_agent_id": "",
       "delegate_status": "",
       "delegate_trace_id": "",
-      "answer_preview": "Note: My attempt to route this through the Agentic Butler skill-execution service failed twice (tool error: \"Referenced node doesn't exist\" — likely a staging environment issue). Rather than block on that, I'm producing ",
+      "answer_preview": "**Route:** answer_direct (drafting a standard work artifact — no retrieval or delegation needed)\n\nSince I don't have specific persona-grounded details (feature priorities, current backlog state, team names) loaded in thi",
       "response_shape": "object(output)",
-      "raw_response_preview": "{\"output\":\"Note: My attempt to route this through the Agentic Butler skill-execution service failed twice (tool error: \\\"Referenced node doesn't exist\\\" — likely a staging environment issue). Rather than block on that, I'm producing the draft directly here so you're not stuck. This is a **draft only — not sent**, and no send/schedule action has been taken.\\n\\n---\\n\\n**Subject:** Defining Our Next Feature Set for the MeIDs App — Input Needed by [date]\\n\\nHi team,\\n\\nAs we close out this cycle, I want to get ahead of planning for the next set of features on the MeIDs app. Rather than me handing down a list, I'd like this to start with you — you're closest to the codebase, the tech debt, and where the real leverage points are.\\n\\nHere's what I'm asking for:\\n\\n1. **Propose and prioritize** 3–5 candidate features or improvements you think should be next.\\n2. For each one, include:\\n   - **Purpose** — what problem it solves or opportunity it captures\\n   - **Expected user value** — who bene",
+      "raw_response_preview": "{\"output\":\"**Route:** answer_direct (drafting a standard work artifact — no retrieval or delegation needed)\\n\\nSince I don't have specific persona-grounded details (feature priorities, current backlog state, team names) loaded in this session, I'm flagging this draft as **extrapolated** — a reasonable structural draft in {person}'s general professional tone, not based on a specific approved concept. Please fill in bracketed specifics before sending.\\n\\n---\\n\\n**Subject:** Defining Next Features for MeIDs App — Input Needed\\n\\nHi team,\\n\\nAs we look ahead to the next development cycle for the MeIDs app, I'd like us to align on priorities before we lock in the roadmap.\\n\\nA few things I'd like us to cover:\\n\\n1. **Review of current backlog** – Let's revisit open items and flag anything that's now lower priority or blocked.\\n2. **User/stakeholder feedback** – Please bring any recent signals (support tickets, usage data, direct feedback) that should inform what we build next.\\n3. **Propose",
       "request_shape": "embedded_n8n_chat",
       "findings": [
-        "agentic_butler_n8n_node_missing: Referenced node does not exist"
+        "target_agent expected agentic_butler, got actor_twin",
+        "route_decision expected activate_skill, got answer_direct",
+        "live_actor_workflow_not_aligned: expected delegated route returned direct Actor Twin route"
       ]
     },
     {
@@ -104,8 +106,8 @@
       "expected_response_status": "approval_required",
       "query": "Create a new skill for preparing a weekly executive steering update from email, calendar, and Teams exports.",
       "status": "failed",
-      "started_at": "2026-08-17T14:11:55.992Z",
-      "completed_at": "2026-08-17T14:12:41.010Z",
+      "started_at": "2026-08-17T14:35:27.038Z",
+      "completed_at": "2026-08-17T14:36:12.042Z",
       "http_status": 0,
       "actual_target_agent": "actor_twin",
       "route_decision": "answer_direct",
