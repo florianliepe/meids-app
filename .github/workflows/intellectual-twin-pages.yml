@@ -136,9 +136,6 @@ jobs:
         continue-on-error: true
         run: node scripts/pages-smoke-check.cjs dist-pages
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
