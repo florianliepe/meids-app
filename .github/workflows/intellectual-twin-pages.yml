@@ -79,62 +79,14 @@ jobs:
         run: node scripts/validate-postgres-graph-schema.cjs
 
       - name: Prepare static artifact
-        # GitHub Pages is a public static artifact. Keep runtime config public-safe:
-        # Actor Twin uses the checked-in embedded n8n chat URL; Knowledge Fabric
-        # and Agentic Butler run as internal Actor Twin workflow tools.
-        # Hosted backend deployments can inject secrets separately.
-        run: |
-          rm -rf dist-pages
-          mkdir -p dist-pages
-          cp -R frontend/. dist-pages/
-          cat > dist-pages/runtime-config.js <<'EOF'
-          window.INTELLECTUAL_TWIN_CONFIG = {
-            apiBaseUrl: "",
-            assetBaseUrl: "",
-            orchestrationMode: "actor_twin_embedded_chat",
-            n8nChatWebhookUrl: "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat",
-            n8nActorTwinWebhookUrl: "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat",
-            n8nKnowledgeFabricWebhookUrl: "",
-            n8nAgenticButlerWebhookUrl: "",
-            n8nAgentWebhooks: {
-              actor_twin: "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat",
-              knowledge_fabric_agent: "",
-              agentic_butler: ""
-            },
-            n8nAgentProbeSlots: {
-              actor_twin: {
-                status: "configured",
-                probe_boundary: "GitHub Pages uses the embedded n8n Actor Twin chat entrypoint.",
-                next_action: "Run Actor Twin UAT and capture n8n trace evidence."
-              },
-              knowledge_fabric_agent: {
-                status: "internal_tool_via_actor_twin",
-                probe_boundary: "Knowledge Fabric Agent is called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional.",
-                next_action: "Verify the Actor Twin n8n workflow has the Knowledge Fabric workflow tool connected and published."
-              },
-              agentic_butler: {
-                status: "internal_tool_via_actor_twin",
-                probe_boundary: "Agentic Butler is called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional.",
-                next_action: "Verify the Actor Twin n8n workflow has the Agentic Butler workflow tool connected and published."
-              }
-            },
-            n8nChatEnabled: true,
-            staticPagesMode: true
-          };
-          EOF
-          mkdir -p dist-pages/assets/n8n-live-probes
-          cp -R contracts/n8n/live-probes/. dist-pages/assets/n8n-live-probes/
-          node scripts/write-pages-agent-runtime-config.cjs --output dist-pages/assets/agent-runtime-config.json
-          node scripts/write-n8n-runtime-readiness-status.cjs --config dist-pages/assets/agent-runtime-config.json --output dist-pages/assets/n8n-runtime-readiness-status.json
-          node scripts/write-n8n-live-readiness-preflight.cjs --assets-dir dist-pages/assets --output dist-pages/assets/n8n-live-readiness-preflight.json --write
-          node scripts/write-zielmodus-4-live-completion-checklist.cjs --assets-dir dist-pages/assets --output dist-pages/assets/zielmodus-4-live-completion-checklist.json --write
-          node scripts/write-n8n-live-handoff-commands.cjs --assets-dir dist-pages/assets --output dist-pages/assets/n8n-live-handoff-commands.json --write
-          node scripts/write-n8n-ai-agent-readiness-status.cjs --output dist-pages/assets/n8n-ai-agent-readiness-status.json
-          node scripts/write-actor-twin-routing-readiness-status.cjs --output dist-pages/assets/actor-twin-routing-readiness-status.json
+        run: node scripts/build-pages-static.cjs --output dist-pages --clean --smoke
 
       - name: Smoke check static artifact
         continue-on-error: true
         run: node scripts/pages-smoke-check.cjs dist-pages
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
