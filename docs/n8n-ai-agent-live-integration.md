@@ -23,13 +23,15 @@ n8n workflow tools when execution is needed:
 4. `Call MeIDs Agentic Butler` workflow tool for approved skill execution,
    internal work artifacts, and skill or agent proposals.
 
-The repository also keeps public-safe importable AI-agent workflow exports with:
+The repository also keeps public-safe importable AI-agent worker workflow exports
+with dual entrypoints:
 
 1. `Receive request` webhook node.
-2. Dedicated AI Agent node.
-3. `Eraneos LLM Gateway` chat model node wired into the AI Agent.
-4. `Staging contract response` code node as response normalizer and safety boundary.
-5. `Return JSON` webhook response node.
+2. `Receive workflow call` Execute Workflow Trigger for Actor Twin workflow-tool calls.
+3. Dedicated AI Agent node.
+4. `Eraneos LLM Gateway` chat model node wired into the AI Agent.
+5. `Staging contract response` code node as response normalizer and safety boundary.
+6. `Return JSON` webhook response node for direct probes.
 
 The current browser/API import targets are:
 
@@ -111,19 +113,24 @@ staging response normalizers with production adapters incrementally:
    Chat mode and exposes the chat URL above.
 2. Confirm the Actor Twin AI Agent has workflow tools connected for Knowledge
    Fabric and Agentic Butler.
-3. Import or patch `workflows/n8n/import-ready/*.import.json` only for direct
-   probe or worker workflow alignment.
-4. Confirm each worker AI Agent node is on the active path between webhook or
+3. Import or patch `workflows/n8n/import-ready/knowledge-fabric-agent.ai-agent.import.json`
+   and `workflows/n8n/import-ready/agentic-butler.ai-agent.import.json` into the
+   worker workflows. These files keep public webhook probes and add the
+   `Receive workflow call` trigger required by Actor Twin workflow tools.
+4. Do not import the direct-orchestrator JSON into the embedded Actor Twin chat
+   workflow. Use the existing embedded-chat Actor Twin workflow and connect the
+   two worker workflows as tools.
+5. Confirm each worker AI Agent node is on the active path between webhook or
    workflow trigger and response adapter.
-5. Patch each live n8n worker workflow so raw AI output is normalized through
+6. Patch each live n8n worker workflow so raw AI output is normalized through
    the production adapter response schema.
-6. Add explicit error fallback branches returning `failed` with
+7. Add explicit error fallback branches returning `failed` with
    `INVALID_CONTRACT_PAYLOAD`.
-7. Re-run live probes and record new trace IDs after adapter patching.
-8. Connect Knowledge Fabric output to OKF draft creation.
-9. Connect Agentic Butler output to approved skill run records and the skill or
+8. Re-run live probes and record new trace IDs after adapter patching.
+9. Connect Knowledge Fabric output to OKF draft creation.
+10. Connect Agentic Butler output to approved skill run records and the skill or
    agent approval queue only when activation is requested.
-10. Keep Actor Twin routing as the authority for answer-only, knowledge work,
+11. Keep Actor Twin routing as the authority for answer-only, knowledge work,
    skill execution, and skill or agent creation.
 
 ## 2026-08-13 Live Alignment Note
@@ -174,7 +181,15 @@ caused by live n8n worker workflow drift:
 - Agentic Butler: live workflow still errors with `Referenced node does not exist`.
 - Actor Twin delegated Butler route: times out while the worker route is broken.
 
-Apply the import-ready JSONs to the running n8n workflows, publish them, then rerun:
+Apply the worker import-ready JSONs to the running n8n workflows, publish them,
+then rerun:
+
+1. `workflows/n8n/import-ready/knowledge-fabric-agent.ai-agent.import.json`
+2. `workflows/n8n/import-ready/agentic-butler.ai-agent.import.json`
+
+These worker JSONs now include `Receive workflow call` so Actor Twin can call
+them as n8n workflow tools. Keep the embedded-chat Actor Twin workflow as the
+frontdoor.
 
 ```powershell
 npm run uat:agents:live

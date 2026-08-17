@@ -80,12 +80,18 @@ function validateWorkflow(agent, workflow, workflowPath) {
   }
 
   const receive = nodeByName(workflow, "Receive request");
+  const workflowCall = nodeByName(workflow, "Receive workflow call");
   const ai = nodeByName(workflow, agent.aiNode);
   const model = nodeByName(workflow, agent.modelNode);
   const response = nodeByName(workflow, agent.responseNode);
   const returnJson = nodeByName(workflow, "Return JSON");
 
   if (!receive || receive.type !== "n8n-nodes-base.webhook") fail(`${rel(workflowPath)} missing Receive request webhook`);
+  if (agent.agent_id !== "actor_twin") {
+    if (!workflowCall || workflowCall.type !== "n8n-nodes-base.executeWorkflowTrigger") {
+      fail(`${rel(workflowPath)} missing Receive workflow call Execute Workflow Trigger`);
+    }
+  }
   if (!ai || !String(ai.type || "").includes("langchain.agent")) fail(`${rel(workflowPath)} missing ${agent.aiNode}`);
   if (!model || !String(model.type || "").includes("lmChat")) fail(`${rel(workflowPath)} missing ${agent.modelNode}`);
   if (!response || response.type !== "n8n-nodes-base.code") fail(`${rel(workflowPath)} missing response adapter code node`);
@@ -93,6 +99,9 @@ function validateWorkflow(agent, workflow, workflowPath) {
 
   if (!hasMainPath(workflow, "Receive request", agent.aiNode)) {
     fail(`${rel(workflowPath)} must route Receive request to ${agent.aiNode}`);
+  }
+  if (agent.agent_id !== "actor_twin" && !hasMainPath(workflow, "Receive workflow call", agent.aiNode)) {
+    fail(`${rel(workflowPath)} must route Receive workflow call to ${agent.aiNode}`);
   }
   if (!hasMainPath(workflow, agent.aiNode, agent.responseNode)) {
     fail(`${rel(workflowPath)} must route ${agent.aiNode} to ${agent.responseNode}`);

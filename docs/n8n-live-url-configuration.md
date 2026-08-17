@@ -332,6 +332,10 @@ To make the live workflow match the frontend contract:
    a true external side effect such as send, schedule, publish, delete, commit, or
    external write.
 8. Repair and publish the worker workflows before rerunning live UAT:
+   - Import or patch `workflows/n8n/import-ready/knowledge-fabric-agent.ai-agent.import.json`.
+   - Import or patch `workflows/n8n/import-ready/agentic-butler.ai-agent.import.json`.
+   - Both worker workflows must keep `Receive workflow call` as an Execute
+     Workflow Trigger for Actor Twin tool calls.
    - Knowledge Fabric Agent must not fail on memory-node setup.
    - Agentic Butler must not reference missing workflow nodes.
 9. Rerun:

@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const inputRoot = $('Receive request').first().json;\nconst input = inputRoot.body ?? inputRoot;\nconst ai = $json;\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nconst requestId = input.request_id || input.live_probe?.request_id || `req_${executionId}`;\nconst aiText = ai.output || ai.text || ai.response || ai.message || '';\nconst response = {\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: requestId,\n  agent_id: 'knowledge_fabric_agent',\n  status: 'completed',\n  output: {\n    summary: aiText || 'Knowledge Fabric AI Agent completed. Candidate concepts remain pending review before promotion.',\n    created_candidates: input.input?.created_candidates || [],\n    review_state: 'pending-review',\n    graph_curator_trigger: 'candidate_edges_pending_review',\n    vector_refresh: 'deferred_until_approval',\n    contract_stage: 'ai_agent_normalized',\n    ai_agent: { integrated: true, node: 'Knowledge Fabric AI Agent' }\n  },\n  trace: { stored: true, trace_id: `n8n_exec_${executionId}`, used_agents: ['knowledge_fabric_agent_ai_agent', 'graph_curator_boundary', 'vector_refresh_boundary'], target_agent: 'knowledge_fabric_agent', route_decision: 'update_knowledge', handoff_status: 'handoff_completed', ai_agent_integrated: true }\n};\nreturn [{ json: response }];"
+        "jsCode": "function getTriggerInput() {\n  try { return $('Receive workflow call').first().json; } catch (error) {}\n  try { return $('Receive request').first().json; } catch (error) {}\n  return $json;\n}\nconst inputRoot = getTriggerInput();\nconst input = inputRoot.body ?? inputRoot;\nconst ai = $json;\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nconst requestId = input.request_id || input.live_probe?.request_id || 'req_' + executionId;\nconst aiText = ai.output || ai.text || ai.response || ai.message || '';\n\nfunction safeJson(value) {\n  if (value && typeof value === 'object') return value;\n  const text = String(value || '').trim();\n  if (!text) return null;\n  const fenced = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  const candidate = (fenced ? fenced[1] : text).trim();\n  const firstBrace = candidate.indexOf('{');\n  const lastBrace = candidate.lastIndexOf('}');\n  if (firstBrace < 0 || lastBrace <= firstBrace) return null;\n  try { return JSON.parse(candidate.slice(firstBrace, lastBrace + 1)); } catch { return null; }\n}\n\nconst parsed = safeJson(aiText) || {};\nconst parsedOutput = parsed.output && typeof parsed.output === 'object' ? parsed.output : parsed;\nconst response = {\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: requestId,\n  agent_id: 'knowledge_fabric_agent',\n  status: 'completed',\n  approval: { required: false },\n  output: {\n    summary: parsedOutput.summary || parsedOutput.answer || aiText || 'Knowledge Fabric staged source context as pending OKF material.',\n    created_candidates: parsedOutput.created_candidates || input.input?.created_candidates || [],\n    review_state: parsedOutput.review_state || 'pending-review',\n    graph_curator_trigger: parsedOutput.graph_curator_trigger || 'candidate_edges_pending_review',\n    vector_refresh: parsedOutput.vector_refresh || 'deferred_until_approval',\n    concept_path: parsedOutput.concept_path || '',\n    evidence_path: parsedOutput.evidence_path || '',\n    contract_stage: 'ai_agent_normalized',\n    ai_agent: { integrated: true, node: 'Knowledge Fabric AI Agent' }\n  },\n  trace: { stored: true, trace_id: 'n8n_exec_' + executionId, used_agents: ['knowledge_fabric_agent_ai_agent', 'graph_curator_boundary', 'vector_refresh_boundary'], target_agent: 'knowledge_fabric_agent', route_decision: input.context?.route_decision?.decision || 'ingest_or_stage_knowledge', handoff_status: 'handoff_completed', ai_agent_integrated: true }\n};\nreturn [{ json: response }];"
       },
       "id": "meids-knowledge-fabric-ingest-contract",
       "name": "Contract response normalizer",
@@ -76,7 +76,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Request envelope:\n{{ JSON.stringify($json.body || $json) }}\n\nReturn a concise staging analysis: candidate concept themes, missing evidence, duplicate/contradiction risks, graph hints, and review state.",
+        "text": "=Request envelope from webhook or Actor Twin workflow tool call:\n{{ JSON.stringify($json.body || $json) }}\n\nReturn a concise staging analysis: candidate concept themes, missing evidence, duplicate/contradiction risks, graph hints, and review state.",
         "options": {
           "systemMessage": "You are the MeIDs Knowledge Fabric Agent. In staging, analyze uploaded text or transcript envelopes into candidate OKF concepts, evidence needs, graph relation hints, and review warnings. Never approve or promote concepts. Keep output concise and public-safe."
         }
@@ -90,6 +90,18 @@
         0
       ],
       "notes": "MeIDs live AI agent node. Contract response remains the final response normalizer and trace boundary."
+    },
+    {
+      "parameters": {},
+      "id": "meids-knowledge-fabric-workflow-call-trigger",
+      "name": "Receive workflow call",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        180
+      ],
+      "notes": "Internal entrypoint for Actor Twin Call n8n Workflow Tool usage. Keep the public webhook for direct UAT probes."
     }
   ],
   "connections": {
@@ -131,6 +143,17 @@
         [
           {
             "node": "Return JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive workflow call": {
+      "main": [
+        [
+          {
+            "node": "Knowledge Fabric AI Agent",
             "type": "main",
             "index": 0
           }
