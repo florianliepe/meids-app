@@ -282,7 +282,7 @@ $env:NODE_PATH="C:\Users\e729958\.cache\codex-runtimes\codex-primary-runtime\dep
 
 The Chat interaction setup now exposes the active agent contract directly beside the mode selector:
 
-- `Show answer payload` for Actor Twin.
+- Embedded chat response inspection for Actor Twin. The legacy local answer composer is hidden in the public frontend; inspect n8n execution traces for raw payloads.
 - `Show ingest payload` for Knowledge Fabric Agent.
 - `Show skill payload` for Agentic Butler.
 - `Probe live` for the selected mode.

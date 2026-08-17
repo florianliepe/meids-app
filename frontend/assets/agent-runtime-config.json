@@ -1,5 +1,5 @@
 {
-  "purpose": "Optional public staging endpoints for top-level n8n agents. Keep empty until a workflow is intentionally exposed for public UAT.",
+  "purpose": "Public-safe MeIDs n8n runtime metadata. Actor Twin embedded chat is the frontend entrypoint; Knowledge Fabric and Agentic Butler normally run as internal Actor Twin workflow tools. Direct worker URLs are optional probe paths only.",
   "n8nAgentWebhooks": {
     "actor_twin": "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat",
     "knowledge_fabric_agent": "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/knowledge-fabric/ingest",
@@ -12,14 +12,14 @@
       "next_action": "Run Actor Twin UAT and capture n8n trace evidence."
     },
     "knowledge_fabric_agent": {
-      "status": "configured",
-      "probe_boundary": "Public UAT webhook configured through scripts/set-n8n-agent-url.cjs. Live workflow proof still requires cockpit probe or n8n execution trace.",
-      "next_action": "Run Knowledge Fabric Agent UAT with upload/transcript fixture."
+      "status": "internal_tool_via_actor_twin",
+      "probe_boundary": "Knowledge Fabric Agent is called by Actor Twin inside n8n through a workflow tool. Use direct public URL only for explicit probe/UAT evidence.",
+      "next_action": "Verify Actor Twin has the Knowledge Fabric workflow tool connected and published."
     },
     "agentic_butler": {
-      "status": "configured",
-      "probe_boundary": "Public UAT webhook configured through scripts/set-n8n-agent-url.cjs. Live workflow proof still requires cockpit probe or n8n execution trace.",
-      "next_action": "Run Agentic Butler UAT with autonomous no-write work-artifact fixture."
+      "status": "internal_tool_via_actor_twin",
+      "probe_boundary": "Agentic Butler is called by Actor Twin inside n8n through a workflow tool. Use direct public URL only for explicit probe/UAT evidence.",
+      "next_action": "Verify Actor Twin has the Agentic Butler workflow tool connected and published."
     }
   },
   "n8nActorTwinWebhookUrl": "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat",

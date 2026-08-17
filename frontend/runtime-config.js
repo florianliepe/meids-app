@@ -15,18 +15,18 @@ window.INTELLECTUAL_TWIN_CONFIG = {
   n8nAgentProbeSlots: {
     actor_twin: {
       status: "configured",
-      probe_boundary: "Static Pages stores the public UAT URL; live workflow proof is captured through cockpit probe or n8n execution trace.",
-      next_action: "Run Actor Twin UAT and capture trace evidence.",
+      probe_boundary: "Static Pages embeds the public n8n Actor Twin chat. Live proof is captured through n8n chat execution traces.",
+      next_action: "Run Actor Twin embedded-chat UAT and verify calls to internal workflow tools when needed.",
     },
     knowledge_fabric_agent: {
-      status: "configured",
-      probe_boundary: "Static Pages stores the public UAT URL; production should call the hosted backend proxy.",
-      next_action: "Run Knowledge Fabric UAT and capture trace evidence.",
+      status: "internal_tool_via_actor_twin",
+      probe_boundary: "Knowledge Fabric Agent is called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional for probes only.",
+      next_action: "Verify the Actor Twin n8n workflow has the Knowledge Fabric workflow tool connected and published.",
     },
     agentic_butler: {
-      status: "configured",
-      probe_boundary: "Static Pages stores the public UAT URL; approval resume requires the hosted backend proxy.",
-      next_action: "Run Agentic Butler approval-gated UAT and capture trace evidence.",
+      status: "internal_tool_via_actor_twin",
+      probe_boundary: "Agentic Butler is called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional for probes only.",
+      next_action: "Verify the Actor Twin n8n workflow has the Agentic Butler workflow tool connected and published.",
     },
   },
   n8nChatEnabled: true,
