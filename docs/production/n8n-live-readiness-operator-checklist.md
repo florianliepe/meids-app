@@ -2,7 +2,7 @@
 
 Date: 2026-08-11
 
-Purpose: one copy-paste checklist to close the remaining Zielmodus 4 live integration gate after the missing n8n UAT URLs exist.
+Purpose: one copy-paste checklist to close the remaining Zielmodus 4 live integration gate for the embedded n8n Actor Twin chat architecture.
 
 Boundary: public-safe. Do not commit API keys, bearer tokens, private knowledge, or secret-bearing URLs.
 
@@ -12,21 +12,21 @@ Important boundary: this checklist verifies live contract readiness and records 
 
 | Agent | Current open item | Required result |
 | --- | --- | --- |
-| Actor Twin | Record non-demo live probe evidence | `completed` response with n8n trace id |
-| Knowledge Fabric Agent | Configure live URL, then record probe evidence | `completed` no-write ingest probe |
-| Agentic Butler | Configure live URL, then record probe evidence | `approval_required` skill activation probe |
+| Actor Twin | Record non-demo embedded-chat evidence | `completed` response with n8n execution id |
+| Knowledge Fabric Agent | Prove Actor Twin can call it as an internal n8n tool/sub-workflow | `completed` no-write knowledge route inside the Actor Twin execution trace |
+| Agentic Butler | Prove Actor Twin can call it as an internal n8n tool/sub-workflow | `completed` autonomous work-artifact route inside the Actor Twin execution trace |
 
-Expected remaining time after both missing URLs exist: **45-90 minutes** including configuration, probes, artifact refresh, commit, deploy, and GitHub Pages verification.
+Expected remaining time after the Actor Twin workflow tools are published: **45-90 minutes** including n8n chat UAT, trace capture, artifact refresh, commit, deploy, and GitHub Pages verification.
 
-## 1. Configure Public UAT URLs
+## 1. Configure Embedded Actor Twin Chat
 
 Use repository secrets for durable GitHub Pages deployment:
 
 - `GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL`
-- `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL`
-- `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL`
 
-For local public UAT only, use:
+Knowledge Fabric Agent and Agentic Butler should be configured inside the Actor Twin workflow as n8n workflow tools or sub-workflows. Their internal workflow IDs, environment variables, or credentials should stay in n8n or a hosted backend, not in public Pages assets.
+
+Optional direct diagnostic URLs can still be configured for local public UAT only:
 
 ```powershell
 node scripts\set-n8n-agent-url.cjs --agent knowledge_fabric_agent --url "https://YOUR-N8N-HOST/webhook/YOUR-KNOWLEDGE-FABRIC-UAT-PATH"
@@ -39,37 +39,39 @@ Rules:
 - URL path must include `/webhook/`.
 - URL must not contain tokens, API keys, passwords, or bearer credentials.
 
-## 2. Refresh URL Readiness
+## 2. Refresh Runtime Readiness
 
 ```powershell
 node scripts\write-n8n-runtime-readiness-status.cjs --check
 node scripts\write-n8n-live-readiness-preflight.cjs --check
 node scripts\write-zielmodus-4-live-completion-checklist.cjs --check
 node scripts\write-n8n-live-handoff-commands.cjs --check
-node scripts\validate-zielmodus-4-readiness.cjs --require-live
+node scripts\validate-n8n-fixtures.cjs
 ```
 
-If `--require-live` fails, fix the missing URL slot first. Do not continue to probe evidence until all three URLs are configured.
+Do not use missing direct worker URLs as a blocker when the embedded Actor Twin chat can call Knowledge Fabric Agent and Agentic Butler internally. Treat direct worker URL checks as diagnostic-only for the Pages architecture.
 
-## 3. Run No-Write / Approval-Safe Live Probes
+## 3. Run Embedded Chat UAT Probes
 
-Use the committed probe payloads:
+Use the embedded Actor Twin chat and capture the n8n execution evidence for each route:
 
-- `frontend/assets/n8n-live-probes/actor-twin.json`
-- `frontend/assets/n8n-live-probes/knowledge-fabric-agent.json`
-- `frontend/assets/n8n-live-probes/agentic-butler.json`
+- Direct answer: `Who are you?`
+- Knowledge route: `Use my knowledge context to explain what MeIDs is for.`
+- Butler route: `Draft an email for the dev team about next feature priorities.`
+- Skill proposal route: `Create a new skill for preparing steering committee briefings.`
 
 Expected outcomes:
 
 | Agent | Expected response status | Safety condition |
 | --- | --- | --- |
 | Actor Twin | `completed` | Answer-only request, no external action |
-| Knowledge Fabric Agent | `completed` | No-write ingest probe or pending-only draft behavior |
-| Agentic Butler | `approval_required` | Must stop before email, calendar, meeting, or external commitment |
+| Knowledge Fabric Agent | `completed` | Internal knowledge tool route, no irreversible mutation unless explicitly configured as pending-only |
+| Agentic Butler | `completed` | Drafts, plans, briefs, and approved skill runs complete without approval when no external side effect occurs |
+| Agentic Butler skill/agent creation | `approval_required` or pending proposal | Approval is required before a generated skill, agent, or task-agent becomes active |
 
 ## 4. Record Public-Safe Trace Evidence
 
-Replace placeholders with the real n8n execution trace id and public-safe execution URL.
+Replace placeholders with the real n8n execution trace id and public-safe execution URL. If Knowledge Fabric Agent and Agentic Butler run inside the Actor Twin execution, use the Actor Twin execution URL and record the routed sub-agent evidence in the trace notes.
 
 ```powershell
 node scripts\record-n8n-live-probe-evidence.cjs `
@@ -84,14 +86,14 @@ node scripts\record-n8n-live-probe-evidence.cjs `
   --trace-id "TRACE_ID_FROM_N8N" `
   --execution-url "https://YOUR-N8N-HOST/workflow/.../executions/..." `
   --response-status completed `
-  --url-source github-pages-secret
+  --url-source actor-twin-internal-tool
 
 node scripts\record-n8n-live-probe-evidence.cjs `
   --agent agentic_butler `
   --trace-id "TRACE_ID_FROM_N8N" `
   --execution-url "https://YOUR-N8N-HOST/workflow/.../executions/..." `
-  --response-status approval_required `
-  --url-source github-pages-secret
+  --response-status completed `
+  --url-source actor-twin-internal-tool
 ```
 
 The recorder rejects placeholder trace ids, non-HTTPS execution URLs, and URLs that look like they contain secrets.
@@ -135,9 +137,9 @@ node scripts\pages-smoke-check.cjs https://florianliepe.github.io/meids-app/
 
 Zielmodus 4 can be closed only when:
 
-- all three live URL slots are configured;
-- all three live probes have non-demo trace evidence;
-- Agentic Butler probe returns `approval_required`;
+- embedded Actor Twin chat is configured and published;
+- Actor Twin live trace evidence exists for direct answer, Knowledge Fabric route, Butler route, and skill/agent proposal route;
+- Agentic Butler work-artifact probe returns `completed`;
 - `node scripts\validate-zielmodus-4-readiness.cjs --require-live-probes` exits `0`;
 - GitHub Pages deploy succeeds;
-- deployed Production/Review Cockpit shows all three agents as live-evidence ready.
+- deployed Production/Review Cockpit shows all three agents as live-evidence ready or internal-tool ready.

@@ -22,7 +22,7 @@ contracts/n8n/live-probes/knowledge-fabric-agent.json
 contracts/n8n/live-probes/agentic-butler.json
 ```
 
-They are derived from the embedded `live_probe` blocks in the fixtures. Actor Twin and Knowledge Fabric Agent expect `completed`; Agentic Butler expects `approval_required` because skill execution must stop at the human gate before any external action.
+They are derived from the embedded `live_probe` blocks in the fixtures. Actor Twin, Knowledge Fabric Agent, and normal Agentic Butler work-artifact probes expect `completed`. Agentic Butler returns `approval_required` only for generated skill or agent activation proposals, or future irreversible external write actions once those tools exist.
 
 Run the local structural check:
 
@@ -68,9 +68,11 @@ Validate the manifest and the workflow blueprints with:
 
 No secrets, private knowledge, webhook URLs, or credentials belong in these fixtures.
 
-## Live URL Handoff
+## Live Runtime Handoff
 
-The fixtures prove the contract shape only. Live n8n rollout is handled through the runtime config boundary documented in:
+The fixtures prove the contract shape only. The live GitHub Pages runtime now uses the embedded n8n Actor Twin chat as the single user-facing interaction surface. Knowledge Fabric Agent and Agentic Butler are expected to run behind the Actor Twin as n8n workflow tools or sub-workflows, not as separate buttons in the frontend.
+
+Live n8n rollout is handled through the runtime config boundary documented in:
 
 ```text
 docs/n8n-live-url-configuration.md
@@ -79,8 +81,10 @@ frontend/assets/agent-runtime-config.json
 
 Current public status:
 
-- Actor Twin: public UAT URL configured.
-- Knowledge Fabric Agent: fixture and probe slot ready; live URL missing.
-- Agentic Butler: fixture and probe slot ready; live URL missing.
+- Actor Twin: embedded public n8n chat URL configured.
+- Knowledge Fabric Agent: fixture and probe slot ready; normally called internally by Actor Twin in n8n.
+- Agentic Butler: fixture and probe slot ready; normally called internally by Actor Twin in n8n.
 
-When a live workflow is exposed, add only the intentionally public UAT webhook URL to `frontend/assets/agent-runtime-config.json`. Keep private production URLs behind the hosted backend or workflow-generated `runtime-config.js`.
+Direct public worker URLs for Knowledge Fabric Agent or Agentic Butler are optional diagnostics/probes only. They are no longer required for the GitHub Pages Actor Twin UAT because the Actor Twin chat workflow is the orchestration boundary.
+
+When a live workflow is exposed directly, add only an intentionally public UAT URL to `frontend/assets/agent-runtime-config.json`. Keep private production URLs behind the hosted backend, n8n environment variables, workflow credentials, or workflow-generated `runtime-config.js`.
