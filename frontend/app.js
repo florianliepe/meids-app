@@ -8287,41 +8287,8 @@ function bindChat() {
   $("#deleteChatPresetBtn")?.addEventListener("click", deleteChatInputPreset);
   $("#chatForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (runtimeConfig.n8nChatEnabled) {
-      $("#n8nChatMount")?.scrollIntoView({ block: "center", behavior: "smooth" });
-      showToast("Use n8n chat", "The local chat composer is disabled. Ask through the embedded n8n Actor Twin chat.", "success");
-      return;
-    }
-    const input = $("#queryInput");
-    const query = input.value.trim();
-    if (!query) return;
-    const route = decideActorTwinRoute(query);
-    state.lastActorTwinRouteDecision = route;
-    renderSkillRoutingPanel();
-    const sourceInput = {
-      email_input: $("#chatSkillEmail").value,
-      calendar_input: $("#chatSkillCalendar").value,
-      teams_input: $("#chatSkillTeams").value,
-      knowledge_context: $("#chatSkillKnowledge").value,
-    };
-    if (route.decision === "activate_skill" && !(await confirmSkillFollowUpGate(sourceInput, "chat"))) return;
-    input.value = "";
-    addMessage("user", query);
-    if (route.decision === "request_human_clarification") {
-      addMessage("assistant", route.clarification || "Please clarify the desired output and whether any external action is allowed.");
-      return;
-    }
-    addMessage("assistant", "Asking Actor Twin...");
-    try {
-      const result = await runActorTwinRuntimeInteraction(query, route);
-      persistAgentTrace(result);
-      removeLastAssistantPlaceholder();
-      const node = addMessage("assistant", agentContractResponseText(result), { agent_contract_response: result });
-      if (state.voiceAnswerEnabled && result.agent_id === "actor_twin") speakMessage(node, result.answer);
-    } catch (error) {
-      removeLastAssistantPlaceholder();
-      addMessage("assistant", `${agentDisplayName(route.target_agent)} failed: ${error.message}`);
-    }
+    $("#n8nChatMount")?.scrollIntoView({ block: "center", behavior: "smooth" });
+    showToast("Use n8n chat", "The local Actor Twin composer is disabled. Ask through the embedded n8n chat.", "success");
   });
 }
 
