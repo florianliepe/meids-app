@@ -15501,20 +15501,38 @@ function buildN8nChatMetadata() {
   const active = state.twins.find((twin) => twin.twin_id === state.activeTwin);
   const retrievalMode = n8nRetrievalMode();
   const conceptTypes = selectedConceptTypes();
+  const retrievalFlags = {
+    keyword: retrievalMode === "keyword",
+    vectorCache: retrievalMode === "vector-cache",
+    knowledgeGraph: retrievalMode === "graph",
+    websearch: Boolean(state.webSearchEnabled),
+    voiceAnswerRequested: Boolean(state.voiceAnswerEnabled),
+  };
   return {
     source: "meids-intellectual-twin",
     interface: "embedded_n8n_chat",
+    interfaceContract: "meids.actor_twin.embedded_chat.v1",
     activeTwin: state.activeTwin,
     twinName: active?.display_name || state.activeTwin,
     posture: state.riskPosture || "balanced",
     routingAuthority: "actor_twin_n8n",
     retrieval: {
       mode: retrievalMode,
+      searchStrategy: retrievalMode,
       conceptTypes,
-      websearch: Boolean(state.webSearchEnabled),
-      voiceAnswerRequested: Boolean(state.voiceAnswerEnabled),
-      vectorCache: retrievalMode === "vector-cache",
-      knowledgeGraph: retrievalMode === "graph",
+      ...retrievalFlags,
+    },
+    routingHints: {
+      answerDirectFirst: true,
+      useKnowledgeFabricWhen: [
+        "knowledge retrieval needs OKF, vector cache, graph, evidence, or source ingestion",
+        "the user asks to remember, ingest, update, classify, review, or connect knowledge",
+      ],
+      useAgenticButlerWhen: [
+        "the user asks for a work artifact, approved skill execution, planning, drafting, synthesis, or workflow support",
+        "the user asks to create or refine a new skill, task agent, or agent behavior proposal",
+      ],
+      approvalBoundary: "Only require approval before a generated skill/agent/task-agent becomes active, or before real external write/send/schedule/publish/delete/commit actions.",
     },
     agentTools: {
       knowledgeFabric: "call_n8n_workflow_tool",
@@ -15538,6 +15556,7 @@ function renderN8nInteractionContext() {
     <div class="n8n-context-chips" aria-label="n8n interaction context">
       <span>${escapeHtml(context.retrieval.websearch ? "websearch on" : "websearch off")}</span>
       <span>${escapeHtml(context.retrieval.voiceAnswerRequested ? "voice requested" : "voice off")}</span>
+      <span>${escapeHtml(context.retrieval.keyword ? "keyword routing" : "keyword optional")}</span>
       <span>${escapeHtml(context.retrieval.vectorCache ? "vector cache" : "vector cache optional")}</span>
       <span>${escapeHtml(context.retrieval.knowledgeGraph ? "knowledge graph" : "graph optional")}</span>
       ${scopes.map((scope) => `<span>${escapeHtml(scope)}</span>`).join("")}
