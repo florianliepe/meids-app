@@ -193,9 +193,9 @@
           <section class="chat-workspace-hero" aria-label="Agent interaction workspace">
             <span class="badge">Actor Twin</span>
             <h2>Actor Twin, directly in n8n.</h2>
-            <p>The embedded n8n chat is the single interaction surface. The Actor Twin decides whether to answer directly, call Knowledge Fabric, or delegate work to Agentic Butler inside n8n.</p>
+            <p>The embedded n8n chat is the single interaction surface. The setup below passes posture, search mode, vector cache, graph, voice, and source-scope metadata into n8n before the Actor Twin decides which internal agent workflow to use.</p>
             <div class="chat-quick-actions" aria-label="Workspace shortcuts">
-              <button class="secondary small" type="button" data-chat-action="focus-query">Focus n8n chat</button>
+              <button class="secondary small" type="button" data-chat-action="focus-query">Open n8n chat</button>
               <button class="secondary small" type="button" data-cockpit-action="openVoice">Voice capture</button>
             </div>
           </section>
@@ -227,7 +227,7 @@
                   <summary id="appliedSkillsSummary">Applied skills: none</summary>
                   <div id="appliedSkillsList" class="skills-menu-list"></div>
                 </details>
-                <span id="chatSkillStatus" class="muted-inline">These settings shape the n8n Actor Twin metadata.</span>
+                <span id="chatSkillStatus" class="muted-inline">These settings are sent to the embedded n8n Actor Twin as metadata.</span>
               </div>
               <div id="n8nInteractionContext" class="n8n-interaction-context" aria-live="polite"></div>
             </section>

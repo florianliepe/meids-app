@@ -48,7 +48,9 @@ body {
 
 .legacy-chat-form,
 #chatForm.legacy-chat-form,
-#chatForm[aria-hidden="true"] {
+#chatForm[aria-hidden="true"],
+#chatForm,
+#queryInput {
   display: none !important;
 }
 

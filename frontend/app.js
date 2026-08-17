@@ -8158,21 +8158,26 @@ function bindChat() {
     const action = event.target.closest("[data-chat-action]");
     const suggestion = event.target.closest("[data-chat-suggestion]");
     if (suggestion) {
-      $("#queryInput").value = suggestion.dataset.chatSuggestion || "";
-      $("#queryInput").focus();
+      const suggestedPrompt = suggestion.dataset.chatSuggestion || "";
+      const hiddenInput = $("#queryInput");
+      if (hiddenInput) hiddenInput.value = suggestedPrompt;
       renderSkillPreflight();
+      if (runtimeConfig.n8nChatEnabled) {
+        $("#n8nChatMount")?.scrollIntoView({ block: "center", behavior: "smooth" });
+        showToast("Prompt prepared", "Paste or type it into the embedded n8n Actor Twin chat.", "success");
+        return;
+      }
+      hiddenInput?.focus();
       return;
     }
     if (!action) return;
     if (action.dataset.chatAction === "focus-query") {
-      if (runtimeConfig.n8nChatEnabled) {
-        const n8nMount = $("#n8nChatMount");
-        n8nMount?.scrollIntoView({ block: "center", behavior: "smooth" });
-        n8nMount?.querySelector("textarea, input, [contenteditable='true']")?.focus();
-        return;
+      const n8nMount = $("#n8nChatMount");
+      n8nMount?.scrollIntoView({ block: "center", behavior: "smooth" });
+      n8nMount?.querySelector("textarea, input, [contenteditable='true']")?.focus();
+      if (!runtimeConfig.n8nChatEnabled) {
+        showToast("n8n chat disabled", "Enable the embedded n8n Actor Twin chat in runtime config.", "error");
       }
-      $("#queryInput").scrollIntoView({ block: "center", behavior: "smooth" });
-      $("#queryInput").focus();
       return;
     }
     if (action.dataset.chatAction === "open-skill-context") {
@@ -8282,6 +8287,11 @@ function bindChat() {
   $("#deleteChatPresetBtn")?.addEventListener("click", deleteChatInputPreset);
   $("#chatForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (runtimeConfig.n8nChatEnabled) {
+      $("#n8nChatMount")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      showToast("Use n8n chat", "The local chat composer is disabled. Ask through the embedded n8n Actor Twin chat.", "success");
+      return;
+    }
     const input = $("#queryInput");
     const query = input.value.trim();
     if (!query) return;
