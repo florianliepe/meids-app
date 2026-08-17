@@ -17,7 +17,7 @@
         return window.__MEIDS_ASSET_BASE__ + cleanPath;
       };
       if (!window.__MEIDS_FILE_PROTOCOL__) {
-        document.write('<link rel="stylesheet" href="' + window.__MEIDS_ASSET_URL__("styles.css?v=20260811-knowledge-fabric-wrap") + '" />');
+        document.write('<link rel="stylesheet" href="' + window.__MEIDS_ASSET_URL__("styles.css?v=20260817-n8n-embedded") + '" />');
       }
       document.write('<link rel="icon" type="image/svg+xml" href="' + window.__MEIDS_ASSET_URL__("assets/intellectual-twin-mark.svg") + '" />');
     </script>
@@ -193,9 +193,9 @@
           <section class="chat-workspace-hero" aria-label="Agent interaction workspace">
             <span class="badge">Actor Twin</span>
             <h2>Actor Twin, directly in n8n.</h2>
-            <p>The embedded n8n chat is the single interaction surface. The setup below passes posture, search mode, vector cache, graph, voice, and source-scope metadata into n8n before the Actor Twin decides which internal agent workflow to use.</p>
+            <p>The embedded n8n chat is the single interaction surface. Optional setup below is sent as metadata so n8n can use keyword retrieval, vector cache, knowledge graph, voice preference, and source-scope signals before routing to internal agent workflows.</p>
             <div class="chat-quick-actions" aria-label="Workspace shortcuts">
-              <button class="secondary small" type="button" data-chat-action="focus-query">Open n8n chat</button>
+              <button class="secondary small" type="button" data-chat-action="focus-query">Open Actor Twin chat</button>
               <button class="secondary small" type="button" data-cockpit-action="openVoice">Voice capture</button>
             </div>
           </section>
@@ -206,8 +206,8 @@
             </div>
             <div id="messages" class="messages"></div>
           </section>
-          <details id="chatInteractionSetup" class="chat-workspace-drawer n8n-context-drawer" open>
-            <summary>Interaction setup</summary>
+          <details id="chatInteractionSetup" class="chat-workspace-drawer n8n-context-drawer">
+            <summary>n8n interaction metadata</summary>
             <section class="chat-workspace-settings" aria-label="Interaction setup">
               <div class="chat-skillbar" aria-label="Ask twin controls">
                 <label for="chatInteractionModeSelect" hidden>Mode</label>
@@ -255,7 +255,7 @@
               <div>
                 <span class="badge">Connected agent</span>
                 <h2>Actor Twin chat</h2>
-                <p>Powered by the published n8n Actor Twin workflow. Interaction, routing, and agent calls happen inside n8n.</p>
+                <p>Powered by the published n8n Actor Twin workflow. Answers, route decisions, and calls to Knowledge Fabric or Agentic Butler happen inside n8n.</p>
               </div>
               <a id="n8nAgentLink" class="secondary small n8n-agent-link" href="#" target="_blank" rel="noreferrer" hidden>Open external chat</a>
             </div>
@@ -1701,9 +1701,9 @@
 
     <script>
       if (!window.__MEIDS_FILE_PROTOCOL__) {
-        document.write('<script src="' + window.__MEIDS_ASSET_URL__("runtime-config.js?v=20260817-n8n-only") + '"><\/script>');
+        document.write('<script src="' + window.__MEIDS_ASSET_URL__("runtime-config.js?v=20260817-n8n-embedded") + '"><\/script>');
         document.write('<script src="' + window.__MEIDS_ASSET_URL__("api.js?v=20260731-refactor") + '"><\/script>');
-        document.write('<script src="' + window.__MEIDS_ASSET_URL__("app.js?v=20260817-n8n-only") + '"><\/script>');
+        document.write('<script src="' + window.__MEIDS_ASSET_URL__("app.js?v=20260817-n8n-embedded") + '"><\/script>');
       }
     </script>
   </body>

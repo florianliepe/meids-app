@@ -34246,3 +34246,67 @@ body.theme-dark .graph-svg-edge.rejected {
     width: 100%;
   }
 }
+
+/* Actor Twin n8n embedding is the only user-facing chat surface. */
+#chatForm,
+#queryInput,
+.chat-output-shell,
+.legacy-chat-form {
+  display: none !important;
+}
+
+#chat.view.active {
+  max-width: min(1120px, 100%);
+}
+
+.n8n-agent-panel {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  border-color: color-mix(in srgb, var(--line) 64%, transparent);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+}
+
+.n8n-agent-head {
+  align-items: center;
+}
+
+.n8n-chat-mount {
+  min-height: min(780px, calc(100vh - 280px));
+  background: var(--surface);
+}
+
+.n8n-context-drawer {
+  width: min(920px, 100%);
+  margin: 0 auto 16px;
+  background: color-mix(in srgb, var(--surface-strong) 54%, transparent);
+}
+
+.n8n-context-drawer:not([open]) {
+  border-style: solid;
+  background: transparent;
+}
+
+.n8n-context-drawer:not([open]) > summary {
+  color: var(--muted);
+}
+
+body.theme-dark .n8n-agent-panel,
+body.theme-dark .n8n-chat-mount {
+  background: rgba(18, 22, 19, 0.72);
+  border-color: rgba(232, 226, 214, 0.14);
+}
+
+body.theme-dark .n8n-context-drawer {
+  background: rgba(18, 22, 19, 0.48);
+  border-color: rgba(232, 226, 214, 0.12);
+}
+
+@media (max-width: 720px) {
+  .n8n-agent-head {
+    display: grid;
+  }
+
+  .n8n-chat-mount {
+    min-height: 620px;
+  }
+}
