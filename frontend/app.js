@@ -1922,17 +1922,13 @@ async function explainGraphProjectionInChat() {
     prompt,
   };
   const context = $("#chatSkillKnowledge");
-  const query = $("#queryInput");
   if (!context) {
     showToast("Chat unavailable", "Open chat before applying the graph explanation request.", "error");
     return;
   }
   context.value = [context.value.trim(), prompt].filter(Boolean).join("\n\n");
   context.dispatchEvent(new Event("input", { bubbles: true }));
-  if (query) {
-    query.value = "Explain this OKF knowledge graph projection and identify which paths the twin may use safely.";
-    query.dispatchEvent(new Event("input", { bubbles: true }));
-  }
+  setLegacyManualRequestValue("Explain this OKF knowledge graph projection and identify which paths the twin may use safely.");
   showView("chat");
   const details = $("#chatSkillContext");
   if (details) details.open = true;
@@ -5764,15 +5760,11 @@ function prepareSelectedGraphNodeForActorTwin() {
   state.activeChatInteractionMode = "actor_twin";
   const select = $("#chatInteractionModeSelect");
   if (select) select.value = "actor_twin";
-  const query = $("#queryInput");
   const node = packet.selected_node || {};
-  if (query) {
-    query.value = [
-      "Use the selected OKF graph node to answer as the Actor Twin.",
-      `Explain what can be trusted, which relations are inferred or pending review, and what needs human confirmation for: ${node.title || node.node_key || "selected node"}.`,
-    ].join(" ");
-    query.dispatchEvent(new Event("input", { bubbles: true }));
-  }
+  setLegacyManualRequestValue([
+    "Use the selected OKF graph node to answer as the Actor Twin.",
+    `Explain what can be trusted, which relations are inferred or pending review, and what needs human confirmation for: ${node.title || node.node_key || "selected node"}.`,
+  ].join(" "));
   renderChatSkillMode();
   showView("chat");
   $("#n8nChatMount")?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -5960,18 +5952,13 @@ function prepareSelectedGraphRelationForActorTwin() {
   state.activeChatInteractionMode = "actor_twin";
   const select = $("#chatInteractionModeSelect");
   if (select) select.value = "actor_twin";
-  const query = $("#queryInput");
   const relation = packet.selected_relation || {};
   const source = packet.source_node || {};
   const target = packet.target_node || {};
-  if (query) {
-    query.value = [
-      "Use the selected OKF graph relation to answer as the Actor Twin.",
-      `Explain what can be trusted, what is inferred, and what needs human review for: ${source.title || source.node_key || "source"} ${relation.relation_type || "related"} ${target.title || target.node_key || "target"}.`,
-    ].join(" ");
-    query.dispatchEvent(new Event("input", { bubbles: true }));
-    query.focus();
-  }
+  setLegacyManualRequestValue([
+    "Use the selected OKF graph relation to answer as the Actor Twin.",
+    `Explain what can be trusted, what is inferred, and what needs human review for: ${source.title || source.node_key || "source"} ${relation.relation_type || "related"} ${target.title || target.node_key || "target"}.`,
+  ].join(" "));
   renderChatSkillMode();
   showToast("Actor Twin prompt prepared", "Selected graph relation is attached as structured context.", "success");
 }
@@ -7512,19 +7499,17 @@ function applyGraphActorRecommendationPrompt(mode = "projection") {
     lines.push("", "### Selected node", formatSelectedGraphContextPacket(selectedNode));
   }
   const target = $("#chatSkillKnowledge");
-  const query = $("#queryInput");
-  if (!target || !query) {
+  if (!target) {
     showToast("Chat unavailable", "Open chat before applying actor recommendation context.", "error");
     return;
   }
   target.value = [target.value.trim(), lines.join("\n")].filter(Boolean).join("\n\n");
   target.dispatchEvent(new Event("input", { bubbles: true }));
-  query.value = "Recommend how the twin should use this graph context for safe actor steering.";
-  query.dispatchEvent(new Event("input", { bubbles: true }));
+  setLegacyManualRequestValue("Recommend how the twin should use this graph context for safe actor steering.");
   showView("chat");
   const details = $("#chatSkillContext");
   if (details) details.open = true;
-  query.focus();
+  $("#n8nChatMount")?.scrollIntoView({ block: "center", behavior: "smooth" });
   showToast("Actor prompt prepared", "Graph governance context was added to chat.", "success");
 }
 
@@ -8159,15 +8144,13 @@ function bindChat() {
     const suggestion = event.target.closest("[data-chat-suggestion]");
     if (suggestion) {
       const suggestedPrompt = suggestion.dataset.chatSuggestion || "";
-      const hiddenInput = $("#queryInput");
-      if (hiddenInput) hiddenInput.value = suggestedPrompt;
+      setLegacyManualRequestValue(suggestedPrompt);
       renderSkillPreflight();
       if (runtimeConfig.n8nChatEnabled) {
         $("#n8nChatMount")?.scrollIntoView({ block: "center", behavior: "smooth" });
         showToast("Prompt prepared", "Paste or type it into the embedded n8n Actor Twin chat.", "success");
         return;
       }
-      hiddenInput?.focus();
       return;
     }
     if (!action) return;
@@ -15326,6 +15309,7 @@ function renderAppliedSkillsSelector() {
 function renderChatSkillMode() {
   const applied = state.skills.filter((skill) => state.appliedChatSkillIds.includes(skill.skill_id));
   const isSkillMode = Boolean(applied.length);
+  removeLegacyActorTwinComposer();
   if (!["source_context", "skill_activation"].includes(state.activeChatInteractionMode)) $("#chatSkillContext").open = false;
   $("#chatSkillContext").hidden = true;
   $("#chatSkillContext").classList.toggle("hidden", true);
@@ -15367,6 +15351,25 @@ function renderChatSkillMode() {
   renderChatContractSurfaces();
   renderSkillPreflight();
   if (runtimeConfig.n8nChatEnabled) void ensureN8nChat();
+}
+
+function removeLegacyActorTwinComposer() {
+  if (!runtimeConfig.n8nChatEnabled) return;
+  $("#chatForm")?.remove();
+  $("#queryInput")?.remove();
+  document.querySelectorAll("#chat .legacy-chat-form, #chat .chat-output-shell").forEach((node) => {
+    node.hidden = true;
+    node.setAttribute("aria-hidden", "true");
+  });
+  document.querySelectorAll("#chat form").forEach((form) => {
+    if (form.closest("#n8nChatMount")) return;
+    form.remove();
+  });
+  document.querySelectorAll("#chat input, #chat textarea").forEach((input) => {
+    if (input.closest("#n8nChatMount")) return;
+    const placeholder = String(input.getAttribute("placeholder") || "");
+    if (/ask the actor twin|ask the active twin|ask the twin/i.test(placeholder)) input.remove();
+  });
 }
 
 function renderChatContractSurfaces() {
@@ -15435,7 +15438,7 @@ function renderSkillPreflight() {
     knowledge_context: $("#chatSkillKnowledge").value,
   };
   const readiness = sourceReadiness(sourceInput);
-  const request = $("#queryInput").value.trim();
+  const request = legacyManualRequestValue().trim();
   const decisionPrinciples = active?.decision_principles || "prioritize deadlines, decisions, response time, and stakeholder urgency";
   const twinQuestion = readiness.missing.length
     ? `Before running, ${active?.display_name || state.activeTwin} would ask whether ${readiness.missing.join(", ")} context is intentionally empty.`
@@ -15545,6 +15548,7 @@ async function ensureN8nChat() {
   const status = $("#n8nChatStatus");
   const mount = $("#n8nChatMount");
   const webhookUrl = runtimeConfig.n8nChatWebhookUrl || "";
+  removeLegacyActorTwinComposer();
   if (!runtimeConfig.n8nChatEnabled) {
     if (status) status.textContent = "n8n chat is disabled in runtime config.";
     return;
@@ -19811,6 +19815,17 @@ function slugify(value) {
     .slice(0, 80) || "item";
 }
 
+function legacyManualRequestValue() {
+  return $("#queryInput")?.value || "";
+}
+
+function setLegacyManualRequestValue(value = "") {
+  const input = $("#queryInput");
+  if (!input) return;
+  input.value = value;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 function agentContractResponseText(result = {}) {
   const response = result.response || {};
   const output = normalizeAgentOutput(response.output || {});
@@ -19896,7 +19911,7 @@ async function saveChatInputPreset() {
     const result = await postJson("/api/skills/input-presets", {
       name,
       skill_id: state.activeChatSkillId,
-      manual_request: $("#queryInput").value,
+      manual_request: legacyManualRequestValue(),
       email_input: $("#chatSkillEmail").value,
       calendar_input: $("#chatSkillCalendar").value,
       teams_input: $("#chatSkillTeams").value,
@@ -19918,7 +19933,7 @@ function loadChatInputPreset() {
   const preset = state.skillInputPresets.find((item) => item.preset_id === $("#chatPresetSelect").value);
   if (!preset) return;
   const payload = preset.payload || {};
-  $("#queryInput").value = payload.manual_request || "";
+  setLegacyManualRequestValue(payload.manual_request || "");
   $("#chatSkillEmail").value = payload.email_input || "";
   $("#chatSkillCalendar").value = payload.calendar_input || "";
   $("#chatSkillTeams").value = payload.teams_input || "";
@@ -19943,7 +19958,7 @@ async function updateChatInputPreset() {
       preset_id: presetId,
       name,
       skill_id: state.activeChatSkillId,
-      manual_request: $("#queryInput").value,
+      manual_request: legacyManualRequestValue(),
       email_input: $("#chatSkillEmail").value,
       calendar_input: $("#chatSkillCalendar").value,
       teams_input: $("#chatSkillTeams").value,
@@ -20482,7 +20497,7 @@ function sourceCompletenessLabel(inputs) {
 async function runAgainFromHistory(runId) {
   const loaded = openSkillRunInChat(runId);
   if (!loaded) return;
-  const query = $("#queryInput")?.value?.trim() || "";
+  const query = legacyManualRequestValue().trim();
   if (!query) {
     setChatSkillStatus("Loaded the run, but no manual request was stored.", "error");
     return;
@@ -20511,8 +20526,7 @@ function openSkillRunInChat(runId) {
   renderAppliedSkillsSelector();
   renderChatSkillMode();
   safeRefreshSkillInputPresets();
-  const queryInput = $("#queryInput");
-  if (queryInput) queryInput.value = inputs.manual_request || "";
+  setLegacyManualRequestValue(inputs.manual_request || "");
   $("#chatSkillEmail").value = inputs.email_input || "";
   $("#chatSkillCalendar").value = inputs.calendar_input || "";
   $("#chatSkillTeams").value = inputs.teams_input || "";
