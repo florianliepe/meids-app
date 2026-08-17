@@ -6,6 +6,16 @@ Date: 2026-08-09
 
 MeIDs can run in GitHub Pages fixture mode without live n8n workflows. The current public frontend model uses the embedded n8n Actor Twin chat as the only required user-facing runtime path. Knowledge Fabric Agent and Agentic Butler are expected to run behind the Actor Twin as n8n workflow tools unless they are intentionally exposed for direct UAT.
 
+The legacy local chat composer is not part of the user-facing Actor Twin surface. The only visible chat input is the embedded n8n chat. The MeIDs interaction setup panel remains available as configuration context and is passed to n8n chat metadata on initialization:
+
+- Actor posture
+- applied skill hints
+- selected OKF source scopes
+- retrieval mode: `keyword`, `vector-cache`, or `knowledge graph`
+- optional websearch and voice-answer flags
+
+After changing these values in the frontend, use the local reload/context action or refresh the page so the embedded n8n chat receives the updated metadata.
+
 ## Required Runtime Paths
 
 | Agent | Runtime key | Current status |

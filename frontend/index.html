@@ -227,7 +227,7 @@
                   <summary id="appliedSkillsSummary">Applied skills: none</summary>
                   <div id="appliedSkillsList" class="skills-menu-list"></div>
                 </details>
-                <span id="chatSkillStatus" class="muted-inline">These settings are passed to the embedded n8n Actor Twin.</span>
+                <span id="chatSkillStatus" class="muted-inline">These settings are passed as n8n chat metadata.</span>
               </div>
               <div id="n8nInteractionContext" class="n8n-interaction-context" aria-live="polite"></div>
             </section>
@@ -295,10 +295,7 @@
               </div>
             </div>
           </details>
-          <form id="chatForm" class="composer legacy-chat-form" hidden aria-hidden="true">
-            <input id="queryInput" type="text" placeholder="Ask the twin..." autocomplete="off" />
-            <button type="submit">Ask</button>
-          </form>
+          <input id="queryInput" type="hidden" value="" aria-hidden="true" />
         </section>
 
         <section id="voice" class="view">

@@ -1923,18 +1923,20 @@ async function explainGraphProjectionInChat() {
   };
   const context = $("#chatSkillKnowledge");
   const query = $("#queryInput");
-  if (!context || !query) {
+  if (!context) {
     showToast("Chat unavailable", "Open chat before applying the graph explanation request.", "error");
     return;
   }
   context.value = [context.value.trim(), prompt].filter(Boolean).join("\n\n");
   context.dispatchEvent(new Event("input", { bubbles: true }));
-  query.value = "Explain this OKF knowledge graph projection and identify which paths the twin may use safely.";
-  query.dispatchEvent(new Event("input", { bubbles: true }));
+  if (query) {
+    query.value = "Explain this OKF knowledge graph projection and identify which paths the twin may use safely.";
+    query.dispatchEvent(new Event("input", { bubbles: true }));
+  }
   showView("chat");
   const details = $("#chatSkillContext");
   if (details) details.open = true;
-  query.focus();
+  $("#n8nChatMount")?.scrollIntoView({ block: "center", behavior: "smooth" });
   try {
     const result = await postJson("/api/okf/graph/explain-trace", {
       twin: state.activeTwin,
@@ -1947,7 +1949,7 @@ async function explainGraphProjectionInChat() {
   } catch (error) {
     console.warn("Graph explain trace failed", error);
   }
-  showToast("Projection explanation prepared", "Graph context added to chat. Press Ask to run the explanation.", "success");
+  showToast("Projection explanation prepared", "Graph context is available to the embedded Actor Twin chat.", "success");
 }
 
 async function copyGraphSnapshotJson(button) {
@@ -5770,10 +5772,11 @@ function prepareSelectedGraphNodeForActorTwin() {
       `Explain what can be trusted, which relations are inferred or pending review, and what needs human confirmation for: ${node.title || node.node_key || "selected node"}.`,
     ].join(" ");
     query.dispatchEvent(new Event("input", { bubbles: true }));
-    query.focus();
   }
   renderChatSkillMode();
-  showToast("Actor Twin prompt prepared", "Selected graph node is attached as structured context.", "success");
+  showView("chat");
+  $("#n8nChatMount")?.scrollIntoView({ block: "center", behavior: "smooth" });
+  showToast("Actor Twin context prepared", "Selected graph node is attached as n8n chat metadata.", "success");
 }
 
 function selectedGraphRelationContextPacket(edgeKey = state.selectedGraphEdgeKey) {
@@ -20483,12 +20486,19 @@ function sourceCompletenessLabel(inputs) {
 async function runAgainFromHistory(runId) {
   const loaded = openSkillRunInChat(runId);
   if (!loaded) return;
-  const query = $("#queryInput").value.trim();
+  const query = $("#queryInput")?.value?.trim() || "";
   if (!query) {
     setChatSkillStatus("Loaded the run, but no manual request was stored.", "error");
     return;
   }
-  $("#chatForm").requestSubmit();
+  const form = $("#chatForm");
+  if (form) {
+    form.requestSubmit();
+    return;
+  }
+  showView("chat");
+  $("#n8nChatMount")?.scrollIntoView({ block: "center", behavior: "smooth" });
+  showToast("Run context loaded", "Use the embedded Actor Twin chat to rerun with this context.", "success");
 }
 
 function openSkillRunInChat(runId) {
@@ -20505,14 +20515,15 @@ function openSkillRunInChat(runId) {
   renderAppliedSkillsSelector();
   renderChatSkillMode();
   safeRefreshSkillInputPresets();
-  $("#queryInput").value = inputs.manual_request || "";
+  const queryInput = $("#queryInput");
+  if (queryInput) queryInput.value = inputs.manual_request || "";
   $("#chatSkillEmail").value = inputs.email_input || "";
   $("#chatSkillCalendar").value = inputs.calendar_input || "";
   $("#chatSkillTeams").value = inputs.teams_input || "";
   $("#chatSkillKnowledge").value = inputs.knowledge_context || "";
   renderSkillPreflight();
   showView("chat");
-  addMessage("assistant", `Loaded prior run ${run.run_id} into the skill form. Adjust the sources or request, then run it again.`);
+  addMessage("assistant", `Loaded prior run ${run.run_id} as Actor Twin context. Use the embedded n8n chat to run it again.`);
   return true;
 }
 
