@@ -241,6 +241,7 @@
   voiceAnswerEnabled: false,
   n8nChatLoaded: false,
   n8nChatLoading: false,
+  n8nContextReloadTimer: null,
   n8nSessionId: `meids-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
   knowledgeFabricIngestQueue: [],
   knowledgeFabricQueueFilter: "all",
@@ -8224,6 +8225,7 @@ function bindChat() {
   $("#riskPostureSelect")?.addEventListener("change", (event) => {
     state.riskPosture = event.target.value || "balanced";
     renderChatSkillMode();
+    scheduleN8nChatContextReload();
   });
   $("#chatInteractionModeSelect")?.addEventListener("change", (event) => {
     state.activeChatInteractionMode = event.target.value || "actor_twin";
@@ -8237,6 +8239,7 @@ function bindChat() {
       $("#chatSkillContext").open = true;
     }
     renderChatSkillMode();
+    scheduleN8nChatContextReload();
   });
   $("#appliedSkillsList")?.addEventListener("change", (event) => {
     if (!event.target.matches(".applied-skill-filter")) return;
@@ -8246,23 +8249,31 @@ function bindChat() {
     state.chatContractActionResult = null;
     renderChatSkillMode();
     safeRefreshSkillInputPresets();
+    scheduleN8nChatContextReload();
   });
   $("#webSearchFilter")?.addEventListener("change", (event) => {
     state.webSearchEnabled = Boolean(event.target.checked);
     renderChatSkillMode();
+    scheduleN8nChatContextReload();
   });
   $("#voiceAnswerFilter")?.addEventListener("change", (event) => {
     state.voiceAnswerEnabled = Boolean(event.target.checked);
     renderChatSkillMode();
+    scheduleN8nChatContextReload();
   });
   $("#retrievalModeSelect")?.addEventListener("change", () => {
     renderChatSkillMode();
+    scheduleN8nChatContextReload();
   });
   $("#n8nKeywordHints")?.addEventListener("input", () => {
     renderN8nInteractionContext();
+    scheduleN8nChatContextReload();
   });
   $$(".type-filter").forEach((input) => {
-    input.addEventListener("change", renderChatSkillMode);
+    input.addEventListener("change", () => {
+      renderChatSkillMode();
+      scheduleN8nChatContextReload();
+    });
   });
   ["#chatSkillEmail", "#chatSkillCalendar", "#chatSkillTeams", "#chatSkillKnowledge"].forEach((selector) => {
     $(selector)?.addEventListener("input", renderSkillPreflight);
@@ -15546,12 +15557,25 @@ function renderN8nInteractionContext() {
 }
 
 function reloadN8nChatContext() {
+  if (state.n8nContextReloadTimer) {
+    clearTimeout(state.n8nContextReloadTimer);
+    state.n8nContextReloadTimer = null;
+  }
   state.n8nChatLoaded = false;
   state.n8nChatLoading = false;
   const mount = $("#n8nChatMount");
   if (mount) mount.innerHTML = "";
   renderN8nInteractionContext();
   void ensureN8nChat();
+}
+
+function scheduleN8nChatContextReload() {
+  if (!runtimeConfig.n8nChatEnabled || !state.n8nChatLoaded) return;
+  if (state.n8nContextReloadTimer) clearTimeout(state.n8nContextReloadTimer);
+  state.n8nContextReloadTimer = setTimeout(() => {
+    reloadN8nChatContext();
+    showToast("n8n context refreshed", "Actor Twin chat reloaded with the current interaction setup.", "success");
+  }, 700);
 }
 
 async function ensureN8nChat() {
@@ -20504,16 +20528,6 @@ function sourceCompletenessLabel(inputs) {
 async function runAgainFromHistory(runId) {
   const loaded = openSkillRunInChat(runId);
   if (!loaded) return;
-  const query = legacyManualRequestValue().trim();
-  if (!query) {
-    setChatSkillStatus("Loaded the run, but no manual request was stored.", "error");
-    return;
-  }
-  const form = $("#chatForm");
-  if (form) {
-    form.requestSubmit();
-    return;
-  }
   showView("chat");
   $("#n8nChatMount")?.scrollIntoView({ block: "center", behavior: "smooth" });
   showToast("Run context loaded", "Use the embedded Actor Twin chat to rerun with this context.", "success");
