@@ -126,6 +126,11 @@ jobs:
           cp -R contracts/n8n/live-probes/. dist-pages/assets/n8n-live-probes/
           node scripts/write-pages-agent-runtime-config.cjs --output dist-pages/assets/agent-runtime-config.json
           node scripts/write-n8n-runtime-readiness-status.cjs --config dist-pages/assets/agent-runtime-config.json --output dist-pages/assets/n8n-runtime-readiness-status.json
+          node scripts/write-n8n-live-readiness-preflight.cjs --assets-dir dist-pages/assets --output dist-pages/assets/n8n-live-readiness-preflight.json --write
+          node scripts/write-zielmodus-4-live-completion-checklist.cjs --assets-dir dist-pages/assets --output dist-pages/assets/zielmodus-4-live-completion-checklist.json --write
+          node scripts/write-n8n-live-handoff-commands.cjs --assets-dir dist-pages/assets --output dist-pages/assets/n8n-live-handoff-commands.json --write
+          node scripts/write-n8n-ai-agent-readiness-status.cjs --output dist-pages/assets/n8n-ai-agent-readiness-status.json
+          node scripts/write-actor-twin-routing-readiness-status.cjs --output dist-pages/assets/actor-twin-routing-readiness-status.json
 
       - name: Smoke check static artifact
         run: node scripts/pages-smoke-check.cjs dist-pages
