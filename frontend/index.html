@@ -195,7 +195,7 @@
             <h2>Actor Twin, directly in n8n.</h2>
             <p>The embedded n8n chat is the single interaction surface. The Actor Twin decides whether to answer directly, call Knowledge Fabric, or delegate work to Agentic Butler inside n8n.</p>
             <div class="chat-quick-actions" aria-label="Workspace shortcuts">
-              <button class="secondary small" type="button" data-chat-action="focus-query">Focus chat</button>
+              <button class="secondary small" type="button" data-chat-action="focus-query">Focus n8n chat</button>
               <button class="secondary small" type="button" data-cockpit-action="openVoice">Voice capture</button>
             </div>
           </section>
@@ -222,12 +222,12 @@
                   <option value="balanced" selected>Balanced</option>
                   <option value="bold">Bold</option>
                 </select>
-                <button id="reloadN8nContextBtn" class="secondary small" type="button">Reload n8n context</button>
+                <button id="reloadN8nContextBtn" class="secondary small" type="button">Apply to n8n chat</button>
                 <details id="appliedSkillsMenu" class="skills-menu" hidden>
                   <summary id="appliedSkillsSummary">Applied skills: none</summary>
                   <div id="appliedSkillsList" class="skills-menu-list"></div>
                 </details>
-                <span id="chatSkillStatus" class="muted-inline">These settings are passed as n8n chat metadata.</span>
+                <span id="chatSkillStatus" class="muted-inline">These settings shape the n8n Actor Twin metadata.</span>
               </div>
               <div id="n8nInteractionContext" class="n8n-interaction-context" aria-live="polite"></div>
             </section>
@@ -255,7 +255,7 @@
               <div>
                 <span class="badge">Connected agent</span>
                 <h2>Actor Twin chat</h2>
-                <p>Powered by the published n8n Actor Twin workflow. Agent routing happens inside n8n.</p>
+                <p>Powered by the published n8n Actor Twin workflow. Interaction, routing, and agent calls happen inside n8n.</p>
               </div>
               <a id="n8nAgentLink" class="secondary small n8n-agent-link" href="#" target="_blank" rel="noreferrer" hidden>Open external chat</a>
             </div>

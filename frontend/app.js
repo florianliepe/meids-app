@@ -15523,7 +15523,7 @@ function renderN8nInteractionContext() {
     <div>
       <span class="badge">n8n routing context</span>
       <strong>${escapeHtml(context.twinName)} · ${escapeHtml(context.posture)} posture · ${escapeHtml(context.retrieval.mode)}</strong>
-      <p>Actor Twin receives these settings when the embedded chat loads. Reload context after changing routing settings.</p>
+      <p>Actor Twin receives these settings as chat metadata. Apply after changing keyword, vector cache, graph, websearch, voice, or source-scope settings.</p>
     </div>
     <div class="n8n-context-chips" aria-label="n8n interaction context">
       <span>${escapeHtml(context.retrieval.websearch ? "websearch on" : "websearch off")}</span>
