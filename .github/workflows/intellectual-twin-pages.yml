@@ -79,12 +79,10 @@ jobs:
         run: node scripts/validate-postgres-graph-schema.cjs
 
       - name: Prepare static artifact
-        env:
-          GH_PAGES_API_BASE_URL: ${{ secrets.GH_PAGES_API_BASE_URL }}
-          GH_PAGES_N8N_CHAT_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_CHAT_WEBHOOK_URL }}
-          GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL }}
-          GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL }}
-          GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL }}
+        # GitHub Pages is a public static artifact. Keep runtime config public-safe:
+        # Actor Twin uses the checked-in embedded n8n chat URL; Knowledge Fabric
+        # and Agentic Butler run as internal Actor Twin workflow tools.
+        # Hosted backend deployments can inject secrets separately.
         run: node scripts/build-pages-static.cjs --output dist-pages
 
       - name: Smoke check static artifact
