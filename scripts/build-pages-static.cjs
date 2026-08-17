@@ -77,9 +77,18 @@ function quoted(value) {
   return JSON.stringify(value || "");
 }
 
+const DEFAULT_ACTOR_TWIN_CHAT_URL = "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat";
+const LEGACY_ACTOR_TWIN_CHAT_URL = "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/actor-twin/chat";
+
+function actorTwinChatUrl(value) {
+  const candidate = String(value || "").trim();
+  if (!candidate || candidate === LEGACY_ACTOR_TWIN_CHAT_URL) return DEFAULT_ACTOR_TWIN_CHAT_URL;
+  return candidate;
+}
+
 function runtimeConfigJs() {
-  const chatUrl = env("GH_PAGES_N8N_CHAT_WEBHOOK_URL");
-  const actorUrl = env("GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL") || chatUrl;
+  const chatUrl = actorTwinChatUrl(env("GH_PAGES_N8N_CHAT_WEBHOOK_URL"));
+  const actorUrl = actorTwinChatUrl(env("GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL") || chatUrl);
   const knowledgeUrl = env("GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL");
   const butlerUrl = env("GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL");
   const apiBaseUrl = env("GH_PAGES_API_BASE_URL");

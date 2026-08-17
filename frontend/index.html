@@ -192,21 +192,21 @@
           <div id="chatWorkspaceIntro" class="workspace-intro"></div>
           <section class="chat-workspace-hero" aria-label="Agent interaction workspace">
             <span class="badge">Actor Twin</span>
-            <h2>Ask, decide, and move work forward.</h2>
-            <p>The Actor Twin is the routing authority. It answers directly, retrieves knowledge, activates approved skills, or drafts new skills while cockpit views hold review, graph, trace, and production controls.</p>
+            <h2>Actor Twin, directly in n8n.</h2>
+            <p>The embedded n8n chat is the single interaction surface. The Actor Twin decides whether to answer directly, call Knowledge Fabric, or delegate work to Agentic Butler inside n8n.</p>
             <div class="chat-quick-actions" aria-label="Workspace shortcuts">
-              <button class="secondary small" type="button" data-chat-action="focus-query">Ask twin</button>
+              <button class="secondary small" type="button" data-chat-action="focus-query">Focus chat</button>
               <button class="secondary small" type="button" data-cockpit-action="openVoice">Voice capture</button>
             </div>
           </section>
-          <section class="chat-output-shell" aria-label="Recent twin outputs">
+          <section class="chat-output-shell" aria-label="Recent twin outputs" hidden>
             <div class="chat-output-head">
               <span class="badge">Recent outputs</span>
               <small>Latest answers, skill runs, and follow-up actions stay here.</small>
             </div>
             <div id="messages" class="messages"></div>
           </section>
-          <details id="chatInteractionSetup" class="chat-workspace-drawer">
+          <details id="chatInteractionSetup" class="chat-workspace-drawer" hidden>
             <summary>Answer settings</summary>
             <section class="chat-workspace-settings" aria-label="Interaction setup">
               <div class="chat-skillbar" aria-label="Ask twin controls">
@@ -248,14 +248,14 @@
               </div>
             </details>
           </details>
-          <section id="n8nAgentPanel" class="n8n-agent-panel" hidden>
+          <section id="n8nAgentPanel" class="n8n-agent-panel">
             <div class="n8n-agent-head">
               <div>
                 <span class="badge">Connected agent</span>
-                <h2>Actor Twin via n8n</h2>
-                <p>Use the connected Actor Twin workflow when an answer should be routed through the external agent layer.</p>
+                <h2>Actor Twin chat</h2>
+                <p>Powered by the published n8n Actor Twin workflow. Agent routing happens inside n8n.</p>
               </div>
-              <a id="n8nAgentLink" class="secondary small n8n-agent-link" href="#" target="_blank" rel="noreferrer">Open external chat</a>
+              <a id="n8nAgentLink" class="secondary small n8n-agent-link" href="#" target="_blank" rel="noreferrer" hidden>Open external chat</a>
             </div>
             <div id="n8nChatMount" class="n8n-chat-mount"></div>
             <p id="n8nChatStatus" class="muted-inline">n8n chat not loaded yet.</p>
@@ -293,7 +293,7 @@
               </div>
             </div>
           </details>
-          <form id="chatForm" class="composer">
+          <form id="chatForm" class="composer" hidden>
             <input id="queryInput" type="text" placeholder="Ask the twin..." autocomplete="off" />
             <button type="submit">Ask</button>
           </form>

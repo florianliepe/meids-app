@@ -47,9 +47,18 @@ function configuredStatus(value) {
   return value ? "configured" : "awaiting_url";
 }
 
+const DEFAULT_ACTOR_TWIN_CHAT_URL = "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat";
+const LEGACY_ACTOR_TWIN_CHAT_URL = "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/actor-twin/chat";
+
+function actorTwinChatUrl(value) {
+  const candidate = String(value || "").trim();
+  if (!candidate || candidate === LEGACY_ACTOR_TWIN_CHAT_URL) return DEFAULT_ACTOR_TWIN_CHAT_URL;
+  return candidate;
+}
+
 function buildConfig() {
-  const chatUrl = env("GH_PAGES_N8N_CHAT_WEBHOOK_URL");
-  const actorUrl = env("GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL") || chatUrl;
+  const chatUrl = actorTwinChatUrl(env("GH_PAGES_N8N_CHAT_WEBHOOK_URL"));
+  const actorUrl = actorTwinChatUrl(env("GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL") || chatUrl);
   const knowledgeUrl = env("GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL");
   const butlerUrl = env("GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL");
 
@@ -75,7 +84,7 @@ function buildConfig() {
       agentic_butler: slot(
         configuredStatus(butlerUrl),
         "GitHub Pages runtime config generated from repository secrets.",
-        butlerUrl ? "Run Agentic Butler UAT with approval-gated skill activation fixture." : "Set GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL.",
+        butlerUrl ? "Run Agentic Butler UAT with autonomous no-write work-artifact fixture." : "Set GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL.",
       ),
     },
     n8nActorTwinWebhookUrl: actorUrl,

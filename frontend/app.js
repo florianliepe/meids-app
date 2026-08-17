@@ -540,6 +540,10 @@ function showView(viewId) {
   view.classList.add("active");
   $("#pageTitle").textContent = button.textContent;
   renderWorkspaceMode(viewId);
+  if (viewId === "chat") {
+    renderChatSkillMode();
+    void ensureN8nChat();
+  }
 }
 
 function renderWorkspaceMode(viewId) {
@@ -8158,6 +8162,12 @@ function bindChat() {
     }
     if (!action) return;
     if (action.dataset.chatAction === "focus-query") {
+      if (runtimeConfig.n8nChatEnabled) {
+        const n8nMount = $("#n8nChatMount");
+        n8nMount?.scrollIntoView({ block: "center", behavior: "smooth" });
+        n8nMount?.querySelector("textarea, input, [contenteditable='true']")?.focus();
+        return;
+      }
       $("#queryInput").scrollIntoView({ block: "center", behavior: "smooth" });
       $("#queryInput").focus();
       return;
@@ -15327,13 +15337,20 @@ function renderChatSkillMode() {
   if (!["source_context", "skill_activation"].includes(state.activeChatInteractionMode)) $("#chatSkillContext").open = false;
   $("#chatSkillContext").hidden = true;
   $("#chatSkillContext").classList.toggle("hidden", true);
-  $("#n8nAgentPanel").hidden = true;
+  const n8nPanel = $("#n8nAgentPanel");
+  if (n8nPanel) n8nPanel.hidden = !runtimeConfig.n8nChatEnabled;
+  const outputShell = document.querySelector(".chat-output-shell");
+  if (outputShell) outputShell.hidden = true;
+  const interactionSetup = $("#chatInteractionSetup");
+  if (interactionSetup) interactionSetup.hidden = true;
+  const chatForm = $("#chatForm");
+  if (chatForm) chatForm.hidden = true;
   const modeSelect = $("#chatInteractionModeSelect");
   if (modeSelect) modeSelect.value = state.activeChatInteractionMode || "actor_twin";
   const n8nLink = $("#n8nAgentLink");
   if (n8nLink) {
     n8nLink.href = runtimeConfig.n8nChatWebhookUrl || "#";
-    n8nLink.hidden = !runtimeConfig.n8nChatWebhookUrl;
+    n8nLink.hidden = true;
   }
   setChatSkillStatus(
     `${chatInteractionModeLabel()} · governed pipeline · ${state.riskPosture} posture${applied.length ? ` · ${applied.length} applied skill${applied.length === 1 ? "" : "s"}` : ""}${state.webSearchEnabled ? " · websearch on" : ""}${state.voiceAnswerEnabled ? " · voice on" : ""}`,
@@ -15350,6 +15367,7 @@ function renderChatSkillMode() {
   renderSkillRoutingPanel();
   renderChatContractSurfaces();
   renderSkillPreflight();
+  if (runtimeConfig.n8nChatEnabled) void ensureN8nChat();
 }
 
 function renderChatContractSurfaces() {
@@ -15478,9 +15496,9 @@ async function ensureN8nChat() {
       ],
       i18n: {
         en: {
-          title: "n8n agent",
-          subtitle: "External workflow trigger",
-          inputPlaceholder: "Trigger the n8n agent...",
+          title: "Actor Twin",
+          subtitle: "n8n orchestration",
+          inputPlaceholder: "Ask the Actor Twin...",
         },
       },
     });

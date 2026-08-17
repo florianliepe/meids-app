@@ -88,7 +88,14 @@ jobs:
           rm -rf dist-pages
           mkdir -p dist-pages
           cp -R frontend/. dist-pages/
-          ACTOR_TWIN_WEBHOOK_URL="${GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL:-$GH_PAGES_N8N_CHAT_WEBHOOK_URL}"
+          DEFAULT_ACTOR_TWIN_CHAT_URL="https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat"
+          LEGACY_ACTOR_TWIN_CHAT_URL="https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/actor-twin/chat"
+          CHAT_WEBHOOK_URL="${GH_PAGES_N8N_CHAT_WEBHOOK_URL:-$DEFAULT_ACTOR_TWIN_CHAT_URL}"
+          if [ "$CHAT_WEBHOOK_URL" = "$LEGACY_ACTOR_TWIN_CHAT_URL" ]; then CHAT_WEBHOOK_URL="$DEFAULT_ACTOR_TWIN_CHAT_URL"; fi
+          ACTOR_TWIN_WEBHOOK_URL="${GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL:-$CHAT_WEBHOOK_URL}"
+          if [ "$ACTOR_TWIN_WEBHOOK_URL" = "$LEGACY_ACTOR_TWIN_CHAT_URL" ]; then ACTOR_TWIN_WEBHOOK_URL="$CHAT_WEBHOOK_URL"; fi
+          export GH_PAGES_N8N_CHAT_WEBHOOK_URL="$CHAT_WEBHOOK_URL"
+          export GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL="$ACTOR_TWIN_WEBHOOK_URL"
           actor_status="awaiting_url"
           knowledge_status="awaiting_url"
           butler_status="awaiting_url"
@@ -99,7 +106,7 @@ jobs:
           window.INTELLECTUAL_TWIN_CONFIG = {
             apiBaseUrl: "$GH_PAGES_API_BASE_URL",
             assetBaseUrl: "",
-            n8nChatWebhookUrl: "$GH_PAGES_N8N_CHAT_WEBHOOK_URL",
+            n8nChatWebhookUrl: "$CHAT_WEBHOOK_URL",
             n8nActorTwinWebhookUrl: "$ACTOR_TWIN_WEBHOOK_URL",
             n8nKnowledgeFabricWebhookUrl: "$GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
             n8nAgenticButlerWebhookUrl: "$GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
@@ -125,7 +132,7 @@ jobs:
                 next_action: "Run Agentic Butler UAT with autonomous no-write work-artifact fixture.",
               },
             },
-            n8nChatEnabled: "$GH_PAGES_N8N_CHAT_WEBHOOK_URL" !== "" || "$ACTOR_TWIN_WEBHOOK_URL" !== "",
+            n8nChatEnabled: "$CHAT_WEBHOOK_URL" !== "" || "$ACTOR_TWIN_WEBHOOK_URL" !== "",
             staticPagesMode: "$GH_PAGES_API_BASE_URL" === ""
           };
           EOF

@@ -1658,11 +1658,11 @@ body.cockpit-mode .main {
 
 .n8n-agent-panel {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
-  padding: 14px;
+  padding: 18px;
 }
 
 .n8n-agent-panel[hidden] {
@@ -1686,7 +1686,7 @@ body.cockpit-mode .main {
 }
 
 .n8n-chat-mount {
-  min-height: 560px;
+  min-height: min(720px, calc(100vh - 360px));
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-quiet);
@@ -1694,7 +1694,7 @@ body.cockpit-mode .main {
 }
 
 .n8n-chat-mount:empty::before {
-  content: "n8n chat will appear here when this mode is selected.";
+  content: "Actor Twin chat is loading from n8n.";
   display: block;
   padding: 18px;
   color: var(--muted);
