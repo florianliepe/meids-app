@@ -33518,13 +33518,15 @@ function formatShortDate(value) {
 }
 
 function addMessage(role, text, metadata = null) {
+  const messageContainer = $("#messages");
+  if (!messageContainer) return null;
   $("#messages .chat-empty-state")?.remove();
   const node = document.createElement("article");
   node.className = `message ${role}`;
   if (role === "assistant" && metadata?.run_id && metadata?.result) {
     node.classList.add("skill-run-message");
     node.innerHTML = renderSkillRunCard(metadata);
-    $("#messages").appendChild(node);
+    messageContainer.appendChild(node);
     bindSkillRunReviewButtons(node, metadata.run_id);
     bindSkillRunArtifactActions(node, metadata);
     bindApprovalQueueActions(node);
@@ -33534,7 +33536,7 @@ function addMessage(role, text, metadata = null) {
   if (role === "assistant" && metadata?.agent_contract_response) {
     node.classList.add("agent-contract-message");
     node.innerHTML = renderAgentContractChatCard(metadata.agent_contract_response);
-    $("#messages").appendChild(node);
+    messageContainer.appendChild(node);
     node.querySelector(".speak-message-btn")?.addEventListener("click", () => speakMessage(node, agentContractResponseText(metadata.agent_contract_response)));
     node.scrollIntoView({ block: "end" });
     return node;
@@ -33556,7 +33558,7 @@ function addMessage(role, text, metadata = null) {
     ${role === "assistant" ? '<div class="message-actions"><button class="secondary small speak-message-btn" type="button">Play voice</button></div>' : ""}
     ${sources}${answerPath}${confidence}${retrieval}
   `;
-  $("#messages").appendChild(node);
+  messageContainer.appendChild(node);
   if (role === "assistant") {
     node.querySelector(".speak-message-btn")?.addEventListener("click", () => speakMessage(node, text));
   }
@@ -33659,6 +33661,7 @@ function renderSourceChip(source) {
 }
 
 function removeLastAssistantPlaceholder() {
+  if (!$("#messages")) return;
   const messages = $$("#messages .message.assistant");
   const last = messages[messages.length - 1];
   if (

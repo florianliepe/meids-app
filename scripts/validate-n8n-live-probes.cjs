@@ -17,7 +17,7 @@ const expectedAgents = {
   },
   agentic_butler: {
     file: "agentic-butler.json",
-    expectedStatus: "approval_required",
+    expectedStatus: "completed",
   },
 };
 

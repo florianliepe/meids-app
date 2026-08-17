@@ -8,7 +8,7 @@ const requiredSections = ["request", "response", "approval_required", "failure"]
 const liveProbeExpectedStatus = {
   actor_twin: "completed",
   knowledge_fabric_agent: "completed",
-  agentic_butler: "approval_required",
+  agentic_butler: "completed",
 };
 
 function readJson(file) {

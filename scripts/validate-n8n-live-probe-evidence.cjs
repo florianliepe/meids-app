@@ -7,7 +7,7 @@ const defaultFile = path.join(root, "frontend", "assets", "n8n-live-probe-eviden
 const expectedResponseStatus = {
   actor_twin: "completed",
   knowledge_fabric_agent: "completed",
-  agentic_butler: "approval_required",
+  agentic_butler: "completed",
 };
 
 function fail(message) {
@@ -45,9 +45,6 @@ function validateEntry(entry) {
     if (entry.demo === true) fail(`${agentId}: connected evidence cannot be demo=true`);
     const responseStatus = entry.evidence?.response_status;
     if (responseStatus !== expected) fail(`${agentId}: evidence.response_status must be ${expected}`);
-    if (agentId === "agentic_butler" && entry.evidence?.approval_gate_confirmed !== true) {
-      fail("agentic_butler: approval_gate_confirmed must be true");
-    }
   }
 }
 

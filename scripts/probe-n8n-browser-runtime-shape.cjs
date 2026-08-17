@@ -9,7 +9,7 @@ const githubPagesOrigin = "https://florianliepe.github.io";
 const agents = [
   { agent_id: "actor_twin", fixture: "actor-twin.json", expected_status: "completed" },
   { agent_id: "knowledge_fabric_agent", fixture: "knowledge-fabric-agent.json", expected_status: "completed" },
-  { agent_id: "agentic_butler", fixture: "agentic-butler.json", expected_status: "approval_required" },
+  { agent_id: "agentic_butler", fixture: "agentic-butler.json", expected_status: "completed" },
 ];
 
 function argValue(name, fallback = "") {

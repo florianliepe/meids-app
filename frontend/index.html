@@ -199,13 +199,6 @@
               <button class="secondary small" type="button" data-cockpit-action="openVoice">Voice capture</button>
             </div>
           </section>
-          <section class="chat-output-shell" aria-label="Recent twin outputs" hidden>
-            <div class="chat-output-head">
-              <span class="badge">Recent outputs</span>
-              <small>Latest answers, skill runs, and follow-up actions stay here.</small>
-            </div>
-            <div id="messages" class="messages"></div>
-          </section>
           <details id="chatInteractionSetup" class="chat-workspace-drawer n8n-context-drawer">
             <summary>n8n interaction metadata</summary>
             <section class="chat-workspace-settings" aria-label="Interaction setup">
@@ -259,7 +252,7 @@
               <div>
                 <span class="badge">Connected agent</span>
                 <h2>Actor Twin chat</h2>
-                <p>Powered by the published n8n Actor Twin workflow. Answers, route decisions, and calls to Knowledge Fabric or Agentic Butler happen inside n8n.</p>
+                <p>Powered by the published n8n Actor Twin workflow. Answers, route decisions, and calls to Knowledge Fabric or Agentic Butler happen inside n8n. MeIDs only passes interaction setup metadata.</p>
               </div>
               <a id="n8nAgentLink" class="secondary small n8n-agent-link" href="#" target="_blank" rel="noreferrer" hidden>Open external chat</a>
             </div>
