@@ -8,8 +8,8 @@
   "n8nAgentProbeSlots": {
     "actor_twin": {
       "status": "configured",
-      "probe_boundary": "Public UAT webhook configured through scripts/set-n8n-agent-url.cjs. Live workflow proof still requires cockpit probe or n8n execution trace.",
-      "next_action": "Run Actor Twin UAT and capture n8n trace evidence."
+      "probe_boundary": "Embedded n8n chat is configured as the public Actor Twin entrypoint. Live workflow proof requires n8n chat execution traces.",
+      "next_action": "Run Actor Twin embedded-chat UAT and capture direct answer, Knowledge Fabric tool, and Agentic Butler tool trace evidence."
     },
     "knowledge_fabric_agent": {
       "status": "internal_tool_via_actor_twin",
