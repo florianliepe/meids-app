@@ -83,11 +83,16 @@ function buildAgentRow(agent, runtime, replay, evidence) {
   const replayAgent = byAgent(replay?.agents, agent.agent_id) || {};
   const probeAgent = byAgent(evidence?.agents, agent.agent_id) || {};
   const urlReady = runtimeAgent.url_configured === true && runtimeAgent.status === "configured";
+  const runtimeReady = runtimeAgent.runtime_ready === true
+    || runtimeAgent.status === "configured"
+    || runtimeAgent.status === "internal_tool_via_actor_twin";
+  const internalTool = runtimeAgent.status === "internal_tool_via_actor_twin"
+    || runtimeAgent.invocation_mode === "actor_twin_workflow_tool";
   const fixtureReady = replayAgent.status === "passed" && Number(replayAgent.case_count || 0) >= 5;
   const liveProbeReady = probeConnected(probeAgent);
   const blockers = [];
   if (!fixtureReady) blockers.push("fixture_replay_not_passed");
-  if (!urlReady) blockers.push("live_url_missing");
+  if (!runtimeReady) blockers.push("runtime_path_missing");
   if (!liveProbeReady) blockers.push("live_probe_evidence_missing");
   return {
     agent_id: agent.agent_id,
@@ -101,9 +106,13 @@ function buildAgentRow(agent, runtime, replay, evidence) {
     runtime_url: {
       status: runtimeAgent.status || "missing_url",
       configured: urlReady,
+      runtime_ready: runtimeReady,
+      invocation_mode: runtimeAgent.invocation_mode || (internalTool ? "actor_twin_workflow_tool" : "public_webhook"),
       url_origin: runtimeAgent.url_origin || "",
       github_pages_secret: agent.secret,
-      next_action: runtimeAgent.next_action || `Configure ${agent.secret}.`,
+      next_action: runtimeAgent.next_action || (internalTool
+        ? "Verify the Actor Twin n8n workflow tool is connected and published."
+        : `Configure ${agent.secret}.`),
     },
     live_probe: {
       status: probeAgent.status || "awaiting_probe",
@@ -127,14 +136,14 @@ function main() {
   const zielmodus = readAssetJson("zielmodus-4-readiness-status.json", {});
   const agents = requiredAgents.map((agent) => buildAgentRow(agent, runtime, replay, evidence));
   const fixtureReady = agents.every((agent) => agent.fixture.status === "passed");
-  const urlReady = agents.every((agent) => agent.runtime_url.configured);
+  const runtimeReady = agents.every((agent) => agent.runtime_url.runtime_ready);
   const probeReady = agents.every((agent) => agent.live_probe.connected);
-  const status = fixtureReady && urlReady && probeReady
+  const status = fixtureReady && runtimeReady && probeReady
     ? "ready_for_production_review"
-    : fixtureReady && urlReady
+    : fixtureReady && runtimeReady
       ? "live_probe_evidence_pending"
-      : fixtureReady
-        ? "partial_live_url_blocked"
+    : fixtureReady
+        ? "partial_runtime_path_blocked"
         : "fixture_replay_blocked";
   const artifact = {
     schema_version: "0.1.0",
@@ -145,6 +154,7 @@ function main() {
       agent_count: agents.length,
       fixture_ready_count: agents.filter((agent) => agent.fixture.status === "passed").length,
       url_ready_count: agents.filter((agent) => agent.runtime_url.configured).length,
+      runtime_ready_count: agents.filter((agent) => agent.runtime_url.runtime_ready).length,
       live_probe_ready_count: agents.filter((agent) => agent.live_probe.connected).length,
       zielmodus_status: zielmodus.status || "unknown",
     },

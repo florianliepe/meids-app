@@ -43,8 +43,8 @@ const requiredAgents = [
     agent_id: "agentic_butler",
     agent_name: "Agentic Butler",
     secret: "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
-    probe: "approval-required skill activation fixture",
-    response_status: "approval_required",
+    probe: "autonomous no-write Actor Twin delegated work-artifact fixture",
+    response_status: "completed",
     estimate_minutes_after_url: "15-25",
   },
 ];
@@ -85,14 +85,21 @@ function buildAgentChecklist(agent, runtime, evidence, preflight) {
   const evidenceAgent = byAgent(evidence.agents, agent.agent_id);
   const preflightAgent = byAgent(preflight.agents, agent.agent_id);
   const urlConfigured = runtimeAgent.status === "configured" && runtimeAgent.url_configured === true;
+  const runtimeReady = runtimeAgent.runtime_ready === true
+    || runtimeAgent.status === "configured"
+    || runtimeAgent.status === "internal_tool_via_actor_twin";
+  const internalTool = runtimeAgent.status === "internal_tool_via_actor_twin"
+    || runtimeAgent.invocation_mode === "actor_twin_workflow_tool";
   const probeReady = probeConnected(evidenceAgent);
   const openItems = [];
-  if (!urlConfigured) {
+  if (!runtimeReady) {
     openItems.push({
-      type: "live_url",
-      label: `Configure ${agent.agent_name} live URL`,
+      type: "runtime_path",
+      label: `Configure ${agent.agent_name} runtime path`,
       required_key: agent.secret,
-      command: `node scripts/set-n8n-agent-url.cjs --agent ${agent.agent_id} --url https://YOUR-N8N-HOST/webhook/...`,
+      command: internalTool
+        ? `Verify ${agent.agent_name} is connected as an Actor Twin n8n workflow tool.`
+        : `node scripts/set-n8n-agent-url.cjs --agent ${agent.agent_id} --url https://YOUR-N8N-HOST/webhook/...`,
     });
   }
   if (!probeReady) {
@@ -109,6 +116,8 @@ function buildAgentChecklist(agent, runtime, evidence, preflight) {
     status: openItems.length ? "open" : "ready_for_final_gate",
     runtime_url_status: runtimeAgent.status || "missing",
     url_configured: urlConfigured,
+    runtime_ready: runtimeReady,
+    invocation_mode: runtimeAgent.invocation_mode || (internalTool ? "actor_twin_workflow_tool" : "public_webhook"),
     live_probe_status: evidenceAgent.status || "awaiting_probe",
     live_probe_connected: probeReady,
     blockers: preflightAgent.blockers || openItems.map((item) => item.type),
@@ -124,9 +133,10 @@ function buildArtifact() {
   const zielmodus = readAssetJson("zielmodus-4-readiness-status.json");
   const agents = requiredAgents.map((agent) => buildAgentChecklist(agent, runtime, evidence, preflight));
   const missingUrlCount = agents.filter((agent) => !agent.url_configured).length;
+  const missingRuntimeCount = agents.filter((agent) => !agent.runtime_ready).length;
   const missingProbeCount = agents.filter((agent) => !agent.live_probe_connected).length;
-  const status = missingUrlCount
-    ? "partial_live_url_blocked"
+  const status = missingRuntimeCount
+    ? "partial_runtime_path_blocked"
     : missingProbeCount
       ? "live_probe_evidence_pending"
       : "ready_for_strict_gate";
@@ -138,6 +148,7 @@ function buildArtifact() {
     summary: {
       agent_count: agents.length,
       missing_live_url_count: missingUrlCount,
+      missing_runtime_path_count: missingRuntimeCount,
       missing_probe_trace_count: missingProbeCount,
       estimated_remaining_after_urls_exist: "45-90 minutes",
       zielmodus_status: zielmodus.status || "unknown",

@@ -77,10 +77,15 @@ function buildAgentHandoff(agent, runtime, evidence) {
   const runtimeAgent = byAgent(runtime.agents, agent.agent_id);
   const evidenceAgent = byAgent(evidence.agents, agent.agent_id);
   const urlConfigured = runtimeAgent.status === "configured" && runtimeAgent.url_configured === true;
+  const runtimeReady = runtimeAgent.runtime_ready === true
+    || runtimeAgent.status === "configured"
+    || runtimeAgent.status === "internal_tool_via_actor_twin";
+  const internalTool = runtimeAgent.status === "internal_tool_via_actor_twin"
+    || runtimeAgent.invocation_mode === "actor_twin_workflow_tool";
   const probeConnected = String(evidenceAgent.status || "").toLowerCase() === "connected" && Boolean(evidenceAgent.trace_id) && evidenceAgent.demo !== true;
   const open_steps = [];
-  if (!urlConfigured) {
-    open_steps.push("configure_live_url");
+  if (!runtimeReady) {
+    open_steps.push("configure_runtime_path");
   }
   if (!probeConnected) {
     open_steps.push("record_live_probe_evidence");
@@ -91,6 +96,8 @@ function buildAgentHandoff(agent, runtime, evidence) {
     status: open_steps.length ? "action_required" : "ready_for_strict_gate",
     github_pages_secret: agent.secret,
     live_url_configured: urlConfigured,
+    runtime_ready: runtimeReady,
+    invocation_mode: runtimeAgent.invocation_mode || (internalTool ? "actor_twin_workflow_tool" : "public_webhook"),
     live_probe_connected: probeConnected,
     probe: agent.probe,
     expected_response_status: agent.expected_response_status,
@@ -107,12 +114,13 @@ function buildArtifact() {
   const evidence = readAssetJson("n8n-live-probe-evidence.json");
   const agents = requiredAgents.map((agent) => buildAgentHandoff(agent, runtime, evidence));
   const missingUrlCount = agents.filter((agent) => !agent.live_url_configured).length;
+  const missingRuntimeCount = agents.filter((agent) => !agent.runtime_ready).length;
   const missingProbeCount = agents.filter((agent) => !agent.live_probe_connected).length;
   return {
     schema_version: "0.1.0",
     generated_at: new Date().toISOString(),
-    status: missingUrlCount
-      ? "partial_live_url_blocked"
+    status: missingRuntimeCount
+      ? "partial_runtime_path_blocked"
       : missingProbeCount
         ? "live_probe_evidence_pending"
         : "ready_for_strict_gate",
@@ -120,6 +128,7 @@ function buildArtifact() {
     summary: {
       agent_count: agents.length,
       missing_live_url_count: missingUrlCount,
+      missing_runtime_path_count: missingRuntimeCount,
       missing_probe_trace_count: missingProbeCount,
       strict_gate_commands: [
         "node scripts/write-n8n-runtime-readiness-status.cjs --check",
