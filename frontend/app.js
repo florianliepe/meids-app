@@ -15344,10 +15344,6 @@ function renderChatSkillMode() {
   setChatSkillStatus(
     `${chatInteractionModeLabel()} · governed pipeline · ${state.riskPosture} posture${applied.length ? ` · ${applied.length} applied skill${applied.length === 1 ? "" : "s"}` : ""}${state.webSearchEnabled ? " · websearch on" : ""}${state.voiceAnswerEnabled ? " · voice on" : ""}`,
   );
-  const queryInput = $("#queryInput");
-  if (queryInput) queryInput.placeholder = chatInteractionPlaceholder();
-  const chatSubmit = $("#chatForm button");
-  if (chatSubmit) chatSubmit.textContent = chatInteractionSubmitLabel();
   if ($("#saveChatPresetBtn")) $("#saveChatPresetBtn").disabled = !isSkillMode;
   if ($("#loadChatPresetBtn")) $("#loadChatPresetBtn").disabled = !isSkillMode || !state.skillInputPresets.length;
   if ($("#updateChatPresetBtn")) $("#updateChatPresetBtn").disabled = !isSkillMode || !state.skillInputPresets.length;
@@ -15447,7 +15443,6 @@ function renderSkillPreflight() {
     knowledge_context: $("#chatSkillKnowledge").value,
   };
   const readiness = sourceReadiness(sourceInput);
-  const request = legacyManualRequestValue().trim();
   const decisionPrinciples = active?.decision_principles || "prioritize deadlines, decisions, response time, and stakeholder urgency";
   const twinQuestion = readiness.missing.length
     ? `Before running, ${active?.display_name || state.activeTwin} would ask whether ${readiness.missing.join(", ")} context is intentionally empty.`
@@ -15465,7 +15460,7 @@ function renderSkillPreflight() {
     <div class="preflight-grid">
       <span>${escapeHtml(readiness.readyCount)} source blocks ready</span>
       <span>${escapeHtml(readiness.missing.length)} source blocks open</span>
-      <span>${escapeHtml(request ? "request captured" : "request still open")}</span>
+      <span>request captured in n8n chat</span>
     </div>
     ${readiness.followUps.length ? renderPreflightFollowUps(readiness.followUps, "chat") : ""}
   `;
@@ -19847,14 +19842,11 @@ function slugify(value) {
 }
 
 function legacyManualRequestValue() {
-  return $("#queryInput")?.value || "";
+  return "";
 }
 
 function setLegacyManualRequestValue(value = "") {
-  const input = $("#queryInput");
-  if (!input) return;
-  input.value = value;
-  input.dispatchEvent(new Event("input", { bubbles: true }));
+  void value;
 }
 
 function agentContractResponseText(result = {}) {
