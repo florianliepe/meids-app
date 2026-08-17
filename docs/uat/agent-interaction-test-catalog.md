@@ -43,11 +43,22 @@ Use the public-safe prompts above in the Chat UI.
 | UAT runner did not parse n8n item-array/json wrappers and object-valued answers consistently | Medium | Fixed | Initial answer previews showed `[object Object]` | Runner, frontend, and backend normalizers now support these shapes |
 | Actor Twin can still rely on fallback route context for deterministic classification | Medium | Open | UAT passes with frontend-style route context; raw no-hint probes can drift | Next n8n hardening should make route classification deterministic without context hints |
 | Direct Actor Twin answers may return fenced JSON in `answer` | Low | Mitigated | UAT direct answer preview included fenced JSON | Runner normalizes fenced JSON; frontend/backend already parse embedded JSON |
+| Live Knowledge Fabric workflow still runs an older canvas with a failing `Simple Memory` node | High | Open | `docs/uat/agent-interaction-uat-results.json` shows `knowledge_fabric_n8n_memory_error` | Import/publish `workflows/n8n/import-ready/knowledge-fabric-agent.ai-agent.import.json` or patch the live workflow to remove/correct the memory node |
+| Live Agentic Butler workflow still has a dangling workflow/tool reference | High | Open | `docs/uat/agent-interaction-uat-results.json` shows `Referenced node does not exist` | Import/publish `workflows/n8n/import-ready/agentic-butler.ai-agent.import.json` or repair the referenced node/tool in the live workflow |
+| Live Actor Twin delegation path times out for no-write Butler work artifact route | High | Open | `agentic_butler_work_artifact_handoff` timed out after 45s | Re-publish the Actor Twin workflow after worker workflow repair, then rerun `npm run uat:agents:live` |
 
 ## Current Result
 
-Latest automated run: `3/3 passed`.
+Latest automated run: `1/4 passed`.
 
-The verified integration path is:
+The verified integration path is partially active:
 
 `Chat / script envelope -> Actor Twin n8n -> route_decision -> optional delegated workflow -> normalized response -> trace / approval evidence`.
+
+Current live blocker: the repository workflow JSONs validate locally, but the
+running n8n worker workflows are not aligned with those import-ready JSONs.
+Apply these files in n8n, publish, then rerun the automated UAT:
+
+- `workflows/n8n/import-ready/knowledge-fabric-agent.ai-agent.import.json`
+- `workflows/n8n/import-ready/agentic-butler.ai-agent.import.json`
+- `workflows/n8n/import-ready/actor-twin-direct-orchestrator.uat-live-urls.import.json`

@@ -1,6 +1,6 @@
 # n8n Live URL Gate Status
 
-Last verified: 2026-08-11
+Last verified: 2026-08-17
 
 ## Current Status
 
@@ -8,9 +8,9 @@ The public GitHub Pages runtime uses the embedded n8n Actor Twin chat as the use
 
 | Agent | Runtime key | Status | Next action |
 | --- | --- | --- | --- |
-| Actor Twin | `n8nChatWebhookUrl` / `n8nAgentWebhooks.actor_twin` | Embedded chat configured | Run live embedded-chat UAT and capture execution trace evidence. |
-| Knowledge Fabric Agent | Internal Actor Twin workflow tool | Internal-tool route expected | Capture Actor Twin execution evidence showing a Knowledge Fabric tool call. |
-| Agentic Butler | Internal Actor Twin workflow tool | Internal-tool route expected | Capture Actor Twin execution evidence showing a Butler tool call. |
+| Actor Twin | `n8nChatWebhookUrl` / `n8nAgentWebhooks.actor_twin` | Embedded chat configured and direct answer route passes | Re-publish after worker workflow repair, then rerun delegated-route UAT. |
+| Knowledge Fabric Agent | Internal Actor Twin workflow tool | Live route currently blocked by old `Simple Memory` node | Import/publish `workflows/n8n/import-ready/knowledge-fabric-agent.ai-agent.import.json`. |
+| Agentic Butler | Internal Actor Twin workflow tool | Live route currently blocked by dangling workflow/tool node reference | Import/publish `workflows/n8n/import-ready/agentic-butler.ai-agent.import.json`. |
 
 Current strict gate state:
 
@@ -20,9 +20,9 @@ Current strict gate state:
 | GitHub Pages deploy | Passing | Workflow `31447260313` |
 | Deployed smoke check | Passing | `node scripts\pages-smoke-check.cjs https://florianliepe.github.io/meids-app/` |
 | Live URL gate | Not blocking Pages UAT | Embedded Actor Twin chat URL is the required public entrypoint; worker direct URLs are optional diagnostics |
-| Live probe gate | Blocked | Actor Twin direct answer, Knowledge Fabric route, Butler work-artifact route, and skill/agent proposal trace evidence are absent |
+| Live probe gate | Blocked | Latest automated UAT: 1/4 passed. Actor Twin direct answer passes; Knowledge Fabric and Agentic Butler worker workflows need live n8n canvas alignment. |
 
-Estimated remaining integration time after the Actor Twin workflow tools are published: **45-90 minutes**.
+Estimated remaining integration time after importing/publishing the worker workflows: **45-90 minutes**.
 
 ## Boundary
 
@@ -54,6 +54,35 @@ Strict final gate after all URLs and live probe traces exist:
 ```powershell
 node scripts\validate-zielmodus-4-readiness.cjs --require-live-probes
 ```
+
+## 2026-08-17 Live UAT Result
+
+Command:
+
+```powershell
+npm run uat:agents:live
+```
+
+Result:
+
+```text
+1/4 passed
+```
+
+Root cause:
+
+- The repository import-ready Knowledge Fabric workflow has no `Simple Memory`
+  node, but the live n8n workflow still fails on `Simple Memory`.
+- The repository import-ready Agentic Butler workflow has no dangling referenced
+  node, but the live n8n workflow still returns `Referenced node does not exist`.
+- The Actor Twin direct answer route is reachable, but delegated routes cannot be
+  accepted until the live worker workflows are re-imported or patched.
+
+Required live n8n update targets:
+
+- `workflows/n8n/import-ready/knowledge-fabric-agent.ai-agent.import.json`
+- `workflows/n8n/import-ready/agentic-butler.ai-agent.import.json`
+- `workflows/n8n/import-ready/actor-twin-direct-orchestrator.uat-live-urls.import.json`
 
 ## Browser-Local UAT Override
 

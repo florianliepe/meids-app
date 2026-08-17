@@ -1,6 +1,6 @@
 # MeIDs n8n AI Agent Live Integration
 
-Status: embedded Actor Twin chat is the live frontend entrypoint; live n8n canvas verification required for internal workflow tools.
+Status: embedded Actor Twin chat is the live frontend entrypoint; live n8n worker canvases require alignment with the import-ready workflow JSONs before delegated routes can pass UAT.
 
 ## Target Workflows
 
@@ -146,3 +146,36 @@ Live API apply was not executed from this shell because `N8N_API_KEY` was not
 available in the local environment. Apply through the n8n browser import flow or
 rerun the prepare scripts with `--apply` after setting the API key and workflow
 ids.
+
+## 2026-08-17 Live UAT Note
+
+Local repository validation passes:
+
+```powershell
+npm run check:agents
+```
+
+Live n8n UAT is still blocked:
+
+```powershell
+npm run uat:agents:live
+```
+
+Current result:
+
+```text
+1/4 passed
+```
+
+The passing route is the direct Actor Twin answer route. The failing routes are
+caused by live n8n worker workflow drift:
+
+- Knowledge Fabric Agent: live workflow still errors on `Simple Memory`.
+- Agentic Butler: live workflow still errors with `Referenced node does not exist`.
+- Actor Twin delegated Butler route: times out while the worker route is broken.
+
+Apply the import-ready JSONs to the running n8n workflows, publish them, then rerun:
+
+```powershell
+npm run uat:agents:live
+```
