@@ -1,0 +1,213 @@
+{
+  "updatedAt": "2026-08-06T20:21:07.391Z",
+  "createdAt": "2026-08-06T20:13:24.364Z",
+  "id": "KZOqZRUAnVfFEAYJ",
+  "name": "MeIDs Agentic Butler - staging",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meids/agentic-butler/run",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "meids-agentic-butler-run-webhook",
+      "name": "Receive request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "5fa227c8-4589-4369-a7ec-7f3a15026134"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst text = String(body.message || body.task || body.request || '').toLowerCase();\nconst risky = /send|invite|schedule|commit|approve|delete|publish|external|discount|contract/.test(text);\nconst skill = body.skill || body.skill_id || 'auto_select_approved_skill';\nreturn [{ json: {\n  status: 'staging_ready',\n  agent: 'Agentic Butler',\n  contract_version: '2026-08-06.2',\n  role: 'Top-level work execution agent. Skill Orchestrator is an internal Butler component, not a peer top-level agent.',\n  selected_skill: skill,\n  internal_components: ['skill_orchestrator', 'task_agents', 'tool_router', 'trace_writer'],\n  approval_gate: { required: risky, reason: risky ? 'Request contains potentially external, destructive, or commitment-creating action.' : null },\n  actor_checkpoint: { required: true, agent: 'Actor Twin', when: ['before_skill_selection', 'before_risky_action', 'after_result_draft'] },\n  output_contract: { trace_required: true, structured_result_required: true, knowledge_candidate_allowed: true },\n  received: body,\n  next: 'Attach approved skill registry, task-agent calls, approval pause/resume, and trace storage.'\n} }];"
+      },
+      "id": "meids-agentic-butler-run-contract",
+      "name": "Staging contract response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "meids-agentic-butler-run-respond",
+      "name": "Return JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Receive request": {
+      "main": [
+        [
+          {
+            "node": "Staging contract response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Staging contract response": {
+      "main": [
+        [
+          {
+            "node": "Return JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "26287bd3-1e74-42e4-8afc-0104f92f2ee7",
+  "activeVersionId": "26287bd3-1e74-42e4-8afc-0104f92f2ee7",
+  "versionCounter": 2,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-08-06T20:13:24.364Z",
+      "createdAt": "2026-08-06T20:13:24.364Z",
+      "role": "workflow:owner",
+      "workflowId": "KZOqZRUAnVfFEAYJ",
+      "projectId": "tYB0YoTCoB3cCCKR",
+      "project": {
+        "updatedAt": "2025-10-17T10:11:05.323Z",
+        "createdAt": "2025-10-17T09:54:54.577Z",
+        "id": "tYB0YoTCoB3cCCKR",
+        "name": "Florian Liepe <florian.liepe@eraneos.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "b0b4b717-4904-480b-957e-10bac7530ca1"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-08-06T20:21:07.394Z",
+    "createdAt": "2026-08-06T20:21:07.394Z",
+    "versionId": "26287bd3-1e74-42e4-8afc-0104f92f2ee7",
+    "workflowId": "KZOqZRUAnVfFEAYJ",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "meids/agentic-butler/run",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "id": "meids-agentic-butler-run-webhook",
+        "name": "Receive request",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          0
+        ],
+        "webhookId": "5fa227c8-4589-4369-a7ec-7f3a15026134"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst text = String(body.message || body.task || body.request || '').toLowerCase();\nconst risky = /send|invite|schedule|commit|approve|delete|publish|external|discount|contract/.test(text);\nconst skill = body.skill || body.skill_id || 'auto_select_approved_skill';\nreturn [{ json: {\n  status: 'staging_ready',\n  agent: 'Agentic Butler',\n  contract_version: '2026-08-06.2',\n  role: 'Top-level work execution agent. Skill Orchestrator is an internal Butler component, not a peer top-level agent.',\n  selected_skill: skill,\n  internal_components: ['skill_orchestrator', 'task_agents', 'tool_router', 'trace_writer'],\n  approval_gate: { required: risky, reason: risky ? 'Request contains potentially external, destructive, or commitment-creating action.' : null },\n  actor_checkpoint: { required: true, agent: 'Actor Twin', when: ['before_skill_selection', 'before_risky_action', 'after_result_draft'] },\n  output_contract: { trace_required: true, structured_result_required: true, knowledge_candidate_allowed: true },\n  received: body,\n  next: 'Attach approved skill registry, task-agent calls, approval pause/resume, and trace storage.'\n} }];"
+        },
+        "id": "meids-agentic-butler-run-contract",
+        "name": "Staging contract response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          280,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": {}
+        },
+        "id": "meids-agentic-butler-run-respond",
+        "name": "Return JSON",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          560,
+          0
+        ]
+      }
+    ],
+    "connections": {
+      "Receive request": {
+        "main": [
+          [
+            {
+              "node": "Staging contract response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Staging contract response": {
+        "main": [
+          [
+            {
+              "node": "Return JSON",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Florian Liepe",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-08-06T20:21:07.684Z",
+        "id": 328,
+        "workflowId": "KZOqZRUAnVfFEAYJ",
+        "versionId": "26287bd3-1e74-42e4-8afc-0104f92f2ee7",
+        "event": "deactivated",
+        "userId": "b0b4b717-4904-480b-957e-10bac7530ca1"
+      },
+      {
+        "createdAt": "2026-08-06T20:21:07.778Z",
+        "id": 329,
+        "workflowId": "KZOqZRUAnVfFEAYJ",
+        "versionId": "26287bd3-1e74-42e4-8afc-0104f92f2ee7",
+        "event": "activated",
+        "userId": "b0b4b717-4904-480b-957e-10bac7530ca1"
+      }
+    ]
+  }
+}

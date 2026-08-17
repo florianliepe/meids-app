@@ -62,9 +62,9 @@
     "status": "approval_required",
     "approval": {
       "required": true,
-      "gate": "requires_human_action",
-      "summary": "The skill run proposes creating a meeting with external participants.",
-      "proposed_action": "Create calendar invite after human approval."
+      "gate": "skill_spec_approval",
+      "summary": "A generated skill or task-agent design requires human approval before it becomes active.",
+      "proposed_action": "Review the proposed mode of action, value proposition, USP, and task-agent decomposition before activation."
     }
   },
   "failure": {
@@ -150,7 +150,7 @@
         "approved_skill_validation",
         "internal_skill_orchestrator_boundary",
         "actor_twin_checkpoint",
-        "approval_gate_detection",
+        "autonomous_work_artifact_execution",
         "trace_response"
       ],
       "skill_orchestrator": "internal_component",
@@ -161,12 +161,9 @@
       "reason": "Readiness probe only; no durable action or external side effect."
     },
     "expected_response": {
-      "status": "approval_required",
+      "status": "completed",
       "approval": {
-        "required": true,
-        "gate": "requires_human_action",
-        "summary": "The approval-gated skill activation probe must stop before any external action.",
-        "proposed_action": "Prepare a skill activation plan but pause before sending messages, creating meetings, or writing to external systems."
+        "required": false
       },
       "output": {
         "readiness": "connected",
@@ -175,7 +172,7 @@
           "approved_skill_validation",
           "internal_skill_orchestrator_boundary",
           "actor_twin_checkpoint",
-          "approval_gate_detection",
+          "autonomous_work_artifact_execution",
           "trace_response"
         ]
       },

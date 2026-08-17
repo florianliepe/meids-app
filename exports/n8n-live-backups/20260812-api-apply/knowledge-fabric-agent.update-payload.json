@@ -1,0 +1,145 @@
+{
+  "name": "MeIDs Knowledge Fabric Agent - staging",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meids/knowledge-fabric/ingest",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "meids-knowledge-fabric-ingest-webhook",
+      "name": "Receive request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "6323bd9c-42ee-4a9c-8bf1-93c27fc1ff16"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputRoot = $('Receive request').first().json;\nconst input = inputRoot.body ?? inputRoot;\nconst ai = $json;\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nconst requestId = input.request_id || input.live_probe?.request_id || `req_${executionId}`;\nconst aiText = ai.output || ai.text || ai.response || ai.message || '';\nconst response = {\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: requestId,\n  agent_id: 'knowledge_fabric_agent',\n  status: 'completed',\n  output: {\n    summary: aiText || 'Knowledge Fabric AI Agent completed. Candidate concepts remain pending review before promotion.',\n    created_candidates: input.input?.created_candidates || [],\n    review_state: 'pending-review',\n    graph_curator_trigger: 'candidate_edges_pending_review',\n    vector_refresh: 'deferred_until_approval',\n    contract_stage: 'ai_agent_normalized',\n    ai_agent: { integrated: true, node: 'Knowledge Fabric AI Agent' }\n  },\n  trace: { stored: true, trace_id: `n8n_exec_${executionId}`, used_agents: ['knowledge_fabric_agent_ai_agent', 'graph_curator_boundary', 'vector_refresh_boundary'], target_agent: 'knowledge_fabric_agent', route_decision: 'update_knowledge', handoff_status: 'handoff_completed', ai_agent_integrated: true }\n};\nreturn [{ json: response }];"
+      },
+      "id": "meids-knowledge-fabric-ingest-contract",
+      "name": "Contract response normalizer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        0
+      ],
+      "notes": "Normalizes real AI Agent node output into the MeIDs agent contract. Keep this node after the AI Agent and before Return JSON."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "meids-knowledge-fabric-ingest-respond",
+      "name": "Return JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-5",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-5"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "id": "knowledge-fabric-chat-model-model",
+      "name": "Knowledge Fabric Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        280,
+        220
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "jGlNDqeYEbc5DwVT",
+          "name": "Eraneos LLM Gateway"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Request envelope:\n{{ JSON.stringify($json.body || $json) }}\n\nReturn a concise staging analysis: candidate concept themes, missing evidence, duplicate/contradiction risks, graph hints, and review state.",
+        "options": {
+          "systemMessage": "You are the MeIDs Knowledge Fabric Agent. In staging, analyze uploaded text or transcript envelopes into candidate OKF concepts, evidence needs, graph relation hints, and review warnings. Never approve or promote concepts. Keep output concise and public-safe."
+        }
+      },
+      "id": "meids/knowledge-fabric-agent/ai-agent",
+      "name": "Knowledge Fabric AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        300,
+        0
+      ],
+      "notes": "MeIDs live AI agent node. Contract response remains the final response normalizer and trace boundary."
+    }
+  ],
+  "connections": {
+    "Receive request": {
+      "main": [
+        [
+          {
+            "node": "Knowledge Fabric AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge Fabric AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Contract response normalizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge Fabric Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Knowledge Fabric AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contract response normalizer": {
+      "main": [
+        [
+          {
+            "node": "Return JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null
+}

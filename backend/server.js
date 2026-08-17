@@ -39,7 +39,7 @@ const AGENTS = {
     label: "Agentic Butler",
     urlEnv: "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
     paths: ["/api/agents/agentic-butler/run", "/api/agents/agentic_butler/run"],
-    expectedStatus: "approval_required",
+    expectedStatus: "completed",
   },
 };
 
@@ -212,14 +212,17 @@ function defaultRouteDecision(agentId, output = {}, envelope = {}) {
     };
   }
   if (agentId === "agentic_butler") {
+    const createsGeneratedCapability = envelope.intent === "create_skill" || envelope.context?.route_decision?.decision === "create_skill";
     return {
-      decision: envelope.intent === "create_skill" ? "create_skill" : "activate_skill",
+      decision: createsGeneratedCapability ? "create_skill" : "activate_skill",
       target_agent: "agentic_butler",
       intent: envelope.intent || "activate_skill",
-      visible_state: "approval_required",
-      approval_required: true,
+      visible_state: createsGeneratedCapability ? "approval_required" : "activating_skill",
+      approval_required: createsGeneratedCapability,
       handoff_required: true,
-      reason: "Work execution is handled by Agentic Butler with human approval gates.",
+      reason: createsGeneratedCapability
+        ? "Generated skill or agent activation requires human approval."
+        : "Agentic Butler executes Actor Twin delegated draft, planning, and internal skill work autonomously.",
     };
   }
   return {
@@ -973,19 +976,19 @@ async function routeRequest(req, res) {
       await handleAgentProxy(req, res, PATH_TO_AGENT[url.pathname]);
       return;
     }
-    if (req.method === "GET" && url.pathname === "/api/agents/traces") {
+    if (req.method === "GET" && ["/api/agents/traces", "/api/traces"].includes(url.pathname)) {
       jsonResponse(res, 200, { traces: await readTraces(Number(url.searchParams.get("limit") || 100)) });
       return;
     }
-    if (req.method === "POST" && url.pathname === "/api/agents/traces") {
+    if (req.method === "POST" && ["/api/agents/traces", "/api/traces"].includes(url.pathname)) {
       await handleManualTrace(req, res);
       return;
     }
-    if (req.method === "GET" && url.pathname === "/api/agents/approvals") {
+    if (req.method === "GET" && ["/api/agents/approvals", "/api/approvals"].includes(url.pathname)) {
       jsonResponse(res, 200, { approvals: await readApprovals() });
       return;
     }
-    if (req.method === "POST" && url.pathname === "/api/agents/approvals") {
+    if (req.method === "POST" && ["/api/agents/approvals", "/api/approvals"].includes(url.pathname)) {
       await handleManualApproval(req, res);
       return;
     }
@@ -1001,7 +1004,7 @@ async function routeRequest(req, res) {
       await handleVectorSearch(req, res);
       return;
     }
-    const resumeMatch = url.pathname.match(/^\/api\/agents\/approvals\/([^/]+)\/resume$/);
+    const resumeMatch = url.pathname.match(/^\/api\/(?:agents\/)?approvals\/([^/]+)\/resume$/);
     if (req.method === "POST" && resumeMatch) {
       await handleResumeApproval(req, res, decodeURIComponent(resumeMatch[1]));
       return;

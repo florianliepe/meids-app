@@ -2,8 +2,13 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const defaultFile = path.join(root, "docs", "uat", "chat-live-n8n-uat.json");
-const expectedCases = new Set(["actor_answer", "knowledge_fabric_handoff", "agentic_butler_handoff"]);
+const defaultFile = path.join(root, "docs", "uat", "agent-interaction-uat-results.json");
+const expectedCases = new Set([
+  "actor_answer",
+  "knowledge_fabric_handoff",
+  "agentic_butler_work_artifact_handoff",
+  "agentic_butler_create_skill_approval",
+]);
 
 function argValue(name, fallback = "") {
   const args = process.argv.slice(2);
@@ -28,6 +33,13 @@ if (!fs.existsSync(file)) fail(`Missing browser UAT evidence: ${path.relative(ro
 const artifact = readJson(file);
 if (artifact.schema_version !== "0.1.0") fail("schema_version must be 0.1.0");
 if (!Array.isArray(artifact.cases)) fail("cases must be an array");
+if (!artifact.summary || typeof artifact.summary !== "object") fail("summary missing");
+if (artifact.summary.status !== "passed") {
+  const failedCases = (artifact.cases || [])
+    .filter((item) => item.status !== "passed")
+    .map((item) => `${item.case_id}: ${(item.findings || []).join("; ") || "failed"}`);
+  fail(`Live n8n UAT failed: ${failedCases.join(" | ")}`);
+}
 
 const seen = new Set();
 for (const item of artifact.cases) {
@@ -36,6 +48,7 @@ for (const item of artifact.cases) {
   if (!item.expected_target_agent) fail(`${item.case_id} missing expected_target_agent`);
   if (!item.actual_target_agent) fail(`${item.case_id} missing actual_target_agent`);
   if (!item.status) fail(`${item.case_id} missing status`);
+  if (item.status !== "passed") fail(`${item.case_id} did not pass`);
   if (!item.route_decision) fail(`${item.case_id} missing route_decision`);
   if (item.status === "passed" && item.actual_target_agent !== item.expected_target_agent) {
     fail(`${item.case_id} passed with unexpected target ${item.actual_target_agent}`);

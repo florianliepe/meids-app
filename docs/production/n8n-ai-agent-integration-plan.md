@@ -22,7 +22,7 @@ Current n8n state:
 | --- | --- | --- |
 | Actor Twin | Existing external chat workflow returns an execution error for the current probe. | Debug workflow and return `completed` with trace id. |
 | Knowledge Fabric Agent | Staging webhook returns `staging_ready`. | Add AI-agent ingest logic and return `completed` with trace id. |
-| Agentic Butler | Staging webhook returns `staging_ready`. | Add skill orchestration / approval logic and return `approval_required` for risky probes. |
+| Agentic Butler | Staging webhook returns `staging_ready`. | Add skill orchestration logic and return `completed` for autonomous work-artifact probes; reserve `approval_required` for new skill or agent activation proposals. |
 
 Latest direct probe observation:
 
@@ -171,7 +171,7 @@ The live integration can be considered complete only when:
 - all three workflows include their intended AI-agent logic;
 - all three workflows return contract-compliant JSON;
 - all three responses include non-placeholder trace ids;
-- Agentic Butler returns `approval_required` for risky actions;
+- Agentic Butler returns `completed` for no-write delegated work and `approval_required` for generated skill/agent activation proposals;
 - the app records live probe evidence with `scripts/record-n8n-live-probe-evidence.cjs`;
 - `node scripts/validate-zielmodus-4-readiness.cjs --require-live-probes` passes;
 - GitHub Pages deploy succeeds after evidence artifacts are committed.

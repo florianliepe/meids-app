@@ -1,0 +1,134 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-10T22:08:32.894Z",
+  "status": "passed",
+  "statuses": [
+    "documented",
+    "fixture ready",
+    "contract tested",
+    "promotion tested",
+    "vector boundary tested",
+    "postgres graph projection tested",
+    "evidence review gate tested"
+  ],
+  "summary": {
+    "example_fixture_count": 8,
+    "generated_ingest_file_count": 9,
+    "promotion_fixture_count": 3,
+    "repo_sync_package_fixture_count": 1,
+    "schema_file_count": 6,
+    "vector_request_fixture_count": 3,
+    "negative_vector_fixture_count": 2,
+    "negative_concept_fixture_count": 1,
+    "postgres_graph_schema_count": 1,
+    "evidence_review_gate_fixture_count": 1,
+    "check_count": 4,
+    "passed_check_count": 4
+  },
+  "vector_eligibility": {
+    "request_count": 3,
+    "document_count": 3,
+    "approved_only_request_count": 1,
+    "selected_pending_request_count": 2,
+    "evidence_ref_count": 3,
+    "evidence_state_count": 3,
+    "aligned_evidence_state_count": 3,
+    "approved_evidence_count": 1,
+    "pending_evidence_count": 2,
+    "candidate_evidence_count": 0,
+    "blocked_evidence_count": 0,
+    "statuses": [
+      "evidence aligned",
+      "selected pending gated",
+      "approved only tested"
+    ]
+  },
+  "paths": {
+    "schema_doc": "docs/knowledge-fabric-okf-schema.md",
+    "schema_root": "contracts/okf/schemas",
+    "fixture_root": "contracts/okf/examples",
+    "ingest_request": "contracts/okf/ingest/sample-ingest-request.json",
+    "generated_root": "contracts/okf/generated",
+    "promotion_root": "contracts/okf/promotions",
+    "repo_sync_root": "contracts/okf/repo-sync",
+    "postgres_graph_schema": "contracts/okf/postgres/graph-projection-schema.sql",
+    "vector_adapter_example": "contracts/okf/generated/vector/ing_example_001-upsert-request.json"
+  },
+  "checks": [
+    {
+      "command": "node scripts/validate-okf-fixtures.cjs",
+      "status": "passed",
+      "exit_code": 0,
+      "stdout": "OKF fixture validation passed: 18 files across 17 fixture groups",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/validate-graph-promotions.cjs",
+      "status": "passed",
+      "exit_code": 0,
+      "stdout": "Graph promotion validation passed: 3 promotion fixtures against 2 edge fixtures",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/validate-vector-adapter.cjs",
+      "status": "passed",
+      "exit_code": 0,
+      "stdout": "Vector adapter validation passed: 3 request fixtures, 2 negative fixtures",
+      "stderr": ""
+    },
+    {
+      "command": "node scripts/validate-postgres-graph-schema.cjs",
+      "status": "passed",
+      "exit_code": 0,
+      "stdout": "Postgres graph projection schema validation passed",
+      "stderr": ""
+    }
+  ],
+  "sample_files": {
+    "examples": [
+      "contracts/okf/examples/audit/florian/crud-log.jsonl",
+      "contracts/okf/examples/concepts/florian/client-delivery/2026-08-09-client-delivery-steering.md",
+      "contracts/okf/examples/evidence/florian/uploads/2026-08-09-source-001.yaml",
+      "contracts/okf/examples/graph/edges/edge-example-001.yaml",
+      "contracts/okf/examples/graph/nodes/concept-client-delivery.yaml"
+    ],
+    "generated": [
+      "contracts/okf/generated/audit/florian/crud-log.jsonl",
+      "contracts/okf/generated/concepts/florian/client-delivery/2026-08-09-prepare-client-alignment-before-status-update.md",
+      "contracts/okf/generated/evidence/florian/transcripts/2026-08-09-prepare-client-alignment-before-status-update.yaml",
+      "contracts/okf/generated/graph/edges/edge_ing_example_001.yaml",
+      "contracts/okf/generated/graph/nodes/concept-client-delivery.yaml"
+    ],
+    "promotions": [
+      "contracts/okf/promotions/approve-edge-example.json",
+      "contracts/okf/promotions/needs-rework-edge-example.json",
+      "contracts/okf/promotions/reject-edge-example.json"
+    ],
+    "repo_sync_packages": [
+      "contracts/okf/repo-sync/okf-graph-package-example.json"
+    ],
+    "schema_files": [
+      "contracts/okf/schemas/concept.schema.json",
+      "contracts/okf/schemas/evidence.schema.json",
+      "contracts/okf/schemas/graph-edge.schema.json",
+      "contracts/okf/schemas/graph-node.schema.json",
+      "contracts/okf/schemas/shared-definitions.schema.json",
+      "contracts/okf/schemas/transcript.schema.json"
+    ],
+    "vector_requests": [
+      "contracts/okf/examples/vector/approved-only-upsert-request.json",
+      "contracts/okf/examples/vector/upsert-request.json",
+      "contracts/okf/generated/vector/ing_example_001-upsert-request.json"
+    ],
+    "negative_vector_requests": [
+      "contracts/okf/negative/vector/needs-rework-document-upsert.json",
+      "contracts/okf/negative/vector/rejected-evidence-upsert.json"
+    ],
+    "negative_concepts": [
+      "contracts/okf/negative/concepts/missing-evidence-review-states.md"
+    ],
+    "postgres_graph_schema": [
+      "contracts/okf/postgres/graph-projection-schema.sql"
+    ]
+  }
+}

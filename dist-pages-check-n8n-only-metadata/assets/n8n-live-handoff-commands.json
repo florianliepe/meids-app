@@ -1,0 +1,75 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-17T12:24:28.640Z",
+  "status": "partial_live_url_blocked",
+  "boundary": "Public-safe operational handoff. Contains placeholder commands and GitHub secret names only; no live URLs, credentials, traces, or private knowledge.",
+  "summary": {
+    "agent_count": 3,
+    "missing_live_url_count": 2,
+    "missing_probe_trace_count": 1,
+    "strict_gate_commands": [
+      "node scripts/write-n8n-runtime-readiness-status.cjs --check",
+      "node scripts/write-n8n-live-readiness-preflight.cjs --check",
+      "node scripts/write-zielmodus-4-live-completion-checklist.cjs --check",
+      "node scripts/validate-zielmodus-4-readiness.cjs --require-live-probes",
+      "node scripts/check-zielmodus-4-public-safe.cjs"
+    ]
+  },
+  "github_pages_secrets": [
+    "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
+    "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+    "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL"
+  ],
+  "agents": [
+    {
+      "agent_id": "actor_twin",
+      "agent_name": "Actor Twin",
+      "status": "ready_for_strict_gate",
+      "github_pages_secret": "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
+      "live_url_configured": true,
+      "live_probe_connected": true,
+      "probe": "answer-only query with trace response",
+      "expected_response_status": "completed",
+      "open_steps": [],
+      "commands": {
+        "local_public_uat_url": "node scripts/set-n8n-agent-url.cjs --agent actor_twin --url https://YOUR-N8N-HOST/webhook/YOUR-ACTOR-TWIN-UAT-PATH",
+        "record_probe": "node scripts/record-n8n-live-probe-evidence.cjs --agent actor_twin --trace-id TRACE_ID_FROM_N8N --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed --url-source github-pages-secret"
+      }
+    },
+    {
+      "agent_id": "knowledge_fabric_agent",
+      "agent_name": "Knowledge Fabric Agent",
+      "status": "action_required",
+      "github_pages_secret": "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+      "live_url_configured": false,
+      "live_probe_connected": true,
+      "probe": "no-write upload/transcript ingest fixture",
+      "expected_response_status": "completed",
+      "open_steps": [
+        "configure_live_url"
+      ],
+      "commands": {
+        "local_public_uat_url": "node scripts/set-n8n-agent-url.cjs --agent knowledge_fabric_agent --url https://YOUR-N8N-HOST/webhook/YOUR-KNOWLEDGE-FABRIC-AGENT-UAT-PATH",
+        "record_probe": "node scripts/record-n8n-live-probe-evidence.cjs --agent knowledge_fabric_agent --trace-id TRACE_ID_FROM_N8N --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed --url-source github-pages-secret"
+      }
+    },
+    {
+      "agent_id": "agentic_butler",
+      "agent_name": "Agentic Butler",
+      "status": "action_required",
+      "github_pages_secret": "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+      "live_url_configured": false,
+      "live_probe_connected": false,
+      "probe": "autonomous no-write Actor Twin delegated work-artifact fixture",
+      "expected_response_status": "completed",
+      "open_steps": [
+        "configure_live_url",
+        "record_live_probe_evidence"
+      ],
+      "commands": {
+        "local_public_uat_url": "node scripts/set-n8n-agent-url.cjs --agent agentic_butler --url https://YOUR-N8N-HOST/webhook/YOUR-AGENTIC-BUTLER-UAT-PATH",
+        "record_probe": "node scripts/record-n8n-live-probe-evidence.cjs --agent agentic_butler --trace-id TRACE_ID_FROM_N8N --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed --url-source github-pages-secret"
+      }
+    }
+  ]
+}

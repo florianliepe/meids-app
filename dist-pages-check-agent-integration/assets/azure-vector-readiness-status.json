@@ -1,0 +1,82 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-12T10:42:17.132Z",
+  "status": "ready_for_secret_activation",
+  "boundary": "Public-safe Azure vector readiness artifact. It contains no Azure keys and does not call Azure.",
+  "architecture_decision": {
+    "service_model": "single_azure_ai_search_service_shared_indexes",
+    "approved_index": "meids-okf-approved-v1",
+    "working_index": "meids-okf-working-v1",
+    "isolation": "organization_id + twin_id + visibility_scope filters",
+    "sharing_policy": "approved org/team shared knowledge only"
+  },
+  "summary": {
+    "ready_check_count": 7,
+    "check_count": 7,
+    "requires_backend_secret_activation": true,
+    "requires_index_setup_execution": true,
+    "requires_first_live_upsert": true
+  },
+  "checks": [
+    {
+      "id": "approved_index_schema",
+      "ready": true,
+      "evidence": "contracts/azure-search/meids-okf-approved-v1.index.json"
+    },
+    {
+      "id": "working_index_schema",
+      "ready": true,
+      "evidence": "contracts/azure-search/meids-okf-working-v1.index.json"
+    },
+    {
+      "id": "setup_script",
+      "ready": true,
+      "evidence": "scripts/setup-azure-search-indexes.cjs"
+    },
+    {
+      "id": "first_upsert_runner",
+      "ready": true,
+      "evidence": "scripts/run-first-vector-upsert.cjs"
+    },
+    {
+      "id": "approved_fixture",
+      "ready": true,
+      "evidence": "contracts/okf/examples/vector/approved-only-upsert-request.json"
+    },
+    {
+      "id": "knowledge_fabric_vector_refresh_contract",
+      "ready": true,
+      "evidence": "contracts/n8n/fixtures/knowledge-fabric-agent.json"
+    },
+    {
+      "id": "operator_guide",
+      "ready": true,
+      "evidence": "docs/azure-vector-search-integration.md"
+    }
+  ],
+  "backend_secret_slots": [
+    "AZURE_SEARCH_ENDPOINT",
+    "AZURE_SEARCH_API_KEY",
+    "AZURE_SEARCH_APPROVED_INDEX",
+    "AZURE_SEARCH_WORKING_INDEX",
+    "AZURE_SEARCH_API_VERSION",
+    "AZURE_OPENAI_ENDPOINT",
+    "AZURE_OPENAI_API_KEY",
+    "AZURE_OPENAI_EMBEDDING_DEPLOYMENT",
+    "AZURE_OPENAI_API_VERSION",
+    "AZURE_OPENAI_EMBEDDING_DIMENSIONS"
+  ],
+  "commands": {
+    "dry_run_index_setup": "npm run setup:azure-search -- --dry-run",
+    "live_index_setup": "npm run setup:azure-search",
+    "dry_run_first_upsert": "node scripts/run-first-vector-upsert.cjs --dry-run --backend-url https://YOUR-BACKEND-HOST",
+    "live_first_upsert": "node scripts/run-first-vector-upsert.cjs --backend-url https://YOUR-BACKEND-HOST"
+  },
+  "next_actions": [
+    "Configure backend App Service settings or Key Vault references for Azure Search and Azure OpenAI embeddings.",
+    "Run setup:azure-search from a trusted operator machine or deployment job.",
+    "Run first approved OKF upsert against the hosted backend.",
+    "Run Actor Twin UAT and verify vector_retrieval is attached to the route envelope.",
+    "Update Knowledge Fabric n8n workflow to call the backend vector refresh endpoint after approved OKF promotion."
+  ]
+}

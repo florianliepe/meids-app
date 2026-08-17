@@ -9,7 +9,11 @@
     "setup:azure-search": "node scripts/setup-azure-search-indexes.cjs",
     "vector:readiness": "node scripts/write-azure-vector-readiness-status.cjs --write && node scripts/write-azure-vector-live-activation-status.cjs",
     "vector:first-upsert": "node scripts/run-first-vector-upsert.cjs",
-    "check:agents": "node scripts/validate-n8n-fixtures.cjs && node scripts/replay-n8n-fixtures.cjs && node scripts/validate-agent-runtime-handoffs.cjs && node scripts/validate-actor-twin-routing.cjs && node scripts/validate-pages-agent-interaction-fixes.cjs && node scripts/write-actor-twin-orchestration-readiness-status.cjs --check && node scripts/validate-n8n-ai-agent-workflows.cjs && node scripts/validate-agent-backend-contract.cjs",
+    "check:agents": "node scripts/validate-n8n-fixtures.cjs && node scripts/replay-n8n-fixtures.cjs && node scripts/validate-agent-runtime-handoffs.cjs && node scripts/validate-actor-twin-routing.cjs && node scripts/validate-pages-agent-interaction-fixes.cjs && node scripts/validate-actor-twin-direct-orchestrator-import.cjs && node scripts/simulate-actor-twin-direct-orchestrator-import.cjs && node scripts/write-actor-twin-orchestration-readiness-status.cjs --check && node scripts/validate-n8n-ai-agent-workflows.cjs && node scripts/validate-agent-backend-contract.cjs",
+    "n8n:actor:update:prepare": "node scripts/prepare-n8n-actor-twin-api-update.cjs",
+    "n8n:actor:update:apply": "node scripts/prepare-n8n-actor-twin-api-update.cjs --apply",
+    "n8n:agent:update:prepare": "node scripts/prepare-n8n-agent-workflow-api-update.cjs",
+    "n8n:agent:update:apply": "node scripts/prepare-n8n-agent-workflow-api-update.cjs --apply",
     "uat:chat:n8n": "node scripts/validate-chat-live-n8n-uat.cjs",
     "uat:agents:live": "node scripts/run-agent-interaction-uat.cjs && node scripts/validate-chat-live-n8n-uat.cjs --file docs/uat/agent-interaction-uat-results.json"
   },

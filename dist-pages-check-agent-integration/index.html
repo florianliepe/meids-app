@@ -1,0 +1,1711 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MeIDs</title>
+    <script>
+      window.__MEIDS_FILE_PROTOCOL__ = window.location.protocol === "file:";
+      window.__MEIDS_LOCAL_SERVER__ =
+        ["localhost", "127.0.0.1"].includes(window.location.hostname) &&
+        ["8501", "8601"].includes(window.location.port);
+      window.__MEIDS_ASSET_BASE__ = window.__MEIDS_LOCAL_SERVER__
+        ? "/static/"
+        : new URL("./", window.location.href).pathname;
+      window.__MEIDS_ASSET_URL__ = function (path) {
+        var cleanPath = String(path || "").replace(/^\/static\//, "").replace(/^\/+/, "");
+        return window.__MEIDS_ASSET_BASE__ + cleanPath;
+      };
+      if (!window.__MEIDS_FILE_PROTOCOL__) {
+        document.write('<link rel="stylesheet" href="' + window.__MEIDS_ASSET_URL__("styles.css?v=20260811-knowledge-fabric-wrap") + '" />');
+      }
+      document.write('<link rel="icon" type="image/svg+xml" href="' + window.__MEIDS_ASSET_URL__("assets/intellectual-twin-mark.svg") + '" />');
+    </script>
+    <style>
+      .file-open-warning {
+        display: none;
+      }
+      html.file-protocol body {
+        background: #f7f6f2;
+        color: #191a17;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
+      }
+      html.file-protocol body > :not(.file-open-warning) {
+        display: none !important;
+      }
+      html.file-protocol .file-open-warning {
+        display: grid;
+        min-height: 100vh;
+        place-items: center;
+        padding: 32px;
+      }
+      .file-open-warning article {
+        background: #fffdfa;
+        border: 1px solid #e3ded4;
+        border-radius: 10px;
+        box-shadow: 0 16px 40px rgba(34, 31, 27, 0.08);
+        max-width: 720px;
+        padding: 32px;
+      }
+      .file-open-warning h1 {
+        font-size: clamp(2rem, 5vw, 4rem);
+        line-height: 0.98;
+        margin: 0 0 16px;
+      }
+      .file-open-warning p,
+      .file-open-warning li {
+        color: #5f5b53;
+        font-size: 1rem;
+        line-height: 1.55;
+      }
+      .file-open-warning code {
+        background: #efede7;
+        border-radius: 6px;
+        color: #191a17;
+        padding: 3px 6px;
+      }
+      .file-open-warning a {
+        background: #20231f;
+        border-radius: 8px;
+        color: #fffdfa;
+        display: inline-block;
+        font-weight: 800;
+        margin-top: 10px;
+        padding: 12px 16px;
+        text-decoration: none;
+      }
+    </style>
+    <script>
+      if (window.__MEIDS_FILE_PROTOCOL__) {
+        document.documentElement.classList.add("file-protocol");
+        document.addEventListener("DOMContentLoaded", function () {
+          var warning = document.querySelector(".file-open-warning");
+          if (warning) warning.hidden = false;
+        });
+      } else {
+        document.addEventListener("DOMContentLoaded", function () {
+          var warning = document.querySelector(".file-open-warning");
+          if (warning) warning.hidden = true;
+          document.querySelectorAll("[data-static-src]").forEach(function (node) {
+            node.setAttribute("src", window.__MEIDS_ASSET_URL__(node.getAttribute("data-static-src")));
+          });
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <section class="file-open-warning" hidden aria-hidden="true">
+      <article>
+        <p class="eyebrow">MeIDs</p>
+        <h1>Start the local MVP server.</h1>
+        <p>
+          This app cannot run from <code>frontend/index.html</code> directly.
+          The browser blocks the API, JavaScript modules, and <code>/static</code>
+          assets when the page is opened with <code>file://</code>.
+        </p>
+        <ol>
+          <li>Open PowerShell in <code>C:\Users\e729958\Downloads\INtellectual twin\03. Local MVP\intellectual-twin-web</code>.</li>
+          <li>Run <code>.\run_web_mvp.cmd</code>.</li>
+          <li>Open <code>http://127.0.0.1:8601/</code>.</li>
+        </ol>
+        <a href="http://127.0.0.1:8601/">Open local MVP</a>
+      </article>
+    </section>
+    <section id="landing" class="landing">
+      <div class="landing-inner">
+        <div class="landing-mark" aria-hidden="true">
+          <img data-static-src="/static/assets/intellectual-twin-hero-mark.svg" alt="" />
+        </div>
+        <p class="eyebrow">MeIDs</p>
+        <h1>Identity at Scale</h1>
+        <p class="landing-copy">co-created with you, to act like you</p>
+        <p class="landing-subcopy">A calm workspace for shaping, activating, and improving your intellectual twin.</p>
+        <div class="landing-actions">
+          <button id="enterWorkspaceBtn" type="button">Enter workspace</button>
+          <button id="landingCreateTwinBtn" class="secondary" type="button">Create twin</button>
+        </div>
+      </div>
+    </section>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand-logo" data-static-src="/static/assets/intellectual-twin-mark.svg" alt="MeIDs" />
+          <div>
+            <strong>MeIDs</strong>
+            <small>intellectual twin design</small>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Main navigation">
+          <span class="nav-label">Assistant Workspace</span>
+          <button class="nav-item active" data-view="chat" data-nav-zone="workspace">Actor Twin</button>
+          <button class="nav-item" data-view="voice" data-nav-zone="workspace">Voice Capture</button>
+          <button class="nav-item" data-view="ingest" data-nav-zone="workspace">Source Upload</button>
+          <span class="nav-label">Design Cockpit</span>
+          <button class="nav-item" data-view="twins" data-nav-zone="cockpit">Twins</button>
+          <button class="nav-item" data-view="skills" data-nav-zone="cockpit">Skills</button>
+          <span class="nav-label">Review Cockpit</span>
+          <button class="nav-item" data-view="concepts" data-nav-zone="cockpit">Knowledge</button>
+          <button class="nav-item" data-view="dashboard" data-nav-zone="cockpit">Review</button>
+          <button class="nav-item" data-view="graph" data-nav-zone="cockpit">Graph</button>
+          <button class="nav-item" data-view="activity" data-nav-zone="cockpit">Traces</button>
+          <button class="nav-item" data-view="quality" data-nav-zone="cockpit">Production</button>
+        </nav>
+
+        <section class="panel compact">
+          <label for="twinSelect">Active twin</label>
+          <div id="sidebarTwinProfile" class="sidebar-twin-profile"></div>
+          <select id="twinSelect"></select>
+        </section>
+
+        <details class="panel compact sidebar-disclosure">
+          <summary>System status</summary>
+          <dl class="status-list">
+            <div><dt>Backend</dt><dd id="statusBackend">checking</dd></div>
+            <div><dt>Provider</dt><dd id="statusProvider">-</dd></div>
+            <div><dt>OpenAI</dt><dd id="statusOpenAI">-</dd></div>
+            <div><dt>n8n chat</dt><dd id="statusN8nChat">local</dd></div>
+            <div><dt>Guardrails</dt><dd id="statusGuardrails">-</dd></div>
+            <div><dt>Version</dt><dd id="statusVersion">-</dd></div>
+          </dl>
+        </details>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">MeIDs</p>
+            <h1 id="pageTitle">Chat</h1>
+          </div>
+          <div class="topbar-actions">
+            <span id="workspaceMode" class="mode-pill">Workspace</span>
+            <span id="workspaceSignal" class="workspace-signal">Local workspace</span>
+            <button id="themeToggleBtn" class="secondary theme-toggle" type="button" aria-pressed="false">Dark</button>
+            <button id="backToMainBtn" class="secondary">Back to main</button>
+            <button id="refreshBtn" class="secondary">Refresh</button>
+          </div>
+        </header>
+        <div id="productionProgressHeader" class="production-progress-header" hidden></div>
+
+        <section id="chat" class="view active">
+          <div id="chatWorkspaceIntro" class="workspace-intro"></div>
+          <section class="chat-workspace-hero" aria-label="Agent interaction workspace">
+            <span class="badge">Actor Twin</span>
+            <h2>Ask, decide, and move work forward.</h2>
+            <p>The Actor Twin is the routing authority. It answers directly, retrieves knowledge, activates approved skills, or drafts new skills while cockpit views hold review, graph, trace, and production controls.</p>
+            <div class="chat-quick-actions" aria-label="Workspace shortcuts">
+              <button class="secondary small" type="button" data-chat-action="focus-query">Ask twin</button>
+              <button class="secondary small" type="button" data-cockpit-action="openVoice">Voice capture</button>
+            </div>
+          </section>
+          <section class="chat-output-shell" aria-label="Recent twin outputs">
+            <div class="chat-output-head">
+              <span class="badge">Recent outputs</span>
+              <small>Latest answers, skill runs, and follow-up actions stay here.</small>
+            </div>
+            <div id="messages" class="messages"></div>
+          </section>
+          <details id="chatInteractionSetup" class="chat-workspace-drawer">
+            <summary>Answer settings</summary>
+            <section class="chat-workspace-settings" aria-label="Interaction setup">
+              <div class="chat-skillbar" aria-label="Ask twin controls">
+                <label for="chatInteractionModeSelect" hidden>Mode</label>
+                <select id="chatInteractionModeSelect" class="compact-select" hidden>
+                  <option value="actor_twin">Ask Actor Twin</option>
+                  <option value="skill_activation">Activate approved skill</option>
+                  <option value="source_context">Add source context</option>
+                </select>
+                <label for="riskPostureSelect">Posture</label>
+                <select id="riskPostureSelect" class="compact-select">
+                  <option value="careful">Careful</option>
+                  <option value="balanced" selected>Balanced</option>
+                  <option value="bold">Bold</option>
+                </select>
+                <details id="appliedSkillsMenu" class="skills-menu" hidden>
+                  <summary id="appliedSkillsSummary">Applied skills: none</summary>
+                  <div id="appliedSkillsList" class="skills-menu-list"></div>
+                </details>
+                <span id="chatSkillStatus" class="muted-inline">Actor Twin routes knowledge and skills when needed.</span>
+              </div>
+            </section>
+            <details class="chat-retrieval-settings">
+              <summary>Search scope</summary>
+              <div class="chat-filters" aria-label="Retrieval filters">
+                <span>Use</span>
+                <label><input type="checkbox" class="type-filter" value="Skill" checked /> Skills</label>
+                <label><input type="checkbox" class="type-filter" value="Task" checked /> Tasks</label>
+                <label><input type="checkbox" class="type-filter" value="Curriculum" checked /> Curricula</label>
+                <label><input type="checkbox" class="type-filter" value="core" checked /> Core concepts</label>
+                <label><input type="checkbox" id="webSearchFilter" /> Websearch</label>
+                <label><input type="checkbox" id="voiceAnswerFilter" /> Voice answer</label>
+                <label for="retrievalModeSelect">Search</label>
+                <select id="retrievalModeSelect" class="compact-select">
+                  <option value="keyword">keyword</option>
+                  <option value="vector-cache">vector cache</option>
+                  <option value="graph">knowledge graph</option>
+                </select>
+              </div>
+            </details>
+          </details>
+          <section id="n8nAgentPanel" class="n8n-agent-panel" hidden>
+            <div class="n8n-agent-head">
+              <div>
+                <span class="badge">Connected agent</span>
+                <h2>Actor Twin via n8n</h2>
+                <p>Use the connected Actor Twin workflow when an answer should be routed through the external agent layer.</p>
+              </div>
+              <a id="n8nAgentLink" class="secondary small n8n-agent-link" href="#" target="_blank" rel="noreferrer">Open external chat</a>
+            </div>
+            <div id="n8nChatMount" class="n8n-chat-mount"></div>
+            <p id="n8nChatStatus" class="muted-inline">n8n chat not loaded yet.</p>
+          </section>
+          <details id="chatSkillContext" class="chat-skill-context" hidden>
+            <summary>Skill source context</summary>
+            <div id="chatSkillPreflight" class="skill-preflight"></div>
+            <div class="preset-row">
+              <input id="chatPresetName" type="text" placeholder="Preset name, e.g. Monday planning" />
+              <select id="chatPresetSelect" class="compact-select">
+                <option value="">No saved preset</option>
+              </select>
+              <button id="saveChatPresetBtn" class="secondary small" type="button">Save preset</button>
+              <button id="updateChatPresetBtn" class="secondary small" type="button">Update</button>
+              <button id="loadChatPresetBtn" class="secondary small" type="button">Load</button>
+              <button id="deleteChatPresetBtn" class="danger small" type="button">Delete</button>
+            </div>
+            <div id="chatPresetChips" class="preset-chips"></div>
+            <div class="grid two">
+              <div>
+                <label for="chatSkillEmail">Exported email text</label>
+                <textarea id="chatSkillEmail" rows="5" placeholder="Paste relevant email threads or exports..."></textarea>
+              </div>
+              <div>
+                <label for="chatSkillCalendar">Exported calendar text</label>
+                <textarea id="chatSkillCalendar" rows="5" placeholder="Paste calendar blockers, meetings, attendees, deadlines..."></textarea>
+              </div>
+              <div>
+                <label for="chatSkillTeams">Exported Teams text</label>
+                <textarea id="chatSkillTeams" rows="5" placeholder="Paste Teams messages or channel updates..."></textarea>
+              </div>
+              <div>
+                <label for="chatSkillKnowledge">Optional knowledge context</label>
+                <textarea id="chatSkillKnowledge" rows="5" placeholder="Paste project notes, KPIs, decision logs, or former documents..."></textarea>
+              </div>
+            </div>
+          </details>
+          <form id="chatForm" class="composer">
+            <input id="queryInput" type="text" placeholder="Ask the twin..." autocomplete="off" />
+            <button type="submit">Ask</button>
+          </form>
+        </section>
+
+        <section id="voice" class="view">
+          <div id="voiceTwinNotice" class="twin-notice"></div>
+          <article class="source-capture-hero panel">
+            <div>
+              <span class="badge">Source capture</span>
+              <h2>Turn spoken context into reusable knowledge.</h2>
+              <p>Record, clarify, and save only when the concept is useful enough for the Actor Twin.</p>
+            </div>
+            <div class="source-capture-lanes" aria-label="Voice capture steps">
+              <span><strong>1</strong>Record</span>
+              <span><strong>2</strong>Clarify</span>
+              <span><strong>3</strong>Save</span>
+            </div>
+          </article>
+          <div class="grid two source-capture-grid">
+            <article class="panel source-capture-card">
+              <h2>Guided Voice Capture</h2>
+              <p>Record a thought, let the Persona Modeler clarify it, then save it when the concept is ready.</p>
+              <p id="voiceReadiness" class="readiness">Checking transcription readiness...</p>
+              <label for="voiceConceptCategory">Concept category</label>
+              <select id="voiceConceptCategory">
+                <option value="knowledge">Knowledge</option>
+                <option value="personality">Personality</option>
+                <option value="skill_input">Skill input</option>
+              </select>
+              <div class="button-row">
+                <button id="recordBtn">Start recording</button>
+                <button id="stopBtn" class="secondary" disabled>Stop</button>
+              </div>
+              <audio id="audioPreview" controls></audio>
+              <button id="uploadAudioBtn" disabled>Transcribe and start conversation</button>
+              <details class="voice-paste-disclosure">
+                <summary>Paste transcript fallback</summary>
+                <div class="voice-sample-loader">
+                  <button id="voiceLoadUatSampleBtn" class="secondary small" type="button">Load example</button>
+                  <button id="voiceRunSampleWalkthroughBtn" class="secondary small" type="button">Preview flow</button>
+                  <span id="voiceSampleStatus" class="muted-inline">Uses selected category</span>
+                </div>
+                <textarea id="voiceTranscriptPaste" rows="5" placeholder="Paste a spoken thought transcript to start the same Persona Modeler interview without audio transcription..."></textarea>
+                <button id="voiceStartFromTextBtn" class="secondary small" type="button">Start from transcript</button>
+              </details>
+              <div class="voice-draft-loader">
+                <label for="voiceDraftSelect">Resume draft</label>
+                <div class="voice-draft-row">
+                  <select id="voiceDraftSelect">
+                    <option value="">No drafts loaded</option>
+                  </select>
+                  <button id="voiceLoadDraftBtn" class="secondary small" type="button">Load</button>
+                  <button id="voiceRefreshDraftsBtn" class="secondary small" type="button">Refresh</button>
+                </div>
+                <div id="voiceDraftQueue" class="voice-draft-queue"></div>
+              </div>
+              <details id="voiceAdvancedDiagnostics" class="voice-advanced-disclosure">
+                <summary>Capture setup checks</summary>
+                <p class="muted-inline">Optional checks for the capture pipeline. Hidden during everyday voice capture.</p>
+                <div id="voicePreflight" class="voice-preflight" aria-live="polite"></div>
+                <div class="voice-diagnostics">
+                  <button id="voiceLocalUatBtn" class="secondary small" type="button">Run local loop check</button>
+                  <button id="voiceN8nUatBtn" class="secondary small" type="button">Compare n8n loop</button>
+                  <button id="voiceN8nDiagnosticsBtn" class="secondary small" type="button">Test n8n Persona Modeler</button>
+                  <button id="voiceN8nPayloadBtn" class="secondary small" type="button">Show n8n payload</button>
+                  <button id="voiceN8nUatPayloadsBtn" class="secondary small" type="button">Show UAT payloads</button>
+                  <button id="voiceN8nSetupExportBtn" class="secondary small" type="button">Export n8n guide</button>
+                  <button id="voiceReadinessAuditBtn" class="secondary small" type="button">Export audit</button>
+                  <span id="voiceN8nDiagnosticsStatus" class="muted-inline">Not tested</span>
+                </div>
+                <div id="voiceUatReports" class="voice-uat-reports"></div>
+                <details class="voice-criteria-disclosure">
+                  <summary>Active readiness criteria</summary>
+                  <div class="voice-criteria-actions">
+                    <button id="voiceApproveCriteriaBtn" class="secondary small" type="button">Approve criteria</button>
+                    <span id="voiceCriteriaApprovalStatus" class="muted-inline">Provisional until approved</span>
+                  </div>
+                  <div id="voiceCriteriaBox" class="voice-criteria-box"></div>
+                </details>
+              </details>
+            </article>
+            <article class="panel source-capture-card">
+              <h2>Concept Conversation</h2>
+              <div id="voiceConversationStatus" class="voice-conversation-status">
+                Start with a recording. The Persona Modeler will ask follow-up questions until the concept is ready.
+              </div>
+              <pre id="transcriptBox" class="output">No transcript yet.</pre>
+              <div id="voiceConceptAssessment" class="voice-assessment"></div>
+              <label for="voiceClarificationInput">Clarification answer <span class="muted-inline">Ctrl+Enter to continue</span></label>
+              <textarea id="voiceClarificationInput" rows="4" placeholder="Answer the Persona Modeler's next question..."></textarea>
+              <label for="voicePromotionReviewNote">Save note <span class="muted-inline">stored with the concept</span></label>
+              <textarea id="voicePromotionReviewNote" rows="3" placeholder="Why should the twin remember this?"></textarea>
+              <div class="button-row tight">
+                <button id="voiceClarifyBtn" class="secondary" type="button" disabled>Add clarification</button>
+                <button id="voiceDraftBtn" class="secondary" type="button" disabled>Save draft</button>
+                <button id="voiceAgentHandoffBtn" class="secondary" type="button" disabled>Prepare for agent</button>
+                <button id="voiceCommitBtn" type="button" disabled>Save concept</button>
+              </div>
+              <div id="voiceEvidence" class="evidence-box"></div>
+              <div id="voiceTranscriptSyncStatus" class="evidence-box"></div>
+              <div id="voiceAgentHandoffLedger" class="activity-list"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="ingest" class="view">
+          <div id="ingestTwinNotice" class="twin-notice"></div>
+          <article class="source-capture-hero panel">
+            <div>
+              <span class="badge">Source capture</span>
+              <h2>Add documents and notes without leaving the workspace.</h2>
+              <p>Upload files or paste source text. The workspace creates reusable context; deeper quality work happens in the cockpit.</p>
+            </div>
+            <div class="source-capture-lanes" aria-label="Document capture steps">
+              <span><strong>1</strong>Add source</span>
+              <span><strong>2</strong>Create OKF</span>
+              <span><strong>3</strong>Review later</span>
+            </div>
+          </article>
+          <div class="grid two source-capture-grid">
+            <article class="panel source-capture-card">
+              <h2>Upload Knowledge</h2>
+              <p>Supported: PDF, DOCX, PPTX, Markdown, TXT. Uploads are chunked by source anchor and auto-create multiple OKF concepts when useful.</p>
+              <input id="documentInput" type="file" accept=".pdf,.docx,.pptx,.md,.txt" />
+              <button id="uploadDocumentBtn">Upload and create concept</button>
+            </article>
+            <article class="panel source-capture-card">
+              <h2>Paste Knowledge</h2>
+              <textarea id="textIngest" rows="12" placeholder="Paste notes, observations, decision principles, or meeting output..."></textarea>
+              <button id="textIngestBtn">Auto-create concept</button>
+            </article>
+          </div>
+          <article class="panel knowledge-fabric-ingest-contract">
+            <div>
+              <span class="badge">Knowledge Fabric contract</span>
+              <h2>Every source enters as pending OKF.</h2>
+              <p>Uploads and transcripts create reviewable knowledge first. The detailed queue, evidence, and decisions live in Knowledge and Review.</p>
+            </div>
+            <div class="ingest-contract-grid" aria-label="Knowledge Fabric ingest lifecycle">
+              <span><strong>Capture</strong><small>Source is received</small></span>
+              <span><strong>Stage</strong><small>Pending concept is prepared</small></span>
+              <span><strong>Review</strong><small>Human approval gates trust</small></span>
+              <span><strong>Connect</strong><small>Graph candidates stay draft</small></span>
+              <span><strong>Retrieve</strong><small>Approved-only context</small></span>
+            </div>
+          </article>
+          <article class="panel knowledge-fabric-queue-panel">
+            <div class="knowledge-fabric-queue-head">
+              <div>
+                <span class="badge">Source status</span>
+                <h2>Captured sources move into review.</h2>
+                <p>This page stays focused on intake. Use Knowledge and Review for concepts, evidence, and approval decisions.</p>
+              </div>
+              <div class="button-row tight">
+                <button class="secondary small" type="button" data-cockpit-action="openKnowledge">Open Knowledge</button>
+                <button class="secondary small" type="button" data-cockpit-action="reviewConcepts">Open Review</button>
+              </div>
+            </div>
+            <div id="knowledgeFabricIngestPathStatus" class="knowledge-fabric-ingest-path-status" aria-label="Knowledge Fabric ingest path status"></div>
+          </article>
+          <pre id="ingestResult" class="output">No ingest yet.</pre>
+        </section>
+
+        <section id="concepts" class="view">
+          <div id="conceptTwinNotice" class="twin-notice"></div>
+          <article class="knowledge-browser-panel panel">
+            <div class="knowledge-browser-head">
+              <div>
+                <span class="badge">Read-only knowledge fabric</span>
+                <h2>Search trusted context without changing source records.</h2>
+              </div>
+              <button class="secondary small" type="button" data-cockpit-action="reviewConcepts">Open review cockpit</button>
+              <div id="conceptAtlasSummary" class="knowledge-browser-summary"></div>
+            </div>
+            <div class="knowledge-control-rail">
+              <label class="sr-only" for="conceptSearch">Search knowledge</label>
+              <input id="conceptSearch" type="search" placeholder="Search title, source, signal..." />
+              <select id="conceptTypeFilter" class="compact-select" aria-label="Concept type filter">
+                <option value="all">All types</option>
+              </select>
+              <select id="conceptSourceFilter" class="compact-select" aria-label="Source readiness filter">
+                <option value="all">All sources</option>
+                <option value="linked">Linked source</option>
+                <option value="gap">Source gaps</option>
+                <option value="approved">Trusted retrieval</option>
+                <option value="pending">Pending review</option>
+                <option value="attention">Needs attention</option>
+                <option value="evidence-pending">Evidence pending</option>
+                <option value="evidence-approved">Evidence approved</option>
+                <option value="vector-ready">Vector ready</option>
+                <option value="vector-blocked">Vector blocked</option>
+              </select>
+              <button id="conceptDensityBtn" class="secondary small density-toggle" type="button" aria-pressed="false">Comfortable</button>
+            </div>
+            <div id="knowledgeRetrievalPresetBar" class="knowledge-retrieval-preset-bar" aria-label="Knowledge retrieval presets"></div>
+            <div class="filterbar compact-filterbar knowledge-review-filter" aria-label="Knowledge review filters">
+              <span id="conceptCount" class="knowledge-result-count"></span>
+              <button class="filter-chip active" type="button" data-concept-review="all">All</button>
+              <button class="filter-chip" type="button" data-concept-review="pending-review">Pending</button>
+              <button class="filter-chip" type="button" data-concept-review="approved">Approved</button>
+              <button class="filter-chip" type="button" data-concept-review="needs-attention">Attention</button>
+            </div>
+            <div id="knowledgeSourceReadiness" class="knowledge-source-readiness" aria-label="Knowledge source readiness"></div>
+            <div id="knowledgeFabricContractStrip" class="knowledge-fabric-contract-strip" aria-label="Knowledge fabric contract readiness"></div>
+            <div id="conceptProfileFacets" class="knowledge-signal-strip" aria-label="Actor fabric filters"></div>
+            <details class="knowledge-health-panel diagnostics-panel" aria-label="Knowledge fabric health">
+              <summary>
+                <span>Fabric health</span>
+                <strong id="conceptHealthStatus">-</strong>
+              </summary>
+              <div class="knowledge-health-head">
+                <div>
+                  <span class="badge">Knowledge health</span>
+                  <h3>Cluster health</h3>
+                </div>
+              </div>
+              <div id="conceptHealthClusters" class="knowledge-health-list"></div>
+            </details>
+            <div class="knowledge-review-workspace">
+              <section class="knowledge-review-main" aria-label="Knowledge increments">
+                <div id="conceptOverview" class="overview-strip knowledge-overview" aria-label="Knowledge overview"></div>
+                <div id="knowledgeReviewLanes" class="knowledge-review-lanes" aria-label="Knowledge review lanes"></div>
+                <div class="knowledge-increment-head" aria-hidden="true">
+                  <span>Increment</span>
+                  <span>Fabric</span>
+                  <span>Source</span>
+                  <span>Actions</span>
+                </div>
+                <div id="conceptList" class="concept-list knowledge-increment-list"></div>
+              </section>
+            </div>
+          </article>
+        </section>
+
+        <section id="graph" class="view">
+          <div class="cockpit-view-rail" aria-label="Graph review cockpit views">
+            <button type="button" data-cockpit-action="openTwins">Design</button>
+            <button type="button" data-cockpit-action="openSkills">Skills</button>
+            <button type="button" data-cockpit-action="openDashboard">Review</button>
+            <button class="active" type="button" data-cockpit-action="openGraph">Graph</button>
+            <button type="button" data-cockpit-action="openActivity">Traces</button>
+            <button type="button" data-cockpit-action="openProductionCockpit">Production</button>
+          </div>
+          <article class="panel graph-cockpit-panel">
+            <div class="graph-cockpit-head">
+              <div>
+                <span class="badge">Graph Review</span>
+                <h2>Govern the compound knowledge fabric.</h2>
+                <p>Approved concepts form the trusted graph. Drafts, inferred edges, weak evidence, and contradictions stay visible as review overlays.</p>
+              </div>
+              <div class="button-row tight">
+                <button id="graphExportBtn" class="secondary small" type="button">Export graph</button>
+                <button id="graphRefreshBtn" class="secondary small" type="button">Refresh graph</button>
+              </div>
+            </div>
+            <div class="graph-command-surface">
+              <div id="graphPrimaryNodeAction" class="graph-primary-node-action"></div>
+              <section>
+                <div class="graph-section-title">
+                  <span>Reasoning modes</span>
+                  <small>Choose the graph projection the twin should reason through.</small>
+                </div>
+                <div id="graphPresetBar" class="graph-preset-bar" aria-label="Graph reasoning presets"></div>
+              </section>
+              <details class="graph-projection-drawer">
+                <summary>
+                  <span>Projection controls</span>
+                  <small>Type, state, density, layout, and search filters</small>
+                </summary>
+                <div class="graph-toolbar">
+                  <label><input id="graphIncludeDrafts" type="checkbox" checked /> Drafts</label>
+                  <label for="graphNodeTypeFilter">Type</label>
+                  <select id="graphNodeTypeFilter" class="compact-select">
+                    <option value="all">All nodes</option>
+                  </select>
+                  <label for="graphReviewFilter">State</label>
+                  <select id="graphReviewFilter" class="compact-select">
+                    <option value="all">All states</option>
+                    <option value="draft">Draft</option>
+                    <option value="candidate">Candidate</option>
+                    <option value="approved">Approved</option>
+                    <option value="pending-review">Pending</option>
+                    <option value="needs-rework">Needs rework</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                  <label for="graphDensityMode">Density</label>
+                  <select id="graphDensityMode" class="compact-select">
+                    <option value="balanced">Balanced</option>
+                    <option value="compact">Compact</option>
+                    <option value="spacious">Spacious</option>
+                  </select>
+                  <label for="graphViewMode">View</label>
+                  <select id="graphViewMode" class="compact-select">
+                    <option value="map">Map</option>
+                    <option value="list">List</option>
+                  </select>
+                  <label for="graphLayoutMode">Layout</label>
+                  <select id="graphLayoutMode" class="compact-select">
+                    <option value="topology">Topology</option>
+                    <option value="cluster">Cluster-first</option>
+                    <option value="evidence">Evidence-first</option>
+                    <option value="governance">Governance</option>
+                    <option value="decision">Decision path</option>
+                    <option value="story">Story mode</option>
+                  </select>
+                  <label><input id="graphFocusMode" type="checkbox" /> Focus</label>
+                  <label for="graphSearch">Search</label>
+                  <input id="graphSearch" type="search" placeholder="Search graph..." />
+                </div>
+              </details>
+            </div>
+            <div id="graphPresetSignal" class="graph-preset-signal-wrap" aria-live="polite"></div>
+            <section class="graph-promotion-gate-panel" aria-label="Graph relation promotion workflow">
+              <div>
+                <span class="badge">Promotion gate</span>
+                <h3>Candidate relations stay untrusted until reviewed.</h3>
+                <p>Graph Curator may propose edges, but Actor Twin and retrieval treat them as hypotheses until a human promotion decision is stored.</p>
+              </div>
+              <div class="graph-promotion-flow">
+                <span><strong>draft</strong><small>Raw relation hint</small></span>
+                <span><strong>candidate</strong><small>Curator proposal</small></span>
+                <span class="approved"><strong>accepted</strong><small>Trusted relation</small></span>
+                <span class="needs-rework"><strong>needs rework</strong><small>Clarify evidence</small></span>
+                <span class="rejected"><strong>rejected</strong><small>Excluded from use</small></span>
+              </div>
+            </section>
+            <div id="graphDemoFlow" class="graph-demo-flow" aria-label="Graph demo sequence"></div>
+            <div id="graphSummary" class="graph-summary-strip"></div>
+            <div id="graphTrustBoundary" class="graph-trust-boundary-strip" aria-label="Graph trust boundary and promotion readiness"></div>
+            <div id="graphActorUseLanes" class="graph-actor-use-lanes" aria-label="Actor Twin graph use lanes"></div>
+            <div id="graphExportReadiness" class="graph-export-readiness" aria-label="Graph export readiness"></div>
+            <div id="graphRetrievalContract" class="graph-retrieval-contract" aria-label="Actor Twin graph retrieval contract"></div>
+            <details class="graph-secondary-section" open>
+              <summary>Evidence model and traceability</summary>
+              <div id="graphInferenceVisual" class="graph-inference-visual"></div>
+              <div id="graphInterpretationPanel" class="graph-interpretation-panel"></div>
+              <div id="graphTraceabilityPanel" class="graph-traceability-panel"></div>
+            </details>
+            <div class="graph-workspace">
+              <div class="graph-canvas-wrap">
+                <div id="graphCanvas" class="graph-canvas"></div>
+              </div>
+              <aside class="graph-detail-panel">
+                <h3>Node detail</h3>
+                <div id="graphNodeDetail" class="graph-node-detail">
+                  Select a node to inspect evidence, neighbors, and governance state.
+                </div>
+                <div id="graphQualityActions" class="graph-quality-actions"></div>
+              </aside>
+            </div>
+            <div class="graph-insight-grid">
+              <section class="graph-governance-section">
+                <h3>Governance queue</h3>
+                <div id="graphGovernanceQueue" class="activity-list"></div>
+              </section>
+              <section>
+                <h3>Graph insights</h3>
+                <div class="graph-filter-bar" aria-label="Graph recommendation filters">
+                  <label for="graphRecommendationPriorityFilter">Priority</label>
+                  <select id="graphRecommendationPriorityFilter" class="compact-select">
+                    <option value="all">All</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="warning">Warning</option>
+                    <option value="medium">Medium</option>
+                  </select>
+                  <label for="graphRecommendationTypeFilter">Action</label>
+                  <select id="graphRecommendationTypeFilter" class="compact-select">
+                    <option value="all">All</option>
+                    <option value="resolve-contradiction">Contradictions</option>
+                    <option value="merge-duplicate">Duplicates</option>
+                    <option value="attach-evidence">Evidence</option>
+                    <option value="stabilize-cluster">Clusters</option>
+                    <option value="approve-concept-layer">Approval layer</option>
+                  </select>
+                </div>
+                <div id="graphInsights" class="activity-list"></div>
+              </section>
+              <section>
+                <h3>Recommendation tasks</h3>
+                <div class="graph-filter-bar" aria-label="Graph recommendation task filters">
+                  <label for="graphRecommendationTaskStatusFilter">Status</label>
+                  <select id="graphRecommendationTaskStatusFilter" class="compact-select">
+                    <option value="all">All</option>
+                    <option value="pending_review">Pending review</option>
+                    <option value="approved_for_action">Approved for action</option>
+                    <option value="deferred">Deferred</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+                <div id="graphRecommendationTasks" class="activity-list"></div>
+              </section>
+              <section class="graph-tools-section">
+                <h3>AI graph tools</h3>
+                <div id="graphTools" class="activity-list"></div>
+              </section>
+            </div>
+            <p id="graphStatus" class="muted-inline">Graph not loaded yet.</p>
+          </article>
+        </section>
+
+        <section id="dashboard" class="view">
+          <div class="cockpit-view-rail" aria-label="Review cockpit views">
+            <button type="button" data-cockpit-action="openTwins">Design</button>
+            <button type="button" data-cockpit-action="openSkills">Skills</button>
+            <button class="active" type="button" data-cockpit-action="openDashboard">Review</button>
+            <button type="button" data-cockpit-action="openGraph">Graph</button>
+            <button type="button" data-cockpit-action="openActivity">Traces</button>
+            <button type="button" data-cockpit-action="openProductionCockpit">Production</button>
+          </div>
+          <article id="cockpitOverview" class="cockpit-overview panel"></article>
+          <div class="dashboard-grid">
+            <article class="metric-card">
+              <span>Concepts</span>
+              <strong id="dashConceptTotal">-</strong>
+              <small id="dashConceptStates">Loading...</small>
+            </article>
+            <article class="metric-card">
+              <span>Answer Traces</span>
+              <strong id="dashTraceTotal">-</strong>
+              <small id="dashTraceStates">Loading...</small>
+            </article>
+            <article class="metric-card">
+              <span>Persona Quality</span>
+              <strong id="dashPersonaScore">-</strong>
+              <small id="dashPersonaStatus">Loading...</small>
+            </article>
+            <article class="metric-card">
+              <span>Skills</span>
+              <strong id="dashSkillTotal">-</strong>
+              <small id="dashSkillStates">Loading...</small>
+            </article>
+            <article class="metric-card">
+              <span>Refinements</span>
+              <strong id="dashRefinementTotal">-</strong>
+              <small id="dashRefinementStates">Loading...</small>
+            </article>
+          </div>
+          <section class="dashboard-insights panel" aria-label="Twin usage and maturity insights">
+            <div class="dashboard-insights-header">
+              <div>
+                <span class="eyebrow">Readiness signals</span>
+                <h2>Quality cockpit</h2>
+              </div>
+              <small>Radar, confidence, evidence map, and usage load</small>
+            </div>
+            <div class="dashboard-insight-grid">
+              <article class="panel insight-card maturity-card">
+                <div class="insight-head">
+                  <div>
+                    <span class="badge">Maturity profile</span>
+                    <h2>Twin Readiness Radar</h2>
+                  </div>
+                  <span id="maturityScoreLabel" class="insight-score">-</span>
+                </div>
+                <div id="maturityRadar" class="radar-chart" role="img" aria-label="Radar chart for twin readiness maturity"></div>
+                <p id="maturityNarrative" class="insight-note">Loading maturity signals...</p>
+              </article>
+              <article class="panel insight-card">
+                <div class="insight-head">
+                  <div>
+                    <span class="badge">Confidence</span>
+                    <h2>Confidence Distribution</h2>
+                  </div>
+                  <span id="confidenceInsightLabel" class="insight-score">-</span>
+                </div>
+                <div id="confidenceBands" class="confidence-bands" role="img" aria-label="Distribution of answer trace confidence"></div>
+                <p id="confidenceNarrative" class="insight-note">Loading answer confidence signals...</p>
+              </article>
+              <article class="panel insight-card">
+                <div class="insight-head">
+                  <div>
+                    <span class="badge">Usage quality</span>
+                    <h2>Answer Evidence Map</h2>
+                  </div>
+                  <span id="traceInsightLabel" class="insight-score">-</span>
+                </div>
+                <div id="traceScatter" class="scatter-chart" role="img" aria-label="Scatterplot of answer confidence and source count"></div>
+                <div id="traceQualityQuadrants" class="trace-quadrants" aria-label="Trace quality quadrant filters"></div>
+                <p class="insight-note">Each point is a recent answer trace. Higher and further right means more confident and better grounded.</p>
+              </article>
+              <article class="panel insight-card">
+                <div class="insight-head">
+                  <div>
+                    <span class="badge">Behavior loop</span>
+                    <h2>Usage And Review Load</h2>
+                  </div>
+                  <span id="usageInsightLabel" class="insight-score">-</span>
+                </div>
+                <div id="usageBars" class="usage-bars" aria-label="Usage and review load bars"></div>
+              </article>
+              <article class="panel insight-card cluster-health-card">
+                <div class="insight-head">
+                  <div>
+                    <span class="badge">Knowledge health</span>
+                    <h2>Cluster Health</h2>
+                  </div>
+                  <span id="clusterInsightLabel" class="insight-score">-</span>
+                </div>
+                <div id="clusterHealth" class="cluster-health-list" role="list" aria-label="Knowledge cluster health by workstream and topic"></div>
+              </article>
+              <article class="panel insight-card">
+                <div class="insight-head">
+                  <div>
+                    <span class="badge">Skill outcomes</span>
+                    <h2>Outcome Matrix</h2>
+                  </div>
+                  <span id="skillOutcomeInsightLabel" class="insight-score">-</span>
+                </div>
+                <div id="skillOutcomeMatrix" class="outcome-matrix" aria-label="Skill outcome quality by active skill"></div>
+              </article>
+              <article class="panel insight-card">
+                <div class="insight-head">
+                  <div>
+                    <span class="badge">Decision gates</span>
+                    <h2>Boundary Heatmap</h2>
+                  </div>
+                  <span id="decisionBoundaryInsightLabel" class="insight-score">-</span>
+                </div>
+                <div id="decisionBoundaryHeatmap" class="boundary-heatmap" aria-label="Decision-boundary heatmap for human approval gates"></div>
+              </article>
+            </div>
+          </section>
+          <div class="dashboard-filterbar" aria-label="Dashboard queue filters">
+            <span class="filterbar-label">Queue view</span>
+            <button class="dashboard-filter active" type="button" data-dashboard-filter="all">All queues</button>
+            <button class="dashboard-filter" type="button" data-dashboard-filter="concepts">Concepts</button>
+            <button class="dashboard-filter" type="button" data-dashboard-filter="traces">Traces</button>
+            <button class="dashboard-filter" type="button" data-dashboard-filter="graph">Graph</button>
+            <button class="dashboard-filter" type="button" data-dashboard-filter="skills">Skills</button>
+            <button class="dashboard-filter" type="button" data-dashboard-filter="refinements">Refinements</button>
+            <button class="dashboard-filter" type="button" data-dashboard-filter="mcp">MCP Tools</button>
+          </div>
+          <section class="review-command-surface panel" aria-label="Review cockpit command surface">
+            <div>
+              <span class="badge">Human governance</span>
+              <h2>Decide what may change the twin.</h2>
+              <p>Use this cockpit for approvals, trace review, graph governance, skill refinements, and production gates.</p>
+            </div>
+            <div class="review-command-actions">
+              <button class="secondary small" type="button" data-cockpit-action="reviewConcepts">Concepts</button>
+              <button class="secondary small" type="button" data-cockpit-action="openTraceReview">Traces</button>
+              <button class="secondary small" type="button" data-cockpit-action="openRefinementReview">Refinements</button>
+              <button class="secondary small" type="button" data-cockpit-action="openMcpQueue">MCP / sync</button>
+              <button class="secondary small" type="button" data-cockpit-action="openProductionCockpit">Production</button>
+            </div>
+          </section>
+          <div id="dashboardClusterScope" class="dashboard-scope-bar" hidden></div>
+          <div id="dashboardTraceScope" class="dashboard-scope-bar" hidden></div>
+          <div class="operations-queue-title">
+            <div>
+              <span class="eyebrow">Operations queue</span>
+              <strong>Review the items that change twin behavior.</strong>
+            </div>
+            <small>Concepts, traces, skills, refinements, and MCP approvals stay human-governed.</small>
+          </div>
+          <div class="activity-grid dashboard-sections operations-board">
+            <section class="panel dashboard-section" data-dashboard-section="concepts">
+              <h2>Pending Concepts</h2>
+              <div id="dashPendingConcepts" class="activity-list"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="concepts">
+              <h2>Voice-Created Concepts</h2>
+              <div id="dashVoiceConcepts" class="activity-list"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="concepts">
+              <h2>Needs Rework</h2>
+              <div id="dashReworkConcepts" class="activity-list"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="concepts">
+              <h2>Rejected Concepts</h2>
+              <div id="dashRejectedConcepts" class="activity-list"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="concepts">
+              <div class="dashboard-section-head">
+                <h2>Evidence State Gaps</h2>
+                <button class="secondary small" type="button" id="openEvidenceGapFilterBtn">Open filtered</button>
+              </div>
+              <div id="dashEvidenceStateGaps" class="activity-list"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="traces">
+              <h2>Latest Traces</h2>
+              <div id="dashLatestTraces" class="activity-list"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="traces">
+              <div class="dashboard-section-head">
+                <h2>Live Probe Evidence</h2>
+                <button class="secondary small" type="button" data-agent-probe-evidence-action="export">Export packet</button>
+              </div>
+              <div id="dashAgentProbeEvidence" class="agent-probe-evidence-panel"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="traces">
+              <h2>Agent Handoff History</h2>
+              <div id="dashAgentTraceHistory" class="agent-trace-history-list"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="graph">
+              <div class="dashboard-section-head">
+                <h2>Graph Relation Decisions</h2>
+                <button class="secondary small" type="button" data-dashboard-action="refresh-graph-decisions">Refresh queue</button>
+              </div>
+              <div id="dashGraphDecisionQueue" class="activity-list graph-decision-queue"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="graph">
+              <div class="dashboard-section-head">
+                <h2>Graph Promotion History</h2>
+                <button class="secondary small" type="button" data-dashboard-action="export-graph-promotions">Export history</button>
+              </div>
+              <div id="dashGraphPromotionHistory" class="activity-list"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="graph">
+              <div class="dashboard-section-head">
+                <h2>OKF Handoff Graph Package</h2>
+                <button class="secondary small" type="button" data-dashboard-action="export-okf-graph-package">Export package</button>
+              </div>
+              <div id="dashOkfGraphPackage" class="okf-graph-package-panel"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="graph">
+              <div class="dashboard-section-head">
+                <h2>Knowledge-to-Graph Handoff</h2>
+                <button class="secondary small" type="button" data-dashboard-action="open-knowledge-graph">Open graph</button>
+              </div>
+              <div id="dashKnowledgeGraphHandoff" class="knowledge-graph-handoff-panel"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="skills">
+              <h2>Skill Version Queue</h2>
+              <div id="dashSkillQueue" class="activity-list"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="refinements">
+              <h2>Refinement Queue</h2>
+              <div id="dashRefinementQueue" class="activity-list"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="mcp">
+              <h2>Voice Proof Chain</h2>
+              <div id="dashVoiceProofChain" class="activity-list"></div>
+            </section>
+            <section class="panel dashboard-section" data-dashboard-section="mcp">
+              <h2>MCP Tool Approval Queue</h2>
+              <div id="dashMcpQueue" class="activity-list"></div>
+            </section>
+          </div>
+          <section class="panel dashboard-actions">
+            <h2>Active Governance Work</h2>
+            <div id="dashActions" class="activity-list"></div>
+          </section>
+        </section>
+
+        <section id="twins" class="view">
+          <article class="section-lead panel">
+            <div>
+              <span class="badge">Design cockpit</span>
+              <h2>Shape the actor behind the work.</h2>
+              <p>Manage twin identity, steering context, source intake, and activation boundaries from one place.</p>
+            </div>
+            <button class="secondary small" type="button" data-cockpit-action="openChat">Return to agent interaction</button>
+          </article>
+          <div class="cockpit-view-rail" aria-label="Design cockpit views">
+            <button class="active" type="button" data-cockpit-action="openTwins">Design</button>
+            <button type="button" data-cockpit-action="openSkills">Skills</button>
+            <button type="button" data-cockpit-action="openDashboard">Review</button>
+            <button type="button" data-cockpit-action="openGraph">Graph</button>
+            <button type="button" data-cockpit-action="openActivity">Traces</button>
+            <button type="button" data-cockpit-action="openQuality">Production</button>
+          </div>
+          <article id="designCockpitBoard" class="design-cockpit-board panel"></article>
+          <details class="panel setup-panel primary-cockpit-panel cockpit-disclosure" open>
+            <summary>Guided setup details</summary>
+            <div class="toolbar">
+              <h2>Setup phases</h2>
+              <span class="updated-stamp">Human-shaped actor context</span>
+            </div>
+            <div class="setup-steps">
+              <button class="setup-step active" type="button" data-step="identity"><strong>1</strong><span>Name and purpose</span></button>
+              <button class="setup-step" type="button" data-step="context"><strong>2</strong><span>Role and work context</span></button>
+              <button class="setup-step" type="button" data-step="style"><strong>3</strong><span>Tone and risk posture</span></button>
+              <button class="setup-step" type="button" data-step="sources"><strong>4</strong><span>Source intake</span></button>
+              <button class="setup-step" type="button" data-step="activate"><strong>5</strong><span>Activate and start learning</span></button>
+            </div>
+            <div id="setupStepDetail" class="setup-step-detail"></div>
+          </details>
+          <div class="grid two twin-grid cockpit-split">
+            <article class="panel">
+              <div class="toolbar">
+                <h2>Twin Registry</h2>
+                <button id="refreshTwinsBtn" class="secondary small" type="button">Refresh twins</button>
+              </div>
+              <div id="twinCatalog" class="activity-list"></div>
+              <div class="button-row tight">
+                <button id="activateTwinBtn" class="secondary" type="button">Set active</button>
+                <button id="archiveTwinBtn" class="danger" type="button">Archive twin</button>
+              </div>
+              <label for="twinArchiveRationale">Archive rationale</label>
+              <textarea id="twinArchiveRationale" rows="3" placeholder="Why archive this twin?"></textarea>
+              <details class="archived-twins">
+                <summary>Archived twins</summary>
+                <div id="archivedTwinList" class="activity-list"></div>
+              </details>
+            </article>
+            <article class="panel">
+              <h2>Twin Profile</h2>
+              <p class="empty">Create or refine the human context the Actor Twin uses when steering skills.</p>
+              <div class="twin-picture-editor">
+                <div id="twinPicturePreview" class="twin-avatar-preview" aria-label="Twin picture preview">IT</div>
+                <div>
+                  <label for="twinPictureInput">Twin picture</label>
+                  <input id="twinPictureInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+                  <div class="button-row tight">
+                    <button id="uploadTwinPictureBtn" class="secondary small" type="button">Upload picture</button>
+                    <button id="removeTwinPictureBtn" class="secondary small" type="button">Remove picture</button>
+                  </div>
+                  <div id="twinPictureFocusControls" class="picture-focus-controls">
+                    <label for="twinPictureFocusX">Horizontal focus</label>
+                    <input id="twinPictureFocusX" type="range" min="0" max="100" value="50" />
+                    <label for="twinPictureFocusY">Vertical focus</label>
+                    <input id="twinPictureFocusY" type="range" min="0" max="100" value="50" />
+                    <button id="saveTwinPicturePositionBtn" class="secondary small" type="button">Save focus</button>
+                  </div>
+                  <p class="empty">Used in the workspace, registry, and active twin summary.</p>
+                </div>
+              </div>
+              <div class="profile-form-grid">
+                <fieldset class="profile-section">
+                  <legend>Identity</legend>
+                  <label for="twinDisplayName">Name</label>
+                  <input id="twinDisplayName" type="text" placeholder="e.g. Florian" />
+                  <div class="grid two">
+                    <div>
+                      <label for="twinOrganization">Organization</label>
+                      <input id="twinOrganization" type="text" placeholder="Company or context" />
+                    </div>
+                    <div>
+                      <label for="twinDefaultLanguage">Default language</label>
+                      <input id="twinDefaultLanguage" type="text" placeholder="en, de, ..." />
+                    </div>
+                  </div>
+                  <label for="twinPurpose">Purpose</label>
+                  <input id="twinPurpose" type="text" placeholder="What should this twin help with?" />
+                </fieldset>
+                <fieldset class="profile-section">
+                  <legend>Work Context</legend>
+                  <label for="twinRoleContext">Role context</label>
+                  <textarea id="twinRoleContext" rows="3" placeholder="Role, responsibilities, important work streams..."></textarea>
+                  <label for="twinWorkstreams">Workstreams</label>
+                  <textarea id="twinWorkstreams" rows="3" placeholder="Client delivery, sales, internal, admin, other..."></textarea>
+                  <label for="twinStakeholders">Stakeholders</label>
+                  <textarea id="twinStakeholders" rows="3" placeholder="Key clients, internal teams, sponsors, reviewers..."></textarea>
+                </fieldset>
+                <fieldset class="profile-section">
+                  <legend>Style And Judgment</legend>
+                  <label for="twinTone">Tone and communication style</label>
+                  <textarea id="twinTone" rows="3" placeholder="Grounded, concise, advisory, direct..."></textarea>
+                  <label for="twinRiskPosture">Risk posture</label>
+                  <select id="twinRiskPosture">
+                    <option value="careful">careful</option>
+                    <option value="balanced">balanced</option>
+                    <option value="bold">bold</option>
+                  </select>
+                  <label for="twinDecisionPrinciples">Decision principles</label>
+                  <textarea id="twinDecisionPrinciples" rows="3" placeholder="How should this twin prioritize deadlines, stakeholder urgency, quality, and escalation?"></textarea>
+                </fieldset>
+                <fieldset class="profile-section">
+                  <legend>Governance</legend>
+                  <label for="twinEscalationBoundaries">Escalation boundaries</label>
+                  <textarea id="twinEscalationBoundaries" rows="3" placeholder="What should never happen without human approval?"></textarea>
+                  <label for="twinSuccessMetrics">Success metrics</label>
+                  <textarea id="twinSuccessMetrics" rows="3" placeholder="KPIs, output quality, response time, decision clarity..."></textarea>
+                  <label for="twinSourceIntakeNotes">Source intake notes</label>
+                  <textarea id="twinSourceIntakeNotes" rows="3" placeholder="Preferred exported sources, naming conventions, privacy notes..."></textarea>
+                </fieldset>
+                <fieldset class="profile-section">
+                  <legend>Voice Output</legend>
+                  <label for="twinVoiceProvider">Voice provider</label>
+                  <input id="twinVoiceProvider" type="text" placeholder="openai" />
+                  <div class="grid two">
+                    <div>
+                      <label for="twinVoiceId">Voice ID</label>
+                      <input id="twinVoiceId" type="text" placeholder="voice_... or built-in voice" />
+                    </div>
+                    <div>
+                      <label for="twinVoiceLabel">Voice label</label>
+                      <input id="twinVoiceLabel" type="text" placeholder="Florian custom voice" />
+                    </div>
+                  </div>
+                  <label for="twinVoiceInstructions">Voice instructions</label>
+                  <textarea id="twinVoiceInstructions" rows="3" placeholder="How should spoken answers sound?"></textarea>
+                  <label for="twinVoiceConsentRef">Consent reference</label>
+                  <input id="twinVoiceConsentRef" type="text" placeholder="Provider consent id or internal approval reference" />
+                  <p class="empty">Store provider voice IDs and consent references here. Do not upload raw training samples into the MVP repository.</p>
+                </fieldset>
+              </div>
+              <div class="button-row tight">
+                <button id="createTwinBtn" type="button">Create twin</button>
+                <button id="updateTwinBtn" class="secondary" type="button">Update selected</button>
+                <button id="restoreTwinBtn" class="secondary" type="button">Restore archived</button>
+              </div>
+              <pre id="twinResult" class="output compact-output">No twin action yet.</pre>
+            </article>
+          </div>
+          <details class="panel cockpit-disclosure">
+            <summary>Production path and twin activity</summary>
+            <p class="empty">Fill the profile fields above, then create or update the twin. Source intake continues through Document Ingest, Voice Capture, and skill runs. Archived twins can be restored from the same cockpit.</p>
+            <div id="twinActivity" class="activity-list"></div>
+            <div class="roadmap-list">
+              <div><strong>Persona sync</strong><span>Twin profile fields now feed status and skill actor context.</span></div>
+              <div><strong>Knowledge isolation</strong><span>Use the active twin selector before ingesting sources or running skills.</span></div>
+              <div><strong>Skill routing</strong><span>Approved skills inherit the active twin context at runtime.</span></div>
+              <div><strong>Deployment</strong><span>Keep registry files local for MVP, then migrate twins, skills, approvals, traces, and evidence into Postgres with MCP connectors for hosted tool access.</span></div>
+            </div>
+          </details>
+        </section>
+
+        <section id="skills" class="view">
+          <article class="section-lead panel">
+            <div>
+              <span class="badge">Agentic Butler</span>
+              <h2>Design work behaviors, then let the Actor steer.</h2>
+              <p>Butler proposes, Actor steers, human ratifies. Skills stay sandboxed until approved.</p>
+            </div>
+            <button class="secondary small" type="button" data-cockpit-action="openChat">Run from chat</button>
+          </article>
+          <div class="cockpit-view-rail" aria-label="Skill cockpit views">
+            <button type="button" data-cockpit-action="openTwins">Design</button>
+            <button class="active" type="button" data-cockpit-action="openSkills">Skills</button>
+            <button type="button" data-cockpit-action="openDashboard">Review</button>
+            <button type="button" data-cockpit-action="openGraph">Graph</button>
+            <button type="button" data-cockpit-action="openActivity">Traces</button>
+            <button type="button" data-cockpit-action="openProductionCockpit">Production</button>
+          </div>
+          <section class="skill-command-surface panel" aria-label="Skill lifecycle shortcuts">
+            <div>
+              <span class="badge">Skill lifecycle</span>
+              <h2>Turn repeated work into approved agentic behavior.</h2>
+              <p>Shape the behavior, approve the boundaries, test with source exports, then refine from run evidence.</p>
+            </div>
+            <div class="skill-command-actions">
+              <button class="secondary small" type="button" data-cockpit-action="focusSkillShape">Shape</button>
+              <button class="secondary small" type="button" data-cockpit-action="focusSkillApproval">Approve</button>
+              <button class="secondary small" type="button" data-cockpit-action="focusSkillRun">Test</button>
+              <button class="secondary small" type="button" data-cockpit-action="focusSkillImprove">Refine</button>
+            </div>
+          </section>
+          <div id="skillsCockpit" class="skills-cockpit"></div>
+          <div class="grid two skill-authoring-grid">
+            <article class="panel workflow-panel workflow-shape">
+              <h2>Shape Skill</h2>
+              <p>Create a human-shaped SkillSpec. Generated skills remain unapproved until a human approves them.</p>
+              <label for="skillNameHint">Name hint</label>
+              <input id="skillNameHint" type="text" placeholder="draft-client-update" />
+              <label for="skillDescriptionInput">Skill description</label>
+              <textarea id="skillDescriptionInput" rows="8" placeholder="Describe the agentic behavior, triggers, outputs, boundaries, and examples..."></textarea>
+              <div class="button-row tight">
+                <button id="elicitSkillBtn" class="secondary">Create SkillSpec</button>
+                <button id="decomposeSkillBtn" class="secondary" disabled>Decompose selected</button>
+              </div>
+            </article>
+            <article class="panel workflow-panel workflow-catalog">
+              <div class="toolbar">
+                <h2>Skill Catalog</h2>
+                <select id="skillStatusFilter" class="compact-select" aria-label="Skill status filter">
+                  <option value="all">All skills</option>
+                  <option value="approved">Approved</option>
+                  <option value="pending_approval">Pending approval</option>
+                  <option value="draft">Draft</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="deprecated">Deprecated</option>
+                </select>
+              </div>
+              <div id="skillCatalog" class="activity-list"></div>
+            </article>
+          </div>
+          <div class="grid two skill-detail-grid">
+            <article class="panel workflow-panel workflow-approve">
+              <h2>Skill Detail</h2>
+              <div id="skillDetail" class="activity-list"></div>
+            </article>
+            <article class="panel workflow-panel workflow-approve">
+              <h2>Approval Gate</h2>
+              <p id="skillApprovalReadiness" class="empty">Select a decomposed skill to approve or reject.</p>
+              <label for="skillApprovalRationale">Rationale</label>
+              <textarea id="skillApprovalRationale" rows="4" placeholder="Why approve or reject this skill version?"></textarea>
+              <div class="button-row tight">
+                <button id="approveSkillBtn" class="secondary" disabled>Approve</button>
+                <button id="rejectSkillBtn" class="danger" disabled>Reject</button>
+              </div>
+            </article>
+          </div>
+          <details class="panel workflow-panel workflow-run cockpit-disclosure">
+            <summary>Run approved skill</summary>
+            <h2>Run Approved Skill</h2>
+            <p id="skillRunReadiness" class="empty">Select an approved skill to run it.</p>
+            <div id="skillRunRouting" class="skill-routing-panel"></div>
+            <label for="skillRunRequest">Manual request</label>
+            <textarea id="skillRunRequest" rows="3" placeholder="Plan my day and prepare the next alignment meeting..."></textarea>
+            <div class="grid two">
+              <div>
+                <label for="skillRunEmail">Exported email text</label>
+                <textarea id="skillRunEmail" rows="7" placeholder="Paste relevant email threads or exports..."></textarea>
+              </div>
+              <div>
+                <label for="skillRunCalendar">Exported calendar text</label>
+                <textarea id="skillRunCalendar" rows="7" placeholder="Paste calendar blockers, meetings, attendees, deadlines..."></textarea>
+              </div>
+              <div>
+                <label for="skillRunTeams">Exported Teams text</label>
+                <textarea id="skillRunTeams" rows="7" placeholder="Paste Teams messages or channel updates..."></textarea>
+              </div>
+              <div>
+                <label for="skillRunKnowledge">Optional knowledge context</label>
+                <textarea id="skillRunKnowledge" rows="7" placeholder="Paste project notes, prior documents, KPIs, decision logs..."></textarea>
+              </div>
+            </div>
+            <div class="button-row tight">
+              <button id="runSkillBtn" class="secondary" disabled>Run selected skill</button>
+            </div>
+          </details>
+          <details class="panel skill-history-panel workflow-panel workflow-improve cockpit-disclosure">
+            <summary>Run history and review</summary>
+            <div class="toolbar">
+              <h2>Skill Run History</h2>
+              <div class="toolbar-actions">
+                <span id="skillRunsUpdatedAt" class="updated-stamp">Not refreshed yet</span>
+                <button id="refreshSkillRunsBtn" class="secondary small" type="button">Refresh runs</button>
+              </div>
+            </div>
+            <div class="run-compare-controls">
+              <select id="runQualityFilter" class="compact-select">
+                <option value="all">All source quality</option>
+                <option value="high">Strong source context</option>
+                <option value="medium">Partial source context</option>
+                <option value="low">Manual-only context</option>
+              </select>
+              <select id="compareRunA" class="compact-select">
+                <option value="">Compare run A</option>
+              </select>
+              <select id="compareRunB" class="compact-select">
+                <option value="">Compare run B</option>
+              </select>
+              <button id="compareRunsBtn" class="secondary small" type="button">Compare</button>
+            </div>
+            <div id="skillRunCompare" class="run-compare"></div>
+            <div id="skillRunHistory" class="activity-list"></div>
+          </details>
+          <details class="panel workflow-panel workflow-improve cockpit-disclosure">
+            <summary>Refinement proposals</summary>
+            <div class="toolbar">
+              <h2>Refinement Proposals</h2>
+              <div class="toolbar-actions">
+                <span id="skillRefinementsUpdatedAt" class="updated-stamp">Not refreshed yet</span>
+                <button id="refreshSkillRefinementsBtn" class="secondary small" type="button">Refresh proposals</button>
+              </div>
+            </div>
+            <div id="skillRefinements" class="activity-list"></div>
+          </details>
+          <pre id="skillResult" class="output">No skill action yet.</pre>
+        </section>
+
+        <section id="activity" class="view">
+          <article class="section-lead panel">
+            <div>
+              <span class="badge">Trace Cockpit</span>
+              <h2>Audit how the twin changed.</h2>
+              <p>Inspect answer traces, evidence files, ingest events, and CRUD records that explain the twin learning path.</p>
+            </div>
+            <span id="activityCount" class="section-lead-signal"></span>
+            <button id="refreshActivityBtn" class="secondary">Refresh traces</button>
+          </article>
+          <div class="cockpit-view-rail" aria-label="Trace cockpit views">
+            <button type="button" data-cockpit-action="openTwins">Design</button>
+            <button type="button" data-cockpit-action="openSkills">Skills</button>
+            <button type="button" data-cockpit-action="openDashboard">Review</button>
+            <button type="button" data-cockpit-action="openGraph">Graph</button>
+            <button class="active" type="button" data-cockpit-action="openActivity">Traces</button>
+            <button type="button" data-cockpit-action="openProductionCockpit">Production</button>
+          </div>
+          <section id="traceCockpitSummary" class="trace-cockpit-summary panel" aria-label="Trace cockpit summary"></section>
+          <div class="activity-loop-strip" aria-label="Twin learning loop">
+            <span><strong>Capture</strong> sources</span>
+            <span><strong>Curate</strong> concepts</span>
+            <span><strong>Review</strong> evidence</span>
+            <span><strong>Learn</strong> from traces</span>
+          </div>
+          <div class="filterbar compact-filterbar" aria-label="Activity filters">
+            <span class="filterbar-label">Show</span>
+            <button class="filter-chip active" type="button" data-activity-filter="all">Full trail</button>
+            <button class="filter-chip" type="button" data-activity-filter="traces">Answer traces</button>
+            <button class="filter-chip" type="button" data-activity-filter="evidence">Evidence</button>
+            <button class="filter-chip" type="button" data-activity-filter="ingest">Ingest</button>
+            <button class="filter-chip" type="button" data-activity-filter="crud">CRUD</button>
+            <button id="activityDensityBtn" class="secondary small density-toggle" type="button" aria-pressed="false">Comfortable</button>
+          </div>
+          <div class="activity-grid activity-timeline-grid">
+            <section class="panel activity-panel trace-primary-panel" data-activity-section="traces">
+              <h2>Answer Traces</h2>
+              <div id="answerTraceActivity" class="activity-list"></div>
+            </section>
+            <section class="panel activity-panel" data-activity-section="evidence">
+              <h2>Evidence Files</h2>
+              <div id="evidenceActivity" class="activity-list"></div>
+            </section>
+            <section class="panel activity-panel" data-activity-section="crud">
+              <h2>CRUD Log</h2>
+              <div id="crudActivity" class="activity-list"></div>
+            </section>
+            <section class="panel activity-panel" data-activity-section="ingest">
+              <h2>Ingest Log</h2>
+              <div id="ingestActivity" class="activity-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="quality" class="view">
+          <article class="section-lead panel">
+            <div>
+              <span class="badge">Production cockpit</span>
+              <h2>Keep MeIDs grounded and deployable.</h2>
+              <p>Control persona quality, governance gates, MCP readiness, migration, and hosted rollout from one operational cockpit.</p>
+            </div>
+            <button class="secondary small" type="button" data-cockpit-action="openDashboard">Open review dashboard</button>
+          </article>
+          <div class="cockpit-view-rail" aria-label="Design cockpit views">
+            <button type="button" data-cockpit-action="openTwins">Design</button>
+            <button type="button" data-cockpit-action="openSkills">Skills</button>
+            <button type="button" data-cockpit-action="openDashboard">Review</button>
+            <button type="button" data-cockpit-action="openGraph">Graph</button>
+            <button type="button" data-cockpit-action="openActivity">Traces</button>
+            <button class="active" type="button" data-cockpit-action="openQuality">Production</button>
+          </div>
+          <section class="production-command-surface panel" aria-label="Production cockpit shortcuts">
+            <div>
+              <span class="badge">Hosted readiness</span>
+              <h2>Move from local MVP to controlled production.</h2>
+              <p>Use the tabs for focused checks. Keep deep diagnostics available, but route daily work through the four readiness lanes.</p>
+            </div>
+            <div class="production-command-actions">
+              <button class="secondary small" type="button" data-quality-target="production">Production gates</button>
+              <button class="secondary small" type="button" data-quality-target="governance">Governance</button>
+              <button class="secondary small" type="button" data-quality-target="persona">Persona quality</button>
+              <button class="secondary small" type="button" data-cockpit-action="openDashboard">Review queue</button>
+            </div>
+          </section>
+          <div id="qualityCockpit" class="quality-cockpit"></div>
+          <div class="quality-tabs" role="tablist" aria-label="Quality Loop sections">
+            <button class="quality-tab active" type="button" data-quality-tab="persona" role="tab" aria-selected="true">Persona</button>
+            <button class="quality-tab" type="button" data-quality-tab="governance" role="tab" aria-selected="false">Governance</button>
+            <button class="quality-tab" type="button" data-quality-tab="production" role="tab" aria-selected="false">Production</button>
+          </div>
+          <div id="qualityPanelGrid" class="grid three quality-panel-grid" data-active-quality-group="persona">
+            <article class="panel agent-operating-model" data-quality-group="governance">
+              <div>
+                <span class="badge">Operating model</span>
+                <h2>Three agents. Clear boundaries.</h2>
+                <p>Actor Twin decides, Knowledge Fabric Agent maintains OKF, and Agentic Butler executes approved skills.</p>
+              </div>
+              <div>
+                <div class="toolbar tight">
+                  <span class="muted-inline">Approved operating model</span>
+                  <button id="refreshAgentOperatingModelBtn" class="secondary small" type="button">Refresh model</button>
+                </div>
+                <div id="agentOperatingModelPanel" class="agent-operating-model-panel">
+                  <p class="empty">Checking agent operating model...</p>
+                </div>
+              </div>
+            </article>
+            <article class="panel agent-trace-history-panel" data-quality-group="production">
+              <div class="toolbar">
+                <div>
+                  <span class="badge">Agent trace history</span>
+                  <h2>Recent agent handoffs</h2>
+                </div>
+                <div class="button-row tight">
+                  <button id="refreshAgentTraceHistoryBtn" class="secondary small" type="button">Refresh traces</button>
+                  <button id="clearAgentTraceHistoryBtn" class="secondary small" type="button">Clear local traces</button>
+                </div>
+              </div>
+              <p class="muted-inline">Local browser trace metadata only. Prompt text and source exports are not stored here.</p>
+              <div id="agentTraceSummary" class="agent-trace-summary" aria-label="Agent trace summary"></div>
+              <div id="agentProbeEvidencePanel" class="agent-probe-evidence-panel"></div>
+              <div class="agent-trace-filter" aria-label="Filter agent traces">
+                <button class="secondary small active" type="button" data-agent-trace-filter="all">All</button>
+                <button class="secondary small" type="button" data-agent-trace-filter="actor_twin">Actor Twin</button>
+                <button class="secondary small" type="button" data-agent-trace-filter="knowledge_fabric_agent">Knowledge Fabric</button>
+                <button class="secondary small" type="button" data-agent-trace-filter="agentic_butler">Agentic Butler</button>
+                <button class="secondary small" type="button" data-agent-trace-filter="approval_required">Approvals</button>
+              </div>
+              <div id="agentTraceHistoryPanel" class="agent-trace-history-list">
+                <p class="empty">No local agent handoffs yet.</p>
+              </div>
+            </article>
+            <article class="panel okf-validation-panel" data-quality-group="production">
+              <div class="toolbar">
+                <div>
+                  <span class="badge">Knowledge Fabric contract</span>
+                  <h2>OKF validation status</h2>
+                </div>
+                <button id="refreshOkfValidationStatusBtn" class="secondary small" type="button">Refresh OKF</button>
+              </div>
+              <p class="muted-inline">Static contract health for schema fixtures, ingest output, graph promotion, and vector adapter boundary.</p>
+              <div id="okfValidationStatusPanel" class="okf-validation-status">
+                <p class="empty">Checking OKF contract status...</p>
+              </div>
+            </article>
+            <article class="panel agent-runtime-boundary-panel" data-quality-group="production">
+              <div class="toolbar">
+                <div>
+                  <span class="badge">Agent runtime boundary</span>
+                  <h2>n8n contract readiness</h2>
+                </div>
+                <button id="refreshProductionAgentRuntimeBtn" class="secondary small" type="button">Refresh agents</button>
+              </div>
+              <p class="muted-inline">Production readiness for Actor Twin, Knowledge Fabric Agent, and Agentic Butler live endpoints.</p>
+              <div id="productionAgentRuntimeBoundaryPanel" class="agent-operating-model-panel">
+                <p class="empty">Checking agent runtime boundary...</p>
+              </div>
+            </article>
+            <article class="panel quality-agent-panel" data-quality-group="persona">
+              <h2>Persona Modeler</h2>
+              <p>Extract communication style, decision tempo, risk posture, and recurring heuristics.</p>
+              <button id="runPersonaModelerBtn" class="secondary">Run agent</button>
+            </article>
+            <article class="panel quality-agent-panel" data-quality-group="governance">
+              <h2>Guardrails Enforcer</h2>
+              <p>Check consent, sensitivity, unsupported claims, and unsafe extrapolation before use.</p>
+              <button id="runGuardrailsBtn" class="secondary">Run scan</button>
+            </article>
+            <article class="panel quality-policy-panel" data-quality-group="governance">
+              <h2>Guardrail Policy</h2>
+              <p>Choose whether ingestion only records findings or blocks high-risk concepts.</p>
+              <label for="guardrailPolicySelect">Policy</label>
+              <select id="guardrailPolicySelect">
+                <option value="advisory">advisory</option>
+                <option value="block-high-risk">block-high-risk</option>
+                <option value="off">off</option>
+              </select>
+              <button id="saveGuardrailPolicyBtn" class="secondary">Save policy</button>
+            </article>
+            <article class="panel quality-agent-panel" data-quality-group="persona">
+              <h2>Persona Draft Review</h2>
+              <p>Compare a generated draft with the canonical persona and promote selected sections.</p>
+              <label for="personaDraftSelect">Draft</label>
+              <select id="personaDraftSelect"></select>
+              <div class="button-row tight">
+                <button id="loadPersonaDraftBtn" class="secondary">Load</button>
+                <button id="promotePersonaDraftBtn" class="secondary">Promote selected</button>
+              </div>
+              <div class="check-list">
+                <label><input type="checkbox" class="persona-section" value="tone_markers" /> Tone</label>
+                <label><input type="checkbox" class="persona-section" value="decision_heuristics" /> Signature moves</label>
+                <label><input type="checkbox" class="persona-section" value="expertise_signals" /> Expertise</label>
+                <label><input type="checkbox" class="persona-section" value="risk_boundaries" /> Boundaries</label>
+              </div>
+            </article>
+            <article class="panel quality-agent-panel" data-quality-group="persona">
+              <h2>Persona Quality Loop</h2>
+              <p>Score persona coverage, concept review maturity, and next promotion actions.</p>
+              <button id="runPersonaQualityBtn" class="secondary">Run quality loop</button>
+            </article>
+            <article class="panel quality-agent-panel" data-quality-group="governance">
+              <h2>Interrogation QA</h2>
+              <p>Challenge answers, surface contradictions, and propose follow-up questions.</p>
+              <button id="runInterrogationQaBtn" class="secondary">Run QA</button>
+            </article>
+            <details class="panel agent-instruction-cockpit cockpit-disclosure" data-quality-group="governance" open>
+              <summary>Agent system instructions</summary>
+              <div class="toolbar">
+                <h2>Instruction Registry</h2>
+                <button id="refreshAgentInstructionsBtn" class="secondary small" type="button">Refresh instructions</button>
+              </div>
+              <p class="muted-inline">Review the system instructions that shape actor, persona, knowledge, skill, and governance agents.</p>
+              <div id="agentInstructionList" class="agent-instruction-list">
+                <p class="empty">Checking agent instruction registry...</p>
+              </div>
+              <div class="button-row tight">
+                <select id="agentInstructionSelect" aria-label="Agent instruction"></select>
+                <button id="loadAgentInstructionBtn" class="secondary" type="button">Load instruction</button>
+              </div>
+              <pre id="agentInstructionContent" class="output compact-output">No instruction loaded.</pre>
+            </details>
+            <details class="panel skill-telemetry-cockpit cockpit-disclosure" data-quality-group="persona" open>
+              <summary>Skill telemetry and memory</summary>
+              <div class="toolbar">
+                <h2>Skill Telemetry</h2>
+                <button id="refreshSkillTelemetryBtn" class="secondary small" type="button">Refresh telemetry</button>
+              </div>
+              <div id="skillTelemetryPanel" class="skill-telemetry-panel">
+                <p class="empty">Checking skill runtime memory...</p>
+              </div>
+            </details>
+            <details class="panel quality-ops-panel cockpit-disclosure" data-quality-group="production">
+              <summary>Vector retrieval cache</summary>
+              <h2>Vector Retrieval Cache</h2>
+              <p>Rebuild the derived search index from OKF markdown concepts.</p>
+              <p id="vectorIndexStatus" class="empty">Checking cache...</p>
+              <label for="vectorIndexModeSelect">Index</label>
+              <select id="vectorIndexModeSelect">
+                <option value="local">local TF-IDF</option>
+                <option value="provider-embeddings">provider embeddings</option>
+              </select>
+              <button id="rebuildVectorIndexBtn" class="secondary">Rebuild cache</button>
+            </details>
+            <details class="panel quality-ops-panel cockpit-disclosure" data-quality-group="production">
+              <summary>MVP health and OKF compounding</summary>
+              <div class="toolbar">
+                <h2>MVP Health and OKF Compounding</h2>
+                <button id="refreshDeepHealthBtn" class="secondary small" type="button">Refresh health</button>
+              </div>
+              <p id="deepHealthStatus" class="empty">Checking MVP health...</p>
+              <div id="deepHealthPanel" class="sync-detail-panel"></div>
+              <div class="toolbar">
+                <h3>OKF Growth Path</h3>
+                <button id="exportOkfArchitectureBtn" class="secondary small" type="button">Export roadmap</button>
+              </div>
+              <div id="okfArchitecturePanel" class="sync-detail-panel"></div>
+            </details>
+            <details class="panel quality-ops-panel cockpit-disclosure" data-quality-group="production">
+              <summary>Sync export</summary>
+              <h2>Sync Export</h2>
+              <p>Create a local payload for GitHub or MCP connector operations.</p>
+              <p id="syncStatus" class="empty">Checking sync queue...</p>
+              <label for="syncTargetSelect">Target</label>
+              <select id="syncTargetSelect">
+                <option value="github">github</option>
+                <option value="mcp">mcp</option>
+                <option value="local">local</option>
+              </select>
+              <div class="sync-filter-row">
+                <label for="syncExcludeActions">Exclude actions</label>
+                <input id="syncExcludeActions" type="text" value="delete" placeholder="delete, delete-evidence" />
+                <label for="syncExcludeActors">Exclude actors</label>
+                <input id="syncExcludeActors" type="text" value="smoke-cleanup" placeholder="smoke-cleanup, test-user" />
+              </div>
+              <div class="button-row tight">
+                <button id="refreshSyncPreviewBtn" class="secondary small" type="button">Refresh preview</button>
+                <button id="reviewSyncPayloadBtn" class="secondary" type="button">Review payload</button>
+                <button id="approveSyncPayloadBtn" class="secondary" type="button">Approve for export</button>
+                <button id="exportSyncBtn" class="secondary" type="button">Export payload</button>
+                <button id="prepareMcpSyncBtn" class="secondary" type="button">Prepare MCP item</button>
+                <button id="refreshSyncArchiveBtn" class="secondary small" type="button">Refresh archive</button>
+                <button id="archiveSyncArtifactsBtn" class="secondary small" type="button">Archive old</button>
+              </div>
+              <div id="syncDetailPanel" class="sync-detail-panel"></div>
+            </details>
+            <details class="panel mcp-cockpit cockpit-disclosure" data-quality-group="production">
+              <summary>MCP connector cockpit</summary>
+              <div class="toolbar">
+                <h2>MCP Connector Cockpit</h2>
+                <button id="refreshMcpBtn" class="secondary small" type="button">Refresh MCP</button>
+              </div>
+              <p id="mcpStatus" class="empty">Checking MCP connector registry...</p>
+              <div id="mcpConnectorList" class="mcp-list"></div>
+              <div id="mcpConnectorHealth" class="mcp-real-readiness"></div>
+              <div id="mcpGatewayPolicy" class="mcp-policy"></div>
+              <div id="mcpRealReadiness" class="mcp-real-readiness"></div>
+              <div id="mcpCanaryPlan" class="mcp-canary-plan"></div>
+              <div class="mcp-mock-form">
+                <h3>Create mock tool call</h3>
+                <div class="grid two">
+                  <input id="mcpMockConnector" type="text" value="email" placeholder="connector" />
+                  <input id="mcpMockTool" type="text" value="draft_create" placeholder="tool name" />
+                </div>
+                <input id="mcpMockSummary" type="text" value="Prepare an external draft; requires human approval before sending." placeholder="request summary" />
+                <button id="createMockMcpCallBtn" class="secondary small" type="button">Create mock approval</button>
+              </div>
+            </details>
+            <details class="panel production-cockpit cockpit-disclosure" data-quality-group="production">
+              <summary>Production readiness</summary>
+              <div class="toolbar">
+                <h2>Production Readiness</h2>
+                <button id="refreshProductionBtn" class="secondary small" type="button">Refresh readiness</button>
+              </div>
+              <p id="productionStatus" class="empty">Checking hosted readiness...</p>
+              <div id="productionRestartHint" class="production-restart-hint"></div>
+              <div id="productionReadinessLanes" class="production-readiness-lanes"></div>
+              <div id="productionStageSummary" class="production-stage-summary"></div>
+              <div id="productionEvidenceCompleteness" class="production-evidence-completeness"></div>
+              <div id="productionGoNoGo" class="production-go-no-go"></div>
+              <div class="production-stage-stack">
+                <details class="production-stage hosted" open>
+                  <summary>
+                    <span>1</span>
+                    <strong>Hosted setup</strong>
+                    <small>Environment, storage, database, migration readiness</small>
+                  </summary>
+                  <div id="productionConfigureNext" class="production-configure-next-wrap"></div>
+                  <div id="productionEnvChecklist" class="production-env-checklist"></div>
+                  <div id="productionBlockers" class="production-blockers"></div>
+                  <div id="productionCheckList" class="production-check-list"></div>
+                  <div id="productionMigrationStatus" class="mcp-policy"></div>
+                </details>
+                <details class="production-stage repository" open>
+                  <summary>
+                    <span>2</span>
+                    <strong>Repository</strong>
+                    <small>Knowledge sync, GitHub Pages, release packaging</small>
+                  </summary>
+                  <div id="productionGithubSync" class="production-github-sync"></div>
+                  <div id="productionKnowledgeRepoReadiness" class="production-knowledge-repo-readiness"></div>
+                  <div id="productionLaunchChecklist" class="production-launch-checklist"></div>
+                </details>
+                <details class="production-stage mcp" open>
+                  <summary>
+                    <span>3</span>
+                    <strong>MCP</strong>
+                    <small>Gateway, canary, approval safety</small>
+                  </summary>
+                  <div id="productionMcpStage" class="production-mcp-stage"></div>
+                </details>
+                <details class="production-stage review" open>
+                  <summary>
+                    <span>4</span>
+                    <strong>Review</strong>
+                    <small>Rollout, handoff, final packet</small>
+                  </summary>
+                  <div id="productionHandoff" class="production-handoff"></div>
+                </details>
+              </div>
+            </details>
+            <details class="panel migration-cockpit cockpit-disclosure" data-quality-group="production">
+              <summary>Migration checklist</summary>
+              <div class="toolbar">
+                <h2>Migration Checklist</h2>
+                <button id="refreshMigrationBtn" class="secondary small" type="button">Refresh manifest</button>
+              </div>
+              <p id="migrationManifestStatus" class="empty">Checking local backfill manifest...</p>
+              <div id="migrationManifestSummary" class="migration-summary"></div>
+              <div id="migrationStoreList" class="migration-store-list"></div>
+              <div class="button-row tight">
+                <button id="writeBackfillManifestBtn" class="secondary" type="button">Create backfill manifest</button>
+                <button id="downloadBackfillManifestBtn" class="secondary" type="button">Download manifest</button>
+              </div>
+            </details>
+            <details class="panel hosted-smoke-cockpit cockpit-disclosure" data-quality-group="production">
+              <summary>Hosted smoke path</summary>
+              <div class="toolbar">
+                <h2>Hosted Smoke Path</h2>
+                <button id="refreshSmokeChecklistBtn" class="secondary small" type="button">Refresh checklist</button>
+                <button id="exportSmokeChecklistArtifactBtn" class="secondary small" type="button">Export UAT checklist</button>
+              </div>
+              <p id="smokeChecklistStatus" class="empty">Checking hosted smoke path...</p>
+              <div id="smokeChecklistList" class="smoke-check-list"></div>
+              <div id="smokeChecklistArtifactList" class="smoke-artifact-list"></div>
+            </details>
+            <details class="panel quality-ops-panel cockpit-disclosure" data-quality-group="governance">
+              <summary>Trace review export</summary>
+              <h2>Trace Review Export</h2>
+              <p>Create a readable answer trace pack for MVP review.</p>
+              <p id="traceExportStatus" class="empty">Checking traces...</p>
+              <label for="traceExportLimit">Traces</label>
+              <select id="traceExportLimit">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+              </select>
+              <button id="exportTraceReviewBtn" class="secondary">Export review pack</button>
+            </details>
+          </div>
+          <pre id="qualityResult" class="output">No quality agent run yet.</pre>
+        </section>
+      </main>
+    </div>
+
+    <aside id="conceptDrawer" class="drawer" aria-hidden="true">
+      <div class="drawer-header">
+        <div>
+          <p class="eyebrow">Concept review</p>
+          <h2 id="drawerTitle">No concept selected</h2>
+        </div>
+        <button id="closeDrawerBtn" class="secondary" type="button">Close</button>
+      </div>
+      <div id="drawerContent" class="drawer-content"></div>
+    </aside>
+    <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+
+    <dialog id="decisionDialog" class="decision-dialog">
+      <form method="dialog">
+        <p id="decisionEyebrow" class="eyebrow">Review action</p>
+        <h2 id="decisionTitle">Confirm action</h2>
+        <p id="decisionBody" class="decision-body"></p>
+        <label id="decisionInputWrap" for="decisionInput" hidden>
+          <span id="decisionInputLabel">Input</span>
+          <textarea id="decisionInput" rows="3"></textarea>
+        </label>
+        <div class="button-row tight decision-actions">
+          <button id="decisionCancelBtn" class="secondary" value="cancel" type="submit">Cancel</button>
+          <button id="decisionConfirmBtn" value="confirm" type="submit">Confirm</button>
+        </div>
+      </form>
+    </dialog>
+    <section id="graphPresentationOverlay" class="graph-presentation-overlay" aria-hidden="true" hidden>
+      <div class="graph-presentation-frame">
+        <header class="graph-presentation-header">
+          <div>
+            <p class="eyebrow">MeIDs knowledge graph</p>
+            <h2 id="graphPresentationTitle">Graph presentation</h2>
+            <span id="graphPresentationMeta"></span>
+          </div>
+          <div class="graph-presentation-actions">
+            <button id="graphPresentationSvgBtn" class="secondary small" type="button">SVG</button>
+            <button id="graphPresentationPngBtn" class="secondary small" type="button">PNG</button>
+            <button id="graphPresentationCloseBtn" class="secondary small" type="button">Close</button>
+          </div>
+        </header>
+        <div id="graphPresentationBody" class="graph-presentation-body"></div>
+      </div>
+    </section>
+    <div id="toastCenter" class="toast-center" aria-live="polite" aria-atomic="false"></div>
+
+    <script>
+      if (!window.__MEIDS_FILE_PROTOCOL__) {
+        document.write('<script src="' + window.__MEIDS_ASSET_URL__("runtime-config.js?v=20260715-meids") + '"><\/script>');
+        document.write('<script src="' + window.__MEIDS_ASSET_URL__("api.js?v=20260731-refactor") + '"><\/script>');
+        document.write('<script src="' + window.__MEIDS_ASSET_URL__("app.js?v=20260812-runtime-uat") + '"><\/script>');
+      }
+    </script>
+  </body>
+</html>

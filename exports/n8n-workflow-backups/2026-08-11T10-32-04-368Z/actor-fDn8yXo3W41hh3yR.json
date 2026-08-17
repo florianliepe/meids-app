@@ -1,0 +1,213 @@
+{
+  "updatedAt": "2026-08-06T20:21:04.823Z",
+  "createdAt": "2026-08-06T20:12:09.550Z",
+  "id": "fDn8yXo3W41hh3yR",
+  "name": "MeIDs Actor Twin - staging",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meids/actor-twin/chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "meids/actor-twin/chat-webhook",
+      "name": "Receive request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "e80a3907-825d-4446-8078-729b532dda2f"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst text = String(body.message || body.query || body.prompt || body.text || '').toLowerCase();\nconst wantsExecution = /plan|execute|draft|prepare|create|schedule|skill|task|meeting|mail|email|todo|kpi/.test(text);\nconst wantsKnowledge = /who|what|why|explain|context|knowledge|decision|source|evidence|graph/.test(text);\nconst route = wantsExecution ? 'agentic_butler' : 'answer_only';\nreturn [{ json: {\n  status: 'staging_ready',\n  agent: 'Actor Twin',\n  contract_version: '2026-08-06.2',\n  role: 'Primary user-facing decision and answer interface for MeIDs.',\n  route,\n  decision: {\n    intent: wantsExecution ? 'work_execution' : 'grounded_answer',\n    use_knowledge_fabric: true,\n    use_graph_context: wantsKnowledge,\n    requires_human_approval: false,\n    approval_reason: null\n  },\n  handoff: route === 'agentic_butler' ? { agent: 'Agentic Butler', webhook_path: '/webhook/meids/agentic-butler/run' } : null,\n  retrieval_policy: { source_order: ['approved_okf', 'selected_pending_okf', 'vector_db_when_available', 'knowledge_graph'], cite_sources: true },\n  received: body,\n  next: 'Replace this contract node with LLM + OKF/vector/graph retrieval while preserving route and approval fields.'\n} }];"
+      },
+      "id": "meids/actor-twin/chat-contract",
+      "name": "Staging contract response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "meids/actor-twin/chat-respond",
+      "name": "Return JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        520,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Receive request": {
+      "main": [
+        [
+          {
+            "node": "Staging contract response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Staging contract response": {
+      "main": [
+        [
+          {
+            "node": "Return JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "08abcddf-614b-4dbe-9185-36915006c6b1",
+  "activeVersionId": "08abcddf-614b-4dbe-9185-36915006c6b1",
+  "versionCounter": 2,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-08-06T20:12:09.550Z",
+      "createdAt": "2026-08-06T20:12:09.550Z",
+      "role": "workflow:owner",
+      "workflowId": "fDn8yXo3W41hh3yR",
+      "projectId": "tYB0YoTCoB3cCCKR",
+      "project": {
+        "updatedAt": "2025-10-17T10:11:05.323Z",
+        "createdAt": "2025-10-17T09:54:54.577Z",
+        "id": "tYB0YoTCoB3cCCKR",
+        "name": "Florian Liepe <florian.liepe@eraneos.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "b0b4b717-4904-480b-957e-10bac7530ca1"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-08-06T20:21:04.834Z",
+    "createdAt": "2026-08-06T20:21:04.834Z",
+    "versionId": "08abcddf-614b-4dbe-9185-36915006c6b1",
+    "workflowId": "fDn8yXo3W41hh3yR",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "meids/actor-twin/chat",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "id": "meids/actor-twin/chat-webhook",
+        "name": "Receive request",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          0
+        ],
+        "webhookId": "e80a3907-825d-4446-8078-729b532dda2f"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst text = String(body.message || body.query || body.prompt || body.text || '').toLowerCase();\nconst wantsExecution = /plan|execute|draft|prepare|create|schedule|skill|task|meeting|mail|email|todo|kpi/.test(text);\nconst wantsKnowledge = /who|what|why|explain|context|knowledge|decision|source|evidence|graph/.test(text);\nconst route = wantsExecution ? 'agentic_butler' : 'answer_only';\nreturn [{ json: {\n  status: 'staging_ready',\n  agent: 'Actor Twin',\n  contract_version: '2026-08-06.2',\n  role: 'Primary user-facing decision and answer interface for MeIDs.',\n  route,\n  decision: {\n    intent: wantsExecution ? 'work_execution' : 'grounded_answer',\n    use_knowledge_fabric: true,\n    use_graph_context: wantsKnowledge,\n    requires_human_approval: false,\n    approval_reason: null\n  },\n  handoff: route === 'agentic_butler' ? { agent: 'Agentic Butler', webhook_path: '/webhook/meids/agentic-butler/run' } : null,\n  retrieval_policy: { source_order: ['approved_okf', 'selected_pending_okf', 'vector_db_when_available', 'knowledge_graph'], cite_sources: true },\n  received: body,\n  next: 'Replace this contract node with LLM + OKF/vector/graph retrieval while preserving route and approval fields.'\n} }];"
+        },
+        "id": "meids/actor-twin/chat-contract",
+        "name": "Staging contract response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          260,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": {}
+        },
+        "id": "meids/actor-twin/chat-respond",
+        "name": "Return JSON",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          520,
+          0
+        ]
+      }
+    ],
+    "connections": {
+      "Receive request": {
+        "main": [
+          [
+            {
+              "node": "Staging contract response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Staging contract response": {
+        "main": [
+          [
+            {
+              "node": "Return JSON",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Florian Liepe",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-08-06T20:21:04.998Z",
+        "id": 324,
+        "workflowId": "fDn8yXo3W41hh3yR",
+        "versionId": "08abcddf-614b-4dbe-9185-36915006c6b1",
+        "event": "deactivated",
+        "userId": "b0b4b717-4904-480b-957e-10bac7530ca1"
+      },
+      {
+        "createdAt": "2026-08-06T20:21:05.035Z",
+        "id": 325,
+        "workflowId": "fDn8yXo3W41hh3yR",
+        "versionId": "08abcddf-614b-4dbe-9185-36915006c6b1",
+        "event": "activated",
+        "userId": "b0b4b717-4904-480b-957e-10bac7530ca1"
+      }
+    ]
+  }
+}

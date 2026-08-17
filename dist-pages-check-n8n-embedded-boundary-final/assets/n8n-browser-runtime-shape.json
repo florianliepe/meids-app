@@ -1,0 +1,90 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-11T18:38:13.085Z",
+  "purpose": "Public-safe browser/runtime response-shape probe for MeIDs top-level n8n agents.",
+  "boundary": "The probe uses no private knowledge and does not require credentials. Missing CORS headers are treated as a backend proxy requirement.",
+  "summary": {
+    "agent_count": 3,
+    "called_count": 3,
+    "cors_ready_count": 3,
+    "actor_route_decision_gap_count": 1,
+    "backend_proxy_recommended": true
+  },
+  "agents": [
+    {
+      "agent_id": "actor_twin",
+      "status": "called",
+      "expected_response_status": "completed",
+      "checked_at": "2026-08-11T18:37:32.506Z",
+      "browser_origin": "https://florianliepe.github.io",
+      "http_status": 200,
+      "cors": {
+        "header_present": true,
+        "allow_origin": "https://florianliepe.github.io",
+        "allow_methods": "OPTIONS, POST",
+        "browser_call_risk": "low"
+      },
+      "response_shape": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_actor_twin_live_probe_001_msp0621q",
+        "agent_id": "actor_twin",
+        "status": "completed",
+        "has_output": true,
+        "has_route_decision": false,
+        "has_approval": false,
+        "has_trace_id": true
+      },
+      "body_preview": "{\"envelope_version\":\"0.1.0\",\"request_id\":\"req_actor_twin_live_probe_001_msp0621q\",\"agent_id\":\"actor_twin\",\"status\":\"completed\",\"output\":{\"answer\":\"```json\\n{\\n  \\\"envelope_version\\\": \\\"0.1.0\\\",\\n  \\\"request_id\\\": \\\"req_actor_twin_live_probe"
+    },
+    {
+      "agent_id": "knowledge_fabric_agent",
+      "status": "called",
+      "expected_response_status": "completed",
+      "checked_at": "2026-08-11T18:37:46.119Z",
+      "browser_origin": "https://florianliepe.github.io",
+      "http_status": 200,
+      "cors": {
+        "header_present": true,
+        "allow_origin": "https://florianliepe.github.io",
+        "allow_methods": "OPTIONS, POST",
+        "browser_call_risk": "low"
+      },
+      "response_shape": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_knowledge_fabric_live_probe_001_msp06cjt",
+        "agent_id": "knowledge_fabric_agent",
+        "status": "completed",
+        "has_output": true,
+        "has_route_decision": false,
+        "has_approval": false,
+        "has_trace_id": true
+      },
+      "body_preview": "{\"envelope_version\":\"0.1.0\",\"request_id\":\"req_knowledge_fabric_live_probe_001_msp06cjt\",\"agent_id\":\"knowledge_fabric_agent\",\"status\":\"completed\",\"output\":{\"summary\":\"```json\\n{\\n  \\\"envelope_version\\\": \\\"0.1.0\\\",\\n  \\\"request_id\\\": \\\"req_kn"
+    },
+    {
+      "agent_id": "agentic_butler",
+      "status": "called",
+      "expected_response_status": "approval_required",
+      "checked_at": "2026-08-11T18:38:01.779Z",
+      "browser_origin": "https://florianliepe.github.io",
+      "http_status": 200,
+      "cors": {
+        "header_present": true,
+        "allow_origin": "https://florianliepe.github.io",
+        "allow_methods": "OPTIONS, POST",
+        "browser_call_risk": "low"
+      },
+      "response_shape": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_agentic_butler_live_probe_001_msp06oms",
+        "agent_id": "agentic_butler",
+        "status": "approval_required",
+        "has_output": true,
+        "has_route_decision": false,
+        "has_approval": false,
+        "has_trace_id": true
+      },
+      "body_preview": "{\"envelope_version\":\"0.1.0\",\"request_id\":\"req_agentic_butler_live_probe_001_msp06oms\",\"agent_id\":\"agentic_butler\",\"status\":\"approval_required\",\"output\":{\"summary\":\"## MeIDs Agentic Butler — Staging Skill-Run Plan\\n\\n**Request ID:** req_agen"
+    }
+  ]
+}

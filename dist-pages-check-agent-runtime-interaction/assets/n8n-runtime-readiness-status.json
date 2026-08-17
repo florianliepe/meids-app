@@ -1,0 +1,142 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-11T18:35:22.514Z",
+  "source": "dist-pages-check-agent-runtime-interaction/assets/agent-runtime-config.json",
+  "status": "partial",
+  "summary": {
+    "agent_count": 3,
+    "configured_count": 0,
+    "awaiting_url_count": 3,
+    "missing_count": 0
+  },
+  "boundary": "Public-safe runtime readiness artifact. It validates URL slots and probe metadata, but it does not call n8n and does not prove live connectivity.",
+  "agents": [
+    {
+      "agent_id": "actor_twin",
+      "agent_name": "Actor Twin",
+      "status": "awaiting_url",
+      "status_label": "awaiting URL",
+      "url_configured": false,
+      "url_origin": "",
+      "url_shape": "empty",
+      "env_var": "N8N_ACTOR_TWIN_WEBHOOK_URL",
+      "github_pages_secret": "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
+      "top_level_url_key": "n8nActorTwinWebhookUrl",
+      "probe_slot_status": "awaiting_url",
+      "detail": "GitHub Pages runtime config generated from repository secrets.",
+      "next_action": "Set GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL or GH_PAGES_N8N_CHAT_WEBHOOK_URL.",
+      "required_capabilities": [
+        "intent_interpretation",
+        "retrieval_policy",
+        "trace_response"
+      ],
+      "gates": [
+        {
+          "gate": "runtime_asset",
+          "ready": true,
+          "detail": "Public runtime asset is available."
+        },
+        {
+          "gate": "webhook_url",
+          "ready": false,
+          "detail": "No public UAT webhook URL configured."
+        },
+        {
+          "gate": "probe_slot",
+          "ready": true,
+          "detail": "Probe slot status: awaiting_url."
+        },
+        {
+          "gate": "public_safe",
+          "ready": true,
+          "detail": "No secret-like value detected by static validator."
+        }
+      ]
+    },
+    {
+      "agent_id": "knowledge_fabric_agent",
+      "agent_name": "Knowledge Fabric Agent",
+      "status": "awaiting_url",
+      "status_label": "awaiting URL",
+      "url_configured": false,
+      "url_origin": "",
+      "url_shape": "empty",
+      "env_var": "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+      "github_pages_secret": "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+      "top_level_url_key": "n8nKnowledgeFabricWebhookUrl",
+      "probe_slot_status": "awaiting_url",
+      "detail": "GitHub Pages runtime config generated from repository secrets.",
+      "next_action": "Set GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL.",
+      "required_capabilities": [
+        "okf_ingest",
+        "evidence_storage",
+        "graph_curator_trigger",
+        "vector_boundary"
+      ],
+      "gates": [
+        {
+          "gate": "runtime_asset",
+          "ready": true,
+          "detail": "Public runtime asset is available."
+        },
+        {
+          "gate": "webhook_url",
+          "ready": false,
+          "detail": "No public UAT webhook URL configured."
+        },
+        {
+          "gate": "probe_slot",
+          "ready": true,
+          "detail": "Probe slot status: awaiting_url."
+        },
+        {
+          "gate": "public_safe",
+          "ready": true,
+          "detail": "No secret-like value detected by static validator."
+        }
+      ]
+    },
+    {
+      "agent_id": "agentic_butler",
+      "agent_name": "Agentic Butler",
+      "status": "awaiting_url",
+      "status_label": "awaiting URL",
+      "url_configured": false,
+      "url_origin": "",
+      "url_shape": "empty",
+      "env_var": "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+      "github_pages_secret": "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+      "top_level_url_key": "n8nAgenticButlerWebhookUrl",
+      "probe_slot_status": "awaiting_url",
+      "detail": "GitHub Pages runtime config generated from repository secrets.",
+      "next_action": "Set GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL.",
+      "required_capabilities": [
+        "approved_skill_activation",
+        "approval_gate_detection",
+        "trace_response"
+      ],
+      "gates": [
+        {
+          "gate": "runtime_asset",
+          "ready": true,
+          "detail": "Public runtime asset is available."
+        },
+        {
+          "gate": "webhook_url",
+          "ready": false,
+          "detail": "No public UAT webhook URL configured."
+        },
+        {
+          "gate": "probe_slot",
+          "ready": true,
+          "detail": "Probe slot status: awaiting_url."
+        },
+        {
+          "gate": "public_safe",
+          "ready": true,
+          "detail": "No secret-like value detected by static validator."
+        }
+      ]
+    }
+  ]
+}

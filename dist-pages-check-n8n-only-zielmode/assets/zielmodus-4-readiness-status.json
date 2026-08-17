@@ -1,0 +1,197 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-11T10:34:15.116Z",
+  "status": "complete",
+  "mode": "public_safe",
+  "summary": {
+    "requirement_count": 9,
+    "ready_requirement_count": 9,
+    "qa_check_count": 2,
+    "passed_qa_check_count": 2,
+    "public_safe_ready": true,
+    "live_ready": true,
+    "live_probe_ready": true
+  },
+  "requirements": [
+    {
+      "id": "okf_schema",
+      "label": "OKF markdown/YAML schema",
+      "status": "ready",
+      "evidence": [
+        "docs/knowledge-fabric-okf-schema.md",
+        "contracts/okf/schemas/shared-definitions.schema.json",
+        "contracts/okf/schemas/concept.schema.json",
+        "contracts/okf/schemas/evidence.schema.json",
+        "contracts/okf/schemas/transcript.schema.json",
+        "contracts/okf/schemas/graph-node.schema.json",
+        "contracts/okf/schemas/graph-edge.schema.json",
+        "contracts/okf/examples/concepts",
+        "contracts/okf/examples/evidence",
+        "contracts/okf/examples/transcripts",
+        "contracts/okf/examples/graph/nodes",
+        "contracts/okf/examples/graph/edges"
+      ],
+      "missing": []
+    },
+    {
+      "id": "repo_split",
+      "label": "Repo split target",
+      "status": "ready",
+      "evidence": [
+        "docs/production/repo-split-handoff-checklist.md",
+        "docs/production/agent-config-repo-scaffold.md"
+      ],
+      "missing": []
+    },
+    {
+      "id": "knowledge_fabric_ingest",
+      "label": "Knowledge Fabric Agent ingest path",
+      "status": "ready",
+      "evidence": [
+        "contracts/okf/ingest/sample-ingest-request.json",
+        "scripts/mock-okf-ingest.cjs",
+        "contracts/okf/generated/concepts",
+        "contracts/okf/generated/evidence",
+        "contracts/okf/generated/transcripts",
+        "contracts/okf/generated/audit",
+        "contracts/okf/generated/graph/edges"
+      ],
+      "missing": []
+    },
+    {
+      "id": "graph_promotion",
+      "label": "Graph relation promotion workflow",
+      "status": "ready",
+      "evidence": [
+        "contracts/okf/promotions/README.md",
+        "contracts/okf/promotions/approve-edge-example.json",
+        "contracts/okf/promotions/needs-rework-edge-example.json",
+        "contracts/okf/promotions/reject-edge-example.json",
+        "scripts/validate-graph-promotions.cjs"
+      ],
+      "missing": []
+    },
+    {
+      "id": "vector_boundary",
+      "label": "Vector DB adapter boundary without credentials",
+      "status": "ready",
+      "evidence": [
+        "contracts/okf/examples/vector",
+        "contracts/okf/negative/vector",
+        "scripts/validate-vector-adapter.cjs"
+      ],
+      "missing": []
+    },
+    {
+      "id": "browser_dark_mode",
+      "label": "Knowledge Browser dark-mode QA",
+      "status": "ready",
+      "evidence": [
+        "docs/qa/knowledge-browser-dark-mode-qa.md",
+        "docs/visual-qa/screenshots-20260810-z4-knowledge-browser-dark-polish/browser-dark-mode-qa.json",
+        "docs/visual-qa/screenshots-20260810-z4-final-audit/knowledge-desktop-dark.png",
+        "docs/visual-qa/screenshots-20260810-z4-final-audit/knowledge-mobile-dark.png"
+      ],
+      "missing": []
+    },
+    {
+      "id": "graph_dark_mode",
+      "label": "Knowledge Graph dark-mode QA",
+      "status": "ready",
+      "evidence": [
+        "docs/qa/knowledge-browser-dark-mode-qa.md",
+        "docs/visual-qa/screenshots-20260810-z4-graph-legend-dark-polish/browser-dark-mode-qa.json",
+        "docs/visual-qa/screenshots-20260810-z4-final-audit/graph-desktop-dark.png",
+        "docs/visual-qa/screenshots-20260810-z4-final-audit/graph-mobile-dark.png"
+      ],
+      "missing": []
+    },
+    {
+      "id": "agent_trace_ui",
+      "label": "Agent trace/history UI",
+      "status": "ready",
+      "evidence": [
+        "docs/visual-qa/screenshots-20260810-z4-chat-latest-agent-traces/chat-latest-agent-traces-qa.json",
+        "docs/visual-qa/screenshots-20260810-z4-final-audit/trace-dashboard-desktop-dark.png",
+        "docs/visual-qa/screenshots-20260810-z4-final-audit/trace-dashboard-mobile-dark.png"
+      ],
+      "missing": []
+    },
+    {
+      "id": "live_url_guidance",
+      "label": "Live n8n URL guidance and workflow blueprints",
+      "status": "ready",
+      "evidence": [
+        "docs/n8n-live-url-configuration.md",
+        "contracts/n8n/agent-config-public-export.json",
+        "workflows/n8n/actor-twin.workflow.json",
+        "workflows/n8n/knowledge-fabric-agent.workflow.json",
+        "workflows/n8n/agentic-butler.workflow.json",
+        "scripts/validate-agent-config-export.cjs",
+        "scripts/set-n8n-agent-url.cjs",
+        "scripts/record-n8n-live-probe-evidence.cjs",
+        "scripts/write-n8n-live-readiness-preflight.cjs",
+        "scripts/write-zielmodus-4-live-completion-checklist.cjs",
+        "scripts/write-n8n-live-handoff-commands.cjs",
+        "frontend/assets/agent-runtime-config.json",
+        "frontend/assets/n8n-runtime-readiness-status.json",
+        "frontend/assets/n8n-live-probe-evidence.json",
+        "frontend/assets/n8n-live-readiness-preflight.json",
+        "frontend/assets/zielmodus-4-live-completion-checklist.json",
+        "frontend/assets/n8n-live-handoff-commands.json"
+      ],
+      "missing": []
+    }
+  ],
+  "qa": [
+    {
+      "status": "passed",
+      "path": "docs/visual-qa/screenshots-20260810-z4-final-audit/browser-dark-mode-qa.json",
+      "passed": true,
+      "case_count": 6,
+      "failures": []
+    },
+    {
+      "status": "passed",
+      "path": "docs/visual-qa/screenshots-20260810-z4-chat-latest-agent-traces/chat-latest-agent-traces-qa.json",
+      "passed": true,
+      "case_count": 2,
+      "failures": []
+    }
+  ],
+  "live_n8n": {
+    "status": "configured",
+    "configured_count": 3,
+    "awaiting_url_count": 0,
+    "required_agents": [
+      "actor_twin",
+      "knowledge_fabric_agent",
+      "agentic_butler"
+    ],
+    "missing_live_agents": [],
+    "artifact_status": "configured",
+    "detail": "All top-level agent live URL slots are configured. Live probe evidence still must be captured before production readiness."
+  },
+  "live_probe_evidence": {
+    "status": "complete",
+    "path": "frontend/assets/n8n-live-probe-evidence.json",
+    "connected_count": 3,
+    "required_count": 3,
+    "missing_probe_agents": [],
+    "detail": "All top-level agents have connected, non-demo live probe evidence."
+  },
+  "live_completion_checklist": {
+    "status": "live_probe_evidence_pending",
+    "path": "frontend/assets/zielmodus-4-live-completion-checklist.json",
+    "missing_live_url_count": 0,
+    "missing_probe_trace_count": 3,
+    "estimated_remaining_after_urls_exist": "45-90 minutes",
+    "missing_agents": [],
+    "detail": "Completion checklist open work: 0 URL(s), 3 probe trace(s)."
+  },
+  "next_actions": [
+    "Run cockpit live probes for all three agents.",
+    "Capture n8n execution trace evidence.",
+    "Confirm human approval gate behavior for Agentic Butler."
+  ]
+}

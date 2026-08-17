@@ -1,0 +1,22 @@
+{
+  "status": "prepared",
+  "workflow_id": "fDn8yXo3W41hh3yR",
+  "source": "workflows/n8n/import-ready/actor-twin-direct-orchestrator.uat-live-urls.import.json",
+  "payload": "exports/n8n-live-backups/20260813T151337Z-actor-direct-orchestrator/actor-twin.direct-orchestrator.update-payload.json",
+  "node_count": 9,
+  "nodes": [
+    "Receive request",
+    "Actor Twin AI Agent",
+    "Normalize route decision",
+    "Switch by route",
+    "Call Knowledge Fabric Agent",
+    "Call Agentic Butler",
+    "Finalize Actor Twin response",
+    "Return JSON",
+    "Actor Twin Chat Model"
+  ],
+  "apply_requires": [
+    "N8N_API_BASE_URL",
+    "N8N_API_KEY"
+  ]
+}

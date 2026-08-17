@@ -85,13 +85,26 @@ function normalizeDecision(raw, embedded) {
 }
 
 function textOfOriginalRequest(inputValue) {
-  return String(inputValue?.input?.query || inputValue?.input?.message || inputValue?.chatInput || inputValue?.message || '').toLowerCase();
+  const sourceContext = inputValue?.context?.source_context || {};
+  return [
+    inputValue?.input?.query,
+    inputValue?.input?.message,
+    inputValue?.input?.manual_request,
+    inputValue?.chatInput,
+    inputValue?.message,
+    sourceContext.query,
+    sourceContext.message,
+  ].map((value) => String(value || '')).join(' ').toLowerCase();
 }
 
 function explicitSkillCreationIntent(text) {
   return /\\b(create|shape|design|generate|build|define)\\b[\\s\\S]{0,64}\\b(new\\s+)?(skill|agent|task-agent|task agent|subagent|sub-agent)\\b/i.test(text)
     || /\\b(new|additional)\\s+(skill|agent|task-agent|task agent|subagent|sub-agent)\\b/i.test(text)
     || /\\b(skill|agent|task-agent|task agent|subagent|sub-agent)\\b[\\s\\S]{0,64}\\b(create|shape|design|generate|build|define)\\b/i.test(text);
+}
+
+function directAnswerIntent(text) {
+  return /\\b(who are you|what are you|what is your purpose|purpose|introduce yourself|describe yourself)\\b/i.test(text);
 }
 
 function workArtifactIntent(text) {
@@ -101,20 +114,31 @@ function workArtifactIntent(text) {
 
 function inferDecision(inputValue) {
   const query = textOfOriginalRequest(inputValue);
+  if (directAnswerIntent(query)) return 'answer_direct';
   if (explicitSkillCreationIntent(query)) return 'create_skill';
   if (workArtifactIntent(query) || query.includes('activate_skill') || query.includes('project-management-support')) return 'activate_skill';
   if (/\\b(remember|ingest|upload|transcript|capture knowledge|save this|stage this|stage as|pending okf|okf evidence|source note|add this to knowledge)\\b/i.test(query)) return 'ingest_or_stage_knowledge';
   if (/\\b(retrieve|search|knowledge|context|what do we know|find in okf)\\b/i.test(query)) return 'retrieve_knowledge';
-  return 'answer_direct';
+  return '';
 }
 
-const embedded = safeJson(ai) || safeJson(aiText) || {};
+const embedded = safeJson(aiText) || safeJson(ai?.output) || safeJson(ai) || {};
 const actorRoute = normalizeDecision(null, embedded);
 const contextRoute = input.context?.route_decision || {};
 const inferredDecision = inferDecision(input);
-const decision = inferredDecision || actorRoute.decision || contextRoute.decision || 'answer_direct';
+const originalText = textOfOriginalRequest(input);
+const actorDecision = actorRoute.decision || '';
+const contextDecision = contextRoute.decision || '';
+const aiLooksEmpty = !String(aiText || '').trim() || String(aiText || '').trim() === '{}' || Object.keys(embedded || {}).length === 0;
+const staleContextForQuestion = contextDecision && contextDecision !== actorDecision && actorDecision === 'answer_direct';
+let decision = inferredDecision || actorDecision || contextDecision || 'answer_direct';
+if (directAnswerIntent(originalText)) decision = 'answer_direct';
+if (explicitSkillCreationIntent(originalText)) decision = 'create_skill';
+if (workArtifactIntent(originalText) && decision !== 'create_skill') decision = 'activate_skill';
+if (aiLooksEmpty && inferredDecision) decision = inferredDecision;
+if (staleContextForQuestion && !inferredDecision) decision = actorDecision;
 const delegationTarget = embedded.delegation?.target || embedded.delegate?.target_agent || null;
-const explicit = actorRoute.decision ? actorRoute : contextRoute;
+const explicit = inferredDecision ? {} : actorRoute.decision ? actorRoute : contextRoute;
 const targetAgent = delegationTarget || (['retrieve_knowledge','ingest_or_stage_knowledge'].includes(decision) ? 'knowledge_fabric_agent' : ['activate_skill','create_skill'].includes(decision) ? 'agentic_butler' : decision === 'request_human_clarification' ? 'human' : 'actor_twin');
 const intent = decision === 'activate_skill' ? 'activate_skill' : decision === 'create_skill' ? 'create_skill' : decision === 'ingest_or_stage_knowledge' ? 'ingest_concept' : decision === 'retrieve_knowledge' ? 'retrieve_context' : decision === 'request_human_clarification' ? 'clarify' : 'answer_question';
 
@@ -122,8 +146,8 @@ const routeDecision = {
   decision,
   target_agent: targetAgent,
   intent,
-  visible_state: explicit.visible_state || (decision === 'answer_direct' ? 'answering' : targetAgent === 'knowledge_fabric_agent' ? (decision === 'retrieve_knowledge' ? 'using_knowledge' : 'capturing_knowledge') : targetAgent === 'agentic_butler' ? 'activating_skill' : 'approval_required'),
-  approval_required: Boolean((decision === 'create_skill' && explicitSkillCreationIntent(textOfOriginalRequest(input))) || decision === 'request_human_clarification'),
+  visible_state: explicit.visible_state || (decision === 'create_skill' ? 'approval_required' : decision === 'answer_direct' ? 'answering' : targetAgent === 'knowledge_fabric_agent' ? (decision === 'retrieve_knowledge' ? 'using_knowledge' : 'capturing_knowledge') : targetAgent === 'agentic_butler' ? 'activating_skill' : 'approval_required'),
+  approval_required: Boolean((decision === 'create_skill' && explicitSkillCreationIntent(originalText)) || decision === 'request_human_clarification'),
   handoff_required: Boolean(explicit.handoff_required ?? (targetAgent !== 'actor_twin' && targetAgent !== 'human')),
   reason: explicit.reason || embedded.notes || 'Actor Twin route decision normalized for direct n8n orchestration.'
 };
@@ -188,6 +212,29 @@ function normalizeOutput(value) {
   return value;
 }
 
+function textOfOriginalRequest(inputValue) {
+  const sourceContext = inputValue?.context?.source_context || {};
+  return [
+    inputValue?.input?.query,
+    inputValue?.input?.message,
+    inputValue?.input?.manual_request,
+    inputValue?.chatInput,
+    inputValue?.message,
+    sourceContext.query,
+    sourceContext.message,
+  ].map((value) => String(value || '')).join(' ').toLowerCase();
+}
+
+function explicitSkillCreationIntent(text) {
+  return /\\b(create|shape|design|generate|build|define)\\b[\\s\\S]{0,64}\\b(new\\s+)?(skill|agent|task-agent|task agent|subagent|sub-agent)\\b/i.test(text)
+    || /\\b(new|additional)\\s+(skill|agent|task-agent|task agent|subagent|sub-agent)\\b/i.test(text)
+    || /\\b(skill|agent|task-agent|task agent|subagent|sub-agent)\\b[\\s\\S]{0,64}\\b(create|shape|design|generate|build|define)\\b/i.test(text);
+}
+
+function directAnswerIntent(text) {
+  return /\\b(who are you|what are you|what is your purpose|purpose|introduce yourself|describe yourself)\\b/i.test(text);
+}
+
 function outputAnswer(output) {
   if (output.email_draft?.subject) return output.summary || 'Drafted email: ' + output.email_draft.subject;
   if (output.todo_table?.length || output.todos?.length) return output.summary || 'Prepared the requested plan.';
@@ -197,10 +244,16 @@ function outputAnswer(output) {
 
 const delegateOutput = normalizeOutput(delegate?.output || delegate?.answer || delegate?.summary || null);
 const delegateApproval = delegate?.approval || delegateOutput.approval || {};
-const skillActivationApproval = route.decision === 'create_skill' || delegateApproval.gate === 'skill_spec_approval' || delegateApproval.gate === 'new_agent_approval';
+const originalText = textOfOriginalRequest(normalized.input || {});
+const explicitCreation = explicitSkillCreationIntent(originalText);
+const skillActivationApproval = route.decision === 'create_skill' && explicitCreation;
 const approvalRequired = Boolean(skillActivationApproval);
 const finalRoute = { ...route, approval_required: approvalRequired };
-const publicAnswer = delegate ? outputAnswer(delegateOutput) : (normalized.actor_answer_candidate || 'Actor Twin completed orchestration.');
+const actorCandidate = String(normalized.actor_answer_candidate || '').trim();
+const directFallback = directAnswerIntent(originalText)
+  ? 'I am the MeIDs Actor Twin: the user-facing decision and interaction layer. I answer from Florian\\'s persona and governed knowledge context, and I delegate background work only when a Knowledge Fabric or Agentic Butler capability is needed.'
+  : 'Actor Twin completed orchestration.';
+const publicAnswer = delegate ? outputAnswer(delegateOutput) : (actorCandidate && actorCandidate !== '{}' ? actorCandidate : directFallback);
 return [{ json: {
   envelope_version: normalized.input?.envelope_version || '0.1.0',
   request_id: normalized.request_id,
@@ -231,6 +284,11 @@ callKnowledge.parameters.url = knowledgeUrl;
 callKnowledge.notes = "UAT direct call to published Knowledge Fabric Agent. Replace with env var or backend proxy for production hardening.";
 callButler.parameters.url = butlerUrl;
 callButler.notes = "UAT direct call to published Agentic Butler. Replace with env var or backend proxy for production hardening.";
+switchByRoute.notes = "Routes direct answers locally, Knowledge Fabric work to the Knowledge Fabric Agent, and skill/work execution to Agentic Butler. Approval is handled after delegation, never as a pre-delegation stop.";
+switchByRoute.parameters.rules.values = (switchByRoute.parameters.rules.values || []).filter((rule) => {
+  const conditionText = JSON.stringify(rule);
+  return !conditionText.includes("route_decision.approval_required");
+});
 
 const workflow = {
   name: current.name || "MeIDs Actor Twin - staging",
@@ -254,7 +312,6 @@ const workflow = {
         [{ node: "Finalize Actor Twin response", type: "main", index: 0 }],
         [{ node: "Call Knowledge Fabric Agent", type: "main", index: 0 }],
         [{ node: "Call Agentic Butler", type: "main", index: 0 }],
-        [{ node: "Finalize Actor Twin response", type: "main", index: 0 }],
         [{ node: "Finalize Actor Twin response", type: "main", index: 0 }],
       ],
     },

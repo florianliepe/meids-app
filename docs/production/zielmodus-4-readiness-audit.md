@@ -80,7 +80,7 @@ Zielmodus 4 must remain open until these two live URL slots are provided and tes
 | Agent | Required key | Expected transition |
 | --- | --- | --- |
 | Knowledge Fabric Agent | `GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` or `n8nAgentWebhooks.knowledge_fabric_agent` | `awaiting_url` -> `configured` -> `n8n connected` after probe trace |
-| Agentic Butler | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` or `n8nAgentWebhooks.agentic_butler` | `awaiting_url` -> `configured` -> `n8n connected` after approval-gated skill probe trace |
+| Agentic Butler | `GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL` or `n8nAgentWebhooks.agentic_butler` | `awaiting_url` -> `configured` -> `n8n connected` after autonomous work-artifact probe trace |
 
 Do not mark these agents production-ready based only on fixtures. Required proof:
 

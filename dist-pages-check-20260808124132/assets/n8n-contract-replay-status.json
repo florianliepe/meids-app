@@ -1,0 +1,231 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-08T10:41:22.798Z",
+  "status": "passed",
+  "fixture_count": 3,
+  "case_count": 12,
+  "statuses": [
+    "documented",
+    "fixture ready",
+    "contract tested"
+  ],
+  "live_webhooks": {
+    "status": "not_configured",
+    "note": "Webhook URLs and secrets are intentionally excluded from public replay artifacts."
+  },
+  "agents": [
+    {
+      "agent_id": "actor_twin",
+      "agent_name": "Actor Twin",
+      "contract_version": "0.1.0",
+      "source": "contracts/n8n/fixtures/actor-twin.json",
+      "status": "passed",
+      "case_count": 4,
+      "tested_cases": [
+        "request",
+        "response",
+        "approval_required",
+        "failure"
+      ],
+      "statuses": [
+        "documented",
+        "fixture ready",
+        "contract tested",
+        "blocked"
+      ],
+      "live_status": "not_configured",
+      "live_status_label": "blocked",
+      "blocker": "Live n8n webhook is not configured in public fixture mode.",
+      "cases": [
+        {
+          "case": "request",
+          "status": "passed",
+          "request_id": "req_actor_twin_demo_001",
+          "checks": [
+            "intent",
+            "principal",
+            "input",
+            "approval_policy"
+          ]
+        },
+        {
+          "case": "response",
+          "status": "passed",
+          "request_id": "req_actor_twin_demo_001",
+          "trace_id": "trace_actor_twin_demo_001",
+          "checks": [
+            "completed_status",
+            "output_contract",
+            "trace"
+          ]
+        },
+        {
+          "case": "approval_required",
+          "status": "passed",
+          "request_id": "req_actor_twin_demo_approval_001",
+          "gate": "external_action",
+          "checks": [
+            "approval_required_status",
+            "human_gate",
+            "gate_name",
+            "proposed_action"
+          ]
+        },
+        {
+          "case": "failure",
+          "status": "passed",
+          "request_id": "req_actor_twin_demo_failure_001",
+          "error_code": "INSUFFICIENT_GROUNDED_CONTEXT",
+          "checks": [
+            "failed_status",
+            "error_code",
+            "error_message",
+            "recoverability"
+          ]
+        }
+      ]
+    },
+    {
+      "agent_id": "agentic_butler",
+      "agent_name": "Agentic Butler",
+      "contract_version": "0.1.0",
+      "source": "contracts/n8n/fixtures/agentic-butler.json",
+      "status": "passed",
+      "case_count": 4,
+      "tested_cases": [
+        "request",
+        "response",
+        "approval_required",
+        "failure"
+      ],
+      "statuses": [
+        "documented",
+        "fixture ready",
+        "contract tested",
+        "blocked"
+      ],
+      "live_status": "not_configured",
+      "live_status_label": "blocked",
+      "blocker": "Live n8n webhook is not configured in public fixture mode.",
+      "cases": [
+        {
+          "case": "request",
+          "status": "passed",
+          "request_id": "req_agentic_butler_demo_001",
+          "checks": [
+            "intent",
+            "principal",
+            "input",
+            "approval_policy"
+          ]
+        },
+        {
+          "case": "response",
+          "status": "passed",
+          "request_id": "req_agentic_butler_demo_001",
+          "trace_id": "trace_agentic_butler_demo_001",
+          "checks": [
+            "completed_status",
+            "output_contract",
+            "trace"
+          ]
+        },
+        {
+          "case": "approval_required",
+          "status": "passed",
+          "request_id": "req_agentic_butler_demo_approval_001",
+          "gate": "requires_human_action",
+          "checks": [
+            "approval_required_status",
+            "human_gate",
+            "gate_name",
+            "proposed_action"
+          ]
+        },
+        {
+          "case": "failure",
+          "status": "passed",
+          "request_id": "req_agentic_butler_demo_failure_001",
+          "error_code": "SKILL_NOT_APPROVED",
+          "checks": [
+            "failed_status",
+            "error_code",
+            "error_message",
+            "recoverability"
+          ]
+        }
+      ]
+    },
+    {
+      "agent_id": "knowledge_fabric_agent",
+      "agent_name": "Knowledge Fabric Agent",
+      "contract_version": "0.1.0",
+      "source": "contracts/n8n/fixtures/knowledge-fabric-agent.json",
+      "status": "passed",
+      "case_count": 4,
+      "tested_cases": [
+        "request",
+        "response",
+        "approval_required",
+        "failure"
+      ],
+      "statuses": [
+        "documented",
+        "fixture ready",
+        "contract tested",
+        "blocked"
+      ],
+      "live_status": "not_configured",
+      "live_status_label": "blocked",
+      "blocker": "Live n8n webhook is not configured in public fixture mode.",
+      "cases": [
+        {
+          "case": "request",
+          "status": "passed",
+          "request_id": "req_knowledge_fabric_demo_001",
+          "checks": [
+            "intent",
+            "principal",
+            "input",
+            "approval_policy"
+          ]
+        },
+        {
+          "case": "response",
+          "status": "passed",
+          "request_id": "req_knowledge_fabric_demo_001",
+          "trace_id": "trace_knowledge_fabric_demo_001",
+          "checks": [
+            "completed_status",
+            "output_contract",
+            "trace"
+          ]
+        },
+        {
+          "case": "approval_required",
+          "status": "passed",
+          "request_id": "req_knowledge_fabric_demo_approval_001",
+          "gate": "promote_to_approved",
+          "checks": [
+            "approval_required_status",
+            "human_gate",
+            "gate_name",
+            "proposed_action"
+          ]
+        },
+        {
+          "case": "failure",
+          "status": "passed",
+          "request_id": "req_knowledge_fabric_demo_failure_001",
+          "error_code": "INVALID_OKF_PAYLOAD",
+          "checks": [
+            "failed_status",
+            "error_code",
+            "error_message",
+            "recoverability"
+          ]
+        }
+      ]
+    }
+  ]
+}

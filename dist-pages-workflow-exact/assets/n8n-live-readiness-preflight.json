@@ -1,0 +1,126 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-17T10:56:50.934Z",
+  "status": "partial_live_url_blocked",
+  "boundary": "Public-safe preflight only. It validates local artifacts, URL slot status, and recorded probe evidence; it does not call n8n and does not contain secrets.",
+  "summary": {
+    "agent_count": 3,
+    "fixture_ready_count": 3,
+    "url_ready_count": 1,
+    "live_probe_ready_count": 2,
+    "zielmodus_status": "complete"
+  },
+  "agents": [
+    {
+      "agent_id": "actor_twin",
+      "agent_name": "Actor Twin",
+      "status": "ready",
+      "fixture": {
+        "status": "passed",
+        "case_count": 5,
+        "source": "contracts/n8n/fixtures/actor-twin.json"
+      },
+      "runtime_url": {
+        "status": "configured",
+        "configured": true,
+        "url_origin": "https://eraneos-agentic-platform.azurewebsites.net",
+        "github_pages_secret": "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
+        "next_action": "Run Actor Twin UAT and capture n8n trace evidence."
+      },
+      "live_probe": {
+        "status": "connected",
+        "connected": true,
+        "trace_id": "n8n_exec_16273",
+        "checked_at": "2026-08-11T16:09:59.306Z",
+        "next_action": "Run Actor Twin live probe and record returned trace id."
+      },
+      "commands": {
+        "set_url": "node scripts/set-n8n-agent-url.cjs --agent actor_twin --url https://YOUR-N8N-HOST/webhook/...",
+        "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent actor_twin --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
+      },
+      "blockers": []
+    },
+    {
+      "agent_id": "knowledge_fabric_agent",
+      "agent_name": "Knowledge Fabric Agent",
+      "status": "blocked",
+      "fixture": {
+        "status": "passed",
+        "case_count": 5,
+        "source": "contracts/n8n/fixtures/knowledge-fabric-agent.json"
+      },
+      "runtime_url": {
+        "status": "internal_tool_via_actor_twin",
+        "configured": false,
+        "url_origin": "",
+        "github_pages_secret": "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+        "next_action": "Verify the Actor Twin n8n workflow has the Knowledge Fabric workflow tool connected and published."
+      },
+      "live_probe": {
+        "status": "connected",
+        "connected": true,
+        "trace_id": "n8n_exec_16274",
+        "checked_at": "2026-08-11T16:09:59.387Z",
+        "next_action": "Run Knowledge Fabric Agent live probe and record returned trace id."
+      },
+      "commands": {
+        "set_url": "node scripts/set-n8n-agent-url.cjs --agent knowledge_fabric_agent --url https://YOUR-N8N-HOST/webhook/...",
+        "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent knowledge_fabric_agent --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
+      },
+      "blockers": [
+        "live_url_missing"
+      ]
+    },
+    {
+      "agent_id": "agentic_butler",
+      "agent_name": "Agentic Butler",
+      "status": "blocked",
+      "fixture": {
+        "status": "passed",
+        "case_count": 6,
+        "source": "contracts/n8n/fixtures/agentic-butler.json"
+      },
+      "runtime_url": {
+        "status": "internal_tool_via_actor_twin",
+        "configured": false,
+        "url_origin": "",
+        "github_pages_secret": "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+        "next_action": "Verify the Actor Twin n8n workflow has the Agentic Butler workflow tool connected and published."
+      },
+      "live_probe": {
+        "status": "awaiting_probe",
+        "connected": false,
+        "trace_id": "",
+        "checked_at": "2026-08-13T14:26:23.632Z",
+        "next_action": "Run Agentic Butler live probe and record returned trace id."
+      },
+      "commands": {
+        "set_url": "node scripts/set-n8n-agent-url.cjs --agent agentic_butler --url https://YOUR-N8N-HOST/webhook/...",
+        "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent agentic_butler --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
+      },
+      "blockers": [
+        "live_url_missing",
+        "live_probe_evidence_missing"
+      ]
+    }
+  ],
+  "next_actions": [
+    {
+      "agent_id": "knowledge_fabric_agent",
+      "blockers": [
+        "live_url_missing"
+      ],
+      "set_url": "node scripts/set-n8n-agent-url.cjs --agent knowledge_fabric_agent --url https://YOUR-N8N-HOST/webhook/...",
+      "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent knowledge_fabric_agent --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
+    },
+    {
+      "agent_id": "agentic_butler",
+      "blockers": [
+        "live_url_missing",
+        "live_probe_evidence_missing"
+      ],
+      "set_url": "node scripts/set-n8n-agent-url.cjs --agent agentic_butler --url https://YOUR-N8N-HOST/webhook/...",
+      "record_probe_evidence": "node scripts/record-n8n-live-probe-evidence.cjs --agent agentic_butler --trace-id TRACE_ID --execution-url https://YOUR-N8N-HOST/workflow/.../executions/... --response-status completed"
+    }
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-12T11:49:30.918Z",
+  "status": "orchestration_blueprint_ready",
+  "orchestration_model": {
+    "phase": "uat_n8n_direct_orchestration",
+    "key_point": "Actor Twin is the decision authority, not the worker. It decides what should happen, delegates execution to Knowledge Fabric Agent or Agentic Butler, then reviews and shapes the returned result before responding to the user.",
+    "target_pattern": "Actor Twin workflow calls Knowledge Fabric Agent and Agentic Butler workflows directly through n8n HTTP Request or Execute Workflow nodes.",
+    "production_hardening_later": "Move delegation through backend proxy endpoints after hosted secret storage, durable trace persistence, and approval resume are active.",
+    "delegated_agents": [
+      {
+        "agent_id": "knowledge_fabric_agent",
+        "called_for": [
+          "retrieve_knowledge",
+          "ingest_or_stage_knowledge"
+        ],
+        "call_method": "n8n_http_request_or_execute_workflow",
+        "webhook_env": "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL"
+      },
+      {
+        "agent_id": "agentic_butler",
+        "called_for": [
+          "activate_skill",
+          "create_skill"
+        ],
+        "call_method": "n8n_http_request_or_execute_workflow",
+        "webhook_env": "N8N_AGENTIC_BUTLER_WEBHOOK_URL"
+      }
+    ]
+  },
+  "key_point": "Actor Twin is the decision authority, not the worker. It decides what should happen, delegates execution to Knowledge Fabric Agent or Agentic Butler, then reviews and shapes the returned result before responding to the user.",
+  "summary": {
+    "delegated_route_count": 4,
+    "required_node_count": 8,
+    "missing_node_count": 0,
+    "required_step_count": 8,
+    "missing_step_count": 0,
+    "required_env_count": 2,
+    "missing_env_count": 0,
+    "direct_n8n_orchestration_ready_for_uat": true,
+    "backend_orchestration_deferred_for_hardening": true
+  },
+  "cockpit_indicators": [
+    {
+      "key": "actor_twin_decision_authority",
+      "label": "Actor Twin decision authority",
+      "status": "documented",
+      "detail": "Actor Twin decides, delegates, reviews, and shapes final response.",
+      "artifact": "contracts/n8n/fixtures/actor-twin-routing.json"
+    },
+    {
+      "key": "knowledge_fabric_direct_call",
+      "label": "Knowledge Fabric direct call",
+      "status": "fixture_ready",
+      "detail": "Actor Twin can call Knowledge Fabric for retrieval and source staging.",
+      "artifact": "workflows/n8n/implementations/actor-twin-direct-orchestrator.workflow.json"
+    },
+    {
+      "key": "agentic_butler_direct_call",
+      "label": "Agentic Butler direct call",
+      "status": "fixture_ready",
+      "detail": "Actor Twin can call Agentic Butler for skill activation and skill creation.",
+      "artifact": "workflows/n8n/implementations/actor-twin-direct-orchestrator.workflow.json"
+    },
+    {
+      "key": "backend_orchestration_hardening",
+      "label": "Backend orchestration hardening",
+      "status": "deferred",
+      "detail": "Backend proxy orchestration remains the later production-hardening step.",
+      "artifact": "docs/production/agent-backend-proxy.md"
+    }
+  ],
+  "required_nodes": [
+    "Receive request",
+    "Actor Twin AI Agent",
+    "Normalize route decision",
+    "Switch by route",
+    "Call Knowledge Fabric Agent",
+    "Call Agentic Butler",
+    "Finalize Actor Twin response",
+    "Return JSON"
+  ],
+  "missing_nodes": [],
+  "required_steps": [
+    "Receive Chat request.",
+    "Actor Twin AI Agent generates route_decision.",
+    "If answer_direct, answer directly.",
+    "If retrieve_knowledge or ingest_or_stage_knowledge, call Knowledge Fabric Agent workflow directly.",
+    "If activate_skill or create_skill, call Agentic Butler workflow directly.",
+    "Normalize returned delegate output.",
+    "Persist full trace chain.",
+    "Return final Actor Twin response/status to frontend."
+  ],
+  "missing_steps": [],
+  "required_n8n_environment_variables": [
+    "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+    "N8N_AGENTIC_BUTLER_WEBHOOK_URL"
+  ],
+  "missing_environment_references": [],
+  "artifacts": {
+    "routing_fixture": "contracts/n8n/fixtures/actor-twin-routing.json",
+    "direct_orchestrator_blueprint": "workflows/n8n/implementations/actor-twin-direct-orchestrator.workflow.json"
+  },
+  "next_actions": [
+    "Apply the direct-orchestrator blueprint to the live Actor Twin workflow.",
+    "Set N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL and N8N_AGENTIC_BUTLER_WEBHOOK_URL in the n8n runtime environment.",
+    "Run live UAT for answer_direct, retrieve_knowledge, ingest_or_stage_knowledge, activate_skill, create_skill, and clarification routes.",
+    "Capture full actor-to-delegate trace chains in the Review/Traces cockpit.",
+    "Move delegation to backend proxy after hosted secret storage and durable persistence are active."
+  ]
+}

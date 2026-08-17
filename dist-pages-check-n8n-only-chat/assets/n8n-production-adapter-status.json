@@ -1,0 +1,59 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-11T12:38:11.210Z",
+  "status": "adapter_contract_ready",
+  "boundary": "Public-safe status. It validates production adapter response examples and does not call n8n or include webhook URLs.",
+  "schema": "contracts/n8n/schemas/agent-response.schema.json",
+  "validation": {
+    "status": "passed",
+    "exit_code": 0,
+    "stdout": "n8n response adapter validation passed: 4 examples",
+    "stderr": ""
+  },
+  "summary": {
+    "example_count": 4,
+    "status_count": 3,
+    "required_status_count": 3,
+    "production_adapter_ready": true
+  },
+  "examples": [
+    {
+      "path": "contracts/n8n/adapter-examples/actor-twin-completed.json",
+      "agent_id": "actor_twin",
+      "status": "completed",
+      "has_trace": true,
+      "approval_gate": null,
+      "error_code": null
+    },
+    {
+      "path": "contracts/n8n/adapter-examples/agentic-butler-approval-required.json",
+      "agent_id": "agentic_butler",
+      "status": "approval_required",
+      "has_trace": true,
+      "approval_gate": "requires_human_action",
+      "error_code": null
+    },
+    {
+      "path": "contracts/n8n/adapter-examples/failed-invalid-payload.json",
+      "agent_id": "knowledge_fabric_agent",
+      "status": "failed",
+      "has_trace": false,
+      "approval_gate": null,
+      "error_code": "INVALID_CONTRACT_PAYLOAD"
+    },
+    {
+      "path": "contracts/n8n/adapter-examples/knowledge-fabric-completed.json",
+      "agent_id": "knowledge_fabric_agent",
+      "status": "completed",
+      "has_trace": true,
+      "approval_gate": null,
+      "error_code": null
+    }
+  ],
+  "next_actions": [
+    "Patch each live n8n workflow to run raw AI output through the production adapter normalizer.",
+    "Add a failure fallback branch that returns INVALID_CONTRACT_PAYLOAD when adapter normalization fails.",
+    "Re-run live probes and record new trace IDs after adapter patching.",
+    "Only then connect Knowledge Fabric writes and Agentic Butler trace persistence to durable stores."
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "status": "prepared",
+  "agent_id": "agentic_butler",
+  "label": "Agentic Butler",
+  "workflow_id": null,
+  "source": "workflows/n8n/import-ready/agentic-butler.ai-agent.import.json",
+  "payload": "exports/n8n-live-backups/20260817T142250Z-agentic_butler-ai-agent/agentic_butler.update-payload.json",
+  "node_count": 5,
+  "nodes": [
+    "Receive request",
+    "Contract response normalizer",
+    "Return JSON",
+    "Agentic Butler Chat Model",
+    "Agentic Butler AI Agent"
+  ],
+  "apply_requires": [
+    "N8N_API_BASE_URL",
+    "N8N_API_KEY",
+    "N8N_AGENTIC_BUTLER_WORKFLOW_ID"
+  ]
+}

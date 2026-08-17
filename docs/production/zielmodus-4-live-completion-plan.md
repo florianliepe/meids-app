@@ -57,7 +57,7 @@ node scripts\validate-zielmodus-4-readiness.cjs --require-live
 4. Run live probes:
    - Actor Twin: answer-only query with trace response.
    - Knowledge Fabric Agent: no-write upload/transcript ingest fixture.
-   - Agentic Butler: approval-required skill activation fixture.
+   - Agentic Butler: autonomous no-write work-artifact fixture.
 5. Record public-safe live evidence:
 
 ```powershell
@@ -79,7 +79,7 @@ node scripts\record-n8n-live-probe-evidence.cjs `
   --agent agentic_butler `
   --trace-id "TRACE_ID_FROM_N8N" `
   --execution-url "https://YOUR-N8N-HOST/workflow/.../executions/..." `
-  --response-status approval_required `
+  --response-status completed `
   --url-source github-pages-secret
 ```
 

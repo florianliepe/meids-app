@@ -1,0 +1,32 @@
+window.INTELLECTUAL_TWIN_CONFIG = {
+  apiBaseUrl: "",
+  assetBaseUrl: "",
+  n8nChatWebhookUrl: "",
+  n8nActorTwinWebhookUrl: "",
+  n8nKnowledgeFabricWebhookUrl: "",
+  n8nAgenticButlerWebhookUrl: "",
+  n8nAgentWebhooks: {
+    actor_twin: "",
+    knowledge_fabric_agent: "",
+    agentic_butler: ""
+  },
+  n8nAgentProbeSlots: {
+    actor_twin: {
+      status: "awaiting_url",
+      probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
+      next_action: "Set GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL or GH_PAGES_N8N_CHAT_WEBHOOK_URL."
+    },
+    knowledge_fabric_agent: {
+      status: "awaiting_url",
+      probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
+      next_action: "Set GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL."
+    },
+    agentic_butler: {
+      status: "awaiting_url",
+      probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
+      next_action: "Set GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL."
+    }
+  },
+  n8nChatEnabled: false,
+  staticPagesMode: true
+};

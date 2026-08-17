@@ -1,0 +1,113 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-17T13:04:51.519Z",
+  "status": "routing_contract_ready",
+  "summary": {
+    "route_count": 6,
+    "required_route_count": 6,
+    "fixture_ready_count": 6,
+    "delegation_target_count": 4,
+    "approval_gate_active": true,
+    "chat_diagnostics_policy": "cockpit_only",
+    "chat_manual_agent_activation_disabled": true
+  },
+  "cockpit_indicators": [
+    {
+      "key": "actor_twin_routing_contract",
+      "label": "Actor Twin routing contract",
+      "status": "fixture_ready",
+      "detail": "6/6 route decisions covered.",
+      "artifact": "contracts/n8n/fixtures/actor-twin-routing.json"
+    },
+    {
+      "key": "knowledge_fabric_delegation",
+      "label": "Knowledge Fabric delegation",
+      "status": "fixture_ready",
+      "detail": "Retrieval and source staging routes target Knowledge Fabric Agent.",
+      "artifact": "contracts/n8n/fixtures/actor-twin-routing.json"
+    },
+    {
+      "key": "agentic_butler_activation",
+      "label": "Agentic Butler skill activation",
+      "status": "fixture_ready",
+      "detail": "Approved skill activation is routed through Agentic Butler.",
+      "artifact": "contracts/n8n/fixtures/actor-twin-routing.json"
+    },
+    {
+      "key": "agentic_butler_skill_creation",
+      "label": "Agentic Butler skill creation",
+      "status": "fixture_ready",
+      "detail": "New skill creation routes to elicitation/decomposition with pending approval.",
+      "artifact": "contracts/n8n/fixtures/actor-twin-routing.json"
+    },
+    {
+      "key": "approval_gate_active",
+      "label": "Approval gate active",
+      "status": "fixture_ready",
+      "detail": "Clarification and generated skill approval gates are represented in the route contract.",
+      "artifact": "contracts/n8n/fixtures/actor-twin-routing.json"
+    }
+  ],
+  "routes": [
+    {
+      "route": "answer_direct",
+      "status": "fixture_ready",
+      "case_id": "route_answer_direct",
+      "target_agent": "actor_twin",
+      "intent": "answer_question",
+      "visible_state": "answering",
+      "approval_required": false,
+      "fixture_path": "contracts/n8n/fixtures/actor-twin-routing.json"
+    },
+    {
+      "route": "retrieve_knowledge",
+      "status": "fixture_ready",
+      "case_id": "route_retrieve_knowledge",
+      "target_agent": "knowledge_fabric_agent",
+      "intent": "retrieve_context",
+      "visible_state": "using_knowledge",
+      "approval_required": false,
+      "fixture_path": "contracts/n8n/fixtures/actor-twin-routing.json"
+    },
+    {
+      "route": "ingest_or_stage_knowledge",
+      "status": "fixture_ready",
+      "case_id": "route_ingest_or_stage_knowledge",
+      "target_agent": "knowledge_fabric_agent",
+      "intent": "ingest_concept",
+      "visible_state": "using_knowledge",
+      "approval_required": false,
+      "fixture_path": "contracts/n8n/fixtures/actor-twin-routing.json"
+    },
+    {
+      "route": "activate_skill",
+      "status": "fixture_ready",
+      "case_id": "route_activate_skill",
+      "target_agent": "agentic_butler",
+      "intent": "activate_skill",
+      "visible_state": "activating_skill",
+      "approval_required": false,
+      "fixture_path": "contracts/n8n/fixtures/actor-twin-routing.json"
+    },
+    {
+      "route": "create_skill",
+      "status": "fixture_ready",
+      "case_id": "route_create_skill",
+      "target_agent": "agentic_butler",
+      "intent": "create_skill",
+      "visible_state": "drafting_new_skill",
+      "approval_required": true,
+      "fixture_path": "contracts/n8n/fixtures/actor-twin-routing.json"
+    },
+    {
+      "route": "request_human_clarification",
+      "status": "fixture_ready",
+      "case_id": "route_request_human_clarification",
+      "target_agent": "human",
+      "intent": "clarify_request",
+      "visible_state": "approval_required",
+      "approval_required": true,
+      "fixture_path": "contracts/n8n/fixtures/actor-twin-routing.json"
+    }
+  ]
+}

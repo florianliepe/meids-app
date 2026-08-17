@@ -1,0 +1,62 @@
+{
+  "schema_version": "0.1.0",
+  "source_fixture": "contracts/n8n/fixtures/agentic-butler.json",
+  "agent_id": "agentic_butler",
+  "agent_name": "Agentic Butler",
+  "contract_version": "0.1.0",
+  "live_probe": {
+    "envelope_version": "0.1.0",
+    "request_id": "req_agentic_butler_live_probe_001",
+    "agent_id": "agentic_butler",
+    "intent": "live_probe",
+    "principal": {
+      "twin_id": "florian",
+      "display_name": "Florian"
+    },
+    "input": {
+      "execute": false,
+      "skill_id": "project-management-support-steering",
+      "manual_trigger": true,
+      "source_summary": "Public-safe Agentic Butler readiness probe. Do not create meetings or send messages."
+    },
+    "context": {
+      "expected_capabilities": [
+        "approved_skill_validation",
+        "internal_skill_orchestrator_boundary",
+        "actor_twin_checkpoint",
+        "approval_gate_detection",
+        "trace_response"
+      ],
+      "skill_orchestrator": "internal_component",
+      "side_effect_policy": "no_write_probe"
+    },
+    "approval": {
+      "required": false,
+      "reason": "Readiness probe only; no durable action or external side effect."
+    },
+    "expected_response": {
+      "status": "approval_required",
+      "approval": {
+        "required": true,
+        "gate": "requires_human_action",
+        "summary": "The approval-gated skill activation probe must stop before any external action.",
+        "proposed_action": "Prepare a skill activation plan but pause before sending messages, creating meetings, or writing to external systems."
+      },
+      "output": {
+        "readiness": "connected",
+        "side_effects": "none",
+        "capabilities_checked": [
+          "approved_skill_validation",
+          "internal_skill_orchestrator_boundary",
+          "actor_twin_checkpoint",
+          "approval_gate_detection",
+          "trace_response"
+        ]
+      },
+      "trace": {
+        "stored": true,
+        "trace_id_required": true
+      }
+    }
+  }
+}

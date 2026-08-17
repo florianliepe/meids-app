@@ -1,0 +1,432 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-11T15:54:44.684Z",
+  "status": "passed",
+  "fixture_count": 3,
+  "case_count": 16,
+  "statuses": [
+    "documented",
+    "fixture ready",
+    "contract tested"
+  ],
+  "live_webhooks": {
+    "status": "not_configured",
+    "note": "Webhook URLs and secrets are intentionally excluded from public replay artifacts."
+  },
+  "agents": [
+    {
+      "agent_id": "actor_twin",
+      "agent_name": "Actor Twin",
+      "contract_version": "0.1.0",
+      "source": "contracts/n8n/fixtures/actor-twin.json",
+      "status": "passed",
+      "case_count": 5,
+      "tested_cases": [
+        "request",
+        "response",
+        "approval_required",
+        "failure",
+        "live_probe"
+      ],
+      "statuses": [
+        "documented",
+        "fixture ready",
+        "contract tested",
+        "blocked"
+      ],
+      "live_status": "not_configured",
+      "live_status_label": "blocked",
+      "blocker": "Live n8n webhook is not configured in public fixture mode.",
+      "live_probe_payload": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_actor_twin_live_probe_001",
+        "agent_id": "actor_twin",
+        "intent": "live_probe",
+        "principal": {
+          "twin_id": "florian",
+          "display_name": "Florian"
+        },
+        "input": {
+          "execute": false,
+          "query": "Public-safe Actor Twin readiness probe. Do not use private knowledge.",
+          "mode": "contract_probe"
+        },
+        "context": {
+          "expected_capabilities": [
+            "intent_interpretation",
+            "approved_first_retrieval_policy",
+            "citation_contract",
+            "approval_boundary_detection",
+            "trace_response"
+          ],
+          "side_effect_policy": "no_write_probe"
+        },
+        "approval": {
+          "required": false,
+          "reason": "Readiness probe only; no external action."
+        },
+        "expected_response": {
+          "status": "completed",
+          "output": {
+            "readiness": "connected",
+            "side_effects": "none",
+            "capabilities_checked": [
+              "intent_interpretation",
+              "approved_first_retrieval_policy",
+              "citation_contract",
+              "approval_boundary_detection",
+              "trace_response"
+            ]
+          },
+          "trace": {
+            "stored": true,
+            "trace_id_required": true
+          }
+        }
+      },
+      "cases": [
+        {
+          "case": "request",
+          "status": "passed",
+          "request_id": "req_actor_twin_demo_001",
+          "checks": [
+            "intent",
+            "principal",
+            "input",
+            "approval_policy"
+          ]
+        },
+        {
+          "case": "response",
+          "status": "passed",
+          "request_id": "req_actor_twin_demo_001",
+          "trace_id": "trace_actor_twin_demo_001",
+          "checks": [
+            "completed_status",
+            "output_contract",
+            "trace"
+          ]
+        },
+        {
+          "case": "approval_required",
+          "status": "passed",
+          "request_id": "req_actor_twin_demo_approval_001",
+          "gate": "external_action",
+          "checks": [
+            "approval_required_status",
+            "human_gate",
+            "gate_name",
+            "proposed_action"
+          ]
+        },
+        {
+          "case": "failure",
+          "status": "passed",
+          "request_id": "req_actor_twin_demo_failure_001",
+          "error_code": "INSUFFICIENT_GROUNDED_CONTEXT",
+          "checks": [
+            "failed_status",
+            "error_code",
+            "error_message",
+            "recoverability"
+          ]
+        },
+        {
+          "case": "live_probe",
+          "status": "passed",
+          "request_id": "req_actor_twin_live_probe_001",
+          "checks": [
+            "live_probe_intent",
+            "no_execution",
+            "no_write_boundary",
+            "capability_contract",
+            "trace_required"
+          ]
+        }
+      ]
+    },
+    {
+      "agent_id": "agentic_butler",
+      "agent_name": "Agentic Butler",
+      "contract_version": "0.1.0",
+      "source": "contracts/n8n/fixtures/agentic-butler.json",
+      "status": "passed",
+      "case_count": 6,
+      "tested_cases": [
+        "request",
+        "response",
+        "approval_required",
+        "failure",
+        "create_skill",
+        "live_probe"
+      ],
+      "statuses": [
+        "documented",
+        "fixture ready",
+        "contract tested",
+        "blocked"
+      ],
+      "live_status": "not_configured",
+      "live_status_label": "blocked",
+      "blocker": "Live n8n webhook is not configured in public fixture mode.",
+      "live_probe_payload": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_agentic_butler_live_probe_001",
+        "agent_id": "agentic_butler",
+        "intent": "live_probe",
+        "principal": {
+          "twin_id": "florian",
+          "display_name": "Florian"
+        },
+        "input": {
+          "execute": false,
+          "skill_id": "project-management-support-steering",
+          "manual_trigger": true,
+          "source_summary": "Public-safe Agentic Butler readiness probe. Do not create meetings or send messages."
+        },
+        "context": {
+          "expected_capabilities": [
+            "approved_skill_validation",
+            "internal_skill_orchestrator_boundary",
+            "actor_twin_checkpoint",
+            "approval_gate_detection",
+            "trace_response"
+          ],
+          "skill_orchestrator": "internal_component",
+          "side_effect_policy": "no_write_probe"
+        },
+        "approval": {
+          "required": false,
+          "reason": "Readiness probe only; no durable action or external side effect."
+        },
+        "expected_response": {
+          "status": "approval_required",
+          "approval": {
+            "required": true,
+            "gate": "requires_human_action",
+            "summary": "The approval-gated skill activation probe must stop before any external action.",
+            "proposed_action": "Prepare a skill activation plan but pause before sending messages, creating meetings, or writing to external systems."
+          },
+          "output": {
+            "readiness": "connected",
+            "side_effects": "none",
+            "capabilities_checked": [
+              "approved_skill_validation",
+              "internal_skill_orchestrator_boundary",
+              "actor_twin_checkpoint",
+              "approval_gate_detection",
+              "trace_response"
+            ]
+          },
+          "trace": {
+            "stored": true,
+            "trace_id_required": true
+          }
+        }
+      },
+      "cases": [
+        {
+          "case": "request",
+          "status": "passed",
+          "request_id": "req_agentic_butler_demo_001",
+          "checks": [
+            "intent",
+            "principal",
+            "input",
+            "approval_policy"
+          ]
+        },
+        {
+          "case": "response",
+          "status": "passed",
+          "request_id": "req_agentic_butler_demo_001",
+          "trace_id": "trace_agentic_butler_demo_001",
+          "checks": [
+            "completed_status",
+            "output_contract",
+            "trace"
+          ]
+        },
+        {
+          "case": "approval_required",
+          "status": "passed",
+          "request_id": "req_agentic_butler_demo_approval_001",
+          "gate": "requires_human_action",
+          "checks": [
+            "approval_required_status",
+            "human_gate",
+            "gate_name",
+            "proposed_action"
+          ]
+        },
+        {
+          "case": "failure",
+          "status": "passed",
+          "request_id": "req_agentic_butler_demo_failure_001",
+          "error_code": "SKILL_NOT_APPROVED",
+          "checks": [
+            "failed_status",
+            "error_code",
+            "error_message",
+            "recoverability"
+          ]
+        },
+        {
+          "case": "create_skill",
+          "status": "passed",
+          "request_id": "req_agentic_butler_create_skill_001",
+          "gate": "skill_spec_approval",
+          "checks": [
+            "create_skill_intent",
+            "human_approval_required",
+            "no_auto_approval",
+            "pending_approval_status"
+          ]
+        },
+        {
+          "case": "live_probe",
+          "status": "passed",
+          "request_id": "req_agentic_butler_live_probe_001",
+          "checks": [
+            "live_probe_intent",
+            "no_execution",
+            "no_write_boundary",
+            "capability_contract",
+            "trace_required"
+          ]
+        }
+      ]
+    },
+    {
+      "agent_id": "knowledge_fabric_agent",
+      "agent_name": "Knowledge Fabric Agent",
+      "contract_version": "0.1.0",
+      "source": "contracts/n8n/fixtures/knowledge-fabric-agent.json",
+      "status": "passed",
+      "case_count": 5,
+      "tested_cases": [
+        "request",
+        "response",
+        "approval_required",
+        "failure",
+        "live_probe"
+      ],
+      "statuses": [
+        "documented",
+        "fixture ready",
+        "contract tested",
+        "blocked"
+      ],
+      "live_status": "not_configured",
+      "live_status_label": "blocked",
+      "blocker": "Live n8n webhook is not configured in public fixture mode.",
+      "live_probe_payload": {
+        "envelope_version": "0.1.0",
+        "request_id": "req_knowledge_fabric_live_probe_001",
+        "agent_id": "knowledge_fabric_agent",
+        "intent": "live_probe",
+        "principal": {
+          "twin_id": "florian",
+          "display_name": "Florian"
+        },
+        "input": {
+          "execute": false,
+          "source_type": "probe",
+          "content": "Public-safe Knowledge Fabric readiness probe. Do not store as trusted knowledge."
+        },
+        "context": {
+          "expected_capabilities": [
+            "okf_pending_concept_contract",
+            "evidence_storage_contract",
+            "crud_audit_contract",
+            "graph_candidate_trigger_contract",
+            "vector_refresh_boundary"
+          ],
+          "side_effect_policy": "no_write_probe"
+        },
+        "approval": {
+          "required": false,
+          "reason": "Readiness probe only; no durable knowledge write."
+        },
+        "expected_response": {
+          "status": "completed",
+          "output": {
+            "readiness": "connected",
+            "side_effects": "none",
+            "capabilities_checked": [
+              "okf_pending_concept_contract",
+              "evidence_storage_contract",
+              "crud_audit_contract",
+              "graph_candidate_trigger_contract",
+              "vector_refresh_boundary"
+            ]
+          },
+          "trace": {
+            "stored": true,
+            "trace_id_required": true
+          }
+        }
+      },
+      "cases": [
+        {
+          "case": "request",
+          "status": "passed",
+          "request_id": "req_knowledge_fabric_demo_001",
+          "checks": [
+            "intent",
+            "principal",
+            "input",
+            "approval_policy"
+          ]
+        },
+        {
+          "case": "response",
+          "status": "passed",
+          "request_id": "req_knowledge_fabric_demo_001",
+          "trace_id": "trace_knowledge_fabric_demo_001",
+          "checks": [
+            "completed_status",
+            "output_contract",
+            "trace"
+          ]
+        },
+        {
+          "case": "approval_required",
+          "status": "passed",
+          "request_id": "req_knowledge_fabric_demo_approval_001",
+          "gate": "promote_to_approved",
+          "checks": [
+            "approval_required_status",
+            "human_gate",
+            "gate_name",
+            "proposed_action"
+          ]
+        },
+        {
+          "case": "failure",
+          "status": "passed",
+          "request_id": "req_knowledge_fabric_demo_failure_001",
+          "error_code": "INVALID_OKF_PAYLOAD",
+          "checks": [
+            "failed_status",
+            "error_code",
+            "error_message",
+            "recoverability"
+          ]
+        },
+        {
+          "case": "live_probe",
+          "status": "passed",
+          "request_id": "req_knowledge_fabric_live_probe_001",
+          "checks": [
+            "live_probe_intent",
+            "no_execution",
+            "no_write_boundary",
+            "capability_contract",
+            "trace_required"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -19,7 +19,7 @@ const agents = {
   agentic_butler: {
     name: "Agentic Butler",
     topLevelKey: "n8nAgenticButlerWebhookUrl",
-    nextAction: "Run Agentic Butler UAT with approval-gated skill activation fixture.",
+    nextAction: "Run Agentic Butler UAT with autonomous no-write work-artifact fixture.",
   },
 };
 

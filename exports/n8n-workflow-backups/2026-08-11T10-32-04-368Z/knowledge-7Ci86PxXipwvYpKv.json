@@ -1,0 +1,213 @@
+{
+  "updatedAt": "2026-08-06T20:21:06.252Z",
+  "createdAt": "2026-08-06T20:13:23.978Z",
+  "id": "7Ci86PxXipwvYpKv",
+  "name": "MeIDs Knowledge Fabric Agent - staging",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meids/knowledge-fabric/ingest",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "meids-knowledge-fabric-ingest-webhook",
+      "name": "Receive request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "6323bd9c-42ee-4a9c-8bf1-93c27fc1ff16"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst operation = body.operation || (body.delete ? 'delete' : body.content || body.file ? 'upsert' : 'inspect');\nconst approved = body.approval_state === 'approved' || body.status === 'approved';\nreturn [{ json: {\n  status: 'staging_ready',\n  agent: 'Knowledge Fabric Agent',\n  contract_version: '2026-08-06.2',\n  role: 'Owns OKF markdown/YAML storage, CRUD audit, source evidence, and downstream indexing triggers.',\n  operation,\n  write_policy: {\n    markdown_yaml_source_of_truth: true,\n    destructive_delete_requires_trace: true,\n    approved_concepts_feed_vector_db: approved,\n    drafts_feed_vector_db: Boolean(body.allow_pending_index)\n  },\n  downstream: [\n    { agent: 'Graph Curator Agent', trigger: ['approved', 'relationship_changed', 'bulk_rebuild'] },\n    { system: 'Vector DB', trigger: ['approved', 'selected_pending'], state: 'blocked_until_credentials' },\n    { repo: 'meids-knowledge-fabric', trigger: ['upsert', 'delete', 'audit_export'] }\n  ],\n  received: body,\n  next: 'Attach GitHub writeback, markdown/YAML validation, vector refresh, and graph projection nodes.'\n} }];"
+      },
+      "id": "meids-knowledge-fabric-ingest-contract",
+      "name": "Staging contract response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "meids-knowledge-fabric-ingest-respond",
+      "name": "Return JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Receive request": {
+      "main": [
+        [
+          {
+            "node": "Staging contract response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Staging contract response": {
+      "main": [
+        [
+          {
+            "node": "Return JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "9cfada33-d11d-416b-b9a5-70f15df78f58",
+  "activeVersionId": "9cfada33-d11d-416b-b9a5-70f15df78f58",
+  "versionCounter": 2,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-08-06T20:13:23.978Z",
+      "createdAt": "2026-08-06T20:13:23.978Z",
+      "role": "workflow:owner",
+      "workflowId": "7Ci86PxXipwvYpKv",
+      "projectId": "tYB0YoTCoB3cCCKR",
+      "project": {
+        "updatedAt": "2025-10-17T10:11:05.323Z",
+        "createdAt": "2025-10-17T09:54:54.577Z",
+        "id": "tYB0YoTCoB3cCCKR",
+        "name": "Florian Liepe <florian.liepe@eraneos.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "b0b4b717-4904-480b-957e-10bac7530ca1"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-08-06T20:21:06.255Z",
+    "createdAt": "2026-08-06T20:21:06.255Z",
+    "versionId": "9cfada33-d11d-416b-b9a5-70f15df78f58",
+    "workflowId": "7Ci86PxXipwvYpKv",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "meids/knowledge-fabric/ingest",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "id": "meids-knowledge-fabric-ingest-webhook",
+        "name": "Receive request",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          0
+        ],
+        "webhookId": "6323bd9c-42ee-4a9c-8bf1-93c27fc1ff16"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst operation = body.operation || (body.delete ? 'delete' : body.content || body.file ? 'upsert' : 'inspect');\nconst approved = body.approval_state === 'approved' || body.status === 'approved';\nreturn [{ json: {\n  status: 'staging_ready',\n  agent: 'Knowledge Fabric Agent',\n  contract_version: '2026-08-06.2',\n  role: 'Owns OKF markdown/YAML storage, CRUD audit, source evidence, and downstream indexing triggers.',\n  operation,\n  write_policy: {\n    markdown_yaml_source_of_truth: true,\n    destructive_delete_requires_trace: true,\n    approved_concepts_feed_vector_db: approved,\n    drafts_feed_vector_db: Boolean(body.allow_pending_index)\n  },\n  downstream: [\n    { agent: 'Graph Curator Agent', trigger: ['approved', 'relationship_changed', 'bulk_rebuild'] },\n    { system: 'Vector DB', trigger: ['approved', 'selected_pending'], state: 'blocked_until_credentials' },\n    { repo: 'meids-knowledge-fabric', trigger: ['upsert', 'delete', 'audit_export'] }\n  ],\n  received: body,\n  next: 'Attach GitHub writeback, markdown/YAML validation, vector refresh, and graph projection nodes.'\n} }];"
+        },
+        "id": "meids-knowledge-fabric-ingest-contract",
+        "name": "Staging contract response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          280,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": {}
+        },
+        "id": "meids-knowledge-fabric-ingest-respond",
+        "name": "Return JSON",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          560,
+          0
+        ]
+      }
+    ],
+    "connections": {
+      "Receive request": {
+        "main": [
+          [
+            {
+              "node": "Staging contract response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Staging contract response": {
+        "main": [
+          [
+            {
+              "node": "Return JSON",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Florian Liepe",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-08-06T20:21:06.352Z",
+        "id": 326,
+        "workflowId": "7Ci86PxXipwvYpKv",
+        "versionId": "9cfada33-d11d-416b-b9a5-70f15df78f58",
+        "event": "deactivated",
+        "userId": "b0b4b717-4904-480b-957e-10bac7530ca1"
+      },
+      {
+        "createdAt": "2026-08-06T20:21:06.399Z",
+        "id": 327,
+        "workflowId": "7Ci86PxXipwvYpKv",
+        "versionId": "9cfada33-d11d-416b-b9a5-70f15df78f58",
+        "event": "activated",
+        "userId": "b0b4b717-4904-480b-957e-10bac7530ca1"
+      }
+    ]
+  }
+}

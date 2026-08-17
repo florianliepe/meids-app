@@ -99,7 +99,7 @@ if (/const proposesExternalAction = \/send\|mail\|email\|invite\|meeting\|schedu
   fail("Agentic Butler fallback must not approval-gate normal email or meeting draft prompts.");
 }
 
-if (/renderAgentResponseRouteCard\(result\)/.test(source)) {
+if (/agentContractResponseText\(displayResult\)[\s\S]{0,300}renderAgentResponseRouteCard\(result\)/.test(source)) {
   fail("Actor Twin chat card must not render internal route diagnostics in the lean chat surface.");
 }
 

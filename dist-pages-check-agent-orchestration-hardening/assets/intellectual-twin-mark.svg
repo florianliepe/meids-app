@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" role="img" aria-labelledby="title desc">
+  <title id="title">Intellectual twin design mark</title>
+  <desc id="desc">A circular identity mark with a solid human-side arc and a dotted agentic field-side arc around a central signal point.</desc>
+  <rect x="1" y="1" width="78" height="78" rx="12" fill="#fffdf8" stroke="#e7e2d7" stroke-width="2"/>
+  <g transform="translate(40 40)" fill="none" stroke-linecap="round">
+    <path d="M0 -25 A25 25 0 1 0 0 25" stroke="#111310" stroke-width="4"/>
+    <path d="M7 -24 A25 25 0 0 1 7 24" stroke="#8f918c" stroke-width="4" stroke-dasharray="1 8.5"/>
+    <path d="M1 -17 A17 17 0 0 1 1 17" stroke="#3c3f39" stroke-width="4" stroke-dasharray="1 7.5"/>
+    <path d="M0 -9 A9 9 0 0 1 0 9" stroke="#111310" stroke-width="4" stroke-dasharray="1 6.5"/>
+    <circle cx="0" cy="0" r="3.2" fill="#111310" stroke="none"/>
+  </g>
+</svg>

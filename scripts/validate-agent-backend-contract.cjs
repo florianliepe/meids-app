@@ -26,6 +26,8 @@ const readme = read("backend/README.md");
   "/api/agents/knowledge-fabric/ingest",
   "/api/agents/agentic-butler/run",
   "/api/agents/approvals",
+  "/api/approvals",
+  "/api/traces",
   "/api/admin/n8n/status",
   "/resume",
   "N8N_ACTOR_TWIN_WEBHOOK_URL",

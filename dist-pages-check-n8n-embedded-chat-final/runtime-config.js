@@ -1,0 +1,32 @@
+window.INTELLECTUAL_TWIN_CONFIG = {
+  apiBaseUrl: "",
+  assetBaseUrl: "",
+  n8nChatWebhookUrl: "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat",
+  n8nActorTwinWebhookUrl: "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat",
+  n8nKnowledgeFabricWebhookUrl: "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/knowledge-fabric/ingest",
+  n8nAgenticButlerWebhookUrl: "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/agentic-butler/run",
+  n8nAgentWebhooks: {
+    actor_twin: "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat",
+    knowledge_fabric_agent: "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/knowledge-fabric/ingest",
+    agentic_butler: "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/agentic-butler/run"
+  },
+  n8nAgentProbeSlots: {
+    actor_twin: {
+      status: "configured",
+      probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
+      next_action: "Run Actor Twin UAT and capture n8n trace evidence."
+    },
+    knowledge_fabric_agent: {
+      status: "configured",
+      probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
+      next_action: "Run Knowledge Fabric Agent UAT with upload/transcript fixture."
+    },
+    agentic_butler: {
+      status: "configured",
+      probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
+      next_action: "Run Agentic Butler UAT with autonomous no-write work-artifact fixture."
+    }
+  },
+  n8nChatEnabled: true,
+  staticPagesMode: true
+};

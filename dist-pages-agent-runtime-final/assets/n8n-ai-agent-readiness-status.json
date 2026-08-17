@@ -1,0 +1,140 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-13T16:24:38.412Z",
+  "status": "ai_agent_blueprints_ready_live_verification_required",
+  "boundary": "Public-safe readiness artifact. It checks repo workflow implementation blueprints and public probe evidence, but does not expose secrets or call n8n.",
+  "summary": {
+    "agent_count": 3,
+    "ai_agent_blueprint_ready_count": 3,
+    "promoted_workflow_ready_count": 3,
+    "live_probe_claims_ai_agent_count": 3,
+    "live_trace_recorded_count": 2,
+    "manual_live_workflow_verification_required_count": 3,
+    "production_ai_logic_verified": false
+  },
+  "interpretation": "A workflow can be reachable and contract-tested while still behaving as a staging responder. Production trust requires verified AI Agent nodes wired before the response normalizer in live n8n.",
+  "agents": [
+    {
+      "agent_id": "actor_twin",
+      "agent_name": "Actor Twin",
+      "role": "Primary user interface, intent router, decision instance, and answer agent.",
+      "status": "live_ai_claimed_verify_in_n8n",
+      "implementation_path": "workflows/n8n/implementations/actor-twin.ai-agent.workflow.json",
+      "promoted_workflow_path": "workflows/n8n/actor-twin.workflow.json",
+      "expected_live_workflow": "fDn8yXo3W41hh3yR",
+      "gates": {
+        "ai_agent_blueprint_ready": true,
+        "promoted_workflow_ready": true,
+        "response_adapter_ready": true,
+        "live_url_configured": true,
+        "live_trace_recorded": true,
+        "live_probe_claims_ai_agent": true,
+        "manual_live_workflow_verification_required": true
+      },
+      "nodes": {
+        "ai_agent": {
+          "name": "Actor Twin AI Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent"
+        },
+        "chat_model": {
+          "name": "Actor Twin Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi"
+        },
+        "model_connection_ready": true
+      },
+      "live_probe": {
+        "status": "connected",
+        "trace_id": "n8n_exec_16273",
+        "execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/fDn8yXo3W41hh3yR/executions/16273",
+        "ai_agent_node": "Actor Twin AI Agent"
+      },
+      "next_actions": [
+        "Human/browser verification of the live n8n workflow canvas is still required before production trust."
+      ]
+    },
+    {
+      "agent_id": "knowledge_fabric_agent",
+      "agent_name": "Knowledge Fabric Agent",
+      "role": "Background ingest, OKF concept staging, evidence, CRUD, graph candidate, and vector-boundary agent.",
+      "status": "live_ai_claimed_verify_in_n8n",
+      "implementation_path": "workflows/n8n/implementations/knowledge-fabric-agent.ai-agent.workflow.json",
+      "promoted_workflow_path": "workflows/n8n/knowledge-fabric-agent.workflow.json",
+      "expected_live_workflow": "7Ci86PxXipwvYpKv",
+      "gates": {
+        "ai_agent_blueprint_ready": true,
+        "promoted_workflow_ready": true,
+        "response_adapter_ready": true,
+        "live_url_configured": true,
+        "live_trace_recorded": true,
+        "live_probe_claims_ai_agent": true,
+        "manual_live_workflow_verification_required": true
+      },
+      "nodes": {
+        "ai_agent": {
+          "name": "Knowledge Fabric AI Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent"
+        },
+        "chat_model": {
+          "name": "Knowledge Fabric Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi"
+        },
+        "model_connection_ready": true
+      },
+      "live_probe": {
+        "status": "connected",
+        "trace_id": "n8n_exec_16274",
+        "execution_url": "https://eraneos-agentic-platform.azurewebsites.net/workflow/7Ci86PxXipwvYpKv/executions/16274",
+        "ai_agent_node": "Knowledge Fabric AI Agent"
+      },
+      "next_actions": [
+        "Human/browser verification of the live n8n workflow canvas is still required before production trust."
+      ]
+    },
+    {
+      "agent_id": "agentic_butler",
+      "agent_name": "Agentic Butler",
+      "role": "Skill activation and work execution agent; contains Skill Orchestrator as internal component.",
+      "status": "blueprint_ready_live_incomplete",
+      "implementation_path": "workflows/n8n/implementations/agentic-butler.ai-agent.workflow.json",
+      "promoted_workflow_path": "workflows/n8n/agentic-butler.workflow.json",
+      "expected_live_workflow": "KZOqZRUAnVfFEAYJ",
+      "gates": {
+        "ai_agent_blueprint_ready": true,
+        "promoted_workflow_ready": true,
+        "response_adapter_ready": true,
+        "live_url_configured": true,
+        "live_trace_recorded": false,
+        "live_probe_claims_ai_agent": true,
+        "manual_live_workflow_verification_required": true
+      },
+      "nodes": {
+        "ai_agent": {
+          "name": "Agentic Butler AI Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent"
+        },
+        "chat_model": {
+          "name": "Agentic Butler Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi"
+        },
+        "model_connection_ready": true
+      },
+      "live_probe": {
+        "status": "awaiting_probe",
+        "trace_id": "",
+        "execution_url": "",
+        "ai_agent_node": "Agentic Butler AI Agent"
+      },
+      "next_actions": [
+        "Non-demo live trace evidence is missing.",
+        "Human/browser verification of the live n8n workflow canvas is still required before production trust."
+      ]
+    }
+  ],
+  "next_actions": [
+    "Open each live n8n workflow and confirm the AI Agent node is on the active path between webhook and response normalizer.",
+    "Confirm the AI Agent uses the intended model credential and system instructions.",
+    "Confirm the response normalizer includes AI output, approval gates, and trace id in the public contract envelope.",
+    "Run no-write live probes and record execution evidence after AI Agent node verification.",
+    "Only after verification, mark the workflow as AI logic active in the production cockpit evidence."
+  ]
+}

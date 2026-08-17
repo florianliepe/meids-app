@@ -1,0 +1,21 @@
+{
+  "status": "prepared",
+  "agent_id": "knowledge_fabric_agent",
+  "label": "Knowledge Fabric Agent",
+  "workflow_id": null,
+  "source": "workflows/n8n/import-ready/knowledge-fabric-agent.ai-agent.import.json",
+  "payload": "exports/n8n-live-backups/20260813T153440Z-knowledge_fabric_agent-ai-agent/knowledge_fabric_agent.update-payload.json",
+  "node_count": 5,
+  "nodes": [
+    "Receive request",
+    "Contract response normalizer",
+    "Return JSON",
+    "Knowledge Fabric Chat Model",
+    "Knowledge Fabric AI Agent"
+  ],
+  "apply_requires": [
+    "N8N_API_BASE_URL",
+    "N8N_API_KEY",
+    "N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID"
+  ]
+}

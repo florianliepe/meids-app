@@ -1,0 +1,145 @@
+{
+  "name": "MeIDs Actor Twin - staging",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meids/actor-twin/chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "meids/actor-twin/chat-webhook",
+      "name": "Receive request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "e80a3907-825d-4446-8078-729b532dda2f"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputRoot = $('Receive request').first().json;\nconst input = inputRoot.body ?? inputRoot;\nconst ai = $json;\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nconst requestId = input.request_id || input.live_probe?.request_id || `req_${executionId}`;\nconst query = input.input?.query || input.chatInput || input.message || 'Public-safe Actor Twin readiness probe.';\nconst aiText = ai.output || ai.text || ai.response || ai.message || '';\n\nfunction parseEmbeddedJson(value) {\n  const text = String(value || '').trim();\n  if (!text) return null;\n  const fenced = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  const candidate = (fenced ? fenced[1] : text).trim();\n  if (!candidate.startsWith('{') || !candidate.endsWith('}')) return null;\n  try { return JSON.parse(candidate); } catch { return null; }\n}\n\nconst embedded = parseEmbeddedJson(aiText) || {};\nconst embeddedOutput = embedded.output && typeof embedded.output === 'object' ? embedded.output : embedded;\nconst explicit = input.context?.route_decision || input.output?.route_decision || embedded.output?.route_decision || embedded.route_decision || embeddedOutput.route_decision || null;\nconst decision = explicit?.decision || 'answer_direct';\nconst targetAgent = explicit?.target_agent || (decision === 'update_knowledge' ? 'knowledge_fabric_agent' : decision === 'activate_skill' || decision === 'create_skill' ? 'agentic_butler' : 'actor_twin');\nconst routeDecision = {\n  decision,\n  target_agent: targetAgent,\n  intent: explicit?.intent || input.intent || embedded.intent || 'answer_question',\n  visible_state: explicit?.visible_state || (decision === 'answer_direct' ? 'answering' : decision === 'update_knowledge' ? 'capturing_knowledge' : 'approval_required'),\n  approval_required: Boolean(explicit?.approval_required || decision === 'create_skill'),\n  handoff_required: Boolean(explicit?.handoff_required ?? targetAgent !== 'actor_twin'),\n  reason: explicit?.reason || 'Actor Twin AI Agent response normalized into explicit route decision.'\n};\nconst response = {\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: requestId,\n  agent_id: 'actor_twin',\n  status: routeDecision.approval_required ? 'approval_required' : 'completed',\n  output: {\n    answer: embeddedOutput.answer || aiText || `Actor Twin AI node completed but returned no text for query: ${query}`,\n    route_decision: routeDecision,\n    confidence: embeddedOutput.confidence || (aiText ? 0.78 : 0.58),\n    mode: routeDecision.decision,\n    citations: embeddedOutput.citations || [],\n    handoff: { required: routeDecision.handoff_required, target_agent: routeDecision.target_agent },\n    ai_agent: { integrated: true, node: 'Actor Twin AI Agent' }\n  },\n  trace: { stored: true, trace_id: `n8n_exec_${executionId}`, used_agents: ['actor_twin_ai_agent'], target_agent: routeDecision.target_agent, route_decision: routeDecision.decision, handoff_status: routeDecision.handoff_required ? 'route_decided' : 'not_required', ai_agent_integrated: true }\n};\nreturn [{ json: response }];"
+      },
+      "id": "meids/actor-twin/chat-contract",
+      "name": "Contract response normalizer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ],
+      "notes": "Normalizes real AI Agent node output into the MeIDs agent contract. Keep this node after the AI Agent and before Return JSON."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "meids/actor-twin/chat-respond",
+      "name": "Return JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-5",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-5"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "id": "actor-twin-chat-model-model",
+      "name": "Actor Twin Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        260,
+        220
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "jGlNDqeYEbc5DwVT",
+          "name": "Eraneos LLM Gateway"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Request envelope:\n{{ JSON.stringify($json.body || $json) }}\n\nAnswer the user query and preserve approval boundaries.",
+        "options": {
+          "systemMessage": "You are the MeIDs Actor Twin. Answer as the active intellectual twin, grounded in provided context. If context is insufficient, state the gap and recommend knowledge capture. Keep responses concise and public-safe during staging."
+        }
+      },
+      "id": "meids/actor-twin/chat-ai-agent",
+      "name": "Actor Twin AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        280,
+        0
+      ],
+      "notes": "MeIDs live AI agent node. Contract response remains the final response normalizer and trace boundary."
+    }
+  ],
+  "connections": {
+    "Receive request": {
+      "main": [
+        [
+          {
+            "node": "Actor Twin AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actor Twin AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Contract response normalizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actor Twin Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Actor Twin AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contract response normalizer": {
+      "main": [
+        [
+          {
+            "node": "Return JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null
+}

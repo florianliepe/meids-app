@@ -1,0 +1,155 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-17T11:46:52.536Z",
+  "source": "dist-pages-check-n8n-embedded-final/assets/agent-runtime-config.json",
+  "orchestration_mode": "actor_twin_embedded_chat",
+  "status": "runtime_ready",
+  "summary": {
+    "agent_count": 3,
+    "configured_count": 1,
+    "runtime_ready_count": 3,
+    "frontend_required_count": 1,
+    "frontend_ready_count": 3,
+    "awaiting_url_count": 0,
+    "missing_count": 2
+  },
+  "boundary": "Public-safe runtime readiness artifact. It validates the embedded Actor Twin chat entrypoint plus optional direct public webhook slots. Knowledge Fabric Agent and Agentic Butler may be runtime-ready as internal Actor Twin workflow tools without public Pages URLs.",
+  "agents": [
+    {
+      "agent_id": "actor_twin",
+      "agent_name": "Actor Twin",
+      "status": "configured",
+      "status_label": "URL configured",
+      "url_configured": true,
+      "runtime_ready": true,
+      "frontend_required": true,
+      "invocation_mode": "public_webhook",
+      "url_origin": "https://eraneos-agentic-platform.azurewebsites.net",
+      "url_shape": "valid_public_webhook",
+      "env_var": "N8N_ACTOR_TWIN_WEBHOOK_URL",
+      "github_pages_secret": "GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL",
+      "top_level_url_key": "n8nActorTwinWebhookUrl",
+      "probe_slot_status": "configured",
+      "detail": "GitHub Pages runtime config generated from repository secrets.",
+      "next_action": "Run Actor Twin UAT and capture n8n trace evidence.",
+      "required_capabilities": [
+        "intent_interpretation",
+        "retrieval_policy",
+        "trace_response"
+      ],
+      "gates": [
+        {
+          "gate": "runtime_asset",
+          "ready": true,
+          "detail": "Public runtime asset is available."
+        },
+        {
+          "gate": "webhook_url",
+          "ready": true,
+          "detail": "Webhook URL has public https webhook shape."
+        },
+        {
+          "gate": "probe_slot",
+          "ready": true,
+          "detail": "Probe slot status: configured."
+        },
+        {
+          "gate": "public_safe",
+          "ready": true,
+          "detail": "No secret-like value detected by static validator."
+        }
+      ]
+    },
+    {
+      "agent_id": "knowledge_fabric_agent",
+      "agent_name": "Knowledge Fabric Agent",
+      "status": "internal_tool_via_actor_twin",
+      "status_label": "internal n8n tool",
+      "url_configured": false,
+      "runtime_ready": true,
+      "frontend_required": false,
+      "invocation_mode": "actor_twin_workflow_tool",
+      "url_origin": "",
+      "url_shape": "empty",
+      "env_var": "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+      "github_pages_secret": "GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
+      "top_level_url_key": "n8nKnowledgeFabricWebhookUrl",
+      "probe_slot_status": "internal_tool_via_actor_twin",
+      "detail": "Knowledge Fabric Agent is expected to be called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional.",
+      "next_action": "Verify the Actor Twin n8n workflow has the Knowledge Fabric workflow tool connected and published.",
+      "required_capabilities": [
+        "okf_ingest",
+        "evidence_storage",
+        "graph_curator_trigger",
+        "vector_boundary"
+      ],
+      "gates": [
+        {
+          "gate": "runtime_asset",
+          "ready": true,
+          "detail": "Public runtime asset is available."
+        },
+        {
+          "gate": "webhook_url",
+          "ready": true,
+          "detail": "Direct public frontend URL is optional; Actor Twin calls this agent inside n8n."
+        },
+        {
+          "gate": "probe_slot",
+          "ready": true,
+          "detail": "Probe slot status: internal_tool_via_actor_twin."
+        },
+        {
+          "gate": "public_safe",
+          "ready": true,
+          "detail": "No secret-like value detected by static validator."
+        }
+      ]
+    },
+    {
+      "agent_id": "agentic_butler",
+      "agent_name": "Agentic Butler",
+      "status": "internal_tool_via_actor_twin",
+      "status_label": "internal n8n tool",
+      "url_configured": false,
+      "runtime_ready": true,
+      "frontend_required": false,
+      "invocation_mode": "actor_twin_workflow_tool",
+      "url_origin": "",
+      "url_shape": "empty",
+      "env_var": "N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+      "github_pages_secret": "GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
+      "top_level_url_key": "n8nAgenticButlerWebhookUrl",
+      "probe_slot_status": "internal_tool_via_actor_twin",
+      "detail": "Agentic Butler is expected to be called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional.",
+      "next_action": "Verify the Actor Twin n8n workflow has the Agentic Butler workflow tool connected and published.",
+      "required_capabilities": [
+        "autonomous_work_artifact_execution",
+        "new_skill_activation_gate",
+        "trace_response"
+      ],
+      "gates": [
+        {
+          "gate": "runtime_asset",
+          "ready": true,
+          "detail": "Public runtime asset is available."
+        },
+        {
+          "gate": "webhook_url",
+          "ready": true,
+          "detail": "Direct public frontend URL is optional; Actor Twin calls this agent inside n8n."
+        },
+        {
+          "gate": "probe_slot",
+          "ready": true,
+          "detail": "Probe slot status: internal_tool_via_actor_twin."
+        },
+        {
+          "gate": "public_safe",
+          "ready": true,
+          "detail": "No secret-like value detected by static validator."
+        }
+      ]
+    }
+  ]
+}
