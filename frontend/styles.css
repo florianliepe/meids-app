@@ -46,6 +46,12 @@ body {
   display: none !important;
 }
 
+.legacy-chat-form,
+#chatForm.legacy-chat-form,
+#chatForm[aria-hidden="true"] {
+  display: none !important;
+}
+
 body.theme-dark {
   background:
     radial-gradient(circle at 50% -6%, rgba(122, 216, 191, 0.08), transparent 32%),
@@ -28131,6 +28137,49 @@ body.cockpit-mode .workspace-signal {
   border-width: 1px 0 0;
   border-radius: 0 0 12px 12px;
   background: transparent;
+}
+
+.n8n-context-drawer {
+  margin-bottom: 16px;
+}
+
+.n8n-context-drawer .chat-skillbar {
+  align-items: end;
+  gap: 10px;
+}
+
+.n8n-interaction-context {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px 16px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.n8n-interaction-context strong {
+  display: block;
+  margin-top: 6px;
+}
+
+.n8n-interaction-context p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.n8n-context-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.n8n-context-chips span {
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-quiet) 78%, transparent);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 9px;
 }
 
 .chat-output-shell {

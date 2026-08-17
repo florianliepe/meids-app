@@ -8227,7 +8227,10 @@ function bindChat() {
       openAgentTraceFromChat(action.dataset.traceId || action.dataset.requestId || "");
     }
   });
-  $("#riskPostureSelect").addEventListener("change", (event) => {
+  $("#reloadN8nContextBtn")?.addEventListener("click", () => {
+    reloadN8nChatContext();
+  });
+  $("#riskPostureSelect")?.addEventListener("change", (event) => {
     state.riskPosture = event.target.value || "balanced";
     renderChatSkillMode();
   });
@@ -8244,7 +8247,7 @@ function bindChat() {
     }
     renderChatSkillMode();
   });
-  $("#appliedSkillsList").addEventListener("change", (event) => {
+  $("#appliedSkillsList")?.addEventListener("change", (event) => {
     if (!event.target.matches(".applied-skill-filter")) return;
     state.appliedChatSkillIds = $$(".applied-skill-filter:checked").map((input) => input.value);
     state.activeChatSkillId = state.appliedChatSkillIds[0] || N8N_CHAT_MODE;
@@ -8253,22 +8256,28 @@ function bindChat() {
     renderChatSkillMode();
     safeRefreshSkillInputPresets();
   });
-  $("#webSearchFilter").addEventListener("change", (event) => {
+  $("#webSearchFilter")?.addEventListener("change", (event) => {
     state.webSearchEnabled = Boolean(event.target.checked);
     renderChatSkillMode();
   });
-  $("#voiceAnswerFilter").addEventListener("change", (event) => {
+  $("#voiceAnswerFilter")?.addEventListener("change", (event) => {
     state.voiceAnswerEnabled = Boolean(event.target.checked);
     renderChatSkillMode();
+  });
+  $("#retrievalModeSelect")?.addEventListener("change", () => {
+    renderChatSkillMode();
+  });
+  $$(".type-filter").forEach((input) => {
+    input.addEventListener("change", renderChatSkillMode);
   });
   ["#chatSkillEmail", "#chatSkillCalendar", "#chatSkillTeams", "#chatSkillKnowledge", "#queryInput"].forEach((selector) => {
     $(selector)?.addEventListener("input", renderSkillPreflight);
   });
-  $("#saveChatPresetBtn").addEventListener("click", saveChatInputPreset);
-  $("#updateChatPresetBtn").addEventListener("click", updateChatInputPreset);
-  $("#loadChatPresetBtn").addEventListener("click", loadChatInputPreset);
-  $("#deleteChatPresetBtn").addEventListener("click", deleteChatInputPreset);
-  $("#chatForm").addEventListener("submit", async (event) => {
+  $("#saveChatPresetBtn")?.addEventListener("click", saveChatInputPreset);
+  $("#updateChatPresetBtn")?.addEventListener("click", updateChatInputPreset);
+  $("#loadChatPresetBtn")?.addEventListener("click", loadChatInputPreset);
+  $("#deleteChatPresetBtn")?.addEventListener("click", deleteChatInputPreset);
+  $("#chatForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const input = $("#queryInput");
     const query = input.value.trim();
@@ -15342,9 +15351,13 @@ function renderChatSkillMode() {
   const outputShell = document.querySelector(".chat-output-shell");
   if (outputShell) outputShell.hidden = true;
   const interactionSetup = $("#chatInteractionSetup");
-  if (interactionSetup) interactionSetup.hidden = true;
+  if (interactionSetup) interactionSetup.hidden = false;
   const chatForm = $("#chatForm");
-  if (chatForm) chatForm.hidden = true;
+  if (chatForm) {
+    chatForm.hidden = true;
+    chatForm.setAttribute("aria-hidden", "true");
+    chatForm.classList.add("legacy-chat-form");
+  }
   const modeSelect = $("#chatInteractionModeSelect");
   if (modeSelect) modeSelect.value = state.activeChatInteractionMode || "actor_twin";
   const n8nLink = $("#n8nAgentLink");
@@ -15355,14 +15368,17 @@ function renderChatSkillMode() {
   setChatSkillStatus(
     `${chatInteractionModeLabel()} · governed pipeline · ${state.riskPosture} posture${applied.length ? ` · ${applied.length} applied skill${applied.length === 1 ? "" : "s"}` : ""}${state.webSearchEnabled ? " · websearch on" : ""}${state.voiceAnswerEnabled ? " · voice on" : ""}`,
   );
-  $("#queryInput").placeholder = chatInteractionPlaceholder();
-  $("#chatForm button").textContent = chatInteractionSubmitLabel();
-  $("#saveChatPresetBtn").disabled = !isSkillMode;
-  $("#loadChatPresetBtn").disabled = !isSkillMode || !state.skillInputPresets.length;
-  $("#updateChatPresetBtn").disabled = !isSkillMode || !state.skillInputPresets.length;
-  $("#deleteChatPresetBtn").disabled = !isSkillMode || !state.skillInputPresets.length;
-  $("#chatPresetName").disabled = !isSkillMode;
-  $("#chatPresetSelect").disabled = !isSkillMode || !state.skillInputPresets.length;
+  const queryInput = $("#queryInput");
+  if (queryInput) queryInput.placeholder = chatInteractionPlaceholder();
+  const chatSubmit = $("#chatForm button");
+  if (chatSubmit) chatSubmit.textContent = chatInteractionSubmitLabel();
+  if ($("#saveChatPresetBtn")) $("#saveChatPresetBtn").disabled = !isSkillMode;
+  if ($("#loadChatPresetBtn")) $("#loadChatPresetBtn").disabled = !isSkillMode || !state.skillInputPresets.length;
+  if ($("#updateChatPresetBtn")) $("#updateChatPresetBtn").disabled = !isSkillMode || !state.skillInputPresets.length;
+  if ($("#deleteChatPresetBtn")) $("#deleteChatPresetBtn").disabled = !isSkillMode || !state.skillInputPresets.length;
+  if ($("#chatPresetName")) $("#chatPresetName").disabled = !isSkillMode;
+  if ($("#chatPresetSelect")) $("#chatPresetSelect").disabled = !isSkillMode || !state.skillInputPresets.length;
+  renderN8nInteractionContext();
   renderChatInputPresets();
   renderSkillRoutingPanel();
   renderChatContractSurfaces();
@@ -15461,6 +15477,68 @@ function renderSkillPreflight() {
   bindPreflightFollowUps(target);
 }
 
+function n8nRetrievalMode() {
+  return $("#retrievalModeSelect")?.value || "keyword";
+}
+
+function buildN8nChatMetadata() {
+  const active = state.twins.find((twin) => twin.twin_id === state.activeTwin);
+  const retrievalMode = n8nRetrievalMode();
+  const conceptTypes = selectedConceptTypes();
+  return {
+    source: "meids-intellectual-twin",
+    interface: "embedded_n8n_chat",
+    activeTwin: state.activeTwin,
+    twinName: active?.display_name || state.activeTwin,
+    posture: state.riskPosture || "balanced",
+    routingAuthority: "actor_twin_n8n",
+    retrieval: {
+      mode: retrievalMode,
+      conceptTypes,
+      websearch: Boolean(state.webSearchEnabled),
+      voiceAnswerRequested: Boolean(state.voiceAnswerEnabled),
+      vectorCache: retrievalMode === "vector-cache",
+      knowledgeGraph: retrievalMode === "graph",
+    },
+    agentTools: {
+      knowledgeFabric: "call_n8n_workflow_tool",
+      agenticButler: "call_n8n_workflow_tool",
+    },
+  };
+}
+
+function renderN8nInteractionContext() {
+  const target = $("#n8nInteractionContext");
+  if (!target) return;
+  const context = buildN8nChatMetadata();
+  const scopes = context.retrieval.conceptTypes.slice(0, 6);
+  const extraCount = Math.max(0, context.retrieval.conceptTypes.length - scopes.length);
+  target.innerHTML = `
+    <div>
+      <span class="badge">n8n routing context</span>
+      <strong>${escapeHtml(context.twinName)} · ${escapeHtml(context.posture)} posture · ${escapeHtml(context.retrieval.mode)}</strong>
+      <p>Actor Twin receives these settings when the embedded chat loads. Reload context after changing routing settings.</p>
+    </div>
+    <div class="n8n-context-chips" aria-label="n8n interaction context">
+      <span>${escapeHtml(context.retrieval.websearch ? "websearch on" : "websearch off")}</span>
+      <span>${escapeHtml(context.retrieval.voiceAnswerRequested ? "voice requested" : "voice off")}</span>
+      <span>${escapeHtml(context.retrieval.vectorCache ? "vector cache" : "vector cache optional")}</span>
+      <span>${escapeHtml(context.retrieval.knowledgeGraph ? "knowledge graph" : "graph optional")}</span>
+      ${scopes.map((scope) => `<span>${escapeHtml(scope)}</span>`).join("")}
+      ${extraCount ? `<span>+${extraCount} scopes</span>` : ""}
+    </div>
+  `;
+}
+
+function reloadN8nChatContext() {
+  state.n8nChatLoaded = false;
+  state.n8nChatLoading = false;
+  const mount = $("#n8nChatMount");
+  if (mount) mount.innerHTML = "";
+  renderN8nInteractionContext();
+  void ensureN8nChat();
+}
+
 async function ensureN8nChat() {
   const status = $("#n8nChatStatus");
   const mount = $("#n8nChatMount");
@@ -15486,10 +15564,7 @@ async function ensureN8nChat() {
       mode: "fullscreen",
       showWelcomeScreen: false,
       loadPreviousSession: true,
-      metadata: {
-        source: "meids-intellectual-twin",
-        activeTwin: state.activeTwin,
-      },
+      metadata: buildN8nChatMetadata(),
       initialMessages: [
         "Hi, I'm at your Service :).",
         "Send the task or context you want this workflow to process.",

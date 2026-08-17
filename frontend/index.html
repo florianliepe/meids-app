@@ -206,8 +206,8 @@
             </div>
             <div id="messages" class="messages"></div>
           </section>
-          <details id="chatInteractionSetup" class="chat-workspace-drawer" hidden>
-            <summary>Answer settings</summary>
+          <details id="chatInteractionSetup" class="chat-workspace-drawer n8n-context-drawer" open>
+            <summary>Interaction setup</summary>
             <section class="chat-workspace-settings" aria-label="Interaction setup">
               <div class="chat-skillbar" aria-label="Ask twin controls">
                 <label for="chatInteractionModeSelect" hidden>Mode</label>
@@ -222,14 +222,16 @@
                   <option value="balanced" selected>Balanced</option>
                   <option value="bold">Bold</option>
                 </select>
+                <button id="reloadN8nContextBtn" class="secondary small" type="button">Reload n8n context</button>
                 <details id="appliedSkillsMenu" class="skills-menu" hidden>
                   <summary id="appliedSkillsSummary">Applied skills: none</summary>
                   <div id="appliedSkillsList" class="skills-menu-list"></div>
                 </details>
-                <span id="chatSkillStatus" class="muted-inline">Actor Twin routes knowledge and skills when needed.</span>
+                <span id="chatSkillStatus" class="muted-inline">These settings are passed to the embedded n8n Actor Twin.</span>
               </div>
+              <div id="n8nInteractionContext" class="n8n-interaction-context" aria-live="polite"></div>
             </section>
-            <details class="chat-retrieval-settings">
+            <details class="chat-retrieval-settings" open>
               <summary>Search scope</summary>
               <div class="chat-filters" aria-label="Retrieval filters">
                 <span>Use</span>
@@ -293,7 +295,7 @@
               </div>
             </div>
           </details>
-          <form id="chatForm" class="composer" hidden>
+          <form id="chatForm" class="composer legacy-chat-form" hidden aria-hidden="true">
             <input id="queryInput" type="text" placeholder="Ask the twin..." autocomplete="off" />
             <button type="submit">Ask</button>
           </form>
