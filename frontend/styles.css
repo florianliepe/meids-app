@@ -28150,6 +28150,37 @@ body.cockpit-mode .workspace-signal {
   gap: 10px;
 }
 
+.n8n-keyword-hints {
+  display: grid;
+  gap: 6px;
+  padding: 0 16px 14px;
+}
+
+.n8n-keyword-hints span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.n8n-keyword-hints input {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--ink);
+  font: inherit;
+  min-height: 42px;
+  padding: 10px 12px;
+}
+
+.n8n-keyword-hints input:focus {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+  outline: none;
+}
+
 .n8n-interaction-context {
   display: grid;
   gap: 10px;

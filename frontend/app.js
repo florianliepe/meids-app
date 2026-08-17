@@ -8258,21 +8258,19 @@ function bindChat() {
   $("#retrievalModeSelect")?.addEventListener("change", () => {
     renderChatSkillMode();
   });
+  $("#n8nKeywordHints")?.addEventListener("input", () => {
+    renderN8nInteractionContext();
+  });
   $$(".type-filter").forEach((input) => {
     input.addEventListener("change", renderChatSkillMode);
   });
-  ["#chatSkillEmail", "#chatSkillCalendar", "#chatSkillTeams", "#chatSkillKnowledge", "#queryInput"].forEach((selector) => {
+  ["#chatSkillEmail", "#chatSkillCalendar", "#chatSkillTeams", "#chatSkillKnowledge"].forEach((selector) => {
     $(selector)?.addEventListener("input", renderSkillPreflight);
   });
   $("#saveChatPresetBtn")?.addEventListener("click", saveChatInputPreset);
   $("#updateChatPresetBtn")?.addEventListener("click", updateChatInputPreset);
   $("#loadChatPresetBtn")?.addEventListener("click", loadChatInputPreset);
   $("#deleteChatPresetBtn")?.addEventListener("click", deleteChatInputPreset);
-  $("#chatForm")?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    $("#n8nChatMount")?.scrollIntoView({ block: "center", behavior: "smooth" });
-    showToast("Use n8n chat", "The local Actor Twin composer is disabled. Ask through the embedded n8n chat.", "success");
-  });
 }
 
 function selectedConceptTypes() {
@@ -15467,10 +15465,19 @@ function n8nRetrievalMode() {
   return $("#retrievalModeSelect")?.value || "keyword";
 }
 
+function n8nKeywordHints() {
+  return String($("#n8nKeywordHints")?.value || "")
+    .split(/[,;\n]/)
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
 function buildN8nChatMetadata() {
   const active = state.twins.find((twin) => twin.twin_id === state.activeTwin);
   const retrievalMode = n8nRetrievalMode();
   const conceptTypes = selectedConceptTypes();
+  const keywordHints = n8nKeywordHints();
   const retrievalFlags = {
     keyword: retrievalMode === "keyword",
     vectorCache: retrievalMode === "vector-cache",
@@ -15489,6 +15496,7 @@ function buildN8nChatMetadata() {
     retrieval: {
       mode: retrievalMode,
       searchStrategy: retrievalMode,
+      keywordHints,
       conceptTypes,
       ...retrievalFlags,
     },
@@ -15516,6 +15524,7 @@ function renderN8nInteractionContext() {
   if (!target) return;
   const context = buildN8nChatMetadata();
   const scopes = context.retrieval.conceptTypes.slice(0, 6);
+  const keywords = context.retrieval.keywordHints.slice(0, 6);
   const extraCount = Math.max(0, context.retrieval.conceptTypes.length - scopes.length);
   target.innerHTML = `
     <div>
@@ -15529,6 +15538,7 @@ function renderN8nInteractionContext() {
       <span>${escapeHtml(context.retrieval.keyword ? "keyword routing" : "keyword optional")}</span>
       <span>${escapeHtml(context.retrieval.vectorCache ? "vector cache" : "vector cache optional")}</span>
       <span>${escapeHtml(context.retrieval.knowledgeGraph ? "knowledge graph" : "graph optional")}</span>
+      ${keywords.map((keyword) => `<span>keyword: ${escapeHtml(keyword)}</span>`).join("")}
       ${scopes.map((scope) => `<span>${escapeHtml(scope)}</span>`).join("")}
       ${extraCount ? `<span>+${extraCount} scopes</span>` : ""}
     </div>
@@ -15571,10 +15581,7 @@ async function ensureN8nChat() {
       showWelcomeScreen: false,
       loadPreviousSession: true,
       metadata: buildN8nChatMetadata(),
-      initialMessages: [
-        "Hi, I'm at your Service :).",
-        "Send the task or context you want this workflow to process.",
-      ],
+      initialMessages: [],
       i18n: {
         en: {
           title: "Actor Twin",

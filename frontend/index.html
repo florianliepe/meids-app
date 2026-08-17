@@ -17,7 +17,7 @@
         return window.__MEIDS_ASSET_BASE__ + cleanPath;
       };
       if (!window.__MEIDS_FILE_PROTOCOL__) {
-        document.write('<link rel="stylesheet" href="' + window.__MEIDS_ASSET_URL__("styles.css?v=20260817-n8n-only") + '" />');
+        document.write('<link rel="stylesheet" href="' + window.__MEIDS_ASSET_URL__("styles.css?v=20260817-n8n-metadata") + '" />');
       }
       document.write('<link rel="icon" type="image/svg+xml" href="' + window.__MEIDS_ASSET_URL__("assets/intellectual-twin-mark.svg") + '" />');
     </script>
@@ -193,7 +193,7 @@
           <section class="chat-workspace-hero" aria-label="Agent interaction workspace">
             <span class="badge">Actor Twin</span>
             <h2>Actor Twin, directly in n8n.</h2>
-            <p>The embedded n8n chat is the single interaction surface. Optional setup below is sent as metadata so n8n can use keyword retrieval, vector cache, knowledge graph, voice preference, and source-scope signals before routing to internal agent workflows.</p>
+            <p>The embedded n8n chat is the single interaction surface. Optional setup below is passed to n8n as routing metadata: keyword hints, vector cache, knowledge graph, voice preference, and source-scope signals.</p>
             <div class="chat-quick-actions" aria-label="Workspace shortcuts">
               <button class="secondary small" type="button" data-chat-action="focus-query">Open Actor Twin chat</button>
               <button class="secondary small" type="button" data-cockpit-action="openVoice">Voice capture</button>
@@ -229,6 +229,10 @@
                 </details>
                 <span id="chatSkillStatus" class="muted-inline">These settings are sent to the embedded n8n Actor Twin as metadata.</span>
               </div>
+              <label class="n8n-keyword-hints" for="n8nKeywordHints">
+                <span>Keyword hints</span>
+                <input id="n8nKeywordHints" type="text" placeholder="e.g. client delivery, backlog, risk, decision, meeting prep" />
+              </label>
               <div id="n8nInteractionContext" class="n8n-interaction-context" aria-live="polite"></div>
             </section>
             <details class="chat-retrieval-settings" open>
@@ -1700,9 +1704,9 @@
 
     <script>
       if (!window.__MEIDS_FILE_PROTOCOL__) {
-        document.write('<script src="' + window.__MEIDS_ASSET_URL__("runtime-config.js?v=20260817-n8n-only") + '"><\/script>');
+        document.write('<script src="' + window.__MEIDS_ASSET_URL__("runtime-config.js?v=20260817-n8n-metadata") + '"><\/script>');
         document.write('<script src="' + window.__MEIDS_ASSET_URL__("api.js?v=20260731-refactor") + '"><\/script>');
-        document.write('<script src="' + window.__MEIDS_ASSET_URL__("app.js?v=20260817-n8n-only") + '"><\/script>');
+        document.write('<script src="' + window.__MEIDS_ASSET_URL__("app.js?v=20260817-n8n-metadata") + '"><\/script>');
       }
     </script>
   </body>
