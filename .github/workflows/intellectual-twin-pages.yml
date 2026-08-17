@@ -12,6 +12,7 @@ on:
       - "docs/**"
       - "prompts/**"
       - "workflows/n8n/**"
+      - "scripts/build-pages-static.cjs"
       - "scripts/pages-smoke-check.cjs"
       - "scripts/validate-n8n-fixtures.cjs"
       - "scripts/validate-n8n-ai-agent-workflows.cjs"
@@ -84,60 +85,7 @@ jobs:
           GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL }}
           GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL }}
           GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL }}
-        run: |
-          rm -rf dist-pages
-          mkdir -p dist-pages
-          cp -R frontend/. dist-pages/
-          DEFAULT_ACTOR_TWIN_CHAT_URL="https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat"
-          LEGACY_ACTOR_TWIN_CHAT_URL="https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/actor-twin/chat"
-          CHAT_WEBHOOK_URL="${GH_PAGES_N8N_CHAT_WEBHOOK_URL:-$DEFAULT_ACTOR_TWIN_CHAT_URL}"
-          if [ "$CHAT_WEBHOOK_URL" = "$LEGACY_ACTOR_TWIN_CHAT_URL" ]; then CHAT_WEBHOOK_URL="$DEFAULT_ACTOR_TWIN_CHAT_URL"; fi
-          ACTOR_TWIN_WEBHOOK_URL="${GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL:-$CHAT_WEBHOOK_URL}"
-          if [ "$ACTOR_TWIN_WEBHOOK_URL" = "$LEGACY_ACTOR_TWIN_CHAT_URL" ]; then ACTOR_TWIN_WEBHOOK_URL="$CHAT_WEBHOOK_URL"; fi
-          export GH_PAGES_N8N_CHAT_WEBHOOK_URL="$CHAT_WEBHOOK_URL"
-          export GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL="$ACTOR_TWIN_WEBHOOK_URL"
-          actor_status="awaiting_url"
-          knowledge_status="awaiting_url"
-          butler_status="awaiting_url"
-          if [ -n "$ACTOR_TWIN_WEBHOOK_URL" ]; then actor_status="configured"; fi
-          if [ -n "$GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL" ]; then knowledge_status="configured"; fi
-          if [ -n "$GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL" ]; then butler_status="configured"; fi
-          cat > dist-pages/runtime-config.js <<EOF
-          window.INTELLECTUAL_TWIN_CONFIG = {
-            apiBaseUrl: "$GH_PAGES_API_BASE_URL",
-            assetBaseUrl: "",
-            n8nChatWebhookUrl: "$CHAT_WEBHOOK_URL",
-            n8nActorTwinWebhookUrl: "$ACTOR_TWIN_WEBHOOK_URL",
-            n8nKnowledgeFabricWebhookUrl: "$GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
-            n8nAgenticButlerWebhookUrl: "$GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
-            n8nAgentWebhooks: {
-              actor_twin: "$ACTOR_TWIN_WEBHOOK_URL",
-              knowledge_fabric_agent: "$GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
-              agentic_butler: "$GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL",
-            },
-            n8nAgentProbeSlots: {
-              actor_twin: {
-                status: "$actor_status",
-                probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
-                next_action: "Run Actor Twin UAT and capture n8n trace evidence.",
-              },
-              knowledge_fabric_agent: {
-                status: "$knowledge_status",
-                probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
-                next_action: "Run Knowledge Fabric Agent UAT with upload/transcript fixture.",
-              },
-              agentic_butler: {
-                status: "$butler_status",
-                probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
-                next_action: "Run Agentic Butler UAT with autonomous no-write work-artifact fixture.",
-              },
-            },
-            n8nChatEnabled: "$CHAT_WEBHOOK_URL" !== "" || "$ACTOR_TWIN_WEBHOOK_URL" !== "",
-            staticPagesMode: "$GH_PAGES_API_BASE_URL" === ""
-          };
-          EOF
-          node scripts/write-pages-agent-runtime-config.cjs --output dist-pages/assets/agent-runtime-config.json
-          node scripts/write-n8n-runtime-readiness-status.cjs --config dist-pages/assets/agent-runtime-config.json --output dist-pages/assets/n8n-runtime-readiness-status.json
+        run: node scripts/build-pages-static.cjs --output dist-pages
 
       - name: Smoke check static artifact
         run: node scripts/pages-smoke-check.cjs dist-pages
