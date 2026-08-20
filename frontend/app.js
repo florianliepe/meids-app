@@ -1317,14 +1317,14 @@ function buildGraphSvgExport() {
   clone.removeAttribute("style");
   clone.classList.add(`export-layout-${safeGraphClass(state.graphLayoutMode)}`);
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-  clone.setAttribute("data-exported-from", "MeIDs Knowledge Graph");
+  clone.setAttribute("data-exported-from", "Me.IDs Knowledge Graph");
   const [viewX, viewY, viewWidth, viewHeight] = (clone.getAttribute("viewBox") || "0 0 1120 720")
     .split(/\s+/)
     .map((value) => Number(value) || 0);
   clone.setAttribute("width", String(viewWidth || 1120));
   clone.setAttribute("height", String(viewHeight || 720));
   const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-  title.textContent = `MeIDs knowledge graph · ${labelizeGraph(state.graphLayoutMode)} layout · ${state.activeTwin}`;
+  title.textContent = `Me.IDs knowledge graph · ${labelizeGraph(state.graphLayoutMode)} layout · ${state.activeTwin}`;
   clone.insertBefore(title, clone.firstChild);
   const metadata = document.createElementNS("http://www.w3.org/2000/svg", "metadata");
   metadata.textContent = JSON.stringify({
@@ -1825,7 +1825,7 @@ function buildGraphSnapshotJson() {
   return {
     schema: "meids.okf.graph.snapshot.v1",
     exported_at: new Date().toISOString(),
-    exported_from: "MeIDs Knowledge Graph cockpit",
+    exported_from: "Me.IDs Knowledge Graph cockpit",
     twin: state.activeTwin,
     graph_snapshot_hash: graph.snapshot_hash || "",
     okf_graph_version: graph.okf_graph_version || "",
@@ -7959,7 +7959,7 @@ function downloadGraphSkillContextJson(button) {
   const exportPacket = {
     schema: "meids.okf.graph.skill_context.v1",
     exported_at: new Date().toISOString(),
-    exported_from: "MeIDs Knowledge Graph cockpit",
+    exported_from: "Me.IDs Knowledge Graph cockpit",
     projection: packet.projection || {},
     runtime_guidance: [
       "Use approved concepts first.",
@@ -9982,8 +9982,8 @@ function renderVoiceHandoffGithubPrGuidance(detail) {
     'powershell.exe -ExecutionPolicy Bypass -File ".\\scripts\\github_sync_pr.ps1" `',
     `  -PayloadPath "${absolutePayloadPath}" \``,
     `  -KnowledgeRepoPath "${knowledgeRepoPath}" \``,
-    '  -CommitMessage "Sync MeIDs voice handoff evidence" `',
-    '  -PrTitle "Sync MeIDs voice handoff evidence" `',
+    '  -CommitMessage "Sync Me.IDs voice handoff evidence" `',
+    '  -PrTitle "Sync Me.IDs voice handoff evidence" `',
     '  -OpenPullRequest',
   ].join("\n");
   return `
@@ -14937,7 +14937,7 @@ function buildAgentLiveProbeEnvelope(agentId) {
     return buildAgentContractEnvelope(
       agentId,
       "live_probe",
-      "Knowledge Fabric readiness probe from MeIDs cockpit.",
+      "Knowledge Fabric readiness probe from Me.IDs cockpit.",
       {
         execute: false,
         source_type: "probe",
@@ -14961,7 +14961,7 @@ function buildAgentLiveProbeEnvelope(agentId) {
   return buildAgentContractEnvelope(
     agentId,
     "contract_probe",
-    "Contract readiness probe from MeIDs cockpit.",
+    "Contract readiness probe from Me.IDs cockpit.",
     { execute: false },
     { probe: true, source_context: {} },
     { required: false, reason: "Readiness probe only." },
@@ -19912,7 +19912,7 @@ function looksLikeJsonEnvelope(value = "") {
 function actorDirectFallbackAnswer(query = "") {
   const normalized = String(query || "").toLowerCase();
   if (/\b(who are you|what are you|introduce yourself|describe yourself)\b/i.test(normalized)) {
-    return "I am the Actor Twin for the active MeIDs profile. I answer from persona, approved knowledge, and governed context, and I delegate work to specialist agents only when execution is actually needed.";
+    return "I am the Actor Twin for the active Me.IDs profile. I answer from persona, approved knowledge, and governed context, and I delegate work to specialist agents only when execution is actually needed.";
   }
   if (/\b(purpose|why do you exist|what do you do)\b/i.test(normalized)) {
     return "My purpose is to help scale the active twin's identity and work style: answer from trusted knowledge, route source work to the Knowledge Fabric Agent, and activate Agentic Butler only for approved skill execution or new skill design.";
@@ -24556,8 +24556,8 @@ function renderSyncDetailPanel() {
     'powershell.exe -ExecutionPolicy Bypass -File ".\\scripts\\github_sync_pr.ps1" `',
     `  -PayloadPath "${payloadPath}" \``,
     `  -KnowledgeRepoPath "${knowledgeRepoPath}" \``,
-    '  -CommitMessage "Sync MeIDs knowledge bundle" `',
-    '  -PrTitle "Sync MeIDs knowledge bundle" `',
+    '  -CommitMessage "Sync Me.IDs knowledge bundle" `',
+    '  -PrTitle "Sync Me.IDs knowledge bundle" `',
     '  -OpenPullRequest',
   ].join("\n");
   const actionRows = Object.entries(actions)
@@ -30643,7 +30643,7 @@ function buildAgentApprovalResumePayload(approval = {}) {
       original_request_id: approval.request_id || "",
       original_trace_id: approval.trace_id || "",
       approved: true,
-      approval_note: "Human-in-the-loop approval prepared from MeIDs frontend.",
+      approval_note: "Human-in-the-loop approval prepared from Me.IDs frontend.",
     },
     context: {
       actor_trace_id: approval.actor_trace_id || "",
@@ -30691,7 +30691,7 @@ function renderProductionN8nHandoffPacket(missing = []) {
         <div>
           <span class="badge">n8n workflow handoff</span>
           <strong>${escapeHtml(`${missing.length} workflow brief${missing.length === 1 ? "" : "s"} ready`)}</strong>
-          <p>Copy this packet into the private agent-config or n8n build task. It describes what the missing workflows must do before their public UAT URLs can be wired into MeIDs.</p>
+          <p>Copy this packet into the private agent-config or n8n build task. It describes what the missing workflows must do before their public UAT URLs can be wired into Me.IDs.</p>
         </div>
         <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(packet, null, 2))}">Copy handoff packet</button>
       </div>
@@ -31089,8 +31089,8 @@ function renderProductionHandoff(readiness = {}, storage = {}, migration = {}, g
     '.\\scripts\\github_sync_pr.ps1 `',
     `  -PayloadPath "${localBundlePath}\\exports\\sync\\<payload>.json" \``,
     `  -KnowledgeRepoPath "${knowledgeRepoPath}" \``,
-    '  -CommitMessage "Sync MeIDs knowledge bundle" `',
-    '  -PrTitle "Sync MeIDs knowledge bundle" `',
+    '  -CommitMessage "Sync Me.IDs knowledge bundle" `',
+    '  -PrTitle "Sync Me.IDs knowledge bundle" `',
     '  -OpenPullRequest',
   ].join("\n");
   const handoffItems = [
@@ -31419,7 +31419,7 @@ function renderProductionHandoff(readiness = {}, storage = {}, migration = {}, g
         <div>
           <span class="badge">GitHub Pages frontend</span>
           <strong>${escapeHtml(githubPages.status || "blocked_draft")}</strong>
-          <p>Publish the static MeIDs UI only after hosted API URL, CORS, auth, and browser-secret checks are reviewed.</p>
+          <p>Publish the static Me.IDs UI only after hosted API URL, CORS, auth, and browser-secret checks are reviewed.</p>
         </div>
         <button id="exportGitHubPagesArtifactBtn" class="secondary small" type="button">Export Pages checklist</button>
       </div>

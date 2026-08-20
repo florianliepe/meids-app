@@ -57,7 +57,7 @@
     "actor_twin_vector_probe": "Invoke-RestMethod -Uri \"https://YOUR-BACKEND-HOST/api/vector-index/search\" -Method Post -ContentType \"application/json\" -Body '{\"query\":\"client delivery steering\",\"twin_id\":\"florian\",\"organization_id\":\"default\",\"source_policy\":\"approved_only\",\"top\":5}'"
   },
   "next_actions": [
-    "Create or identify a hosted MeIDs backend App Service for backend/server.js.",
+    "Create or identify a hosted Me.IDs backend App Service for backend/server.js.",
     "Create or identify an Azure OpenAI embedding resource/deployment with 1536 dimensions.",
     "Configure backend-only Azure Search and Azure OpenAI settings in App Service settings or Key Vault references.",
     "Run Azure Search index setup from a trusted backend/operator environment.",

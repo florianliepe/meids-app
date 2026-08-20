@@ -1,7 +1,7 @@
 {
   "schema_version": "0.1.0",
   "generated_at": "2026-08-11T18:38:13.085Z",
-  "purpose": "Public-safe browser/runtime response-shape probe for MeIDs top-level n8n agents.",
+  "purpose": "Public-safe browser/runtime response-shape probe for Me.IDs top-level n8n agents.",
   "boundary": "The probe uses no private knowledge and does not require credentials. Missing CORS headers are treated as a backend proxy requirement.",
   "summary": {
     "agent_count": 3,
@@ -84,7 +84,7 @@
         "has_approval": false,
         "has_trace_id": true
       },
-      "body_preview": "{\"envelope_version\":\"0.1.0\",\"request_id\":\"req_agentic_butler_live_probe_001_msp06oms\",\"agent_id\":\"agentic_butler\",\"status\":\"approval_required\",\"output\":{\"summary\":\"## MeIDs Agentic Butler — Staging Skill-Run Plan\\n\\n**Request ID:** req_agen"
+      "body_preview": "{\"envelope_version\":\"0.1.0\",\"request_id\":\"req_agentic_butler_live_probe_001_msp06oms\",\"agent_id\":\"agentic_butler\",\"status\":\"approval_required\",\"output\":{\"summary\":\"## Me.IDs Agentic Butler — Staging Skill-Run Plan\\n\\n**Request ID:** req_agen"
     }
   ]
 }
