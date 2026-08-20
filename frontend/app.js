@@ -8889,7 +8889,7 @@ function stopRecording() {
 async function uploadAudio() {
   if (!state.recordedBlob) return;
   if (!state.openAIConfigured) {
-    $("#transcriptBox").textContent = "OpenAI is not configured. Set OPENAI_API_KEY before using direct transcription.";
+    $("#transcriptBox").textContent = "Speech-to-text needs the local or hosted backend with OPENAI_API_KEY/Eraneos AI Gateway configured. Do not add the key to GitHub Pages.";
     return;
   }
   if (!(await confirmTwinScopedAction("transcribe and clarify this recording"))) return;
@@ -10618,8 +10618,8 @@ async function refreshAll() {
   $("#guardrailPolicySelect").value = status.guardrail_policy || "advisory";
   state.openAIConfigured = Boolean(status.openai_configured);
   $("#voiceReadiness").textContent = state.openAIConfigured
-    ? "Ready: direct OpenAI transcription is configured."
-    : "Needs setup: set OPENAI_API_KEY before sending recordings for transcription.";
+    ? "Ready: backend speech-to-text is configured."
+    : "Needs backend setup: configure OPENAI_API_KEY or ERANEOS_AI_GATEWAY_API_KEY before sending recordings for transcription.";
   $("#voiceReadiness").className = `readiness ${state.openAIConfigured ? "ready" : "missing"}`;
   await safeRefreshVoiceCriteria();
   await safeRefreshVoiceConceptUatSamples();
@@ -10679,7 +10679,7 @@ function refreshStaticPagesWorkspace() {
   $("#statusVersion").textContent = status.app_version || "-";
   const activeProfile = state.twins.find((twin) => twin.twin_id === state.activeTwin);
   $("#workspaceSignal").textContent = `${activeProfile?.display_name || state.activeTwin} · GitHub Pages · Actor Twin embedded chat`;
-  $("#voiceReadiness").textContent = "Static staging: voice recording UI is visible; transcription requires the local backend or a hosted API.";
+  $("#voiceReadiness").textContent = "Static staging: voice recording UI is visible; speech-to-text requires a local or hosted backend with the Eraneos AI Gateway key.";
   $("#voiceReadiness").className = "readiness missing";
   updateLandingStatus();
   renderProductionRestartHint();

@@ -39,6 +39,13 @@ Optional:
 - `MEIDS_DATA_DIR`: persistence folder. Defaults to `.data`.
 - `PORT`: defaults to `8080`.
 
+Voice transcription:
+
+- `OPENAI_API_KEY` or `ERANEOS_AI_GATEWAY_API_KEY`: backend-only key for speech-to-text. Do not expose it to GitHub Pages.
+- `OPENAI_BASE_URL` or `ERANEOS_AI_GATEWAY_BASE_URL`: OpenAI-compatible gateway base URL. Defaults to `https://api.openai.com/v1`.
+- `OPENAI_TRANSCRIPTION_MODEL` or `ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODEL`: defaults to `gpt-4o-mini-transcribe`.
+- Setup guide: `docs/voice-transcription-eraneos-gateway.md`.
+
 Azure AI Search vector retrieval:
 
 - `AZURE_SEARCH_ENDPOINT`: Azure AI Search endpoint, for example `https://srch-intellectual-twin.search.windows.net`.
