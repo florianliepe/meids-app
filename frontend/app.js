@@ -315,6 +315,43 @@ const storageKeys = {
   activity: "intellectualTwin.static.activity",
 };
 
+function configuredVoiceTranscriptionUrl() {
+  return normalizeBaseUrl(
+    runtimeConfig.voiceTranscriptionUrl
+      || runtimeConfig.voice_transcription_url
+      || runtimeConfig.n8nVoiceTranscriptionWebhookUrl
+      || runtimeConfig.n8n_voice_transcription_webhook_url
+      || "",
+  );
+}
+
+function voiceTranscriptionEndpoint() {
+  return configuredVoiceTranscriptionUrl() || "/api/voice/concepts/transcribe";
+}
+
+function isVoiceTranscriptionConfigured() {
+  return Boolean(state.openAIConfigured || configuredVoiceTranscriptionUrl());
+}
+
+function normalizeVoiceTranscriptionResult(result = {}) {
+  const nested = result.output || result.data || result.response || result.result || {};
+  const transcript = result.transcript
+    || result.text
+    || result.message
+    || nested.transcript
+    || nested.text
+    || nested.message
+    || "";
+  return {
+    transcript: String(transcript || ""),
+    category: result.category || nested.category || $("#voiceConceptCategory")?.value || "knowledge",
+    evidence: result.evidence || nested.evidence || null,
+    assessment: result.assessment || nested.assessment || null,
+    agent: result.agent || nested.agent || null,
+    raw: result,
+  };
+}
+
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
@@ -8888,8 +8925,8 @@ function stopRecording() {
 
 async function uploadAudio() {
   if (!state.recordedBlob) return;
-  if (!state.openAIConfigured) {
-    $("#transcriptBox").textContent = "Speech-to-text needs the local or hosted backend with OPENAI_API_KEY/Eraneos AI Gateway configured. Do not add the key to GitHub Pages.";
+  if (!isVoiceTranscriptionConfigured()) {
+    $("#transcriptBox").textContent = "Speech-to-text needs a local backend, hosted backend, or n8n transcription proxy with the Eraneos AI Gateway key configured server-side. Do not add keys to GitHub Pages.";
     return;
   }
   if (!(await confirmTwinScopedAction("transcribe and clarify this recording"))) return;
@@ -8900,7 +8937,7 @@ async function uploadAudio() {
   $("#transcriptBox").textContent = "Transcribing and asking Persona Modeler...";
   setVoiceConversationStatus("pending", "Transcribing and preparing the first Persona Modeler question.");
   try {
-    const result = await postForm("/api/voice/concepts/transcribe", form);
+    const result = normalizeVoiceTranscriptionResult(await postForm(voiceTranscriptionEndpoint(), form));
     state.voiceConceptSession = {
       transcript: result.transcript || "",
       category: result.category || $("#voiceConceptCategory").value,
@@ -8910,7 +8947,7 @@ async function uploadAudio() {
       assessment: result.assessment || null,
       agent: result.agent || null,
     };
-    $("#transcriptBox").textContent = result.transcript || JSON.stringify(result, null, 2);
+    $("#transcriptBox").textContent = result.transcript || JSON.stringify(result.raw || result, null, 2);
     $("#voiceConceptCategory").value = state.voiceConceptSession.category;
     renderVoiceConceptAssessment();
     $("#voiceClarifyBtn").disabled = false;
@@ -10616,10 +10653,11 @@ async function refreshAll() {
   renderTwinContextNotices();
   renderWorkspaceIntro();
   $("#guardrailPolicySelect").value = status.guardrail_policy || "advisory";
-  state.openAIConfigured = Boolean(status.openai_configured);
+  const voiceProxyUrl = configuredVoiceTranscriptionUrl();
+  state.openAIConfigured = Boolean(status.openai_configured || voiceProxyUrl);
   $("#voiceReadiness").textContent = state.openAIConfigured
-    ? "Ready: backend speech-to-text is configured."
-    : "Needs backend setup: configure OPENAI_API_KEY or ERANEOS_AI_GATEWAY_API_KEY before sending recordings for transcription.";
+    ? (voiceProxyUrl ? "Ready: hosted speech-to-text proxy is configured." : "Ready: backend speech-to-text is configured.")
+    : "Needs backend setup: configure OPENAI_API_KEY, ERANEOS_AI_GATEWAY_API_KEY, or a hosted voiceTranscriptionUrl before sending recordings for transcription.";
   $("#voiceReadiness").className = `readiness ${state.openAIConfigured ? "ready" : "missing"}`;
   await safeRefreshVoiceCriteria();
   await safeRefreshVoiceConceptUatSamples();
@@ -10668,19 +10706,22 @@ function refreshStaticPagesWorkspace() {
   state.graphEdgeReviews = [];
   state.graphPostgresRead = { status: "static-staging", blockers: ["Postgres is not connected in GitHub Pages staging."] };
   state.okfGraphLoadedAt = new Date().toISOString();
-  state.openAIConfigured = Boolean(status.openai_configured);
+  const voiceProxyUrl = configuredVoiceTranscriptionUrl();
+  state.openAIConfigured = Boolean(status.openai_configured || voiceProxyUrl);
   renderTwinOptions();
   $("#twinSelect").value = state.activeTwin;
   $("#statusBackend").textContent = status.status;
   $("#statusProvider").textContent = status.ai_provider;
-  $("#statusOpenAI").textContent = status.openai_configured ? "configured" : "not used";
+  $("#statusOpenAI").textContent = state.openAIConfigured ? (voiceProxyUrl ? "voice proxy" : "configured") : "not used";
   $("#statusN8nChat").textContent = status.n8n_chat?.configured ? "webhook active" : "fixture mode";
   $("#statusGuardrails").textContent = status.guardrail_policy || "-";
   $("#statusVersion").textContent = status.app_version || "-";
   const activeProfile = state.twins.find((twin) => twin.twin_id === state.activeTwin);
   $("#workspaceSignal").textContent = `${activeProfile?.display_name || state.activeTwin} · GitHub Pages · Actor Twin embedded chat`;
-  $("#voiceReadiness").textContent = "Static staging: voice recording UI is visible; speech-to-text requires a local or hosted backend with the Eraneos AI Gateway key.";
-  $("#voiceReadiness").className = "readiness missing";
+  $("#voiceReadiness").textContent = voiceProxyUrl
+    ? "Ready: hosted speech-to-text proxy is configured for static staging."
+    : "Static staging: voice recording UI is visible; speech-to-text requires a local backend, hosted backend, or n8n proxy with the Eraneos AI Gateway key.";
+  $("#voiceReadiness").className = `readiness ${voiceProxyUrl ? "ready" : "missing"}`;
   updateLandingStatus();
   renderProductionRestartHint();
   renderTwinContextNotices();
@@ -16559,6 +16600,14 @@ function mergeAgentRuntimeConfig(config = {}) {
   runtimeConfig.n8nAgenticButlerWebhookUrl = runtimeConfig.n8nAgenticButlerWebhookUrl
     || config.n8nAgenticButlerWebhookUrl
     || agentWebhooks.agentic_butler
+    || "";
+  runtimeConfig.voiceTranscriptionUrl = runtimeConfig.voiceTranscriptionUrl
+    || runtimeConfig.voice_transcription_url
+    || runtimeConfig.n8nVoiceTranscriptionWebhookUrl
+    || config.voiceTranscriptionUrl
+    || config.voice_transcription_url
+    || config.n8nVoiceTranscriptionWebhookUrl
+    || config.n8n_voice_transcription_webhook_url
     || "";
 }
 

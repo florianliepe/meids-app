@@ -8,6 +8,7 @@ GitHub Pages can record audio and support pasted transcripts. Direct transcripti
 
 - local backend: `node backend/server.js`
 - hosted backend: Azure App Service or equivalent backend with environment variables
+- hosted transcription proxy: n8n webhook or backend endpoint that keeps the Eraneos/OpenAI key server-side
 
 ## Local Setup
 
@@ -60,6 +61,46 @@ For Azure App Service, configure these as application settings or Key Vault refe
 - `OPENAI_TRANSCRIPTION_MODEL` or `ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODEL`
 
 Then set the deployed frontend runtime config to the hosted backend URL. Do not put the key into GitHub Actions Pages artifacts.
+
+## GitHub Pages UAT Setup
+
+GitHub Pages is static hosting. It cannot safely hold an Eraneos AI Gateway key and it cannot serve `/api/voice/concepts/transcribe` by itself. For UAT, create a hosted proxy that performs speech-to-text server-side.
+
+Recommended n8n proxy contract:
+
+- URL is public or otherwise reachable by the browser.
+- Authentication and the Eraneos/OpenAI key stay in n8n credentials or backend settings.
+- Request method: `POST`.
+- Request body: `multipart/form-data`.
+- Expected fields:
+  - `file`: recorded audio blob, usually `webm`
+  - `twin`: active twin id
+  - `category`: selected concept category
+- Accepted response shapes:
+
+```json
+{ "transcript": "Recognized text..." }
+```
+
+or:
+
+```json
+{
+  "output": {
+    "transcript": "Recognized text...",
+    "category": "Personality"
+  }
+}
+```
+
+Configure the public proxy URL through one of these public-safe values:
+
+```powershell
+GH_PAGES_VOICE_TRANSCRIPTION_URL=https://<hosted-proxy>/voice/transcribe
+GH_PAGES_N8N_VOICE_TRANSCRIPTION_WEBHOOK_URL=https://<n8n-webhook>/voice/transcribe
+```
+
+For GitHub Pages deployment, store only the proxy URL as a repository secret or build variable. Never store the API key in `frontend/runtime-config.js`, `frontend/assets/agent-runtime-config.json`, or browser storage.
 
 ## Validation
 
