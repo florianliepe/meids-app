@@ -85,6 +85,113 @@ async function readBody(req) {
   }
 }
 
+async function readRawBody(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  return Buffer.concat(chunks);
+}
+
+function splitMultipartBuffer(buffer, boundary) {
+  const delimiter = Buffer.from(`--${boundary}`);
+  const parts = [];
+  let cursor = buffer.indexOf(delimiter);
+  while (cursor !== -1) {
+    const next = buffer.indexOf(delimiter, cursor + delimiter.length);
+    if (next === -1) break;
+    let part = buffer.subarray(cursor + delimiter.length, next);
+    if (part.subarray(0, 2).toString() === "\r\n") part = part.subarray(2);
+    if (part.subarray(part.length - 2).toString() === "\r\n") part = part.subarray(0, part.length - 2);
+    if (part.length && part.toString("utf8", 0, Math.min(part.length, 2)) !== "--") parts.push(part);
+    cursor = next;
+  }
+  return parts;
+}
+
+async function readMultipartForm(req) {
+  const contentType = String(req.headers["content-type"] || "");
+  const boundary = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.[1] || contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.[2];
+  if (!boundary) {
+    const error = new Error("Multipart form upload is missing a boundary.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const body = await readRawBody(req);
+  const fields = {};
+  const files = {};
+  for (const part of splitMultipartBuffer(body, boundary)) {
+    const headerEnd = part.indexOf(Buffer.from("\r\n\r\n"));
+    if (headerEnd === -1) continue;
+    const header = part.subarray(0, headerEnd).toString("utf8");
+    let payload = part.subarray(headerEnd + 4);
+    if (payload.subarray(payload.length - 2).toString() === "\r\n") payload = payload.subarray(0, payload.length - 2);
+    const name = header.match(/name="([^"]+)"/i)?.[1];
+    if (!name) continue;
+    const filename = header.match(/filename="([^"]*)"/i)?.[1] || "";
+    const type = header.match(/content-type:\s*([^\r\n]+)/i)?.[1]?.trim() || "application/octet-stream";
+    if (filename) {
+      files[name] = { filename, type, buffer: payload };
+    } else {
+      fields[name] = payload.toString("utf8");
+    }
+  }
+  return { fields, files };
+}
+
+function openAiTranscriptionConfig() {
+  const apiKey = String(process.env.OPENAI_API_KEY || process.env.ERANEOS_AI_GATEWAY_API_KEY || "").trim();
+  const baseUrl = String(
+    process.env.OPENAI_BASE_URL ||
+    process.env.OPENAI_API_BASE_URL ||
+    process.env.ERANEOS_AI_GATEWAY_BASE_URL ||
+    "https://api.openai.com/v1",
+  ).trim().replace(/\/+$/, "");
+  const model = String(process.env.OPENAI_TRANSCRIPTION_MODEL || process.env.ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODEL || "gpt-4o-mini-transcribe").trim();
+  return {
+    apiKey,
+    baseUrl,
+    model,
+    configured: Boolean(apiKey && baseUrl && model),
+    missing: [
+      ...(!apiKey ? ["OPENAI_API_KEY or ERANEOS_AI_GATEWAY_API_KEY"] : []),
+      ...(!baseUrl ? ["OPENAI_BASE_URL or ERANEOS_AI_GATEWAY_BASE_URL"] : []),
+      ...(!model ? ["OPENAI_TRANSCRIPTION_MODEL"] : []),
+    ],
+  };
+}
+
+async function transcribeAudioWithOpenAiCompatibleGateway(file) {
+  const config = openAiTranscriptionConfig();
+  if (!config.configured) {
+    const error = new Error(`Voice transcription backend is not configured: ${config.missing.join(", ")}`);
+    error.statusCode = 503;
+    throw error;
+  }
+  const form = new FormData();
+  form.append("model", config.model);
+  form.append("file", new Blob([file.buffer], { type: file.type || "audio/webm" }), file.filename || "voice.webm");
+  const response = await fetch(`${config.baseUrl}/audio/transcriptions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+    },
+    body: form,
+  });
+  const text = await response.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { raw: text };
+  }
+  if (!response.ok) {
+    const detail = data.error?.message || data.message || data.raw || response.statusText;
+    const error = new Error(`Transcription provider failed: ${detail}`);
+    error.statusCode = response.status;
+    throw error;
+  }
+  return String(data.text || data.transcript || data.output_text || "").trim();
+}
+
 function makeId(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
 }
@@ -845,6 +952,57 @@ async function handleManualApproval(req, res) {
   jsonResponse(res, 200, { status: "stored", approval: record });
 }
 
+async function handleVoiceConceptTranscribe(req, res) {
+  const { fields, files } = await readMultipartForm(req);
+  const file = files.file;
+  if (!file?.buffer?.length) {
+    jsonResponse(res, 400, { status: "failed", error: "Audio upload requires a non-empty 'file' field." });
+    return;
+  }
+  const twin = fields.twin || "unknown";
+  const category = fields.category || "knowledge";
+  const transcript = await transcribeAudioWithOpenAiCompatibleGateway(file);
+  const evidenceId = makeId("voice_evidence");
+  const evidenceDir = path.join(DATA_DIR, "voice-evidence", twin);
+  await fs.mkdir(evidenceDir, { recursive: true });
+  const evidencePath = path.join(evidenceDir, `${evidenceId}.json`);
+  const evidence = {
+    evidence_id: evidenceId,
+    twin,
+    category,
+    source_type: "voice_capture",
+    transcription_provider: "openai_compatible_gateway",
+    model: openAiTranscriptionConfig().model,
+    filename: file.filename,
+    content_type: file.type,
+    transcript,
+    created_at: new Date().toISOString(),
+  };
+  await fs.writeFile(evidencePath, JSON.stringify(evidence, null, 2), "utf8");
+  jsonResponse(res, 200, {
+    status: "transcribed",
+    transcript,
+    category,
+    evidence: {
+      evidence_id: evidence.evidence_id,
+      path: path.relative(process.cwd(), evidencePath).replace(/\\/g, "/"),
+      source_type: evidence.source_type,
+      transcription_provider: evidence.transcription_provider,
+    },
+    assessment: {
+      ready: Boolean(transcript && transcript.length >= 40),
+      next_question: transcript && transcript.length >= 40
+        ? ""
+        : "What should the Actor Twin remember from this recording, and when should it use it?",
+      missing: transcript && transcript.length >= 40 ? [] : ["purpose", "usage_context"],
+    },
+    agent: {
+      id: "voice_capture_transcription",
+      mode: "backend_openai_compatible_gateway",
+    },
+  });
+}
+
 async function handleVectorStatus(req, res) {
   const config = azureSearchConfigFromEnv();
   const readiness = await getIndexReadiness(config);
@@ -938,6 +1096,53 @@ async function handleVectorSearch(req, res) {
   jsonResponse(res, 200, result);
 }
 
+function backendHealthPayload() {
+  const adminGate = n8nAdminGate();
+  const transcription = openAiTranscriptionConfig();
+  return {
+    status: "ok",
+    runtime: "meids-agent-backend-proxy",
+    storage: {
+      mode: postgresEnabled() ? "postgres" : "file",
+      postgres_configured: Boolean(process.env.DATABASE_URL),
+      data_dir: postgresEnabled() ? "" : DATA_DIR,
+    },
+    n8n_admin: {
+      status: adminGate.ready ? "ready" : "blocked",
+      missing: adminGate.missing,
+    },
+    voice_transcription: {
+      status: transcription.configured ? "configured" : "blocked",
+      provider: "openai_compatible_gateway",
+      base_url_configured: Boolean(transcription.baseUrl),
+      model: transcription.model,
+      missing: transcription.missing,
+    },
+    vector_search: azureSearchStatusFromConfig(azureSearchConfigFromEnv()),
+    agents: Object.fromEntries(Object.values(AGENTS).map((agent) => [
+      agent.id,
+      { configured: Boolean(process.env[agent.urlEnv]), url_env: agent.urlEnv },
+    ])),
+  };
+}
+
+function frontendStatusPayload() {
+  const health = backendHealthPayload();
+  return {
+    status: health.status,
+    active_twin: process.env.MEIDS_ACTIVE_TWIN || "florian",
+    ai_provider: process.env.MEIDS_AI_PROVIDER || "eraneos-ai-gateway",
+    openai_configured: health.voice_transcription.status === "configured",
+    guardrail_policy: process.env.MEIDS_GUARDRAIL_POLICY || "approval-gated",
+    app_version: process.env.MEIDS_APP_VERSION || "backend-proxy",
+    n8n_chat: {
+      configured: Boolean(process.env.N8N_ACTOR_TWIN_WEBHOOK_URL),
+    },
+    voice_transcription: health.voice_transcription,
+    vector_search: health.vector_search,
+  };
+}
+
 async function routeRequest(req, res) {
   const url = new URL(req.url, "http://localhost");
   if (req.method === "OPTIONS") {
@@ -947,25 +1152,11 @@ async function routeRequest(req, res) {
   }
   try {
     if (req.method === "GET" && url.pathname === "/api/health") {
-      const adminGate = n8nAdminGate();
-      jsonResponse(res, 200, {
-        status: "ok",
-        runtime: "meids-agent-backend-proxy",
-        storage: {
-          mode: postgresEnabled() ? "postgres" : "file",
-          postgres_configured: Boolean(process.env.DATABASE_URL),
-          data_dir: postgresEnabled() ? "" : DATA_DIR,
-        },
-        n8n_admin: {
-          status: adminGate.ready ? "ready" : "blocked",
-          missing: adminGate.missing,
-        },
-        vector_search: azureSearchStatusFromConfig(azureSearchConfigFromEnv()),
-        agents: Object.fromEntries(Object.values(AGENTS).map((agent) => [
-          agent.id,
-          { configured: Boolean(process.env[agent.urlEnv]), url_env: agent.urlEnv },
-        ])),
-      });
+      jsonResponse(res, 200, backendHealthPayload());
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/status") {
+      jsonResponse(res, 200, frontendStatusPayload());
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/admin/n8n/status") {
@@ -990,6 +1181,10 @@ async function routeRequest(req, res) {
     }
     if (req.method === "POST" && ["/api/agents/approvals", "/api/approvals"].includes(url.pathname)) {
       await handleManualApproval(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/voice/concepts/transcribe") {
+      await handleVoiceConceptTranscribe(req, res);
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/vector-index/status") {

@@ -61,6 +61,7 @@ function buildConfig() {
   const actorUrl = actorTwinChatUrl(env("GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL") || chatUrl);
   const knowledgeUrl = env("GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL");
   const butlerUrl = env("GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL");
+  const voiceTranscriptionUrl = env("GH_PAGES_VOICE_TRANSCRIPTION_URL") || env("GH_PAGES_N8N_VOICE_TRANSCRIPTION_WEBHOOK_URL");
 
   return {
     purpose: "GitHub Pages generated public runtime endpoints for the MeIDs n8n agent runtime. Actor Twin embedded chat is the frontend entrypoint; Knowledge Fabric and Agentic Butler are normally called inside n8n as workflow tools.",
@@ -101,6 +102,8 @@ function buildConfig() {
     n8nActorTwinWebhookUrl: actorUrl,
     n8nKnowledgeFabricWebhookUrl: knowledgeUrl,
     n8nAgenticButlerWebhookUrl: butlerUrl,
+    voiceTranscriptionUrl,
+    n8nVoiceTranscriptionWebhookUrl: voiceTranscriptionUrl,
   };
 }
 

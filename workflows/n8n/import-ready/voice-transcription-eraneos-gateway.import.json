@@ -1,0 +1,178 @@
+{
+  "name": "Me.IDs Voice Transcription - Eraneos Gateway",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meids/voice/transcribe",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryData": true
+        }
+      },
+      "id": "voice-webhook",
+      "name": "Receive voice recording",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst json = item.json || {};\nconst binary = item.binary || {};\nconst firstBinaryKey = Object.keys(binary)[0];\nif (!firstBinaryKey) {\n  throw new Error('No audio binary field received. Send multipart/form-data with field name file.');\n}\nreturn [{\n  json: {\n    twin: json.twin || 'default',\n    category: json.category || 'knowledge',\n    language: json.language || 'auto',\n    source: 'github-pages-voice-capture',\n    received_at: new Date().toISOString(),\n    binary_key: firstBinaryKey\n  },\n  binary\n}];"
+      },
+      "id": "prepare-request",
+      "name": "Prepare transcription request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{($env.ERANEOS_AI_GATEWAY_BASE_URL || $env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\\/$/, '') + '/audio/transcriptions'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.ERANEOS_AI_GATEWAY_API_KEY || $env.OPENAI_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "={{$json.binary_key}}"
+            },
+            {
+              "name": "model",
+              "value": "={{$env.ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODEL || $env.OPENAI_TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe'}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "call-gateway",
+      "name": "Call Eraneos AI Gateway transcription",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare transcription request').first().json || {};\nconst response = $input.first().json || {};\nconst transcript = response.text || response.transcript || response.output?.text || response.output?.transcript || '';\nif (!transcript) {\n  throw new Error('Transcription response did not include text/transcript.');\n}\nreturn [{\n  json: {\n    transcript,\n    twin: source.twin,\n    category: source.category,\n    language: source.language,\n    source: source.source,\n    provider: 'eraneos-ai-gateway',\n    received_at: source.received_at,\n    confidence: response.confidence || null\n  }\n}];"
+      },
+      "id": "normalize-response",
+      "name": "Normalize transcription response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "return-json",
+      "name": "Return JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Receive voice recording": {
+      "main": [
+        [
+          {
+            "node": "Prepare transcription request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare transcription request": {
+      "main": [
+        [
+          {
+            "node": "Call Eraneos AI Gateway transcription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Eraneos AI Gateway transcription": {
+      "main": [
+        [
+          {
+            "node": "Normalize transcription response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize transcription response": {
+      "main": [
+        [
+          {
+            "node": "Return JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "Me.IDs"
+    },
+    {
+      "name": "voice"
+    },
+    {
+      "name": "uat"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-08-20T00:00:00.000Z",
+  "versionId": "meids-voice-transcription-eraneos-gateway-v1"
+}

@@ -315,6 +315,43 @@ const storageKeys = {
   activity: "intellectualTwin.static.activity",
 };
 
+function configuredVoiceTranscriptionUrl() {
+  return normalizeBaseUrl(
+    runtimeConfig.voiceTranscriptionUrl
+      || runtimeConfig.voice_transcription_url
+      || runtimeConfig.n8nVoiceTranscriptionWebhookUrl
+      || runtimeConfig.n8n_voice_transcription_webhook_url
+      || "",
+  );
+}
+
+function voiceTranscriptionEndpoint() {
+  return configuredVoiceTranscriptionUrl() || "/api/voice/concepts/transcribe";
+}
+
+function isVoiceTranscriptionConfigured() {
+  return Boolean(state.openAIConfigured || configuredVoiceTranscriptionUrl());
+}
+
+function normalizeVoiceTranscriptionResult(result = {}) {
+  const nested = result.output || result.data || result.response || result.result || {};
+  const transcript = result.transcript
+    || result.text
+    || result.message
+    || nested.transcript
+    || nested.text
+    || nested.message
+    || "";
+  return {
+    transcript: String(transcript || ""),
+    category: result.category || nested.category || $("#voiceConceptCategory")?.value || "knowledge",
+    evidence: result.evidence || nested.evidence || null,
+    assessment: result.assessment || nested.assessment || null,
+    agent: result.agent || nested.agent || null,
+    raw: result,
+  };
+}
+
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
@@ -1317,14 +1354,14 @@ function buildGraphSvgExport() {
   clone.removeAttribute("style");
   clone.classList.add(`export-layout-${safeGraphClass(state.graphLayoutMode)}`);
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-  clone.setAttribute("data-exported-from", "MeIDs Knowledge Graph");
+  clone.setAttribute("data-exported-from", "Me.IDs Knowledge Graph");
   const [viewX, viewY, viewWidth, viewHeight] = (clone.getAttribute("viewBox") || "0 0 1120 720")
     .split(/\s+/)
     .map((value) => Number(value) || 0);
   clone.setAttribute("width", String(viewWidth || 1120));
   clone.setAttribute("height", String(viewHeight || 720));
   const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-  title.textContent = `MeIDs knowledge graph · ${labelizeGraph(state.graphLayoutMode)} layout · ${state.activeTwin}`;
+  title.textContent = `Me.IDs knowledge graph · ${labelizeGraph(state.graphLayoutMode)} layout · ${state.activeTwin}`;
   clone.insertBefore(title, clone.firstChild);
   const metadata = document.createElementNS("http://www.w3.org/2000/svg", "metadata");
   metadata.textContent = JSON.stringify({
@@ -1825,7 +1862,7 @@ function buildGraphSnapshotJson() {
   return {
     schema: "meids.okf.graph.snapshot.v1",
     exported_at: new Date().toISOString(),
-    exported_from: "MeIDs Knowledge Graph cockpit",
+    exported_from: "Me.IDs Knowledge Graph cockpit",
     twin: state.activeTwin,
     graph_snapshot_hash: graph.snapshot_hash || "",
     okf_graph_version: graph.okf_graph_version || "",
@@ -7959,7 +7996,7 @@ function downloadGraphSkillContextJson(button) {
   const exportPacket = {
     schema: "meids.okf.graph.skill_context.v1",
     exported_at: new Date().toISOString(),
-    exported_from: "MeIDs Knowledge Graph cockpit",
+    exported_from: "Me.IDs Knowledge Graph cockpit",
     projection: packet.projection || {},
     runtime_guidance: [
       "Use approved concepts first.",
@@ -8888,8 +8925,8 @@ function stopRecording() {
 
 async function uploadAudio() {
   if (!state.recordedBlob) return;
-  if (!state.openAIConfigured) {
-    $("#transcriptBox").textContent = "OpenAI is not configured. Set OPENAI_API_KEY before using direct transcription.";
+  if (!isVoiceTranscriptionConfigured()) {
+    $("#transcriptBox").textContent = "Speech-to-text needs a local backend, hosted backend, or n8n transcription proxy with the Eraneos AI Gateway key configured server-side. Do not add keys to GitHub Pages.";
     return;
   }
   if (!(await confirmTwinScopedAction("transcribe and clarify this recording"))) return;
@@ -8900,7 +8937,7 @@ async function uploadAudio() {
   $("#transcriptBox").textContent = "Transcribing and asking Persona Modeler...";
   setVoiceConversationStatus("pending", "Transcribing and preparing the first Persona Modeler question.");
   try {
-    const result = await postForm("/api/voice/concepts/transcribe", form);
+    const result = normalizeVoiceTranscriptionResult(await postForm(voiceTranscriptionEndpoint(), form));
     state.voiceConceptSession = {
       transcript: result.transcript || "",
       category: result.category || $("#voiceConceptCategory").value,
@@ -8910,7 +8947,7 @@ async function uploadAudio() {
       assessment: result.assessment || null,
       agent: result.agent || null,
     };
-    $("#transcriptBox").textContent = result.transcript || JSON.stringify(result, null, 2);
+    $("#transcriptBox").textContent = result.transcript || JSON.stringify(result.raw || result, null, 2);
     $("#voiceConceptCategory").value = state.voiceConceptSession.category;
     renderVoiceConceptAssessment();
     $("#voiceClarifyBtn").disabled = false;
@@ -9982,8 +10019,8 @@ function renderVoiceHandoffGithubPrGuidance(detail) {
     'powershell.exe -ExecutionPolicy Bypass -File ".\\scripts\\github_sync_pr.ps1" `',
     `  -PayloadPath "${absolutePayloadPath}" \``,
     `  -KnowledgeRepoPath "${knowledgeRepoPath}" \``,
-    '  -CommitMessage "Sync MeIDs voice handoff evidence" `',
-    '  -PrTitle "Sync MeIDs voice handoff evidence" `',
+    '  -CommitMessage "Sync Me.IDs voice handoff evidence" `',
+    '  -PrTitle "Sync Me.IDs voice handoff evidence" `',
     '  -OpenPullRequest',
   ].join("\n");
   return `
@@ -10351,6 +10388,30 @@ async function commitVoiceConcept() {
     $("#voiceDraftBtn").disabled = true;
     $("#voiceAgentHandoffBtn").disabled = true;
     state.voiceConceptSession.saved = true;
+    const savedConcept = result.concept
+      ? {
+          ...result.concept,
+          evidence_path: result.evidence?.path || result.concept?.metadata?.voice_evidence_path || "",
+          transcript_path: result.transcript?.path || result.conversation?.transcript_path || "",
+          crud_log_path: result.audit?.path || result.crud_log_path || "",
+          candidate_edges: result.candidate_edges || result.concept?.candidate_edges || [],
+        }
+      : null;
+    if (savedConcept) {
+      persistLocalKnowledgeFabricIngest(
+        {
+          concept: savedConcept,
+          trace_id: result.trace_id || result.conversation?.trace_id || `voice_${Date.now().toString(36)}`,
+          twin: state.activeTwin,
+          source: "voice-concept",
+        },
+        {
+          sourceType: "voice_transcript",
+          sourceName: "Guided Voice Capture",
+          fallbackTitle: assessment.summary || "Voice concept",
+        },
+      );
+    }
     setVoiceConversationStatus("ready", "Concept saved to the knowledge base and visible in review.");
     await refreshConcepts();
     await safeRefreshReviewDashboard();
@@ -10366,7 +10427,8 @@ async function commitVoiceConcept() {
       : `Still missing real concepts: ${missing.join(", ") || "none"}.`;
     $("#voiceEvidence").innerHTML += `
       <br><strong>Category credited:</strong> ${escapeHtml(savedCategory || "-")}<br>
-      <span class="muted-inline">${escapeHtml(coverageLine)}</span>
+      <span class="muted-inline">${escapeHtml(coverageLine)}</span><br>
+      <span class="muted-inline">Knowledge Fabric: staged as pending OKF handoff for review.</span>
     `;
     showToast("Voice concept saved", coverageLine, coverage?.status === "complete" ? "success" : "info");
   } catch (error) {
@@ -10616,10 +10678,11 @@ async function refreshAll() {
   renderTwinContextNotices();
   renderWorkspaceIntro();
   $("#guardrailPolicySelect").value = status.guardrail_policy || "advisory";
-  state.openAIConfigured = Boolean(status.openai_configured);
+  const voiceProxyUrl = configuredVoiceTranscriptionUrl();
+  state.openAIConfigured = Boolean(status.openai_configured || voiceProxyUrl);
   $("#voiceReadiness").textContent = state.openAIConfigured
-    ? "Ready: direct OpenAI transcription is configured."
-    : "Needs setup: set OPENAI_API_KEY before sending recordings for transcription.";
+    ? (voiceProxyUrl ? "Ready: hosted speech-to-text proxy is configured." : "Ready: backend speech-to-text is configured.")
+    : "Needs backend setup: configure OPENAI_API_KEY, ERANEOS_AI_GATEWAY_API_KEY, or a hosted voiceTranscriptionUrl before sending recordings for transcription.";
   $("#voiceReadiness").className = `readiness ${state.openAIConfigured ? "ready" : "missing"}`;
   await safeRefreshVoiceCriteria();
   await safeRefreshVoiceConceptUatSamples();
@@ -10668,19 +10731,22 @@ function refreshStaticPagesWorkspace() {
   state.graphEdgeReviews = [];
   state.graphPostgresRead = { status: "static-staging", blockers: ["Postgres is not connected in GitHub Pages staging."] };
   state.okfGraphLoadedAt = new Date().toISOString();
-  state.openAIConfigured = Boolean(status.openai_configured);
+  const voiceProxyUrl = configuredVoiceTranscriptionUrl();
+  state.openAIConfigured = Boolean(status.openai_configured || voiceProxyUrl);
   renderTwinOptions();
   $("#twinSelect").value = state.activeTwin;
   $("#statusBackend").textContent = status.status;
   $("#statusProvider").textContent = status.ai_provider;
-  $("#statusOpenAI").textContent = status.openai_configured ? "configured" : "not used";
+  $("#statusOpenAI").textContent = state.openAIConfigured ? (voiceProxyUrl ? "voice proxy" : "configured") : "not used";
   $("#statusN8nChat").textContent = status.n8n_chat?.configured ? "webhook active" : "fixture mode";
   $("#statusGuardrails").textContent = status.guardrail_policy || "-";
   $("#statusVersion").textContent = status.app_version || "-";
   const activeProfile = state.twins.find((twin) => twin.twin_id === state.activeTwin);
   $("#workspaceSignal").textContent = `${activeProfile?.display_name || state.activeTwin} · GitHub Pages · Actor Twin embedded chat`;
-  $("#voiceReadiness").textContent = "Static staging: voice recording UI is visible; transcription requires the local backend or a hosted API.";
-  $("#voiceReadiness").className = "readiness missing";
+  $("#voiceReadiness").textContent = voiceProxyUrl
+    ? "Ready: hosted speech-to-text proxy is configured for static staging."
+    : "Static staging: voice recording UI is visible; speech-to-text requires a local backend, hosted backend, or n8n proxy with the Eraneos AI Gateway key.";
+  $("#voiceReadiness").className = `readiness ${voiceProxyUrl ? "ready" : "missing"}`;
   updateLandingStatus();
   renderProductionRestartHint();
   renderTwinContextNotices();
@@ -11502,9 +11568,77 @@ function renderSidebarTwinProfile() {
 function twinPictureUrl(twin) {
   const picturePath = twin?.picture_path || "";
   if (!picturePath) return "";
-  const separator = picturePath.includes("?") ? "&" : "?";
+  if (/^(data|blob):/i.test(picturePath)) return picturePath;
+  const resolvedPath = resolveAssetUrl(picturePath);
   const version = encodeURIComponent(twin.picture_uploaded_at || twin.updated_at || "");
-  return `${resolveAssetUrl(picturePath)}${separator}v=${version}`;
+  if (!version) return resolvedPath;
+  const separator = resolvedPath.includes("?") ? "&" : "?";
+  return `${resolvedPath}${separator}v=${version}`;
+}
+
+function isStaticBoundaryError(error) {
+  const message = String(error?.message || error || "");
+  return /405 Not Allowed|404 Not Found|Site not found|GitHub Pages|Hosted backend endpoint|Hosted backend resource/i.test(message);
+}
+
+async function storeTwinPictureLocally(file) {
+  if (file.size > 1_200_000) {
+    throw new Error("Static Pages can store small profile pictures only. Choose an image under 1.2 MB or use the hosted backend.");
+  }
+  const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
+  if (index === -1) throw new Error("Selected twin is not available in the local registry.");
+  const dataUrl = await readFileAsDataUrl(file);
+  state.twins[index] = normalizeStaticTwin(
+    {
+      picture_path: dataUrl,
+      picture_uploaded_at: new Date().toISOString(),
+      picture_focus_x: Number($("#twinPictureFocusX").value) || 50,
+      picture_focus_y: Number($("#twinPictureFocusY").value) || 50,
+    },
+    state.twins[index],
+  );
+  appendStaticTwinActivity("picture_updated", state.selectedTwinId, "Profile picture stored in browser local registry.");
+  writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+  $("#twinResult").textContent = JSON.stringify({ status: "picture_updated_local", twin_id: state.selectedTwinId }, null, 2);
+  if (state.twinPicturePreviewUrl) {
+    URL.revokeObjectURL(state.twinPicturePreviewUrl);
+    state.twinPicturePreviewUrl = "";
+  }
+  await refreshTwins();
+}
+
+async function removeTwinPictureLocally() {
+  const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
+  if (index === -1) throw new Error("Selected twin is not available in the local registry.");
+  state.twins[index] = normalizeStaticTwin(
+    {
+      picture_path: "",
+      picture_uploaded_at: "",
+      picture_focus_x: 50,
+      picture_focus_y: 50,
+    },
+    state.twins[index],
+  );
+  appendStaticTwinActivity("picture_removed", state.selectedTwinId, "Profile picture removed from browser local registry.");
+  writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+  $("#twinResult").textContent = JSON.stringify({ status: "picture_removed_local", twin_id: state.selectedTwinId }, null, 2);
+  await refreshTwins();
+}
+
+async function saveTwinPicturePositionLocally() {
+  const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
+  if (index === -1) throw new Error("Selected twin is not available in the local registry.");
+  state.twins[index] = normalizeStaticTwin(
+    {
+      picture_focus_x: Number($("#twinPictureFocusX").value),
+      picture_focus_y: Number($("#twinPictureFocusY").value),
+    },
+    state.twins[index],
+  );
+  appendStaticTwinActivity("picture_focus_updated", state.selectedTwinId, "Profile picture focus stored in browser local registry.");
+  writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+  $("#twinResult").textContent = JSON.stringify({ status: "picture_focus_updated_local", twin_id: state.selectedTwinId }, null, 2);
+  await refreshTwins();
 }
 
 function twinInitials(twin) {
@@ -12212,29 +12346,7 @@ async function uploadTwinPicture() {
   $("#twinResult").textContent = `Uploading picture for ${state.selectedTwinId}...`;
   try {
     if (staticPagesMode) {
-      if (file.size > 1_200_000) {
-        throw new Error("Static Pages can store small profile pictures only. Choose an image under 1.2 MB or use the hosted backend.");
-      }
-      const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
-      if (index === -1) throw new Error("Selected twin is not available in the local registry.");
-      const dataUrl = await readFileAsDataUrl(file);
-      state.twins[index] = normalizeStaticTwin(
-        {
-          picture_path: dataUrl,
-          picture_uploaded_at: new Date().toISOString(),
-          picture_focus_x: Number($("#twinPictureFocusX").value) || 50,
-          picture_focus_y: Number($("#twinPictureFocusY").value) || 50,
-        },
-        state.twins[index],
-      );
-      appendStaticTwinActivity("picture_updated", state.selectedTwinId, "Profile picture stored in browser local registry.");
-      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
-      $("#twinResult").textContent = JSON.stringify({ status: "picture_updated_local", twin_id: state.selectedTwinId }, null, 2);
-      if (state.twinPicturePreviewUrl) {
-        URL.revokeObjectURL(state.twinPicturePreviewUrl);
-        state.twinPicturePreviewUrl = "";
-      }
-      await refreshTwins();
+      await storeTwinPictureLocally(file);
       showToast("Twin picture stored locally", state.selectedTwinId, "success");
       return;
     }
@@ -12247,6 +12359,17 @@ async function uploadTwinPicture() {
     await safeRefreshTwins();
     showToast("Twin picture updated", state.selectedTwinId, "success");
   } catch (error) {
+    if (!staticPagesMode && isStaticBoundaryError(error)) {
+      try {
+        await storeTwinPictureLocally(file);
+        showToast("Twin picture stored locally", state.selectedTwinId, "success");
+        return;
+      } catch (fallbackError) {
+        $("#twinResult").textContent = `Upload picture failed: ${fallbackError.message}`;
+        showToast("Upload picture failed", fallbackError.message, "error");
+        return;
+      }
+    }
     $("#twinResult").textContent = `Upload picture failed: ${error.message}`;
     showToast("Upload picture failed", error.message, "error");
   }
@@ -12270,21 +12393,7 @@ async function removeTwinPicture() {
   if (!confirmed) return;
   try {
     if (staticPagesMode) {
-      const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
-      if (index === -1) throw new Error("Selected twin is not available in the local registry.");
-      state.twins[index] = normalizeStaticTwin(
-        {
-          picture_path: "",
-          picture_uploaded_at: "",
-          picture_focus_x: 50,
-          picture_focus_y: 50,
-        },
-        state.twins[index],
-      );
-      appendStaticTwinActivity("picture_removed", state.selectedTwinId, "Profile picture removed from browser local registry.");
-      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
-      $("#twinResult").textContent = JSON.stringify({ status: "picture_removed_local", twin_id: state.selectedTwinId }, null, 2);
-      await refreshTwins();
+      await removeTwinPictureLocally();
       showToast("Twin picture removed locally", label, "success");
       return;
     }
@@ -12293,6 +12402,17 @@ async function removeTwinPicture() {
     await safeRefreshTwins();
     showToast("Twin picture removed", label, "success");
   } catch (error) {
+    if (!staticPagesMode && isStaticBoundaryError(error)) {
+      try {
+        await removeTwinPictureLocally();
+        showToast("Twin picture removed locally", label, "success");
+        return;
+      } catch (fallbackError) {
+        $("#twinResult").textContent = `Remove picture failed: ${fallbackError.message}`;
+        showToast("Remove picture failed", fallbackError.message, "error");
+        return;
+      }
+    }
     $("#twinResult").textContent = `Remove picture failed: ${error.message}`;
     showToast("Remove picture failed", error.message, "error");
   }
@@ -12302,19 +12422,7 @@ async function saveTwinPicturePosition() {
   if (!state.selectedTwinId) return;
   try {
     if (staticPagesMode) {
-      const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
-      if (index === -1) throw new Error("Selected twin is not available in the local registry.");
-      state.twins[index] = normalizeStaticTwin(
-        {
-          picture_focus_x: Number($("#twinPictureFocusX").value),
-          picture_focus_y: Number($("#twinPictureFocusY").value),
-        },
-        state.twins[index],
-      );
-      appendStaticTwinActivity("picture_focus_updated", state.selectedTwinId, "Profile picture focus stored in browser local registry.");
-      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
-      $("#twinResult").textContent = JSON.stringify({ status: "picture_focus_updated_local", twin_id: state.selectedTwinId }, null, 2);
-      await refreshTwins();
+      await saveTwinPicturePositionLocally();
       showToast("Picture focus saved locally", state.selectedTwinId, "success");
       return;
     }
@@ -12328,6 +12436,17 @@ async function saveTwinPicturePosition() {
     await safeRefreshTwins();
     showToast("Picture focus saved", state.selectedTwinId, "success");
   } catch (error) {
+    if (!staticPagesMode && isStaticBoundaryError(error)) {
+      try {
+        await saveTwinPicturePositionLocally();
+        showToast("Picture focus saved locally", state.selectedTwinId, "success");
+        return;
+      } catch (fallbackError) {
+        $("#twinResult").textContent = `Save picture focus failed: ${fallbackError.message}`;
+        showToast("Save picture focus failed", fallbackError.message, "error");
+        return;
+      }
+    }
     $("#twinResult").textContent = `Save picture focus failed: ${error.message}`;
     showToast("Save picture focus failed", error.message, "error");
   }
@@ -14937,7 +15056,7 @@ function buildAgentLiveProbeEnvelope(agentId) {
     return buildAgentContractEnvelope(
       agentId,
       "live_probe",
-      "Knowledge Fabric readiness probe from MeIDs cockpit.",
+      "Knowledge Fabric readiness probe from Me.IDs cockpit.",
       {
         execute: false,
         source_type: "probe",
@@ -14961,7 +15080,7 @@ function buildAgentLiveProbeEnvelope(agentId) {
   return buildAgentContractEnvelope(
     agentId,
     "contract_probe",
-    "Contract readiness probe from MeIDs cockpit.",
+    "Contract readiness probe from Me.IDs cockpit.",
     { execute: false },
     { probe: true, source_context: {} },
     { required: false, reason: "Readiness probe only." },
@@ -16506,6 +16625,14 @@ function mergeAgentRuntimeConfig(config = {}) {
   runtimeConfig.n8nAgenticButlerWebhookUrl = runtimeConfig.n8nAgenticButlerWebhookUrl
     || config.n8nAgenticButlerWebhookUrl
     || agentWebhooks.agentic_butler
+    || "";
+  runtimeConfig.voiceTranscriptionUrl = runtimeConfig.voiceTranscriptionUrl
+    || runtimeConfig.voice_transcription_url
+    || runtimeConfig.n8nVoiceTranscriptionWebhookUrl
+    || config.voiceTranscriptionUrl
+    || config.voice_transcription_url
+    || config.n8nVoiceTranscriptionWebhookUrl
+    || config.n8n_voice_transcription_webhook_url
     || "";
 }
 
@@ -19912,7 +20039,7 @@ function looksLikeJsonEnvelope(value = "") {
 function actorDirectFallbackAnswer(query = "") {
   const normalized = String(query || "").toLowerCase();
   if (/\b(who are you|what are you|introduce yourself|describe yourself)\b/i.test(normalized)) {
-    return "I am the Actor Twin for the active MeIDs profile. I answer from persona, approved knowledge, and governed context, and I delegate work to specialist agents only when execution is actually needed.";
+    return "I am the Actor Twin for the active Me.IDs profile. I answer from persona, approved knowledge, and governed context, and I delegate work to specialist agents only when execution is actually needed.";
   }
   if (/\b(purpose|why do you exist|what do you do)\b/i.test(normalized)) {
     return "My purpose is to help scale the active twin's identity and work style: answer from trusted knowledge, route source work to the Knowledge Fabric Agent, and activate Agentic Butler only for approved skill execution or new skill design.";
@@ -24556,8 +24683,8 @@ function renderSyncDetailPanel() {
     'powershell.exe -ExecutionPolicy Bypass -File ".\\scripts\\github_sync_pr.ps1" `',
     `  -PayloadPath "${payloadPath}" \``,
     `  -KnowledgeRepoPath "${knowledgeRepoPath}" \``,
-    '  -CommitMessage "Sync MeIDs knowledge bundle" `',
-    '  -PrTitle "Sync MeIDs knowledge bundle" `',
+    '  -CommitMessage "Sync Me.IDs knowledge bundle" `',
+    '  -PrTitle "Sync Me.IDs knowledge bundle" `',
     '  -OpenPullRequest',
   ].join("\n");
   const actionRows = Object.entries(actions)
@@ -30643,7 +30770,7 @@ function buildAgentApprovalResumePayload(approval = {}) {
       original_request_id: approval.request_id || "",
       original_trace_id: approval.trace_id || "",
       approved: true,
-      approval_note: "Human-in-the-loop approval prepared from MeIDs frontend.",
+      approval_note: "Human-in-the-loop approval prepared from Me.IDs frontend.",
     },
     context: {
       actor_trace_id: approval.actor_trace_id || "",
@@ -30691,7 +30818,7 @@ function renderProductionN8nHandoffPacket(missing = []) {
         <div>
           <span class="badge">n8n workflow handoff</span>
           <strong>${escapeHtml(`${missing.length} workflow brief${missing.length === 1 ? "" : "s"} ready`)}</strong>
-          <p>Copy this packet into the private agent-config or n8n build task. It describes what the missing workflows must do before their public UAT URLs can be wired into MeIDs.</p>
+          <p>Copy this packet into the private agent-config or n8n build task. It describes what the missing workflows must do before their public UAT URLs can be wired into Me.IDs.</p>
         </div>
         <button class="secondary small source-copy-btn" type="button" data-copy-value="${escapeHtml(JSON.stringify(packet, null, 2))}">Copy handoff packet</button>
       </div>
@@ -31089,8 +31216,8 @@ function renderProductionHandoff(readiness = {}, storage = {}, migration = {}, g
     '.\\scripts\\github_sync_pr.ps1 `',
     `  -PayloadPath "${localBundlePath}\\exports\\sync\\<payload>.json" \``,
     `  -KnowledgeRepoPath "${knowledgeRepoPath}" \``,
-    '  -CommitMessage "Sync MeIDs knowledge bundle" `',
-    '  -PrTitle "Sync MeIDs knowledge bundle" `',
+    '  -CommitMessage "Sync Me.IDs knowledge bundle" `',
+    '  -PrTitle "Sync Me.IDs knowledge bundle" `',
     '  -OpenPullRequest',
   ].join("\n");
   const handoffItems = [
@@ -31419,7 +31546,7 @@ function renderProductionHandoff(readiness = {}, storage = {}, migration = {}, g
         <div>
           <span class="badge">GitHub Pages frontend</span>
           <strong>${escapeHtml(githubPages.status || "blocked_draft")}</strong>
-          <p>Publish the static MeIDs UI only after hosted API URL, CORS, auth, and browser-secret checks are reviewed.</p>
+          <p>Publish the static Me.IDs UI only after hosted API URL, CORS, auth, and browser-secret checks are reviewed.</p>
         </div>
         <button id="exportGitHubPagesArtifactBtn" class="secondary small" type="button">Export Pages checklist</button>
       </div>
@@ -33518,13 +33645,15 @@ function formatShortDate(value) {
 }
 
 function addMessage(role, text, metadata = null) {
+  const messageContainer = $("#messages");
+  if (!messageContainer) return null;
   $("#messages .chat-empty-state")?.remove();
   const node = document.createElement("article");
   node.className = `message ${role}`;
   if (role === "assistant" && metadata?.run_id && metadata?.result) {
     node.classList.add("skill-run-message");
     node.innerHTML = renderSkillRunCard(metadata);
-    $("#messages").appendChild(node);
+    messageContainer.appendChild(node);
     bindSkillRunReviewButtons(node, metadata.run_id);
     bindSkillRunArtifactActions(node, metadata);
     bindApprovalQueueActions(node);
@@ -33534,7 +33663,7 @@ function addMessage(role, text, metadata = null) {
   if (role === "assistant" && metadata?.agent_contract_response) {
     node.classList.add("agent-contract-message");
     node.innerHTML = renderAgentContractChatCard(metadata.agent_contract_response);
-    $("#messages").appendChild(node);
+    messageContainer.appendChild(node);
     node.querySelector(".speak-message-btn")?.addEventListener("click", () => speakMessage(node, agentContractResponseText(metadata.agent_contract_response)));
     node.scrollIntoView({ block: "end" });
     return node;
@@ -33556,7 +33685,7 @@ function addMessage(role, text, metadata = null) {
     ${role === "assistant" ? '<div class="message-actions"><button class="secondary small speak-message-btn" type="button">Play voice</button></div>' : ""}
     ${sources}${answerPath}${confidence}${retrieval}
   `;
-  $("#messages").appendChild(node);
+  messageContainer.appendChild(node);
   if (role === "assistant") {
     node.querySelector(".speak-message-btn")?.addEventListener("click", () => speakMessage(node, text));
   }
@@ -33659,6 +33788,7 @@ function renderSourceChip(source) {
 }
 
 function removeLastAssistantPlaceholder() {
+  if (!$("#messages")) return;
   const messages = $$("#messages .message.assistant");
   const last = messages[messages.length - 1];
   if (
