@@ -10388,6 +10388,30 @@ async function commitVoiceConcept() {
     $("#voiceDraftBtn").disabled = true;
     $("#voiceAgentHandoffBtn").disabled = true;
     state.voiceConceptSession.saved = true;
+    const savedConcept = result.concept
+      ? {
+          ...result.concept,
+          evidence_path: result.evidence?.path || result.concept?.metadata?.voice_evidence_path || "",
+          transcript_path: result.transcript?.path || result.conversation?.transcript_path || "",
+          crud_log_path: result.audit?.path || result.crud_log_path || "",
+          candidate_edges: result.candidate_edges || result.concept?.candidate_edges || [],
+        }
+      : null;
+    if (savedConcept) {
+      persistLocalKnowledgeFabricIngest(
+        {
+          concept: savedConcept,
+          trace_id: result.trace_id || result.conversation?.trace_id || `voice_${Date.now().toString(36)}`,
+          twin: state.activeTwin,
+          source: "voice-concept",
+        },
+        {
+          sourceType: "voice_transcript",
+          sourceName: "Guided Voice Capture",
+          fallbackTitle: assessment.summary || "Voice concept",
+        },
+      );
+    }
     setVoiceConversationStatus("ready", "Concept saved to the knowledge base and visible in review.");
     await refreshConcepts();
     await safeRefreshReviewDashboard();
@@ -10403,7 +10427,8 @@ async function commitVoiceConcept() {
       : `Still missing real concepts: ${missing.join(", ") || "none"}.`;
     $("#voiceEvidence").innerHTML += `
       <br><strong>Category credited:</strong> ${escapeHtml(savedCategory || "-")}<br>
-      <span class="muted-inline">${escapeHtml(coverageLine)}</span>
+      <span class="muted-inline">${escapeHtml(coverageLine)}</span><br>
+      <span class="muted-inline">Knowledge Fabric: staged as pending OKF handoff for review.</span>
     `;
     showToast("Voice concept saved", coverageLine, coverage?.status === "complete" ? "success" : "info");
   } catch (error) {

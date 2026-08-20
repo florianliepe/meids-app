@@ -79,6 +79,9 @@ jobs:
         run: node scripts/validate-postgres-graph-schema.cjs
 
       - name: Prepare static artifact
+        env:
+          GH_PAGES_VOICE_TRANSCRIPTION_URL: ${{ secrets.GH_PAGES_VOICE_TRANSCRIPTION_URL }}
+          GH_PAGES_N8N_VOICE_TRANSCRIPTION_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_VOICE_TRANSCRIPTION_WEBHOOK_URL }}
         run: node scripts/build-pages-static.cjs --output dist-pages --clean --smoke
 
       - name: Smoke check static artifact
