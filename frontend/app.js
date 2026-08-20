@@ -11502,9 +11502,77 @@ function renderSidebarTwinProfile() {
 function twinPictureUrl(twin) {
   const picturePath = twin?.picture_path || "";
   if (!picturePath) return "";
-  const separator = picturePath.includes("?") ? "&" : "?";
+  if (/^(data|blob):/i.test(picturePath)) return picturePath;
+  const resolvedPath = resolveAssetUrl(picturePath);
   const version = encodeURIComponent(twin.picture_uploaded_at || twin.updated_at || "");
-  return `${resolveAssetUrl(picturePath)}${separator}v=${version}`;
+  if (!version) return resolvedPath;
+  const separator = resolvedPath.includes("?") ? "&" : "?";
+  return `${resolvedPath}${separator}v=${version}`;
+}
+
+function isStaticBoundaryError(error) {
+  const message = String(error?.message || error || "");
+  return /405 Not Allowed|404 Not Found|Site not found|GitHub Pages|Hosted backend endpoint|Hosted backend resource/i.test(message);
+}
+
+async function storeTwinPictureLocally(file) {
+  if (file.size > 1_200_000) {
+    throw new Error("Static Pages can store small profile pictures only. Choose an image under 1.2 MB or use the hosted backend.");
+  }
+  const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
+  if (index === -1) throw new Error("Selected twin is not available in the local registry.");
+  const dataUrl = await readFileAsDataUrl(file);
+  state.twins[index] = normalizeStaticTwin(
+    {
+      picture_path: dataUrl,
+      picture_uploaded_at: new Date().toISOString(),
+      picture_focus_x: Number($("#twinPictureFocusX").value) || 50,
+      picture_focus_y: Number($("#twinPictureFocusY").value) || 50,
+    },
+    state.twins[index],
+  );
+  appendStaticTwinActivity("picture_updated", state.selectedTwinId, "Profile picture stored in browser local registry.");
+  writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+  $("#twinResult").textContent = JSON.stringify({ status: "picture_updated_local", twin_id: state.selectedTwinId }, null, 2);
+  if (state.twinPicturePreviewUrl) {
+    URL.revokeObjectURL(state.twinPicturePreviewUrl);
+    state.twinPicturePreviewUrl = "";
+  }
+  await refreshTwins();
+}
+
+async function removeTwinPictureLocally() {
+  const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
+  if (index === -1) throw new Error("Selected twin is not available in the local registry.");
+  state.twins[index] = normalizeStaticTwin(
+    {
+      picture_path: "",
+      picture_uploaded_at: "",
+      picture_focus_x: 50,
+      picture_focus_y: 50,
+    },
+    state.twins[index],
+  );
+  appendStaticTwinActivity("picture_removed", state.selectedTwinId, "Profile picture removed from browser local registry.");
+  writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+  $("#twinResult").textContent = JSON.stringify({ status: "picture_removed_local", twin_id: state.selectedTwinId }, null, 2);
+  await refreshTwins();
+}
+
+async function saveTwinPicturePositionLocally() {
+  const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
+  if (index === -1) throw new Error("Selected twin is not available in the local registry.");
+  state.twins[index] = normalizeStaticTwin(
+    {
+      picture_focus_x: Number($("#twinPictureFocusX").value),
+      picture_focus_y: Number($("#twinPictureFocusY").value),
+    },
+    state.twins[index],
+  );
+  appendStaticTwinActivity("picture_focus_updated", state.selectedTwinId, "Profile picture focus stored in browser local registry.");
+  writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
+  $("#twinResult").textContent = JSON.stringify({ status: "picture_focus_updated_local", twin_id: state.selectedTwinId }, null, 2);
+  await refreshTwins();
 }
 
 function twinInitials(twin) {
@@ -12212,29 +12280,7 @@ async function uploadTwinPicture() {
   $("#twinResult").textContent = `Uploading picture for ${state.selectedTwinId}...`;
   try {
     if (staticPagesMode) {
-      if (file.size > 1_200_000) {
-        throw new Error("Static Pages can store small profile pictures only. Choose an image under 1.2 MB or use the hosted backend.");
-      }
-      const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
-      if (index === -1) throw new Error("Selected twin is not available in the local registry.");
-      const dataUrl = await readFileAsDataUrl(file);
-      state.twins[index] = normalizeStaticTwin(
-        {
-          picture_path: dataUrl,
-          picture_uploaded_at: new Date().toISOString(),
-          picture_focus_x: Number($("#twinPictureFocusX").value) || 50,
-          picture_focus_y: Number($("#twinPictureFocusY").value) || 50,
-        },
-        state.twins[index],
-      );
-      appendStaticTwinActivity("picture_updated", state.selectedTwinId, "Profile picture stored in browser local registry.");
-      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
-      $("#twinResult").textContent = JSON.stringify({ status: "picture_updated_local", twin_id: state.selectedTwinId }, null, 2);
-      if (state.twinPicturePreviewUrl) {
-        URL.revokeObjectURL(state.twinPicturePreviewUrl);
-        state.twinPicturePreviewUrl = "";
-      }
-      await refreshTwins();
+      await storeTwinPictureLocally(file);
       showToast("Twin picture stored locally", state.selectedTwinId, "success");
       return;
     }
@@ -12247,6 +12293,17 @@ async function uploadTwinPicture() {
     await safeRefreshTwins();
     showToast("Twin picture updated", state.selectedTwinId, "success");
   } catch (error) {
+    if (!staticPagesMode && isStaticBoundaryError(error)) {
+      try {
+        await storeTwinPictureLocally(file);
+        showToast("Twin picture stored locally", state.selectedTwinId, "success");
+        return;
+      } catch (fallbackError) {
+        $("#twinResult").textContent = `Upload picture failed: ${fallbackError.message}`;
+        showToast("Upload picture failed", fallbackError.message, "error");
+        return;
+      }
+    }
     $("#twinResult").textContent = `Upload picture failed: ${error.message}`;
     showToast("Upload picture failed", error.message, "error");
   }
@@ -12270,21 +12327,7 @@ async function removeTwinPicture() {
   if (!confirmed) return;
   try {
     if (staticPagesMode) {
-      const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
-      if (index === -1) throw new Error("Selected twin is not available in the local registry.");
-      state.twins[index] = normalizeStaticTwin(
-        {
-          picture_path: "",
-          picture_uploaded_at: "",
-          picture_focus_x: 50,
-          picture_focus_y: 50,
-        },
-        state.twins[index],
-      );
-      appendStaticTwinActivity("picture_removed", state.selectedTwinId, "Profile picture removed from browser local registry.");
-      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
-      $("#twinResult").textContent = JSON.stringify({ status: "picture_removed_local", twin_id: state.selectedTwinId }, null, 2);
-      await refreshTwins();
+      await removeTwinPictureLocally();
       showToast("Twin picture removed locally", label, "success");
       return;
     }
@@ -12293,6 +12336,17 @@ async function removeTwinPicture() {
     await safeRefreshTwins();
     showToast("Twin picture removed", label, "success");
   } catch (error) {
+    if (!staticPagesMode && isStaticBoundaryError(error)) {
+      try {
+        await removeTwinPictureLocally();
+        showToast("Twin picture removed locally", label, "success");
+        return;
+      } catch (fallbackError) {
+        $("#twinResult").textContent = `Remove picture failed: ${fallbackError.message}`;
+        showToast("Remove picture failed", fallbackError.message, "error");
+        return;
+      }
+    }
     $("#twinResult").textContent = `Remove picture failed: ${error.message}`;
     showToast("Remove picture failed", error.message, "error");
   }
@@ -12302,19 +12356,7 @@ async function saveTwinPicturePosition() {
   if (!state.selectedTwinId) return;
   try {
     if (staticPagesMode) {
-      const index = state.twins.findIndex((item) => item.twin_id === state.selectedTwinId);
-      if (index === -1) throw new Error("Selected twin is not available in the local registry.");
-      state.twins[index] = normalizeStaticTwin(
-        {
-          picture_focus_x: Number($("#twinPictureFocusX").value),
-          picture_focus_y: Number($("#twinPictureFocusY").value),
-        },
-        state.twins[index],
-      );
-      appendStaticTwinActivity("picture_focus_updated", state.selectedTwinId, "Profile picture focus stored in browser local registry.");
-      writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
-      $("#twinResult").textContent = JSON.stringify({ status: "picture_focus_updated_local", twin_id: state.selectedTwinId }, null, 2);
-      await refreshTwins();
+      await saveTwinPicturePositionLocally();
       showToast("Picture focus saved locally", state.selectedTwinId, "success");
       return;
     }
@@ -12328,6 +12370,17 @@ async function saveTwinPicturePosition() {
     await safeRefreshTwins();
     showToast("Picture focus saved", state.selectedTwinId, "success");
   } catch (error) {
+    if (!staticPagesMode && isStaticBoundaryError(error)) {
+      try {
+        await saveTwinPicturePositionLocally();
+        showToast("Picture focus saved locally", state.selectedTwinId, "success");
+        return;
+      } catch (fallbackError) {
+        $("#twinResult").textContent = `Save picture focus failed: ${fallbackError.message}`;
+        showToast("Save picture focus failed", fallbackError.message, "error");
+        return;
+      }
+    }
     $("#twinResult").textContent = `Save picture focus failed: ${error.message}`;
     showToast("Save picture focus failed", error.message, "error");
   }
