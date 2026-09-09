@@ -26,7 +26,7 @@ Resource group:
 rg-ai-intellectual-twin
 ```
 
-Existing Static Web Apps:
+Existing Static Web Apps before target-mode execution:
 
 ```text
 SWA-Intellectual-Twin-Keynote
@@ -59,6 +59,39 @@ Backend App Service auth state:
 enabled: false
 defaultProvider: null
 clientId: null
+```
+
+Created production Static Web App:
+
+```text
+name: intellectual-twin
+defaultHostname: victorious-flower-0f10a8303.6.azurestaticapps.net
+resourceGroup: rg-ai-intellectual-twin
+location: West Europe
+sku: Standard
+repository deployment: GitHub Actions deployment token
+```
+
+Linked backend:
+
+```text
+Static Web App: intellectual-twin
+Linked App Service backend: meids-backend-1853a19b
+Provisioning state: Succeeded
+```
+
+Live production staging URL:
+
+```text
+https://victorious-flower-0f10a8303.6.azurestaticapps.net/
+```
+
+Deployment workflow:
+
+```text
+.github/workflows/intellectual-twin-azure-static-web-app.yml
+GitHub secret: AZURE_STATIC_WEB_APPS_API_TOKEN_INTELLECTUAL_TWIN
+Latest verified run: success
 ```
 
 Backend session defaults configured:
@@ -117,21 +150,23 @@ Azure and backend, not by browser-only flags.
 
 ## Execution Package 1: Select or Create Production Static Web App
 
-Preferred:
+Completed:
 
-Create a new Static Web App bound to:
+A new Static Web App was created for the Me.IDs app:
 
 ```text
-https://github.com/florianliepe/meids-app.git
+name: intellectual-twin
+source repository: https://github.com/florianliepe/meids-app.git
 branch: main
-app_location: frontend
-output_location: dist-pages or equivalent build artifact
+artifact source: dist-swa generated from frontend/
 sku: Standard
 region: West Europe
 planned domain: intellectual-twin.eraneos.com
 ```
 
-Alternative:
+The existing keynote Static Web Apps were not repurposed.
+
+Alternative retained only for rollback:
 
 Repurpose an existing Static Web App only if explicitly approved:
 
@@ -229,18 +264,25 @@ Test cases:
 
 Ask Azure/Entra admin for:
 
-1. Confirm whether a new Azure Static Web App may be created for
-   `florianliepe/meids-app`.
-2. If yes, approve/create:
+1. Create this DNS record:
 
 ```text
-Resource name: meids-app-prod or intellectual-twin
-Resource group: rg-ai-intellectual-twin
-Region: West Europe
-SKU: Standard
-Repository: https://github.com/florianliepe/meids-app.git
-Branch: main
-Custom domain: intellectual-twin.eraneos.com
+Record type: CNAME
+Name: intellectual-twin
+Zone: eraneos.com
+Target: victorious-flower-0f10a8303.6.azurestaticapps.net
+```
+
+2. After DNS propagation, rerun:
+
+```powershell
+$azpy='C:\Program Files\Microsoft SDKs\Azure\CLI2\python.exe'
+& $azpy -m azure.cli staticwebapp hostname set `
+  --subscription 25c9ce59-90a1-4e8a-a2d4-1853a19bce22 `
+  --resource-group rg-ai-intellectual-twin `
+  --name intellectual-twin `
+  --hostname intellectual-twin.eraneos.com `
+  --validation-method cname-delegation
 ```
 
 3. Create/confirm Microsoft Entra app registration for the Static Web App.
@@ -258,9 +300,9 @@ Custom domain: intellectual-twin.eraneos.com
 
 ## Current Recommendation
 
-Create a dedicated production Static Web App for `meids-app`. Do not repurpose
-the existing keynote Static Web Apps unless the old keynote deployments are
-retired.
+Use the dedicated production Static Web App `intellectual-twin`. Do not
+repurpose the existing keynote Static Web Apps unless the old keynote
+deployments are retired.
 
 ## Validation Results
 
@@ -271,12 +313,32 @@ node --check frontend/app.js
 frontend/staticwebapp.config.json JSON parse
 npm run check:backend
 hosted GET /api/session
+hosted Azure SWA GET /
+hosted Azure SWA GET /runtime-config.js
+hosted Azure SWA GET /api/session
 ```
 
 Result:
 
 ```text
 passed
+```
+
+Azure SWA runtime verification:
+
+```text
+GET https://victorious-flower-0f10a8303.6.azurestaticapps.net/
+status: 200
+title: Me.IDs
+login panel: present
+
+GET https://victorious-flower-0f10a8303.6.azurestaticapps.net/runtime-config.js
+auth.enabled: true
+staticPagesMode: false
+
+GET https://victorious-flower-0f10a8303.6.azurestaticapps.net/api/session
+status: 401
+body: controlled unauthenticated JSON response
 ```
 
 Remaining runtime note:
