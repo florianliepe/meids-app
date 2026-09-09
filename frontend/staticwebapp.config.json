@@ -11,6 +11,10 @@
       "statusCode": 302
     },
     {
+      "route": "/api/session",
+      "allowedRoles": ["anonymous", "authenticated"]
+    },
+    {
       "route": "/api/*",
       "allowedRoles": ["authenticated"]
     },
