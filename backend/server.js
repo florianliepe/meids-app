@@ -1459,6 +1459,9 @@ function parseAzureClientPrincipal(req) {
     try {
       const raw = Buffer.from(String(encoded), "base64").toString("utf8");
       const principal = JSON.parse(raw);
+      const userId = String(principal?.userId || "").trim().toLowerCase();
+      const userDetails = String(principal?.userDetails || "").trim().toLowerCase();
+      if (["anonymous", "authenticated"].includes(userId) || userDetails === "anonymous") return null;
       if (principal?.userId || principal?.userDetails) return principal;
     } catch (error) {
       return null;
@@ -1467,6 +1470,9 @@ function parseAzureClientPrincipal(req) {
   const userId = req.headers["x-ms-client-principal-id"];
   const userName = req.headers["x-ms-client-principal-name"];
   if (userId || userName) {
+    const normalizedUserId = String(userId || "").trim().toLowerCase();
+    const normalizedUserName = String(userName || "").trim().toLowerCase();
+    if (["anonymous", "authenticated"].includes(normalizedUserId) || normalizedUserName === "anonymous") return null;
     return {
       identityProvider: req.headers["x-ms-client-principal-idp"] || "aad",
       userId: String(userId || userName),
