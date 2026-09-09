@@ -33,4 +33,13 @@ window.INTELLECTUAL_TWIN_CONFIG = {
   },
   n8nChatEnabled: true,
   staticPagesMode: true,
+  auth: {
+    enabled: false,
+    provider: "azure_static_web_apps_entra_id",
+    loginUrl: "/.auth/login/aad",
+    logoutUrl: "/.auth/logout",
+    allowInvitedExternalUsers: true,
+    plannedSubdomain: "intellectual-twin",
+    multiTwinOwnership: true,
+  },
 };

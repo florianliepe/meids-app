@@ -121,6 +121,14 @@
         <h1>Identity at Scale</h1>
         <p class="landing-copy">co-created with you, to act like you</p>
         <p class="landing-subcopy">A calm workspace for shaping, activating, and improving your intellectual twin.</p>
+        <section id="loginPanel" class="login-panel" aria-label="Authentication" hidden>
+          <p id="loginStateCopy">Sign in with Microsoft to access your intellectual twin workspace.</p>
+          <div class="login-actions">
+            <button id="loginMicrosoftBtn" type="button">Sign in with Microsoft</button>
+            <button id="logoutMicrosoftBtn" class="secondary" type="button" hidden>Sign out</button>
+          </div>
+          <p id="loginAccessCopy" class="muted-inline"></p>
+        </section>
         <div class="landing-actions">
           <button id="enterWorkspaceBtn" type="button">Enter workspace</button>
           <button id="landingCreateTwinBtn" class="secondary" type="button">Create twin</button>

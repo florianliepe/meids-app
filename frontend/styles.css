@@ -102,6 +102,38 @@ body.theme-dark {
   color: var(--muted);
 }
 
+.login-panel {
+  width: min(440px, 100%);
+  margin: 28px auto 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface-strong) 88%, transparent);
+  text-align: left;
+}
+
+.login-panel[hidden] {
+  display: none !important;
+}
+
+.login-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.login-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 10px;
+}
+
+body.auth-blocked .shell {
+  pointer-events: none;
+  user-select: none;
+}
+
 .shell {
   grid-template-columns: 256px minmax(0, 1fr);
 }

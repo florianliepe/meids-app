@@ -41,6 +41,12 @@ function env(name) {
   return String(process.env[name] || "").trim();
 }
 
+function envFlag(name, fallback = false) {
+  const value = env(name).toLowerCase();
+  if (!value) return fallback;
+  return ["1", "true", "yes", "on", "enabled"].includes(value);
+}
+
 function copyDirectory(source, target) {
   fs.mkdirSync(target, { recursive: true });
   fs.cpSync(source, target, { recursive: true });
@@ -92,7 +98,9 @@ function runtimeConfigJs() {
   const knowledgeUrl = env("GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL");
   const butlerUrl = env("GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL");
   const voiceTranscriptionUrl = env("GH_PAGES_VOICE_TRANSCRIPTION_URL") || env("GH_PAGES_N8N_VOICE_TRANSCRIPTION_WEBHOOK_URL");
-  const apiBaseUrl = env("GH_PAGES_API_BASE_URL");
+  const apiBaseUrl = env("GH_PAGES_API_BASE_URL") || env("MEIDS_FRONTEND_API_BASE_URL");
+  const authEnabled = envFlag("MEIDS_FRONTEND_AUTH_ENABLED") || envFlag("GH_PAGES_AUTH_ENABLED");
+  const staticPagesMode = envFlag("MEIDS_FRONTEND_STATIC_MODE", apiBaseUrl === "" && !authEnabled);
 
   function status(value) {
     return value ? "configured" : "awaiting_url";
@@ -131,7 +139,16 @@ function runtimeConfigJs() {
     }
   },
   n8nChatEnabled: ${Boolean(chatUrl || actorUrl)},
-  staticPagesMode: ${apiBaseUrl === ""}
+  staticPagesMode: ${staticPagesMode},
+  auth: {
+    enabled: ${authEnabled},
+    provider: "azure_static_web_apps_entra_id",
+    loginUrl: "/.auth/login/aad",
+    logoutUrl: "/.auth/logout",
+    allowInvitedExternalUsers: true,
+    plannedSubdomain: "intellectual-twin",
+    multiTwinOwnership: true
+  }
 };
 `;
 }

@@ -1,0 +1,103 @@
+name: Deploy Me.IDs frontend to Azure Static Web Apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - "contracts/n8n/**"
+      - "contracts/okf/**"
+      - "docs/**"
+      - "prompts/**"
+      - "workflows/n8n/**"
+      - "scripts/build-pages-static.cjs"
+      - "scripts/pages-smoke-check.cjs"
+      - "scripts/validate-n8n-fixtures.cjs"
+      - "scripts/validate-n8n-ai-agent-workflows.cjs"
+      - "scripts/validate-agent-runtime-handoffs.cjs"
+      - "scripts/probe-n8n-browser-runtime-shape.cjs"
+      - "scripts/validate-chat-live-n8n-uat.cjs"
+      - "scripts/validate-okf-fixtures.cjs"
+      - "scripts/validate-graph-promotions.cjs"
+      - "scripts/validate-vector-adapter.cjs"
+      - "scripts/validate-postgres-graph-schema.cjs"
+      - "scripts/write-n8n-runtime-readiness-status.cjs"
+      - "scripts/write-pages-agent-runtime-config.cjs"
+      - ".github/workflows/intellectual-twin-azure-static-web-app.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: azure-static-web-app-intellectual-twin
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: azure-static-web-app
+      url: https://victorious-flower-0f10a8303.6.azurestaticapps.net
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Validate frontend JavaScript
+        run: node --check frontend/app.js
+
+      - name: Validate n8n contract fixtures
+        run: node scripts/validate-n8n-fixtures.cjs
+
+      - name: Validate n8n AI-agent workflow exports
+        run: node scripts/validate-n8n-ai-agent-workflows.cjs
+
+      - name: Validate agent runtime handoff fixtures
+        run: node scripts/validate-agent-runtime-handoffs.cjs
+
+      - name: Validate n8n browser runtime shape artifact
+        run: node scripts/probe-n8n-browser-runtime-shape.cjs --check
+
+      - name: Validate Chat live n8n UAT artifact
+        continue-on-error: true
+        run: node scripts/validate-chat-live-n8n-uat.cjs
+
+      - name: Validate OKF contract fixtures
+        run: node scripts/validate-okf-fixtures.cjs
+
+      - name: Validate graph promotion fixtures
+        run: node scripts/validate-graph-promotions.cjs
+
+      - name: Validate vector adapter fixtures
+        run: node scripts/validate-vector-adapter.cjs
+
+      - name: Validate Postgres graph projection schema
+        run: node scripts/validate-postgres-graph-schema.cjs
+
+      - name: Prepare Azure Static Web Apps artifact
+        env:
+          MEIDS_FRONTEND_AUTH_ENABLED: "true"
+          MEIDS_FRONTEND_STATIC_MODE: "false"
+          GH_PAGES_N8N_CHAT_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_CHAT_WEBHOOK_URL }}
+          GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL }}
+          GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL }}
+          GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL }}
+          GH_PAGES_VOICE_TRANSCRIPTION_URL: ${{ secrets.GH_PAGES_VOICE_TRANSCRIPTION_URL }}
+          GH_PAGES_N8N_VOICE_TRANSCRIPTION_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_VOICE_TRANSCRIPTION_WEBHOOK_URL }}
+        run: node scripts/build-pages-static.cjs --output dist-swa --clean --smoke
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_INTELLECTUAL_TWIN }}
+          action: upload
+          app_location: dist-swa
+          api_location: ""
+          output_location: ""
+          skip_app_build: true

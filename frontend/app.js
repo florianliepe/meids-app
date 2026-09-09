@@ -249,6 +249,8 @@
   selectedTwinId: "florian",
   twinActivity: [],
   activeSetupStep: "identity",
+  authSession: null,
+  authChecked: false,
   previousTwinId: "",
   lastTwinSwitchAt: null,
   twinPicturePreviewUrl: "",
@@ -315,6 +317,95 @@ const storageKeys = {
   activity: "intellectualTwin.static.activity",
 };
 
+function authConfig() {
+  return runtimeConfig.auth || runtimeConfig.authentication || {};
+}
+
+function authEnabled() {
+  return Boolean(authConfig().enabled || runtimeConfig.authEnabled || runtimeConfig.authenticationEnabled);
+}
+
+function loginUrl() {
+  return authConfig().loginUrl || runtimeConfig.loginUrl || "/.auth/login/aad";
+}
+
+function logoutUrl() {
+  return authConfig().logoutUrl || runtimeConfig.logoutUrl || "/.auth/logout";
+}
+
+function authenticatedSession() {
+  return Boolean(state.authSession?.status === "authenticated");
+}
+
+function sessionActiveTwinIds(session = state.authSession) {
+  return Array.isArray(session?.allowed_twin_ids) ? session.allowed_twin_ids : [];
+}
+
+function canEnterWorkspace() {
+  if (!authEnabled()) return true;
+  return authenticatedSession() && sessionActiveTwinIds().length > 0;
+}
+
+async function loadAuthSession() {
+  if (!authEnabled()) {
+    state.authChecked = true;
+    state.authSession = { status: "disabled" };
+    return state.authSession;
+  }
+  try {
+    state.authSession = await getJson("/api/session");
+  } catch (error) {
+    state.authSession = {
+      status: "unauthenticated",
+      error: compactError(error.message || String(error)),
+    };
+  }
+  state.authChecked = true;
+  return state.authSession;
+}
+
+function applyAuthState() {
+  const enabled = authEnabled();
+  const authenticated = authenticatedSession();
+  const allowedTwins = sessionActiveTwinIds();
+  const hasTwinAccess = allowedTwins.length > 0;
+  document.body.classList.toggle("auth-required", enabled);
+  document.body.classList.toggle("auth-authenticated", enabled && authenticated);
+  document.body.classList.toggle("auth-blocked", enabled && (!authenticated || !hasTwinAccess));
+  const loginPanel = $("#loginPanel");
+  if (loginPanel) loginPanel.hidden = !enabled;
+  const stateCopy = $("#loginStateCopy");
+  if (stateCopy) {
+    stateCopy.textContent = authenticated
+      ? `Signed in as ${state.authSession.user?.email || state.authSession.user?.name || "Microsoft account"}.`
+      : "Sign in with Microsoft to access your intellectual twin workspace.";
+  }
+  const accessCopy = $("#loginAccessCopy");
+  if (accessCopy) {
+    accessCopy.textContent = !enabled
+      ? ""
+      : authenticated && hasTwinAccess
+        ? `Access granted for ${allowedTwins.length} twin${allowedTwins.length === 1 ? "" : "s"}.`
+        : authenticated
+          ? "Access pending: no twin is assigned to this account yet."
+          : "Invited external users are allowed when they are added to Microsoft Entra ID and mapped to a Me.IDs twin.";
+  }
+  const signIn = $("#loginMicrosoftBtn");
+  if (signIn) signIn.hidden = !enabled || authenticated;
+  const signOut = $("#logoutMicrosoftBtn");
+  if (signOut) signOut.hidden = !enabled || !authenticated;
+  const enter = $("#enterWorkspaceBtn");
+  if (enter) {
+    enter.disabled = enabled && !canEnterWorkspace();
+    enter.textContent = enabled && !authenticated ? "Sign in required" : "Enter workspace";
+  }
+  const createTwin = $("#landingCreateTwinBtn");
+  if (createTwin) createTwin.disabled = enabled && !authenticated;
+  $$(".nav-item, #twinSelect").forEach((item) => {
+    item.disabled = enabled && !canEnterWorkspace();
+  });
+}
+
 function configuredVoiceTranscriptionUrl() {
   return normalizeBaseUrl(
     runtimeConfig.voiceTranscriptionUrl
@@ -357,6 +448,7 @@ const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
 async function bootMeidsApp() {
   applyStoredTheme();
+  await loadAuthSession();
   bindLanding();
   bindNavigation();
   bindChat();
@@ -377,9 +469,15 @@ async function bootMeidsApp() {
   $("#refreshActivityBtn").addEventListener("click", safeRefreshActivity);
   $("#conceptSearch").addEventListener("input", renderConcepts);
   bindViewFilters();
+  applyAuthState();
+  if (authEnabled() && !canEnterWorkspace()) {
+    showLanding();
+    return;
+  }
   await loadAgentRuntimeConfig();
   state.knowledgeFabricIngestQueue = readKnowledgeFabricIngestQueue();
   await refreshAll();
+  applyAuthState();
   applyInitialRoute();
 }
 
@@ -493,24 +591,38 @@ function updateThemeToggle(theme) {
 function bindLanding() {
   const landing = $("#landing");
   const dismiss = () => {
+    if (!canEnterWorkspace()) {
+      applyAuthState();
+      return;
+    }
     landing.classList.add("dismissed");
     window.localStorage.setItem(storageKeys.landingDismissed, "true");
   };
-  if (storedValue(storageKeys.landingDismissed) === "true") {
+  if (storedValue(storageKeys.landingDismissed) === "true" && canEnterWorkspace()) {
     landing.classList.add("dismissed");
   }
-  $("#enterWorkspaceBtn").addEventListener("click", dismiss);
-  $("#landingCreateTwinBtn").addEventListener("click", () => {
+  $("#enterWorkspaceBtn")?.addEventListener("click", dismiss);
+  $("#loginMicrosoftBtn")?.addEventListener("click", () => {
+    window.location.href = loginUrl();
+  });
+  $("#logoutMicrosoftBtn")?.addEventListener("click", () => {
+    window.localStorage.removeItem(storageKeys.landingDismissed);
+    window.location.href = logoutUrl();
+  });
+  $("#landingCreateTwinBtn")?.addEventListener("click", () => {
     dismiss();
+    if (!canEnterWorkspace()) return;
     showView("twins");
-    $("#twinDisplayName").focus();
+    $("#twinDisplayName")?.focus();
   });
   $$("[data-landing-route]").forEach((button) => {
     button.addEventListener("click", () => {
       dismiss();
+      if (!canEnterWorkspace()) return;
       showView(button.dataset.landingRoute || "chat");
     });
   });
+  applyAuthState();
 }
 
 function showLanding() {
@@ -565,6 +677,11 @@ function applyInitialRoute() {
 }
 
 function showView(viewId) {
+  if (!canEnterWorkspace()) {
+    showLanding();
+    applyAuthState();
+    return;
+  }
   const button = document.querySelector(`.nav-item[data-view="${CSS.escape(viewId)}"]`);
   const view = $(`#${CSS.escape(viewId)}`);
   if (!button || !view) return;

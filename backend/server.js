@@ -587,10 +587,11 @@ async function upsertPostgresTrace(record) {
 async function appendTrace(record) {
   if (postgresEnabled()) {
     await upsertPostgresTrace(record);
-    return;
+  } else {
+    await ensureDataDir();
+    await fs.appendFile(TRACE_FILE, `${JSON.stringify(record)}\n`, "utf8");
   }
-  await ensureDataDir();
-  await fs.appendFile(TRACE_FILE, `${JSON.stringify(record)}\n`, "utf8");
+  queuePostTurnLearning(record);
 }
 
 async function readTraces(limit = 100) {
@@ -841,6 +842,34 @@ async function handleN8nAdminStatus(req, res) {
   });
 }
 
+function n8nAgentTimeoutMs() {
+  const configured = Number(process.env.N8N_AGENT_TIMEOUT_MS || 120000);
+  if (!Number.isFinite(configured) || configured <= 0) return 120000;
+  return Math.max(5000, Math.min(configured, 300000));
+}
+
+function n8nTimeoutFallbackResponse(agentId, envelope, timeoutMs) {
+  const agent = AGENTS[agentId];
+  return normalizeAgentResponse(agentId, {
+    status: "failed",
+    agent_id: agentId,
+    output: {
+      answer: `${agent.label} did not finish within ${Math.round(timeoutMs / 1000)} seconds. The request was stopped at the backend boundary; retry with a narrower request or inspect the n8n execution trace.`,
+      summary: `${agent.label} timeout fallback after ${timeoutMs}ms.`,
+      route_decision: defaultRouteDecision(agentId, {}, envelope),
+    },
+    error: {
+      code: "n8n_agent_timeout",
+      message: `${agent.label} exceeded N8N_AGENT_TIMEOUT_MS.`,
+    },
+    trace: {
+      timeout: true,
+      timeout_ms: timeoutMs,
+      boundary: "backend_proxy",
+    },
+  }, envelope, "backend proxy · timeout fallback");
+}
+
 async function proxyToN8n(agentId, envelope) {
   const agent = AGENTS[agentId];
   const webhookUrl = process.env[agent.urlEnv];
@@ -853,11 +882,25 @@ async function proxyToN8n(agentId, envelope) {
   if (process.env.N8N_WEBHOOK_AUTH_TOKEN) {
     headers.Authorization = `Bearer ${process.env.N8N_WEBHOOK_AUTH_TOKEN}`;
   }
-  const response = await fetch(webhookUrl, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(envelope),
-  });
+  const timeoutMs = n8nAgentTimeoutMs();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let response;
+  try {
+    response = await fetch(webhookUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(envelope),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error.name === "AbortError") {
+      return n8nTimeoutFallbackResponse(agentId, envelope, timeoutMs);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
   const raw = await response.text();
   if (!response.ok) {
     const error = new Error(raw || `${agent.label} returned ${response.status}`);
@@ -1033,6 +1076,8 @@ async function handleVectorRebuild(req, res) {
     source_policy: body.source_policy || (body.mode === "approved" ? "approved_only" : "selected_pending"),
     repo_name: body.repo_name || "",
     commit_sha: body.commit_sha || "",
+    vector_mode: body.vector_mode || body.embedding_mode || "",
+    allow_deterministic_vectors: body.allow_deterministic_vectors === true || body.allowDeterministicVectors === true,
     documents: Array.isArray(body.documents) ? body.documents : [],
   };
   if (!request.documents.length) {
@@ -1057,7 +1102,12 @@ async function handleVectorRebuild(req, res) {
     return;
   }
   const requiresEmbedding = request.documents.some((document) => !Array.isArray(document.content_vector));
-  if (requiresEmbedding && !config.embeddingConfigured) {
+  const deterministicFallbackAllowed = Boolean(
+    config.deterministicVectorsAllowed
+    || request.allow_deterministic_vectors
+    || ["deterministic_fallback", "deterministic_hash_fallback"].includes(String(request.vector_mode || "").trim().toLowerCase())
+  );
+  if (requiresEmbedding && !config.embeddingConfigured && !deterministicFallbackAllowed) {
     jsonResponse(res, 503, {
       status: "blocked",
       provider: "azure_ai_search",
@@ -1067,7 +1117,7 @@ async function handleVectorRebuild(req, res) {
         status: "blocked",
         missing: config.embeddingMissing,
       },
-      fallback: "Provide content_vector per document or configure Azure OpenAI embeddings before live vector upsert.",
+      fallback: "Provide content_vector per document, configure Azure OpenAI embeddings, or explicitly enable deterministic UAT vectors before live vector upsert.",
     });
     return;
   }
@@ -1094,6 +1144,266 @@ async function handleVectorSearch(req, res) {
   }
   const result = await searchVectorKnowledge(body, config);
   jsonResponse(res, 200, result);
+}
+
+function normalizeScore(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  if (number >= 0 && number <= 1) return number;
+  return Number((1 - (1 / (1 + Math.max(0, number)))).toFixed(4));
+}
+
+function lexicalTokens(values = []) {
+  const stopWords = new Set(["a", "an", "and", "are", "as", "be", "before", "by", "for", "in", "into", "is", "it", "of", "or", "should", "the", "they", "to", "with"]);
+  return values
+    .flatMap((item) => String(item || "").toLowerCase().split(/[^a-z0-9]+/))
+    .map((item) => item.trim())
+    .filter((item) => item.length >= 3 && !stopWords.has(item));
+}
+
+function lexicalOverlapScore(candidateTerms = [], resultTerms = []) {
+  const left = new Set(lexicalTokens(candidateTerms));
+  const right = new Set(lexicalTokens(resultTerms));
+  if (!left.size || !right.size) return 0;
+  const overlap = [...left].filter((item) => right.has(item)).length;
+  return Number((overlap / Math.max(left.size, right.size)).toFixed(4));
+}
+
+function candidateDuplicateTerms(candidate = {}) {
+  return [
+    candidate.title,
+    candidate.name,
+    candidate.purpose,
+    candidate.summary,
+    ...(Array.isArray(candidate.aliases) ? candidate.aliases : []),
+    ...(Array.isArray(candidate.tags) ? candidate.tags : []),
+  ].filter(Boolean);
+}
+
+function classifyDuplicateCandidate({ vectorScore = null, lexicalScore = 0, graphScore = 0, scopeCompatible = false } = {}) {
+  if ((vectorScore !== null && vectorScore >= 0.88 && scopeCompatible) || (lexicalScore >= 0.8 && scopeCompatible)) {
+    return { status: "strong_duplicate", action: "stage_merge_delta_or_reject_duplicate" };
+  }
+  if ((vectorScore !== null && vectorScore >= 0.72) || graphScore >= 0.7 || lexicalScore >= 0.5) {
+    return { status: "near_match", action: "stage_updated_review_needed" };
+  }
+  if ((vectorScore !== null && vectorScore >= 0.55) || graphScore > 0) {
+    return { status: "related_only", action: "create_new_with_candidate_related_edge" };
+  }
+  return { status: "insufficient_evidence", action: "hold_evidence_pending" };
+}
+
+function summarizeDuplicateHit(candidate = {}, hit = {}) {
+  const candidateTerms = candidateDuplicateTerms(candidate);
+  const resultTerms = candidateDuplicateTerms(hit);
+  const vectorScore = normalizeScore(hit["@search.score"] || hit.score || hit.vector_score || hit.similarity);
+  const lexicalScore = lexicalOverlapScore(candidateTerms, resultTerms);
+  const graphScore = candidate.graph_cluster_id && hit.graph_cluster_id && candidate.graph_cluster_id === hit.graph_cluster_id
+    ? 1
+    : candidate.graph_node_id && hit.graph_node_id && candidate.graph_node_id === hit.graph_node_id
+      ? 1
+      : 0;
+  const scopeCompatible = !candidate.okf_type || !hit.okf_type || candidate.okf_type === hit.okf_type;
+  const classification = classifyDuplicateCandidate({ vectorScore, lexicalScore, graphScore, scopeCompatible });
+  return {
+    concept_id: hit.okf_concept_id || hit.id || "",
+    title: hit.title || "",
+    repo_path: hit.repo_path || "",
+    evidence_id: hit.evidence_id || "",
+    graph_node_id: hit.graph_node_id || "",
+    graph_cluster_id: hit.graph_cluster_id || "",
+    scores: {
+      vector_similarity: vectorScore,
+      lexical_overlap: lexicalScore,
+      graph_proximity: graphScore,
+      scope_compatible: scopeCompatible,
+    },
+    classification: classification.status,
+    recommended_action: classification.action,
+  };
+}
+
+async function handleKnowledgeDuplicateCheck(req, res) {
+  const body = await readBody(req);
+  const candidate = body.candidate || body.concept || body;
+  const queryText = [
+    candidate.title || candidate.name,
+    candidate.purpose,
+    candidate.summary,
+    candidate.text,
+    Array.isArray(candidate.aliases) ? candidate.aliases.join(" ") : "",
+  ].filter(Boolean).join("\n").trim();
+  if (!queryText) {
+    jsonResponse(res, 400, {
+      status: "failed",
+      duplicate_check: { status: "insufficient_evidence" },
+      error: "Duplicate check requires candidate title, purpose, summary, text, or aliases.",
+    });
+    return;
+  }
+  const config = azureSearchConfigFromEnv();
+  if (!config.configured) {
+    jsonResponse(res, 200, {
+      status: "completed",
+      duplicate_check: {
+        status: "insufficient_evidence",
+        reason: "Azure AI Search is not configured for score-backed duplicate detection.",
+        missing: config.missing,
+      },
+      merge_candidates: [],
+      recommended_action: "hold_evidence_pending",
+    });
+    return;
+  }
+  const retrieval = await searchVectorKnowledge({
+    query: queryText,
+    twin_id: candidate.twin_id || body.twin_id || body.twin || "",
+    organization_id: body.organization_id || candidate.organization_id || "default",
+    source_policy: body.source_policy || "selected_pending",
+    top: Number(body.top || 8),
+    include_shared: body.include_shared !== false,
+  }, config);
+  const hits = retrieval.results.flatMap((item) => item.value || []);
+  const mergeCandidates = hits.map((hit) => summarizeDuplicateHit(candidate, hit))
+    .sort((a, b) => {
+      const aScore = Math.max(a.scores.vector_similarity || 0, a.scores.lexical_overlap || 0, a.scores.graph_proximity || 0);
+      const bScore = Math.max(b.scores.vector_similarity || 0, b.scores.lexical_overlap || 0, b.scores.graph_proximity || 0);
+      return bScore - aScore;
+    });
+  const strongest = mergeCandidates[0] || null;
+  const status = strongest?.classification || "insufficient_evidence";
+  jsonResponse(res, 200, {
+    status: "completed",
+    provider: "azure_ai_search",
+    retrieval_mode: retrieval.retrieval_mode,
+    duplicate_check: {
+      status,
+      score_sources: ["vector_similarity", "lexical_overlap", "graph_proximity", "scope_compatibility"],
+      thresholds: {
+        strong_duplicate: "vector >= 0.88 or lexical >= 0.8 with compatible scope",
+        near_match: "vector >= 0.72 or graph >= 0.7 or lexical >= 0.5",
+        related_only: "vector >= 0.55 or graph proximity present",
+      },
+    },
+    merge_candidates: mergeCandidates,
+    recommended_action: strongest?.recommended_action || "hold_evidence_pending",
+    retrieval,
+  });
+}
+
+function learningDispatchUrl() {
+  const explicit = String(process.env.N8N_LEARNING_AGENT_DISPATCH_WEBHOOK_URL || "").trim();
+  if (explicit) return explicit;
+  const base = String(process.env.N8N_API_BASE_URL || "").trim().replace(/\/+$/, "");
+  return base ? `${base}/webhook/meids/learning/dispatch` : "";
+}
+
+function postTurnLearningEnabled() {
+  return !["false", "0", "off", "disabled"].includes(String(process.env.MEIDS_POST_TURN_LEARNING_ENABLED || "true").toLowerCase());
+}
+
+function firstTruthyObject(...values) {
+  for (const value of values) {
+    if (!value) continue;
+    if (value === true) return { recommended: true };
+    if (typeof value === "string") return { summary: value };
+    if (typeof value === "object") return value;
+  }
+  return null;
+}
+
+function traceLearningRecommendation(record = {}) {
+  const response = record.response || {};
+  const output = response.output || record.output || {};
+  const delegateOutput = output.delegate_result?.output || {};
+  return firstTruthyObject(
+    output.trace_learning_recommended,
+    output.learning_recommended,
+    output.learning?.trace_learning_recommended,
+    delegateOutput.trace_learning_recommended,
+    response.trace?.trace_learning_recommended,
+    record.trace_learning_recommended,
+  );
+}
+
+function postTurnLearningPayloadFromTrace(record = {}) {
+  const recommendation = traceLearningRecommendation(record);
+  if (!recommendation) return null;
+  const response = record.response || {};
+  const output = response.output || record.output || {};
+  return {
+    request_id: record.request_id || response.request_id || makeId("learn"),
+    trace_id: record.trace_id || response.trace?.trace_id || "",
+    trace_chain_id: record.trace_chain_id || response.trace?.trace_chain_id || "",
+    source_agent_id: record.agent_id || response.agent_id || "",
+    source_type: "agent_trace",
+    source_interaction_summary: recommendation.summary || output.summary || output.answer || "",
+    trace_learning_recommended: recommendation,
+    source_trace: {
+      agent_id: record.agent_id || "",
+      target_agent: record.target_agent || "",
+      route_decision: record.route_decision || "",
+      status: record.status || "",
+      handoff_status: record.handoff_status || "",
+      approval_required: Boolean(record.approval_required),
+    },
+    target_review_state: recommendation.review_state || "review_needed",
+  };
+}
+
+async function dispatchPostTurnLearning(payload) {
+  const dispatchUrl = learningDispatchUrl();
+  if (!dispatchUrl) {
+    const error = new Error("Post-turn Learning dispatch URL is not configured.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(dispatchUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dispatch_type: "post_turn_learning",
+        source: "meids_backend",
+        created_at: new Date().toISOString(),
+        ...payload,
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `Learning Agent dispatch returned ${response.status}`);
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function queuePostTurnLearning(record) {
+  if (!postTurnLearningEnabled()) return;
+  if (record?.agent_id === "learning_agent") return;
+  const payload = postTurnLearningPayloadFromTrace(record);
+  if (!payload) return;
+  dispatchPostTurnLearning(payload).catch(() => {});
+}
+
+async function handlePostTurnLearning(req, res) {
+  const body = await readBody(req);
+  if (!learningDispatchUrl()) {
+    jsonResponse(res, 503, {
+      status: "blocked",
+      error: "Post-turn Learning dispatch requires N8N_LEARNING_AGENT_DISPATCH_WEBHOOK_URL or N8N_API_BASE_URL.",
+    });
+    return;
+  }
+  dispatchPostTurnLearning(body).catch(() => {});
+  jsonResponse(res, 202, {
+    status: "accepted",
+    dispatch: "post_turn_learning",
+    target: "learning_agent",
+  });
 }
 
 function backendHealthPayload() {
@@ -1143,6 +1453,123 @@ function frontendStatusPayload() {
   };
 }
 
+function parseAzureClientPrincipal(req) {
+  const encoded = req.headers["x-ms-client-principal"];
+  if (encoded) {
+    try {
+      const raw = Buffer.from(String(encoded), "base64").toString("utf8");
+      const principal = JSON.parse(raw);
+      if (principal?.userId || principal?.userDetails) return principal;
+    } catch (error) {
+      return null;
+    }
+  }
+  const userId = req.headers["x-ms-client-principal-id"];
+  const userName = req.headers["x-ms-client-principal-name"];
+  if (userId || userName) {
+    return {
+      identityProvider: req.headers["x-ms-client-principal-idp"] || "aad",
+      userId: String(userId || userName),
+      userDetails: String(userName || userId),
+      userRoles: String(req.headers["x-ms-client-principal-roles"] || "")
+        .split(",")
+        .map((role) => role.trim())
+        .filter(Boolean),
+      claims: [],
+    };
+  }
+  return null;
+}
+
+function csvSetting(name, fallback = "") {
+  return String(process.env[name] || fallback)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function meidsRolesFromPrincipal(principal = {}) {
+  const platformRoles = Array.isArray(principal.userRoles) ? principal.userRoles : [];
+  const configuredDefaults = csvSetting("MEIDS_AUTH_DEFAULT_ROLES", "viewer");
+  const roles = platformRoles
+    .filter((role) => !["anonymous", "authenticated"].includes(String(role).toLowerCase()))
+    .map((role) => String(role).replace(/^meids[.:_-]/i, "").toLowerCase());
+  return [...new Set(roles.length ? roles : configuredDefaults)];
+}
+
+function permissionsFromRoles(roles = []) {
+  const set = new Set(roles.map((role) => String(role).toLowerCase()));
+  const admin = set.has("admin");
+  const owner = admin || set.has("owner");
+  const editor = owner || set.has("editor");
+  const reviewer = editor || set.has("reviewer");
+  return {
+    can_chat: true,
+    can_review_knowledge: reviewer,
+    can_create_skill: editor,
+    can_approve_skill_activation: owner,
+    can_admin_agents: admin,
+  };
+}
+
+function sessionFromPrincipal(principal) {
+  const userId = String(principal.userId || principal.userDetails || "").trim();
+  const email = String(principal.userDetails || principal.userId || "").trim();
+  const allowedTwinIds = csvSetting("MEIDS_AUTH_ALLOWED_TWIN_IDS", process.env.MEIDS_ACTIVE_TWIN || "florian");
+  const roles = meidsRolesFromPrincipal(principal);
+  return {
+    status: "authenticated",
+    provider: "microsoft_entra_id",
+    external_users_allowed: true,
+    user: {
+      id: userId,
+      email,
+      name: email,
+      identity_provider: principal.identityProvider || "aad",
+    },
+    tenant: {
+      id: process.env.MEIDS_TENANT_ID || "eraneos",
+      name: process.env.MEIDS_TENANT_NAME || "Eraneos",
+    },
+    roles,
+    active_twin_id: allowedTwinIds[0] || "",
+    allowed_twin_ids: allowedTwinIds,
+    permissions: permissionsFromRoles(roles),
+    auth_context: {
+      tenant_id: process.env.MEIDS_TENANT_ID || "eraneos",
+      user_id: userId,
+      user_email: email,
+      active_twin_id: allowedTwinIds[0] || "",
+      roles,
+      allowed_scopes: ["private", "team_shared", "org_shared"],
+    },
+  };
+}
+
+function handleSession(req, res) {
+  const principal = parseAzureClientPrincipal(req);
+  if (!principal) {
+    const devEmail = String(process.env.MEIDS_AUTH_DEV_USER_EMAIL || "").trim();
+    if (devEmail) {
+      jsonResponse(res, 200, sessionFromPrincipal({
+        identityProvider: "local-dev",
+        userId: devEmail,
+        userDetails: devEmail,
+        userRoles: csvSetting("MEIDS_AUTH_DEFAULT_ROLES", "owner,reviewer"),
+      }));
+      return;
+    }
+    jsonResponse(res, 401, {
+      status: "unauthenticated",
+      provider: "microsoft_entra_id",
+      login_url: "/.auth/login/aad",
+      external_users_allowed: true,
+    });
+    return;
+  }
+  jsonResponse(res, 200, sessionFromPrincipal(principal));
+}
+
 async function routeRequest(req, res) {
   const url = new URL(req.url, "http://localhost");
   if (req.method === "OPTIONS") {
@@ -1157,6 +1584,10 @@ async function routeRequest(req, res) {
     }
     if (req.method === "GET" && url.pathname === "/api/status") {
       jsonResponse(res, 200, frontendStatusPayload());
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/session") {
+      handleSession(req, res);
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/admin/n8n/status") {
@@ -1197,6 +1628,14 @@ async function routeRequest(req, res) {
     }
     if (req.method === "POST" && url.pathname === "/api/vector-index/search") {
       await handleVectorSearch(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/knowledge/duplicate-check") {
+      await handleKnowledgeDuplicateCheck(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/learning/post-turn") {
+      await handlePostTurnLearning(req, res);
       return;
     }
     const resumeMatch = url.pathname.match(/^\/api\/(?:agents\/)?approvals\/([^/]+)\/resume$/);
