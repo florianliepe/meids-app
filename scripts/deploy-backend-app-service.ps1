@@ -113,6 +113,14 @@ $settings = @(
 )
 
 if ($ApplySecretSettings) {
+  $existingSettingsJson = & $AzCommand.executable @($AzCommand.prefix + @(
+    "webapp", "config", "appsettings", "list", "--resource-group", $ResourceGroup,
+    "--name", $AppName, "--output", "json"
+  ))
+  if ($LASTEXITCODE -ne 0) {
+    throw "Could not read existing App Service settings before applying secret settings."
+  }
+  $existingSettings = $existingSettingsJson | ConvertFrom-Json
   $secretEnvNames = @(
     "N8N_API_KEY",
     "N8N_WEBHOOK_AUTH_TOKEN",
@@ -132,6 +140,11 @@ if ($ApplySecretSettings) {
   )
 
   foreach ($name in $secretEnvNames) {
+    $existing = $existingSettings | Where-Object { $_.name -eq $name } | Select-Object -First 1
+    if ($existing.value -like "@Microsoft.KeyVault(*)") {
+      Write-Host "Preserving Key Vault reference for $name"
+      continue
+    }
     $value = [Environment]::GetEnvironmentVariable($name, "Process")
     if ($value) {
       $settings += "$name=$value"
@@ -140,7 +153,10 @@ if ($ApplySecretSettings) {
 }
 
 $appSettingArgs = @("webapp", "config", "appsettings", "set", "--resource-group", $ResourceGroup, "--name", $AppName, "--settings") + $settings
-Run-Az $appSettingArgs
+& $AzCommand.executable @($AzCommand.prefix + $appSettingArgs + @("--query", "[].name", "--output", "tsv"))
+if ($LASTEXITCODE -ne 0) {
+  throw "Could not update App Service settings."
+}
 
 npm ci --omit=dev
 if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
