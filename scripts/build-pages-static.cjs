@@ -93,6 +93,7 @@ function actorTwinChatUrl(value) {
 }
 
 function runtimeConfigJs() {
+  const hostLabel = env("MEIDS_FRONTEND_HOST_LABEL") || "GitHub Pages";
   const chatUrl = actorTwinChatUrl(env("GH_PAGES_N8N_CHAT_WEBHOOK_URL"));
   const actorUrl = actorTwinChatUrl(env("GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL") || chatUrl);
   const knowledgeUrl = env("GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL");
@@ -124,7 +125,7 @@ function runtimeConfigJs() {
   n8nAgentProbeSlots: {
     actor_twin: {
       status: ${quoted(status(actorUrl))},
-      probe_boundary: "GitHub Pages runtime config generated from repository secrets.",
+      probe_boundary: ${quoted(`${hostLabel} runtime config generated from repository secrets.`)},
       next_action: ${quoted(actorUrl ? "Run Actor Twin UAT and capture n8n trace evidence." : "Set GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL or GH_PAGES_N8N_CHAT_WEBHOOK_URL.")}
     },
     knowledge_fabric_agent: {

@@ -479,6 +479,9 @@ async function bootMeidsApp() {
   await refreshAll();
   applyAuthState();
   applyInitialRoute();
+  if ($("#chat")?.classList.contains("active") && runtimeConfig.n8nChatEnabled) {
+    renderChatSkillMode();
+  }
 }
 
 if (document.readyState === "loading") {

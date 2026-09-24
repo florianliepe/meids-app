@@ -57,6 +57,7 @@ function actorTwinChatUrl(value) {
 }
 
 function buildConfig() {
+  const hostLabel = env("MEIDS_FRONTEND_HOST_LABEL") || "GitHub Pages";
   const chatUrl = actorTwinChatUrl(env("GH_PAGES_N8N_CHAT_WEBHOOK_URL"));
   const actorUrl = actorTwinChatUrl(env("GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL") || chatUrl);
   const knowledgeUrl = env("GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL");
@@ -64,7 +65,7 @@ function buildConfig() {
   const voiceTranscriptionUrl = env("GH_PAGES_VOICE_TRANSCRIPTION_URL") || env("GH_PAGES_N8N_VOICE_TRANSCRIPTION_WEBHOOK_URL");
 
   return {
-    purpose: "GitHub Pages generated public runtime endpoints for the MeIDs n8n agent runtime. Actor Twin embedded chat is the frontend entrypoint; Knowledge Fabric and Agentic Butler are normally called inside n8n as workflow tools.",
+    purpose: `${hostLabel} generated public runtime endpoints for the Me.IDs n8n agent runtime. Actor Twin embedded chat is the frontend entrypoint; Knowledge Fabric and Agentic Butler are normally called inside n8n as workflow tools.`,
     generated_at: new Date().toISOString(),
     orchestration_mode: "actor_twin_embedded_chat",
     frontend_required_agents: ["actor_twin"],
@@ -77,7 +78,7 @@ function buildConfig() {
     n8nAgentProbeSlots: {
       actor_twin: slot(
         configuredStatus(actorUrl),
-        "GitHub Pages runtime config generated from repository secrets.",
+        `${hostLabel} runtime config generated from repository secrets.`,
         actorUrl ? "Run Actor Twin UAT and capture n8n trace evidence." : "Set GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL or GH_PAGES_N8N_CHAT_WEBHOOK_URL.",
       ),
       knowledge_fabric_agent: slot(

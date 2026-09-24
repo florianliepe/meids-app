@@ -82,6 +82,7 @@ jobs:
 
       - name: Prepare Azure Static Web Apps artifact
         env:
+          MEIDS_FRONTEND_HOST_LABEL: "Azure Static Web Apps"
           MEIDS_FRONTEND_AUTH_ENABLED: "true"
           MEIDS_FRONTEND_STATIC_MODE: "false"
           GH_PAGES_N8N_CHAT_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_CHAT_WEBHOOK_URL }}
