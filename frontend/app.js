@@ -474,6 +474,7 @@ async function bootMeidsApp() {
     showLanding();
     return;
   }
+  if (runtimeConfig.n8nChatEnabled) void ensureN8nChat();
   await loadAgentRuntimeConfig();
   state.knowledgeFabricIngestQueue = readKnowledgeFabricIngestQueue();
   await refreshAll();
