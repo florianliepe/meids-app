@@ -12,6 +12,10 @@
           {
             "name": "Content-Type",
             "value": "application/json"
+          },
+          {
+            "name": "Authorization",
+            "value": "={{ 'Bearer ' + ($json.metadata?.authorization?.knowledgeAccessToken || $json.authorization?.knowledgeAccessToken || $json.knowledge_access_token || '') }}"
           }
         ]
       },
@@ -27,7 +31,7 @@
       820,
       0
     ],
-    "notes": "Run only after OKF concept/evidence has passed human approval or selected-pending policy explicitly allows working-index refresh."
+    "notes": "Run only after OKF concept/evidence has passed human approval or selected-pending policy explicitly allows working-index refresh. Forward the signed access token as an opaque credential; never place it in an AI prompt or execution note."
   },
   "expected_input": {
     "operation": "upsert",

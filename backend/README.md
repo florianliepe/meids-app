@@ -16,6 +16,11 @@ This backend is the production boundary for agent runtime calls. GitHub Pages ma
 - `GET /api/vector-index/status`
 - `POST /api/vector-index/rebuild`
 - `POST /api/vector-index/search`
+- `POST /api/knowledge/duplicate-check`
+- `POST /api/knowledge/stage`
+- `POST /api/knowledge/promote`
+- `POST /api/learning/increments`
+- `POST /api/learning/post-turn`
 
 ## Environment Variables
 
@@ -30,6 +35,8 @@ Optional:
 - `N8N_WEBHOOK_AUTH_TOKEN`: bearer token forwarded to n8n if webhook authentication is enabled.
 - `N8N_API_BASE_URL`: n8n instance base URL for backend-only workflow administration tools.
 - `N8N_API_KEY`: backend-only n8n API key. Use for workflow import/update/status automation only; never expose it to `frontend/runtime-config.js`, GitHub Pages assets, browser localStorage, or client-side JavaScript.
+- `N8N_LEARNING_AGENT_DISPATCH_WEBHOOK_URL`: optional explicit Learning Agent post-turn webhook. If omitted, the backend derives `/webhook/meids/learning/dispatch` from `N8N_API_BASE_URL`.
+- `MEIDS_POST_TURN_LEARNING_ENABLED`: optional switch for trace-triggered Learning Agent dispatch. Defaults to enabled; set `false` to disable.
 - `N8N_ADMIN_ENABLED`: set to `true` only after hosted secret storage is active.
 - `MEIDS_SECRET_STORE_READY`: set to `true` when backend secrets are stored in hosted app settings or Key Vault references. `AZURE_KEY_VAULT_URI` also satisfies this gate.
 - `DATABASE_URL`: enables Postgres persistence when `MEIDS_STORAGE_MODE=postgres` or when no explicit mode is set.
@@ -38,6 +45,16 @@ Optional:
 - `ALLOWED_FRONTEND_ORIGINS`: comma-separated allowed frontend origins.
 - `MEIDS_DATA_DIR`: persistence folder. Defaults to `.data`.
 - `PORT`: defaults to `8080`.
+- `MEIDS_STORAGE_ACCOUNT_NAME`: Blob account used by the outbox projector.
+- `MEIDS_OUTBOX_PROJECTOR_ENABLED`: enables background Blob/Search projection after migrations and embeddings are ready.
+- `MEIDS_OUTBOX_BATCH_SIZE`: defaults to `25`.
+- `MEIDS_OUTBOX_INTERVAL_MS`: defaults to `15000`.
+
+Knowledge staging writes the concept, immutable revision, evidence, chunk, and
+outbox event in one PostgreSQL transaction. The outbox projector writes the
+canonical JSON artifact to Blob Storage and idempotently updates the working or
+approved Search index. New knowledge and learning increments remain
+`review_needed` until an owner or reviewer promotes a specific revision.
 
 Voice transcription:
 
@@ -50,14 +67,26 @@ Azure AI Search vector retrieval:
 
 - `AZURE_SEARCH_ENDPOINT`: Azure AI Search endpoint, for example `https://srch-intellectual-twin.search.windows.net`.
 - `AZURE_SEARCH_API_KEY`: backend-only Azure AI Search key. Do not expose it to static frontend assets.
+- `AZURE_SEARCH_AUTH_MODE`: defaults to `api_key`. Set to `managed_identity` on
+  Azure App Service after assigning the backend identity `Search Index Data
+  Contributor`. In managed-identity mode, the adapter uses the platform
+  `IDENTITY_ENDPOINT` and `IDENTITY_HEADER`; the Search API key is not sent.
+- `AZURE_SEARCH_MANAGED_IDENTITY_CLIENT_ID`: optional client ID when using a
+  user-assigned identity. Omit it for the App Service system-assigned identity.
 - `AZURE_SEARCH_APPROVED_INDEX`: defaults to `meids-okf-approved-v1`.
 - `AZURE_SEARCH_WORKING_INDEX`: defaults to `meids-okf-working-v1`.
 - `AZURE_SEARCH_API_VERSION`: defaults to `2025-09-01`.
+- `AZURE_SEARCH_REQUEST_TIMEOUT_MS`: defaults to `10000` and bounds each Search data-plane call.
 - `AZURE_OPENAI_ENDPOINT`: embedding endpoint used by the Knowledge Fabric refresh boundary.
 - `AZURE_OPENAI_API_KEY`: backend-only embedding key.
 - `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`: embedding deployment name.
 - `AZURE_OPENAI_API_VERSION`: defaults to `2024-02-01`.
 - `AZURE_OPENAI_EMBEDDING_DIMENSIONS`: defaults to `1536`.
+- `MEIDS_ALLOW_DETERMINISTIC_VECTORS`: optional UAT-only fallback. When `true`,
+  `/api/vector-index/rebuild` can generate stable deterministic vectors if a
+  request also uses `vector_mode=deterministic_fallback` or
+  `allow_deterministic_vectors=true`. Production should use Azure OpenAI
+  embeddings or caller-supplied semantic `content_vector` values.
 
 Create or update Azure AI Search indexes from the repository schemas with:
 
@@ -75,6 +104,11 @@ For hosted deployment, store all n8n credentials as backend application settings
 - GitHub Pages: may contain public UAT webhook URLs only. It must not contain `N8N_API_KEY` or private bearer tokens.
 
 Runtime Chat calls should use `/api/agents/*` once the backend is hosted. Direct browser-to-n8n calls are a staging fallback for public UAT only and cannot support secure approval resume or durable trace storage.
+
+Knowledge Fabric duplicate checks require n8n environment variable
+`MEIDS_BACKEND_URL` to point to the hosted backend origin. The Knowledge Fabric
+workflow calls `POST /api/knowledge/duplicate-check` before its AI Agent and
+passes the result as `duplicate_score_evidence`.
 
 ## Admin Boundary
 
@@ -107,6 +141,12 @@ window.INTELLECTUAL_TWIN_CONFIG = {
 ```
 
 ## Persistence Boundary
+
+`POST /api/knowledge/rebuild-search` reconstructs authorized working and
+approved Search documents from PostgreSQL revisions. It requires a signed
+knowledge-access token with an owner, reviewer, administrator, or knowledge
+curator role. Revisions without a caller-supplied vector remain explicitly
+deferred until the production embedding provider is configured.
 
 The current implementation persists traces and approval queue items as JSON files:
 

@@ -1,0 +1,148 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-09-08T08:21:07.984Z",
+  "scope": "Public-safe n8n live execution evidence for Actor Twin and six workflow-tool subagents. No secrets are stored.",
+  "freshness_since": "2026-09-08T00:00:00.000Z",
+  "status": "partial",
+  "summary": {
+    "workflow_count": 7,
+    "fresh_connected_count": 0,
+    "stale_or_failed_agents": [
+      "actor_twin",
+      "knowledge_fabric_agent",
+      "agentic_butler",
+      "skill_orchestrator",
+      "task_agent",
+      "critical_faculty",
+      "learning_agent"
+    ]
+  },
+  "probes": [
+    {
+      "id": "eKI3qM7nyCNn9r1q",
+      "agent": "actor_twin",
+      "label": "Actor Twin",
+      "status": "stale_or_missing",
+      "fresh_success": false,
+      "fetched_sample_size": 20,
+      "fresh_sample_size": 0,
+      "latest_fresh_execution": null,
+      "latest_available_execution": {
+        "id": "19756",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-09-07T19:34:36.190Z",
+        "stopped_at": "2026-09-07T19:35:15.321Z",
+        "duration_ms": 39131
+      }
+    },
+    {
+      "id": "7Ci86PxXipwvYpKv",
+      "agent": "knowledge_fabric_agent",
+      "label": "Knowledge Fabric Agent",
+      "status": "stale_or_missing",
+      "fresh_success": false,
+      "fetched_sample_size": 16,
+      "fresh_sample_size": 0,
+      "latest_fresh_execution": null,
+      "latest_available_execution": {
+        "id": "19584",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-09-07T15:43:38.412Z",
+        "stopped_at": "2026-09-07T15:44:28.784Z",
+        "duration_ms": 50372
+      }
+    },
+    {
+      "id": "KZOqZRUAnVfFEAYJ",
+      "agent": "agentic_butler",
+      "label": "Agentic Butler",
+      "status": "stale_or_missing",
+      "fresh_success": false,
+      "fetched_sample_size": 20,
+      "fresh_sample_size": 0,
+      "latest_fresh_execution": null,
+      "latest_available_execution": {
+        "id": "19758",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-09-07T19:34:40.854Z",
+        "stopped_at": "2026-09-07T19:35:15.893Z",
+        "duration_ms": 35039
+      }
+    },
+    {
+      "id": "8ER9laJuKS6UrQJF",
+      "agent": "skill_orchestrator",
+      "label": "Skill Orchestrator",
+      "status": "stale_or_missing",
+      "fresh_success": false,
+      "fetched_sample_size": 20,
+      "fresh_sample_size": 0,
+      "latest_fresh_execution": null,
+      "latest_available_execution": {
+        "id": "19760",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-09-07T19:34:44.459Z",
+        "stopped_at": "2026-09-07T19:35:11.146Z",
+        "duration_ms": 26687
+      }
+    },
+    {
+      "id": "YXcl8Wb68Oup3Z8n",
+      "agent": "task_agent",
+      "label": "Task Agent",
+      "status": "stale_or_missing",
+      "fresh_success": false,
+      "fetched_sample_size": 11,
+      "fresh_sample_size": 0,
+      "latest_fresh_execution": null,
+      "latest_available_execution": {
+        "id": "19762",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-09-07T19:34:51.107Z",
+        "stopped_at": "2026-09-07T19:35:01.990Z",
+        "duration_ms": 10883
+      }
+    },
+    {
+      "id": "MH1nWMs8IFyNKN1E",
+      "agent": "critical_faculty",
+      "label": "Critical Faculty Agent",
+      "status": "stale_or_missing",
+      "fresh_success": false,
+      "fetched_sample_size": 6,
+      "fresh_sample_size": 0,
+      "latest_fresh_execution": null,
+      "latest_available_execution": {
+        "id": "19585",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-09-07T15:43:48.901Z",
+        "stopped_at": "2026-09-07T15:44:17.869Z",
+        "duration_ms": 28968
+      }
+    },
+    {
+      "id": "zX0s3hOByJ4HWQye",
+      "agent": "learning_agent",
+      "label": "Learning Agent",
+      "status": "stale_or_missing",
+      "fresh_success": false,
+      "fetched_sample_size": 5,
+      "fresh_sample_size": 0,
+      "latest_fresh_execution": null,
+      "latest_available_execution": {
+        "id": "19768",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-09-07T20:06:21.092Z",
+        "stopped_at": "2026-09-07T20:06:32.184Z",
+        "duration_ms": 11092
+      }
+    }
+  ]
+}

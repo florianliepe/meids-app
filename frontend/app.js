@@ -242,11 +242,12 @@
   n8nChatLoaded: false,
   n8nChatLoading: false,
   n8nContextReloadTimer: null,
+  n8nAuthRefreshTimer: null,
   n8nSessionId: `meids-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
   knowledgeFabricIngestQueue: [],
   knowledgeFabricQueueFilter: "all",
   twins: [],
-  selectedTwinId: "florian",
+  selectedTwinId: "",
   twinActivity: [],
   activeSetupStep: "identity",
   authSession: null,
@@ -10782,7 +10783,6 @@ async function refreshAll() {
   const status = await getJson("/api/status");
   state.backendStatus = status;
   state.activeTwin = status.active_twin;
-  state.selectedTwinId = state.selectedTwinId || state.activeTwin;
   await safeRefreshTwins();
   $("#twinSelect").value = state.activeTwin;
   $("#statusBackend").textContent = status.status;
@@ -11533,6 +11533,14 @@ async function refreshTwins() {
     state.selectedTwinId = state.activeTwin;
   }
   renderTwinOptions();
+  const activeProfile = state.twins.find((twin) => twin.twin_id === state.activeTwin);
+  const chatMode = state.backendStatus?.n8n_chat?.configured
+    ? "n8n chat"
+    : (state.backendStatus?.openai_configured ? "AI ready" : "local mode");
+  const workspaceSignal = $("#workspaceSignal");
+  if (workspaceSignal) {
+    workspaceSignal.textContent = `${activeProfile?.display_name || state.activeTwin} · ${state.backendStatus?.ai_provider || "local"} · ${chatMode}`;
+  }
   renderTwinCatalog(state.twinActivity);
   fillTwinForm(state.selectedTwinId);
   updateLandingStatus();
@@ -12289,8 +12297,9 @@ async function createTwin() {
     }
     const result = await postJson("/api/twins", readTwinForm());
     state.selectedTwinId = result.twin?.twin_id || result.active_twin;
+    state.activeTwin = result.active_twin || state.activeTwin;
     $("#twinResult").textContent = JSON.stringify(result, null, 2);
-    await refreshAll();
+    await safeRefreshTwins();
     showToast("Twin created", result.twin?.display_name || state.selectedTwinId, "success");
   } catch (error) {
     $("#twinResult").textContent = `Create twin failed: ${error.message}`;
@@ -12343,8 +12352,9 @@ async function activateSelectedTwin() {
     }
     markTwinSwitch(state.activeTwin);
     const result = await postJson("/api/twins/active", { twin_id: state.selectedTwinId, actor: "local-user" });
+    state.activeTwin = result.active_twin || state.selectedTwinId;
     $("#twinResult").textContent = JSON.stringify(result, null, 2);
-    await refreshAll();
+    await safeRefreshTwins();
     showToast("Active twin switched", state.selectedTwinId, "success");
   } catch (error) {
     $("#twinResult").textContent = `Activate twin failed: ${error.message}`;
@@ -15739,6 +15749,19 @@ function buildN8nChatMetadata() {
     twinName: active?.display_name || state.activeTwin,
     posture: state.riskPosture || "balanced",
     routingAuthority: "actor_twin_n8n",
+    identity: {
+      tenantId: state.authSession?.tenant?.id || "",
+      userId: state.authSession?.user?.id || "",
+      activeTwinId: state.activeTwin,
+      allowedTwinIds: sessionActiveTwinIds(),
+    },
+    authorization: {
+      contract: state.authSession?.knowledge_access_contract || "meids.knowledge-access.v1",
+      knowledgeAccessToken: state.authSession?.knowledge_access_token || "",
+      expiresAt: state.authSession?.knowledge_access_expires_at || "",
+      knowledgeScope: "active_twin",
+      handling: "opaque_backend_credential_do_not_prompt_or_log",
+    },
     retrieval: {
       mode: retrievalMode,
       searchStrategy: retrievalMode,
@@ -15813,6 +15836,17 @@ function scheduleN8nChatContextReload() {
   }, 700);
 }
 
+function scheduleN8nAuthorizationRefresh() {
+  if (state.n8nAuthRefreshTimer) clearTimeout(state.n8nAuthRefreshTimer);
+  const expiresAt = Date.parse(state.authSession?.knowledge_access_expires_at || "");
+  if (!Number.isFinite(expiresAt)) return;
+  const delay = Math.max(30_000, expiresAt - Date.now() - 30_000);
+  state.n8nAuthRefreshTimer = setTimeout(async () => {
+    await loadAuthSession();
+    reloadN8nChatContext();
+  }, delay);
+}
+
 async function ensureN8nChat() {
   const status = $("#n8nChatStatus");
   const mount = $("#n8nChatMount");
@@ -15850,6 +15884,7 @@ async function ensureN8nChat() {
       },
     });
     state.n8nChatLoaded = true;
+    scheduleN8nAuthorizationRefresh();
     if (status) status.textContent = "n8n agent connected.";
   } catch (error) {
     if (status) status.textContent = `n8n chat failed to load: ${error.message}`;
@@ -15876,12 +15911,7 @@ async function askTwinViaN8n(query) {
     sessionId: state.n8nSessionId,
     chatInput: query,
     metadata: {
-      source: "meids-intellectual-twin",
-      activeTwin: state.activeTwin,
-      riskPosture: state.riskPosture,
-      websearch: state.webSearchEnabled,
-      retrievalMode: $("#retrievalModeSelect")?.value || "keyword",
-      conceptTypes: selectedConceptTypes(),
+      ...buildN8nChatMetadata(),
       appliedSkills,
       sourceContext: {
         email_input: $("#chatSkillEmail")?.value || "",

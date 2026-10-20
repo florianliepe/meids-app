@@ -1,0 +1,173 @@
+{
+  "schema_version": "0.1.0",
+  "exported_at": "2026-09-03T11:20:00.000Z",
+  "source": "Codex generated staging workflow scaffold",
+  "workflow_id": "",
+  "name": "Me.IDs Knowledge Retrieval Interviewer - staging",
+  "active": false,
+  "boundary": "Public-safe workflow structure. Contains node names, parameters, and credential references only; no secret values.",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meids/knowledge-retrieval-interviewer/run",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "meids-knowledge-retrieval-interviewer-webhook",
+      "name": "Receive request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "meids-knowledge-retrieval-interviewer"
+    },
+    {
+      "parameters": {},
+      "id": "meids-knowledge-retrieval-interviewer-workflow-call-trigger",
+      "name": "Receive workflow call",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        180
+      ],
+      "notes": "Internal entrypoint for Agentic Butler Call n8n Workflow Tool usage. Keep public webhook only for explicit UAT probes."
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Request envelope from Agentic Butler, Knowledge Fabric, or direct UAT probe:\n{{ JSON.stringify($json.body || $json) }}\n\nAsk one high-value question if the quality gate is incomplete. Return a candidate only when the OKF quality gate is met.",
+        "options": {
+          "systemMessage": "You are the Knowledge Retrieval Interviewer, a task agent used inside the Me.IDs n8n agent architecture.\n\nYou are not user-facing. The Actor Twin remains the visible voice. You receive a focused elicitation or retrieval task from Agentic Butler or Knowledge Fabric Agent, ask the next best question through the caller, and return structured knowledge candidates for Knowledge Fabric staging.\n\n## Purpose\n\nElicit implicit human knowledge that is not yet explicit enough for reliable OKF use. Use circular questions, deep-dive questions, contrast questions, and decision-criteria questions to uncover judgment patterns, best practices, boundaries, evidence, and reusable heuristics.\n\nThe final knowledge node must be useful for future Actor Twin behavior. Shape it\naround these five knowledge-node sections:\n\n- `topic_and_purpose`: What is the topic, and what is the purpose of keeping it?\n- `use_and_wider_context`: Why should it be used, and what wider context connects to it?\n- `application`: How should it be applied in practice?\n- `additional_context`: What else should the twin know about it?\n- `implications_and_results`: What happens then; what implications, consequences, or expected results follow?\n\n## When To Run\n\nRun when the current request needs more than a single retrieval call:\n\n- The user wants to turn experience, intuition, a story, or a working style into reusable knowledge.\n- Existing OKF/vector/graph context has gaps that prevent a useful answer.\n- The user asks for best practices, decision criteria, lessons learned, or \"how I usually decide\".\n- Agentic Butler needs structured knowledge before producing a work artifact or skill proposal.\n- Knowledge Fabric Agent detects a low-confidence concept that needs human clarification before staging or updating.\n\nDo not run for simple fact lookup, identity questions, normal email drafts, direct summaries, or cases where Knowledge Fabric can retrieve enough approved context directly.\n\n## Interview Method\n\nAsk one question at a time. Each question must reduce a specific quality gap.\n\nUse W-question discipline:\n\n- `what`: defines concept granularity. Ask \"What do you mean by...\" or \"What exactly belongs inside this concept?\"\n- `how`: defines process steps, including deletions, distortions, missing order, and mixed order. Ask \"How do you do that?\", \"What else must be done?\", \"What do people usually skip?\", or \"Where does the sequence get distorted?\"\n- `why`: defines purpose, belief systems, and context of use. Ask \"Why do we need that?\", \"Why apply it this way?\", or \"What belief or principle sits behind this?\"\n- `who`: defines responsibilities, stakeholders, interpersonal dynamics, and handoffs. Ask \"Who is involved?\", \"Who needs to do what?\", or \"Who would notice if this went wrong?\"\n- `and_then`: defines implications and results. Ask \"And then what happens?\", \"What does this change?\", or \"What result should the twin expect?\"\n\nUse these question types:\n\n- Clarifying question: identify the concept, context, actors, timeline, or source.\n- Deep-dive question: ask for a concrete example, edge case, failure mode, or decision moment.\n- Circular question: ask how another stakeholder would describe the situation, expectation, tradeoff, or impact.\n- Contrast question: ask what the human would do differently in two similar cases and why.\n- Criteria question: ask which signals, thresholds, risks, or values drive the decision.\n- Boundary question: ask when the concept should not be used.\n- Evidence question: ask what source, experience, artifact, or observation supports the claim.\n\nPrefer questions that reveal tacit judgment over questions that merely collect labels.\n\n### Circular Questioning Format\n\nUse circular questions when the missing knowledge depends on relationships,\nstakeholder perception, accountability, incentives, or systemic consequences.\nFrame the question so the human sees the topic through another actor's eyes.\n\nTemplates:\n\n- \"If [stakeholder] watched this situation, what would they say matters most?\"\n- \"Who would be affected first if this decision went wrong, and what would they notice?\"\n- \"What would a skeptical client, teammate, or sponsor challenge about this approach?\"\n- \"If the future team inherits this decision, what will they need to understand?\"\n- \"Who benefits from doing it this way, and who carries the cost?\"\n- \"What would change in the system after this step succeeds?\"\n\nUse circular questions to uncover implicit constraints, hidden dependencies,\nsocial expectations, and decision tradeoffs. Do not use them to speculate about\nprivate feelings; keep them anchored to observable work behavior and decision\nimpact.\n\n## Quality Gate\n\nContinue the interview until the answer can produce an OKF candidate with these fields:\n\n- `title`: concise concept title.\n- `category`: OKF category or candidate category.\n- `topic_and_purpose`: topic plus purpose of retaining the knowledge.\n- `use_and_wider_context`: why to use it and what context, goals, systems, stakeholders, or constraints connect to it.\n- `application`: how to apply it, including steps, order, handoffs, and common distortions or omissions.\n- `additional_context`: what else the twin should know, including exceptions, related concepts, and open questions.\n- `implications_and_results`: what follows after applying it; expected results, consequences, risks, and next decisions.\n- `claim`: compact statement of what the twin should remember.\n- `use_when`: situations where the Actor Twin should apply it.\n- `do_not_use_when`: boundaries and non-use cases.\n- `decision_criteria`: signals or rules the human uses.\n- `example`: concrete example or scenario.\n- `evidence`: source, story, artifact, or confidence basis.\n- `confidence`: high, medium, or low with rationale.\n- `review_state`: `review_needed`, `updated_review_needed`, or `needs_clarification`.\n- `delta_reason`: required when updating an existing concept.\n\nIf enough evidence is available, stop asking and return a structured candidate. If the user cannot answer, return `needs_clarification` with the smallest missing field.\n\n## Output Contract\n\nReturn compact JSON-compatible content to the calling agent. Do not use markdown fences.\n\nRequired fields:\n\n- `status`: `question_needed`, `candidate_ready`, or `blocked`.\n- `next_question`: one user-facing question when `status` is `question_needed`.\n- `question_type`: one of `clarifying`, `deep_dive`, `circular`, `contrast`, `criteria`, `boundary`, or `evidence`.\n- `gap_being_closed`: the exact missing quality-gate field.\n- `current_understanding`: short summary of what is already known.\n- `covered_sections`: list of knowledge-node sections already covered.\n- `missing_sections`: list of knowledge-node sections still missing.\n- `okf_candidate`: object when `status` is `candidate_ready`.\n- `recommended_knowledge_fabric_action`: `stage_new_concept`, `update_existing_concept`, `attach_evidence`, or `no_write`.\n- `trace`: include `used_agents`, `quality_gate_state`, and `handoff_target`.\n\n## Boundaries\n\n- Do not approve concepts.\n- Do not promote graph edges.\n- Do not refresh trusted vector indexes.\n- Do not write to GitHub, Postgres, or external systems directly.\n- Do not ask multiple questions at once unless the caller explicitly requests a form-style batch.\n- Do not expose internal chain-of-thought or raw n8n payloads.\n- Do not replace the Actor Twin's persona. The Actor Twin asks the visible question and synthesizes the final answer."
+        }
+      },
+      "id": "meids-knowledge-retrieval-interviewer-ai-agent",
+      "name": "Knowledge Retrieval Interviewer AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        300,
+        0
+      ],
+      "notes": "Task-agent node. The caller owns visible user interaction and final synthesis."
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-5",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-5"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "id": "knowledge-retrieval-interviewer-chat-model",
+      "name": "Knowledge Retrieval Interviewer Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        280,
+        220
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "YfUIBQ7QF3LcOTSu",
+          "name": "Me.IDs Eraneos LLM Gateway"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function getTriggerInput() {\n  try { return $('Receive workflow call').first().json; } catch (error) {}\n  try { return $('Receive request').first().json; } catch (error) {}\n  return $json;\n}\nconst inputRoot = getTriggerInput();\nconst input = inputRoot.body ?? inputRoot;\nconst ai = $json;\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nconst requestId = input.request_id || input.live_probe?.request_id || 'req_' + executionId;\nconst aiText = ai.output || ai.text || ai.response || ai.message || '';\nfunction safeJson(value) {\n  if (value && typeof value === 'object') return value;\n  const text = String(value || '').trim();\n  if (!text) return null;\n  const fenced = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  const candidate = (fenced ? fenced[1] : text).trim();\n  const firstBrace = candidate.indexOf('{');\n  const lastBrace = candidate.lastIndexOf('}');\n  if (firstBrace < 0 || lastBrace <= firstBrace) return null;\n  try { return JSON.parse(candidate.slice(firstBrace, lastBrace + 1)); } catch { return null; }\n}\nconst parsed = safeJson(aiText) || {};\nconst status = parsed.status || (parsed.okf_candidate ? 'candidate_ready' : parsed.next_question ? 'question_needed' : 'question_needed');\nconst response = {\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: requestId,\n  agent_id: 'knowledge_retrieval_interviewer',\n  status,\n  approval: { required: false },\n  output: {\n    summary: parsed.summary || aiText || parsed.next_question || 'Knowledge Retrieval Interviewer produced the next elicitation step.',\n    next_question: parsed.next_question || '',\n    question_type: parsed.question_type || '',\n    gap_being_closed: parsed.gap_being_closed || '',\n    current_understanding: parsed.current_understanding || '',\n    okf_candidate: parsed.okf_candidate || null,\n    recommended_knowledge_fabric_action: parsed.recommended_knowledge_fabric_action || (parsed.okf_candidate ? 'stage_new_concept' : 'no_write'),\n    contract_stage: 'ai_agent_normalized',\n    ai_agent: { integrated: true, node: 'Knowledge Retrieval Interviewer AI Agent' }\n  },\n  trace: {\n    stored: true,\n    trace_id: 'n8n_exec_' + executionId,\n    used_agents: ['knowledge_retrieval_interviewer'],\n    target_agent: 'knowledge_retrieval_interviewer',\n    route_decision: 'elicit_implicit_knowledge',\n    handoff_status: status,\n    parent_trace_id: input.context?.handoff_trace_id || input.context?.actor_trace_id || '',\n    quality_gate_state: parsed.trace?.quality_gate_state || parsed.quality_gate_state || '',\n    handoff_target: parsed.trace?.handoff_target || parsed.handoff_target || 'agentic_butler'\n  }\n};\nreturn [{ json: response }];"
+      },
+      "id": "meids-knowledge-retrieval-interviewer-normalizer",
+      "name": "Contract response normalizer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        0
+      ],
+      "notes": "Normalizes interviewer output into the Me.IDs agent contract."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "meids-knowledge-retrieval-interviewer-respond",
+      "name": "Return JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Receive request": {
+      "main": [
+        [
+          {
+            "node": "Knowledge Retrieval Interviewer AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive workflow call": {
+      "main": [
+        [
+          {
+            "node": "Knowledge Retrieval Interviewer AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge Retrieval Interviewer Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Knowledge Retrieval Interviewer AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge Retrieval Interviewer AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Contract response normalizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contract response normalizer": {
+      "main": [
+        [
+          {
+            "node": "Return JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

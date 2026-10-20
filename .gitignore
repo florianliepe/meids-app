@@ -8,4 +8,11 @@ frontend/user_uploads/
 __pycache__/
 *.pyc
 dist-pages-local*/
+dist-pages-check*/
+dist-swa*/
+deploy-package/
+meids-backend.zip
+node_modules/
+infra/azure/*.json
+exports/n8n-live-backups/
 .data/

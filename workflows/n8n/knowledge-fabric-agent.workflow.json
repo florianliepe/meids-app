@@ -1,59 +1,61 @@
 {
-  "schema_version": "0.1.0",
-  "exported_at": "2026-08-11T10:46:35.549Z",
-  "source": "n8n live staging workflow export via Codex",
-  "workflow_id": "7Ci86PxXipwvYpKv",
   "name": "MeIDs Knowledge Fabric Agent - staging",
-  "active": true,
-  "boundary": "Public-safe workflow structure. Contains node names, parameters, and credential references only; no secret values.",
   "nodes": [
     {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "meids/knowledge-fabric/ingest",
-        "responseMode": "responseNode",
-        "options": {}
-      },
       "id": "meids-knowledge-fabric-ingest-webhook",
       "name": "Receive request",
+      "webhookId": "6323bd9c-42ee-4a9c-8bf1-93c27fc1ff16",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
         0,
         0
       ],
-      "webhookId": "6323bd9c-42ee-4a9c-8bf1-93c27fc1ff16"
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meids/knowledge-fabric/ingest",
+        "responseMode": "responseNode",
+        "options": {}
+      }
     },
     {
-      "parameters": {
-        "jsCode": "function getTriggerInput() {\n  try { return $('Receive workflow call').first().json; } catch (error) {}\n  try { return $('Receive request').first().json; } catch (error) {}\n  return $json;\n}\nconst inputRoot = getTriggerInput();\nconst input = inputRoot.body ?? inputRoot;\nconst ai = $json;\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nconst requestId = input.request_id || input.live_probe?.request_id || `req_${executionId}`;\nconst aiText = ai.output || ai.text || ai.response || ai.message || '';\nconst response = {\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: requestId,\n  agent_id: 'knowledge_fabric_agent',\n  status: 'completed',\n  output: {\n    summary: aiText || 'Knowledge Fabric AI Agent completed. Candidate concepts remain pending review before promotion.',\n    created_candidates: input.input?.created_candidates || [],\n    review_state: 'pending-review',\n    graph_curator_trigger: 'candidate_edges_pending_review',\n    vector_refresh: 'deferred_until_approval',\n    contract_stage: 'ai_agent_normalized',\n    ai_agent: { integrated: true, node: 'Knowledge Fabric AI Agent' }\n  },\n  trace: { stored: true, trace_id: `n8n_exec_${executionId}`, used_agents: ['knowledge_fabric_agent_ai_agent', 'graph_curator_boundary', 'vector_refresh_boundary'], target_agent: 'knowledge_fabric_agent', route_decision: 'update_knowledge', handoff_status: 'handoff_completed', ai_agent_integrated: true }\n};\nreturn [{ json: response }];"
-      },
       "id": "meids-knowledge-fabric-ingest-contract",
       "name": "Contract response normalizer",
+      "notes": "Normalizes real AI Agent node output into the MeIDs agent contract. Keep this node after the AI Agent and before Return JSON.",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        580,
+        700,
         0
       ],
-      "notes": "Normalizes real AI Agent node output into the MeIDs agent contract. Keep this node after the AI Agent and before Return JSON."
+      "parameters": {
+        "jsCode": "function getTriggerInput() {\n  try { return $('Receive workflow call').first().json; } catch (error) {}\n  try { return $('Receive request').first().json; } catch (error) {}\n  return {};\n}\nconst inputRoot = getTriggerInput();\nconst input = inputRoot.body ?? inputRoot;\nconst sourceInput = input.input && typeof input.input === 'object' ? input.input : (input.concept || input.candidate || input);\nconst ai = $json;\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nconst requestId = input.request_id || input.live_probe?.request_id || `req_${executionId}`;\nconst aiText = ai.output || ai.text || ai.response || ai.message || '';\nconst knowledgeAccessToken = input.metadata?.authorization?.knowledgeAccessToken || input.authorization?.knowledgeAccessToken || input.knowledge_access_token || '';\nlet parsed = {};\nif (aiText && typeof aiText === 'object') parsed = aiText;\nif (typeof aiText === 'string') {\n  const cleaned = aiText.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();\n  try { parsed = JSON.parse(cleaned); } catch (error) { parsed = {}; }\n}\nconst proposed = parsed.concept && typeof parsed.concept === 'object' ? parsed.concept : parsed;\nconst fallbackTitle = String(sourceInput.title || sourceInput.topic || sourceInput.name || input.title || input.topic || aiText || `Knowledge increment ${requestId}`).trim().slice(0, 300);\nconst concept = {\n  twin_id: proposed.twin_id || sourceInput.twin_id || input.context?.twin_id || input.twin_id || input.twin || '',\n  title: proposed.title || fallbackTitle,\n  topic: proposed.topic || proposed.title || fallbackTitle,\n  purpose: proposed.purpose || sourceInput.purpose || '',\n  wider_context: proposed.wider_context || proposed.context || sourceInput.wider_context || sourceInput.context || '',\n  how_to_apply: proposed.how_to_apply || proposed.application || sourceInput.how_to_apply || '',\n  what_else_to_know: proposed.what_else_to_know || proposed.notes || sourceInput.what_else_to_know || '',\n  implications_and_results: proposed.implications_and_results || proposed.what_then || sourceInput.implications_and_results || '',\n  summary: proposed.summary || (typeof aiText === 'string' ? aiText : JSON.stringify(aiText)).slice(0, 10000),\n  tags: Array.isArray(proposed.tags) ? proposed.tags : [],\n  relations: Array.isArray(proposed.relations) ? proposed.relations : [],\n  visibility_scope: proposed.visibility_scope || sourceInput.visibility_scope || 'private',\n  content_vector: Array.isArray(proposed.content_vector) ? proposed.content_vector : (Array.isArray(sourceInput.content_vector) ? sourceInput.content_vector : undefined),\n  change_reason: parsed.change_reason || proposed.change_reason || 'Knowledge Fabric agent staging'\n};\nconst evidence = Array.isArray(parsed.evidence) ? parsed.evidence : (Array.isArray(input.evidence) ? input.evidence : []);\nconst response = {\n  _knowledge_access_token: knowledgeAccessToken,\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: requestId,\n  agent_id: 'knowledge_fabric_agent',\n  status: 'completed',\n  output: {\n    summary: concept.summary || 'Knowledge Fabric AI Agent completed.',\n    created_candidates: [concept],\n    review_state: 'review_needed',\n    graph_curator_trigger: 'candidate_edges_pending_review',\n    vector_refresh: 'transactional_outbox_after_staging',\n    contract_stage: 'production_persistence_candidate',\n    persistence_candidate: concept,\n    persistence_evidence: evidence,\n    ai_agent: { integrated: true, node: 'Knowledge Fabric AI Agent' }\n  },\n  trace: { stored: true, trace_id: `n8n_exec_${executionId}`, used_agents: ['knowledge_fabric_agent_ai_agent'], target_agent: 'knowledge_fabric_agent', route_decision: 'update_knowledge', handoff_status: 'handoff_completed', ai_agent_integrated: true }\n};\nreturn [{ json: response }];"
+      }
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ $json }}",
-        "options": {}
-      },
       "id": "meids-knowledge-fabric-ingest-respond",
       "name": "Return JSON",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        560,
+        1420,
         0
-      ]
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      }
     },
     {
+      "id": "knowledge-fabric-chat-model-model",
+      "name": "Knowledge Fabric Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        280,
+        220
+      ],
       "parameters": {
         "model": {
           "__rl": true,
@@ -64,50 +66,172 @@
         "responsesApiEnabled": false,
         "options": {}
       },
-      "id": "knowledge-fabric-chat-model-model",
-      "name": "Knowledge Fabric Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.3,
-      "position": [
-        280,
-        220
-      ],
       "credentials": {
         "openAiApi": {
-          "id": "jGlNDqeYEbc5DwVT",
-          "name": "Eraneos LLM Gateway"
+          "id": "YfUIBQ7QF3LcOTSu",
+          "name": "Me.IDs Eraneos LLM Gateway"
         }
       }
     },
     {
-      "parameters": {
-        "promptType": "define",
-        "text": "=Request envelope:\n{{ JSON.stringify($json.body || $json) }}\n\nReturn a concise staging analysis: candidate concept themes, missing evidence, duplicate/contradiction risks, graph hints, and review state.",
-        "options": {
-          "systemMessage": "You are the MeIDs Knowledge Fabric Agent. In staging, analyze uploaded text or transcript envelopes into candidate OKF concepts, evidence needs, graph relation hints, and review warnings. Never approve or promote concepts. Keep output concise and public-safe."
-        }
-      },
       "id": "meids/knowledge-fabric-agent/ai-agent",
       "name": "Knowledge Fabric AI Agent",
+      "notes": "MeIDs live AI agent node. Contract response remains the final response normalizer and trace boundary.",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
         300,
         0
       ],
-      "notes": "MeIDs live AI agent node. Contract response remains the final response normalizer and trace boundary."
+      "parameters": {
+        "promptType": "define",
+        "text": "=Request envelope with duplicate evidence:\n{{ JSON.stringify($json) }}\n\nReturn the production persistence contract as JSON without markdown fences.",
+        "options": {
+          "systemMessage": "You are the MeIDs Knowledge Fabric Agent. In staging, analyze uploaded text or transcript envelopes into candidate OKF concepts, evidence needs, graph relation hints, and review warnings. Never approve or promote concepts. Keep output concise and public-safe.\n\nBoundary Solving Path: duplicate score input contract\nBefore concept creation, expect duplicate_score_evidence from the backend duplicate-check endpoint /api/knowledge/duplicate-check when available. Use vector_similarity, lexical_overlap, graph_proximity, scope_compatible, and merge_candidates from that evidence. If duplicate_score_evidence is missing, call the configured retrieval/graph scoring step first or return evidence_pending with duplicate_check.status=insufficient_evidence.\n\nDo not create a confident merge decision without scores. Strong duplicate, near-match, related-only, and insufficient-evidence classifications must be traceable to score evidence.\n\nProduction persistence contract\nReturn a JSON object without markdown fences. Include concept.title, concept.topic, concept.purpose, concept.wider_context, concept.how_to_apply, concept.what_else_to_know, concept.implications_and_results, concept.summary, concept.tags, concept.visibility_scope, evidence, and change_reason. Keep new or changed knowledge in review_needed or updated review state. Never include authorization tokens in model output."
+        }
+      }
     },
     {
-      "parameters": {},
       "id": "meids-knowledge-fabric-workflow-call-trigger",
       "name": "Receive workflow call",
+      "notes": "Internal entrypoint for Actor Twin Call n8n Workflow Tool usage. Keep the public webhook for direct UAT probes.",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [
         0,
         180
       ],
-      "notes": "Internal entrypoint for Actor Twin Call n8n Workflow Tool usage. Keep the public webhook for direct UAT probes."
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "query",
+              "type": "string"
+            },
+            {
+              "name": "knowledge_access_token",
+              "type": "string"
+            },
+            {
+              "name": "tenant_id",
+              "type": "string"
+            },
+            {
+              "name": "user_id",
+              "type": "string"
+            },
+            {
+              "name": "twin_id",
+              "type": "string"
+            },
+            {
+              "name": "organization_id",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e4c0429d-7641-4250-aeb8-1f9ca644d868",
+      "name": "Score duplicate and merge evidence",
+      "notes": "Runs before Knowledge Fabric AI Agent. Backend owns Azure/vector/graph scoring. URL is materialized at publish time because this n8n instance blocks $env access in node expressions.",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://meids-prod-backend-1853a19b.azurewebsites.net/api/knowledge/duplicate-check",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 12000
+        }
+      }
+    },
+    {
+      "id": "3d062d23-1eeb-48b4-a188-4cee2ff22aa2",
+      "name": "Attach duplicate score evidence",
+      "notes": "Restores the original Knowledge Fabric request and attaches duplicate_score_evidence before the AI Agent.",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "jsCode": "function getTriggerInput() {\n  try { return $('Receive workflow call').first().json; } catch (error) {}\n  try { return $('Receive request').first().json; } catch (error) {}\n  return {};\n}\nconst original = getTriggerInput();\nconst input = original.body ?? original;\nconst { authorization, knowledge_access_token, ...safeInput } = input;\nconst safeMetadata = { ...(safeInput.metadata || {}) };\ndelete safeMetadata.authorization;\nconst safeNestedInput = safeInput.input && typeof safeInput.input === 'object' ? { ...safeInput.input } : safeInput.input;\nif (safeNestedInput && typeof safeNestedInput === 'object') {\n  delete safeNestedInput.content_vector;\n  delete safeNestedInput.query_vector;\n}\nreturn [{ json: {\n  ...safeInput,\n  input: safeNestedInput,\n  metadata: safeMetadata,\n  duplicate_score_evidence: $json,\n  duplicate_check_boundary: {\n    status: $json.duplicate_check?.status || 'insufficient_evidence',\n    source: 'backend_duplicate_check',\n    endpoint: '/api/knowledge/duplicate-check'\n  }\n} }];"
+      }
+    },
+    {
+      "id": "prepare-production-duplicate-request",
+      "name": "Prepare duplicate request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const envelope = $json.body || $json; const context = envelope.context || {}; const input = envelope.input || envelope.candidate || envelope.concept || envelope; const candidate = { ...input, twin_id: input.twin_id || context.twin_id || envelope.twin_id || envelope.twin || '', organization_id: input.organization_id || context.organization_id || envelope.organization_id || 'default', query_vector: input.query_vector || input.content_vector || envelope.query_vector || envelope.content_vector }; const token = envelope.metadata?.authorization?.knowledgeAccessToken || envelope.authorization?.knowledgeAccessToken || envelope.knowledge_access_token || ''; return [{ json: { candidate, twin_id: candidate.twin_id, organization_id: candidate.organization_id, source_policy: envelope.source_policy || context.source_policy || input.source_policy || 'selected_pending', top: envelope.top || context.top || input.top || 8, knowledge_access_token: token, _auth_diagnostic: { present: Boolean(token), length: token.length, segments: token ? token.split('.').length : 0 } } }];"
+      }
+    },
+    {
+      "id": "stage-production-knowledge",
+      "name": "Stage review-needed knowledge",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        940,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://meids-prod-backend-1853a19b.azurewebsites.net/api/knowledge/stage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ concept: $json.output.persistence_candidate, source: { type: 'n8n_knowledge_fabric', repository_ref: $json.trace.trace_id }, evidence: $json.output.persistence_evidence || [], change_reason: $json.output.persistence_candidate.change_reason, knowledge_access_token: $json._knowledge_access_token }) }}",
+        "options": {
+          "timeout": 15000
+        }
+      }
+    },
+    {
+      "id": "attach-production-persistence",
+      "name": "Attach persistence result",
+      "notes": "Attaches the persistence receipt and removes internal vectors and authorization material from the frontend response.",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const internal = $('Contract response normalizer').first().json; const { _knowledge_access_token, ...response } = internal; const sanitizeConcept = (value) => { if (!value || typeof value !== 'object') return value; const { content_vector, query_vector, ...safe } = value; return safe; }; const output = { ...response.output, created_candidates: (response.output.created_candidates || []).map(sanitizeConcept), persistence_candidate: sanitizeConcept(response.output.persistence_candidate), persistence: $json, review_state: $json.review_state || response.output.review_state }; return [{ json: { ...response, output, trace: { ...response.trace, persistence_status: $json.status || 'staged' } } }];"
+      }
     }
   ],
   "connections": {
@@ -115,7 +239,7 @@
       "main": [
         [
           {
-            "node": "Knowledge Fabric AI Agent",
+            "node": "Prepare duplicate request",
             "type": "main",
             "index": 0
           }
@@ -148,7 +272,7 @@
       "main": [
         [
           {
-            "node": "Return JSON",
+            "node": "Stage review-needed knowledge",
             "type": "main",
             "index": 0
           }
@@ -159,7 +283,62 @@
       "main": [
         [
           {
+            "node": "Prepare duplicate request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score duplicate and merge evidence": {
+      "main": [
+        [
+          {
+            "node": "Attach duplicate score evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach duplicate score evidence": {
+      "main": [
+        [
+          {
             "node": "Knowledge Fabric AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage review-needed knowledge": {
+      "main": [
+        [
+          {
+            "node": "Attach persistence result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach persistence result": {
+      "main": [
+        [
+          {
+            "node": "Return JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare duplicate request": {
+      "main": [
+        [
+          {
+            "node": "Score duplicate and merge evidence",
             "type": "main",
             "index": 0
           }
@@ -168,6 +347,8 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
-  }
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null
 }

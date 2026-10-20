@@ -10,7 +10,8 @@ param(
   [string]$Runtime = "NODE|22-lts",
   [string]$HealthUrl = "",
   [switch]$CreateIfMissing,
-  [switch]$ApplySecretSettings
+  [switch]$ApplySecretSettings,
+  [switch]$SkipHealthCheck
 )
 
 $ErrorActionPreference = "Stop"
@@ -97,6 +98,21 @@ if (-not $appExists) {
 
 Run-Az @("webapp", "config", "set", "--resource-group", $ResourceGroup, "--name", $AppName, "--startup-file", "npm start")
 
+$outboxProjectorEnabled = if ([string]::IsNullOrWhiteSpace($env:MEIDS_OUTBOX_PROJECTOR_ENABLED)) {
+  $currentValue = & $AzCommand.executable @($AzCommand.prefix + @(
+    "webapp", "config", "appsettings", "list", "--resource-group", $ResourceGroup,
+    "--name", $AppName, "--query", "[?name=='MEIDS_OUTBOX_PROJECTOR_ENABLED'].value | [0]",
+    "--output", "tsv"
+  ))
+  if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($currentValue)) {
+    $currentValue.Trim()
+  } else {
+    "false"
+  }
+} else {
+  $env:MEIDS_OUTBOX_PROJECTOR_ENABLED
+}
+
 $settings = @(
   "NODE_ENV=production",
   "PORT=8080",
@@ -109,7 +125,14 @@ $settings = @(
   "AZURE_SEARCH_WORKING_INDEX=meids-okf-working-v1",
   "AZURE_SEARCH_API_VERSION=2025-09-01",
   "AZURE_OPENAI_API_VERSION=2024-02-01",
-  "AZURE_OPENAI_EMBEDDING_DIMENSIONS=1536"
+  "AZURE_OPENAI_EMBEDDING_DIMENSIONS=1536",
+  "MEIDS_STORAGE_ACCOUNT_NAME=stmeidsprod1853a19b",
+  "MEIDS_OUTBOX_PROJECTOR_ENABLED=$outboxProjectorEnabled",
+  "MEIDS_OUTBOX_BATCH_SIZE=25",
+  "MEIDS_OUTBOX_INTERVAL_MS=15000",
+  "SCM_DO_BUILD_DURING_DEPLOYMENT=true",
+  "ENABLE_ORYX_BUILD=true",
+  "SCM_COMMAND_IDLE_TIMEOUT=600"
 )
 
 if ($ApplySecretSettings) {
@@ -132,6 +155,8 @@ if ($ApplySecretSettings) {
     "AZURE_OPENAI_ENDPOINT",
     "AZURE_OPENAI_API_KEY",
     "AZURE_OPENAI_EMBEDDING_DEPLOYMENT",
+    "OPENAI_EMBEDDING_BASE_URL",
+    "OPENAI_EMBEDDING_MODEL",
     "MEIDS_ALLOW_DETERMINISTIC_VECTORS",
     "ERANEOS_AI_GATEWAY_BASE_URL",
     "ERANEOS_AI_GATEWAY_API_KEY",
@@ -167,18 +192,36 @@ Remove-Item -Recurse -Force $packageDir -ErrorAction SilentlyContinue
 Remove-Item -Force $zipPath -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $packageDir | Out-Null
 Copy-Item -Recurse -Path "backend" -Destination $packageDir
+New-Item -ItemType Directory -Path (Join-Path $packageDir "scripts") | Out-Null
+Copy-Item -Path "scripts/bootstrap-production-postgres.cjs", "scripts/run-postgres-migrations.cjs", "scripts/seed-production-identity.cjs" -Destination (Join-Path $packageDir "scripts")
 Copy-Item -Path "package.json", "package-lock.json" -Destination $packageDir
 Push-Location $packageDir
-npm ci --omit=dev
-if ($LASTEXITCODE -ne 0) { throw "deploy package npm ci failed" }
-Compress-Archive -Path "*" -DestinationPath $zipPath -Force
+& tar.exe -a -c -f $zipPath *
+if ($LASTEXITCODE -ne 0) { throw "deploy package archive creation failed" }
 Pop-Location
 
-Run-Az @("webapp", "deploy", "--resource-group", $ResourceGroup, "--name", $AppName, "--src-path", $zipPath, "--type", "zip")
+Run-Az @("webapp", "deployment", "source", "config-zip", "--resource-group", $ResourceGroup, "--name", $AppName, "--src", $zipPath)
 
 $backendUrl = "https://$AppName.azurewebsites.net"
 $healthEndpoint = if ($HealthUrl) { $HealthUrl } else { "$backendUrl/api/health" }
-$health = Invoke-RestMethod -Uri $healthEndpoint -Method Get -TimeoutSec 60
+$health = if ($SkipHealthCheck) {
+  @{ status = "skipped"; reason = "explicit_skip" }
+} else {
+  $curl = Get-Command "curl.exe" -ErrorAction SilentlyContinue
+  if ($curl) {
+    $statusCode = [int](& $curl.Source -sS -o NUL -w "%{http_code}" --max-time 60 $healthEndpoint)
+    if ($LASTEXITCODE -ne 0) { throw "Health request failed for $healthEndpoint." }
+    if ($statusCode -ge 200 -and $statusCode -lt 400) {
+      @{ status = "reachable"; http_status = $statusCode }
+    } elseif ($statusCode -eq 401 -or $statusCode -eq 403) {
+      @{ status = "reachable_auth_protected"; http_status = $statusCode }
+    } else {
+      throw "Health request returned HTTP $statusCode for $healthEndpoint."
+    }
+  } else {
+    Invoke-RestMethod -Uri $healthEndpoint -Method Get -TimeoutSec 60
+  }
+}
 
 @{
   status = "deployed"

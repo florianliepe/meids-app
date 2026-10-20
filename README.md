@@ -32,3 +32,22 @@ Top-level agents:
 - App frontend: this repository
 - Knowledge fabric: `meids-knowledge-fabric` private
 - Agent configs and n8n contracts: `meids-agent-configs` private
+
+## Deployment And Operations
+
+- Deployable codebase map:
+  [`docs/production/deployable-codebase-map.md`](docs/production/deployable-codebase-map.md)
+- Azure installation playbook:
+  [`docs/production/azure-installation-playbook.md`](docs/production/azure-installation-playbook.md)
+- Codebase review and refactoring Zielmodus:
+  [`docs/production/codebase-review-refactoring-zielmodus.md`](docs/production/codebase-review-refactoring-zielmodus.md)
+
+Recommended validation commands:
+
+```powershell
+npm ci
+npm run check:backend
+npm run check:agents
+npm run audit:agents
+node scripts/build-pages-static.cjs --output dist-pages
+```

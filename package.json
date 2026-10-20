@@ -5,7 +5,11 @@
   "description": "MeIDs public frontend plus production agent backend proxy scaffold.",
   "scripts": {
     "start": "node backend/server.js",
-    "check:backend": "node --check backend/server.js && node --check backend/azureSearch.js && node --check scripts/setup-azure-search-indexes.cjs && node --check scripts/run-first-vector-upsert.cjs && node --check scripts/write-azure-vector-readiness-status.cjs && node --check scripts/write-azure-vector-live-activation-status.cjs && node scripts/validate-agent-backend-contract.cjs && node scripts/validate-azure-search-contracts.cjs && node scripts/write-azure-vector-readiness-status.cjs --check && node scripts/write-azure-vector-live-activation-status.cjs --check",
+    "check:backend": "node --check backend/server.js && node --check backend/azureSearch.js && node --check backend/knowledgeAccess.js && node --check backend/knowledgePersistence.js && node --check scripts/setup-azure-search-indexes.cjs && node --check scripts/run-first-vector-upsert.cjs && node --check scripts/write-azure-vector-readiness-status.cjs && node --check scripts/write-azure-vector-live-activation-status.cjs && node scripts/validate-knowledge-access-contract.cjs && node scripts/validate-agent-backend-contract.cjs && node scripts/validate-azure-search-contracts.cjs && node scripts/write-azure-vector-readiness-status.cjs --check && node scripts/write-azure-vector-live-activation-status.cjs --check",
+    "check:knowledge-access": "node scripts/validate-knowledge-access-contract.cjs",
+    "db:migrate": "node scripts/run-postgres-migrations.cjs",
+    "db:bootstrap:production": "node scripts/bootstrap-production-postgres.cjs",
+    "db:seed:production-identity": "node scripts/seed-production-identity.cjs",
     "setup:azure-search": "node scripts/setup-azure-search-indexes.cjs",
     "vector:readiness": "node scripts/write-azure-vector-readiness-status.cjs --write && node scripts/write-azure-vector-live-activation-status.cjs",
     "vector:first-upsert": "node scripts/run-first-vector-upsert.cjs",
@@ -15,7 +19,15 @@
     "n8n:agent:update:prepare": "node scripts/prepare-n8n-agent-workflow-api-update.cjs",
     "n8n:agent:update:apply": "node scripts/prepare-n8n-agent-workflow-api-update.cjs --apply",
     "uat:chat:n8n": "node scripts/validate-chat-live-n8n-uat.cjs",
-    "uat:agents:live": "node scripts/run-agent-interaction-uat.cjs && node scripts/validate-chat-live-n8n-uat.cjs --file docs/uat/agent-interaction-uat-results.json"
+    "uat:agents:live": "node scripts/run-agent-interaction-uat.cjs && node scripts/validate-chat-live-n8n-uat.cjs --file docs/uat/agent-interaction-uat-results.json",
+    "audit:agents": "node scripts/audit-agent-runtime-performance.cjs",
+    "probe:agents:live": "node scripts/write-n8n-seven-agent-live-probe-evidence.cjs",
+    "n8n:refinement:apply": "node scripts/apply-n8n-next-refinement-guardrails.cjs",
+    "n8n:boundaries:apply": "node scripts/apply-n8n-boundary-solving-path.cjs",
+    "n8n:auth-context:apply": "node scripts/apply-n8n-public-launch-auth-context.cjs --apply",
+    "backend:azure:deploy": "powershell -ExecutionPolicy Bypass -File scripts/deploy-backend-app-service.ps1 -AppName meids-prod-backend-1853a19b -ResourceGroup rg-ai-intellectual-twin",
+    "n8n:scoring:discover-backend": "powershell -ExecutionPolicy Bypass -File scripts/discover-meids-backend-url.ps1",
+    "n8n:scoring:publish-real": "powershell -ExecutionPolicy Bypass -File scripts/publish-real-knowledge-scoring.ps1"
   },
   "engines": {
     "node": ">=18"

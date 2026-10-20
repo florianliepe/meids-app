@@ -46,8 +46,18 @@ Live writes require either:
 
 - Azure OpenAI embedding secrets, so the backend can generate `content_vector`.
 - Or caller-supplied `content_vector` values that match `AZURE_OPENAI_EMBEDDING_DIMENSIONS`.
+- Or, for UAT only, `MEIDS_ALLOW_DETERMINISTIC_VECTORS=true` plus
+  `vector_mode=deterministic_fallback`/`allow_deterministic_vectors=true`.
 
-Without embeddings, live upsert is blocked. Dry-runs remain available for contract checks.
+Without one of those vector sources, live upsert is blocked. Dry-runs remain
+available for contract checks.
+
+Deterministic fallback vectors are stable and useful for proving the OKF
+ingestion -> Azure AI Search -> duplicate-check path. When enabled, the backend
+can also create deterministic query vectors for `/api/vector-index/search` and
+`/api/knowledge/duplicate-check`, returning
+`retrieval_mode=hybrid_deterministic_vector_keyword`. They are not semantic
+embeddings and must not be used for production relevance/SLO decisions.
 
 ## Production Activation Sequence
 

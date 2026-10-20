@@ -6,7 +6,7 @@ const { spawnSync } = require("child_process");
 const root = path.resolve(__dirname, "..");
 const workflowPath = path.join(root, "workflows", "n8n", "import-ready", "actor-twin-direct-orchestrator.uat-live-urls.import.json");
 const outRoot = path.join(root, "exports", "n8n-live-backups");
-const defaultWorkflowId = "fDn8yXo3W41hh3yR";
+const defaultWorkflowId = "eKI3qM7nyCNn9r1q";
 
 const args = new Set(process.argv.slice(2));
 const apply = args.has("--apply");

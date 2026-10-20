@@ -1,53 +1,61 @@
 {
-  "name": "MeIDs Agentic Butler - staging",
+  "name": "Me.IDs Agentic Butler - staging",
   "nodes": [
     {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "meids/agentic-butler/run",
-        "responseMode": "responseNode",
-        "options": {}
-      },
       "id": "meids-agentic-butler-run-webhook",
       "name": "Receive request",
+      "webhookId": "5fa227c8-4589-4369-a7ec-7f3a15026134",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
         0,
         0
       ],
-      "webhookId": "5fa227c8-4589-4369-a7ec-7f3a15026134"
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meids/agentic-butler/run",
+        "responseMode": "responseNode",
+        "options": {}
+      }
     },
     {
-      "parameters": {
-        "jsCode": "function getTriggerInput() {\n  try { return $('Receive workflow call').first().json; } catch (error) {}\n  try { return $('Receive request').first().json; } catch (error) {}\n  return $json;\n}\nconst inputRoot = getTriggerInput();\nconst input = inputRoot.body ?? inputRoot;\nconst ai = $json;\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nconst requestId = input.request_id || input.live_probe?.request_id || 'req_' + executionId;\nconst aiText = ai.output || ai.text || ai.response || ai.message || '';\nconst isResume = input.intent === 'resume_after_approval' || input.input?.approved === true;\nconst query = String(input.input?.query || input.input?.message || input.message || input.chatInput || '').toLowerCase();\n\nfunction safeJson(value) {\n  if (value && typeof value === 'object') return value;\n  const text = String(value || '').trim();\n  if (!text) return null;\n  const fenced = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  const candidate = (fenced ? fenced[1] : text).trim();\n  const firstBrace = candidate.indexOf('{');\n  const lastBrace = candidate.lastIndexOf('}');\n  if (firstBrace < 0 || lastBrace <= firstBrace) return null;\n  try { return JSON.parse(candidate.slice(firstBrace, lastBrace + 1)); } catch { return null; }\n}\n\nfunction explicitSkillCreationIntent(text) {\n  return /\\b(create|shape|design|generate|build|define)\\b[\\s\\S]{0,64}\\b(new\\s+)?(skill|agent|task-agent|task agent|subagent|sub-agent|capability)\\b/i.test(text)\n    || /\\b(new|additional)\\s+(skill|agent|task-agent|task agent|subagent|sub-agent|capability)\\b/i.test(text)\n    || /\\b(skill|agent|task-agent|task agent|subagent|sub-agent|capability)\\b[\\s\\S]{0,64}\\b(create|shape|design|generate|build|define)\\b/i.test(text);\n}\n\nfunction cleanParsedOutput(parsed, text) {\n  const envelope = parsed && typeof parsed === 'object' ? parsed : {};\n  const output = envelope.output && typeof envelope.output === 'object' ? envelope.output : envelope;\n  const result = { ...output };\n  if (!result.summary && envelope.answer) result.summary = envelope.answer;\n  if (!result.summary && envelope.summary) result.summary = envelope.summary;\n  if (result.email_draft?.subject && !result.summary) result.summary = 'Drafted email: ' + result.email_draft.subject;\n  if (!result.summary) result.summary = text || 'Agentic Butler completed autonomous skill orchestration under Actor Twin steering.';\n  return result;\n}\n\nconst parsed = safeJson(aiText);\nconst aiOutput = cleanParsedOutput(parsed, aiText);\nconst routeDecision = input.context?.route_decision || {};\nconst explicitCreation = explicitSkillCreationIntent(query);\nconst isCreateSkill = explicitCreation && (input.intent === 'create_skill' || routeDecision.decision === 'create_skill');\nconst approvalRequired = !isResume && isCreateSkill;\nconst approval = approvalRequired ? {\n  required: true,\n  gate: 'skill_spec_approval',\n  summary: 'Generated skill or agent proposal is ready for human review.',\n  proposed_action: 'Approve the proposal to stage SkillSpec decomposition and make the generated capability available through Agentic Butler orchestration.'\n} : { required: false };\nconst skillCreation = approvalRequired ? {\n  status: 'proposal_pending_approval',\n  mode_of_action: aiOutput.mode_of_action || aiOutput.skill_creation?.mode_of_action || 'Agentic Butler elicits, decomposes, and stages a generated skill or agent behind approval.',\n  value_proposition: aiOutput.value_proposition || aiOutput.skill_creation?.value_proposition || 'Transforms repeated work into reusable Actor Twin capability.',\n  usp: aiOutput.usp || aiOutput.skill_creation?.usp || 'Compares the proposed capability against existing skills and activates only after human ratification.',\n  decomposition_outline: aiOutput.decomposition_outline || aiOutput.skill_creation?.decomposition_outline || []\n} : null;\nconst response = {\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: requestId,\n  agent_id: 'agentic_butler',\n  status: approvalRequired ? 'approval_required' : 'completed',\n  approval,\n  output: {\n    ...aiOutput,\n    summary: aiOutput.summary,\n    approval_request: approvalRequired ? approval : null,\n    skill_run: aiOutput.skill_run || { mode: isResume ? 'resumed_after_approval' : approvalRequired ? 'approval_gated_new_skill_or_agent' : 'autonomous_actor_delegated', execute: !approvalRequired },\n    skill_creation: skillCreation,\n    contract_stage: 'ai_agent_normalized',\n    ai_agent: { integrated: true, node: 'Agentic Butler AI Agent' }\n  },\n  trace: { stored: true, trace_id: 'n8n_exec_' + executionId, used_agents: ['agentic_butler_ai_agent', 'skill_orchestrator_internal_component', 'actor_twin_checkpoint_boundary'], target_agent: 'agentic_butler', route_decision: isCreateSkill ? 'create_skill' : 'activate_skill', handoff_status: approvalRequired ? 'approval_required' : 'completed_autonomous', parent_trace_id: input.context?.handoff_trace_id || input.context?.actor_trace_id || '', ai_agent_integrated: true }\n};\nreturn [{ json: response }];"
-      },
       "id": "meids-agentic-butler-run-contract",
       "name": "Contract response normalizer",
+      "notes": "Normalizes real AI Agent node output into the MeIDs agent contract. Keep this node after the AI Agent and before Return JSON.",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        580,
+        592,
         0
       ],
-      "notes": "Normalizes real AI Agent node output into the MeIDs agent contract. Keep this node after the AI Agent and before Return JSON."
+      "parameters": {
+        "jsCode": "function getTriggerInput() {\n  try { return $('Receive workflow call').first().json; } catch (error) {}\n  try { return $('Receive request').first().json; } catch (error) {}\n  return $json;\n}\nconst inputRoot = getTriggerInput();\nconst input = inputRoot.body ?? inputRoot;\nconst ai = $json;\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nconst requestId = input.request_id || input.live_probe?.request_id || 'req_' + executionId;\nconst aiText = ai.output || ai.text || ai.response || ai.message || '';\nconst isResume = input.intent === 'resume_after_approval' || input.input?.approved === true;\nconst query = String(input.input?.query || input.input?.message || input.message || input.chatInput || '').toLowerCase();\n\nfunction safeJson(value) {\n  if (value && typeof value === 'object') return value;\n  const text = String(value || '').trim();\n  if (!text) return null;\n  const fenced = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  const candidate = (fenced ? fenced[1] : text).trim();\n  const firstBrace = candidate.indexOf('{');\n  const lastBrace = candidate.lastIndexOf('}');\n  if (firstBrace < 0 || lastBrace <= firstBrace) return null;\n  try { return JSON.parse(candidate.slice(firstBrace, lastBrace + 1)); } catch { return null; }\n}\n\nfunction explicitSkillCreationIntent(text) {\n  return /\\b(create|shape|design|generate|build|define)\\b[\\s\\S]{0,64}\\b(new\\s+)?(skill|agent|task-agent|task agent|subagent|sub-agent|capability)\\b/i.test(text)\n    || /\\b(new|additional)\\s+(skill|agent|task-agent|task agent|subagent|sub-agent|capability)\\b/i.test(text)\n    || /\\b(skill|agent|task-agent|task agent|subagent|sub-agent|capability)\\b[\\s\\S]{0,64}\\b(create|shape|design|generate|build|define)\\b/i.test(text);\n}\n\nfunction cleanParsedOutput(parsed, text) {\n  const envelope = parsed && typeof parsed === 'object' ? parsed : {};\n  const output = envelope.output && typeof envelope.output === 'object' ? envelope.output : envelope;\n  const result = { ...output };\n  if (!result.next_question && result.result?.next_question) result.next_question = result.result.next_question;\n  if (!result.question_type && result.result?.question_type) result.question_type = result.result.question_type;\n  if (!result.gap_being_closed && result.result?.gap_being_closed) result.gap_being_closed = result.result.gap_being_closed;\n  if (!result.summary && envelope.answer) result.summary = envelope.answer;\n  if (!result.summary && envelope.summary) result.summary = envelope.summary;\n  if (result.email_draft?.subject && !result.summary) result.summary = 'Drafted email: ' + result.email_draft.subject;\n  if (!result.summary && result.next_question) result.summary = result.next_question;\n  if (!result.summary && result.skill_invoked) result.summary = String(result.skill_invoked) + ' completed.';\n  if (!result.next_question && result.result?.next_question) result.next_question = result.result.next_question;\n  if (!result.question_type && result.result?.question_type) result.question_type = result.result.question_type;\n  if (!result.gap_being_closed && result.result?.gap_being_closed) result.gap_being_closed = result.result.gap_being_closed;\nif (!result.summary && result.next_question) result.summary = result.next_question;\n  if (!result.summary && result.skill_invoked) result.summary = String(result.skill_invoked) + ' completed.';\n  if (!result.next_question && result.result?.next_question) result.next_question = result.result.next_question;\n  if (!result.question_type && result.result?.question_type) result.question_type = result.result.question_type;\n  if (!result.gap_being_closed && result.result?.gap_being_closed) result.gap_being_closed = result.result.gap_being_closed;\nif (!result.summary && result.next_question) result.summary = result.next_question;\n  if (!result.summary && result.skill_invoked) result.summary = String(result.skill_invoked) + ' completed.';\n  if (!result.summary) result.summary = text || 'Agentic Butler completed autonomous skill orchestration under Actor Twin steering.';\n  if (typeof result.summary === 'string' && /^```|^\\s*\\{/.test(result.summary) && (result.artifact || result.task_trace || result.execution_plan)) {\n    result.summary = result.artifact?.title || result.result?.title || 'Skill orchestration completed.';\n  }\n  if (result.summary === text && (result.next_question || result.skill_invoked || result.okf_candidate || result.result?.next_question)) {\n    result.summary = result.next_question || (String(result.skill_invoked) + ' completed.');\n  }\n  if (result.summary === text && (result.next_question || result.skill_invoked || result.okf_candidate || result.result?.next_question)) {\n    result.summary = result.next_question || (String(result.skill_invoked) + ' completed.');\n  }\n  if (result.summary === text && (result.next_question || result.skill_invoked || result.okf_candidate || result.result?.next_question)) {\n    result.summary = result.next_question || (String(result.skill_invoked) + ' completed.');\n  }\n  return result;\n}\n\nconst parsed = safeJson(aiText);\nconst aiOutput = cleanParsedOutput(parsed, aiText);\nconst routeDecision = input.context?.route_decision || {};\nconst explicitCreation = explicitSkillCreationIntent(query);\nconst isCreateSkill = explicitCreation && (input.intent === 'create_skill' || routeDecision.decision === 'create_skill');\nconst approvalRequired = !isResume && isCreateSkill;\nconst approval = approvalRequired ? {\n  required: true,\n  gate: 'skill_spec_approval',\n  summary: 'Generated skill or agent proposal is ready for human review.',\n  proposed_action: 'Approve the proposal to stage SkillSpec decomposition and make the generated capability available through Agentic Butler orchestration.'\n} : { required: false };\nconst skillCreation = approvalRequired ? {\n  status: 'proposal_pending_approval',\n  mode_of_action: aiOutput.mode_of_action || aiOutput.skill_creation?.mode_of_action || 'Agentic Butler elicits, decomposes, and stages a generated skill or agent behind approval.',\n  value_proposition: aiOutput.value_proposition || aiOutput.skill_creation?.value_proposition || 'Transforms repeated work into reusable Actor Twin capability.',\n  usp: aiOutput.usp || aiOutput.skill_creation?.usp || 'Compares the proposed capability against existing skills and activates only after human ratification.',\n  decomposition_outline: aiOutput.decomposition_outline || aiOutput.skill_creation?.decomposition_outline || []\n} : null;\nconst response = {\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: requestId,\n  agent_id: 'agentic_butler',\n  status: approvalRequired ? 'approval_required' : 'completed',\n  approval,\n  output: {\n    ...aiOutput,\n    summary: aiOutput.summary,\n    approval_request: approvalRequired ? approval : null,\n    skill_run: aiOutput.skill_run || { mode: isResume ? 'resumed_after_approval' : approvalRequired ? 'approval_gated_new_skill_or_agent' : 'autonomous_actor_delegated', execute: !approvalRequired },\n    skill_creation: skillCreation,\n    contract_stage: 'ai_agent_normalized',\n    ai_agent: { integrated: true, node: 'Agentic Butler AI Agent' }\n  },\n  trace: { stored: true, trace_id: 'n8n_exec_' + executionId, used_agents: Array.from(new Set(['agentic_butler_ai_agent', 'skill_orchestrator_internal_component', 'actor_twin_checkpoint_boundary'].concat(parsed?.trace?.used_agents || aiOutput.trace?.used_agents || []).concat((aiOutput.next_question || aiOutput.result?.mode === 'tacit_knowledge_elicitation' || aiOutput.skill_invoked === 'Knowledge Retrieval Interviewer') ? ['knowledge_retrieval_interviewer'] : []).concat((aiOutput.task_trace || aiOutput.execution_plan || aiOutput.artifact) ? ['skill_orchestrator', 'task_agent'] : []))), target_agent: 'agentic_butler', route_decision: isCreateSkill ? 'create_skill' : 'activate_skill', handoff_status: approvalRequired ? 'approval_required' : 'completed_autonomous', parent_trace_id: input.context?.handoff_trace_id || input.context?.actor_trace_id || '', ai_agent_integrated: true }\n};\nreturn [{ json: response }];"
+      }
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ $json }}",
-        "options": {}
-      },
       "id": "meids-agentic-butler-run-respond",
       "name": "Return JSON",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        560,
+        800,
         0
-      ]
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      }
     },
     {
+      "id": "agentic-butler-chat-model-model",
+      "name": "Agentic Butler Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        288,
+        224
+      ],
       "parameters": {
         "model": {
           "__rl": true,
@@ -58,50 +66,156 @@
         "responsesApiEnabled": false,
         "options": {}
       },
-      "id": "agentic-butler-chat-model-model",
-      "name": "Agentic Butler Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.3,
-      "position": [
-        280,
-        220
-      ],
       "credentials": {
         "openAiApi": {
-          "id": "jGlNDqeYEbc5DwVT",
-          "name": "Eraneos LLM Gateway"
+          "id": "YfUIBQ7QF3LcOTSu",
+          "name": "Me.IDs Eraneos LLM Gateway"
         }
       }
     },
     {
+      "id": "meids/agentic-butler/ai-agent",
+      "name": "Agentic Butler AI Agent",
+      "notes": "MeIDs live AI agent node. Contract response remains the final response normalizer and trace boundary.",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        304,
+        0
+      ],
       "parameters": {
         "promptType": "define",
         "text": "=Request envelope from webhook or Actor Twin workflow tool call:\n{{ JSON.stringify($json.body || $json) }}\n\nReturn a concise skill-run result for normal delegated work. For explicit new skill or agent creation, return a proposal with mode_of_action, value_proposition, usp/differentiation, decomposition outline, and approval boundary.",
         "options": {
-          "systemMessage": "You are the MeIDs Agentic Butler. Interpret requests delegated by the Actor Twin. Activate approved skills and run the internal Skill Orchestrator autonomously. For normal work artifacts such as email drafts, meeting preparation, agenda drafts, planning, backlog/status updates, summaries, and internal task orchestration, complete the work and return a clean structured result. Do not request human approval for internal drafting or planning. Only return approval_required when the original user explicitly asks to create, shape, design, generate, build, or define a new skill, agent, subagent, or task-agent, and only to gate activation of that generated capability. For new skill or agent creation, first produce a proposal with mode_of_action, value_proposition, usp/differentiation, decomposition_outline, and approval boundary. Return JSON-compatible content; no markdown fences around JSON."
+          "systemMessage": "You are the MeIDs Agentic Butler. Interpret requests delegated by the Actor Twin. Activate approved skills and run the internal Skill Orchestrator autonomously. For normal work artifacts such as email drafts, meeting preparation, agenda drafts, planning, backlog/status updates, summaries, and internal task orchestration, complete the work and return a clean structured result. Do not request human approval for internal drafting or planning. Only return approval_required when the original user explicitly asks to create, shape, design, generate, build, or define a new skill, agent, subagent, or task-agent, and only to gate activation of that generated capability. For new skill or agent creation, first produce a proposal with mode_of_action, value_proposition, usp/differentiation, decomposition_outline, and approval boundary. Return JSON-compatible content; no markdown fences around JSON.\n\nTool: Knowledge Retrieval Interviewer\nCall this tool when Actor Twin or Agentic Butler needs to elicit implicit human knowledge, tacit decision criteria, process insight, best practices, lessons learned, stakeholder dynamics, or reusable heuristics before creating an OKF knowledge node, work artifact, or skill proposal.\n\nThe tool asks one focused question at a time. It uses what/how/why/who/and-then questioning plus circular stakeholder-perspective questions to fill a knowledge-node quality gate: topic and purpose, use and wider context, application, additional context, implications and results, evidence, confidence, use cases, and non-use boundaries.\n\nDo not call this tool for simple fact lookup, direct OKF/vector/graph retrieval, identity questions, or ordinary drafting where enough context already exists. Do not expose its raw output to the user; Actor Twin remains the visible voice.\n\nRouting rule: use Knowledge Retrieval Interviewer only when the work depends on missing tacit knowledge, implicit decision criteria, best practices, stakeholder context, or process insight. Keep normal drafting and planning work inside Agentic Butler. Keep simple factual retrieval with Knowledge Fabric Agent.\n\nHard routing rule for Knowledge Retrieval Interviewer: when the original request asks to extract, elicit, uncover, retrieve implicit knowledge, tacit knowledge, decision criteria, best practices, process insight, lessons learned, stakeholder dynamics, circular questions, deep-dive questions, or reusable heuristics, you must call the Knowledge Retrieval Interviewer tool before answering. Do not answer this class of request from your own reasoning alone. Return the tool result or a concise synthesis of its next_question/candidate.\n\nTool: Skill Orchestrator\nCall this tool when Agentic Butler needs to execute an approved skill, coordinate a multi-step no-write work artifact, decompose an approved generated capability into execution steps, or delegate bounded work to task agents.\n\nThe Skill Orchestrator turns one approved skill objective into a concise execution plan, calls the minimum necessary Task Agent steps, validates their outputs, and returns one coherent result to Agentic Butler with assumptions, task trace, risks, and approval boundaries.\n\nDo not call this tool for simple one-step drafting that Agentic Butler can complete directly. Do not call it for tacit knowledge interviews; use Knowledge Retrieval Interviewer for that. Do not use it for direct OKF/vector/graph retrieval; use Knowledge Fabric Agent. Human approval is required only before external side effects or activation of newly generated capabilities.\n\nHard routing rule for Skill Orchestrator: when an Actor Twin delegation requires approved skill execution, multi-step work-artifact production, task decomposition, or bounded execution workers, call Skill Orchestrator before returning the final result. Keep one-step drafts inside Agentic Butler when no decomposition is needed. Keep tacit knowledge elicitation with Knowledge Retrieval Interviewer.\n\nTool: Critical Faculty Agent\nCall this internal workflow tool when a route decision, answer, knowledge claim, skill proposal, task-agent result, graph implication, vector-readiness decision, or proposed action needs independent decision-quality critique.\n\nUse it for ambiguity, weak evidence, contradictions, stale or draft knowledge, hidden assumptions, approval-boundary uncertainty, high-impact recommendations, generated capability proposals, or premortem-style risk review.\n\nDo not call it for ordinary chat, simple drafting, low-risk formatting, or identity/status questions. Critical Faculty cannot approve, execute, persist, send, schedule, publish, delete, commit, or activate anything. It returns critique, recommendation, Knowledge Fabric action advice, and caller next step.\n\nRouting rule: call Critical Faculty before finalizing generated capability proposals, risky skill plans, conflicting task-agent outputs, or approval-boundary decisions. Do not expose Critical Faculty as a visible agent.\n\nRuntime Budget Guardrail\nPrefer compact output over exhaustive output. Keep one-step drafts inside Agentic Butler. For multi-step work, call Skill Orchestrator once with a compact objective and explicit task-agent budget. Do not call both Skill Orchestrator and Critical Faculty unless the work is both multi-step and decision-risky.\n\nNext Refinement Guardrail: Butler nested fallback\nFor normal skill execution and no-write work artifacts, avoid approval gates. If Skill Orchestrator, Task Agent, Knowledge Retrieval Interviewer, or Critical Faculty is slow or unavailable, return a concise fallback summary: what was completed, what was not completed, why, and the next recovery step. Do not leave Actor Twin waiting without a usable result.\n\nUse Skill Orchestrator only for multi-step execution. Use one Task Agent by default and stop after the configured budget."
         }
-      },
-      "id": "meids/agentic-butler/ai-agent",
-      "name": "Agentic Butler AI Agent",
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 3.1,
-      "position": [
-        300,
-        0
-      ],
-      "notes": "MeIDs live AI agent node. Contract response remains the final response normalizer and trace boundary."
+      }
     },
     {
-      "parameters": {},
       "id": "meids-agentic-butler-workflow-call-trigger",
       "name": "Receive workflow call",
+      "notes": "Internal entrypoint for Actor Twin Call n8n Workflow Tool usage. Keep the public webhook for direct UAT probes.",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [
         0,
-        180
+        192
       ],
-      "notes": "Internal entrypoint for Actor Twin Call n8n Workflow Tool usage. Keep the public webhook for direct UAT probes."
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "query",
+              "type": "string"
+            },
+            {
+              "name": "knowledge_access_token",
+              "type": "string"
+            },
+            {
+              "name": "tenant_id",
+              "type": "string"
+            },
+            {
+              "name": "user_id",
+              "type": "string"
+            },
+            {
+              "name": "twin_id",
+              "type": "string"
+            },
+            {
+              "name": "organization_id",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "meids-agentic-butler-knowledge-retrieval-tool",
+      "name": "Knowledge Retrieval Interviewer",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        512,
+        240
+      ],
+      "parameters": {
+        "description": "Call this tool when Actor Twin or Agentic Butler needs to elicit implicit human knowledge, tacit decision criteria, process insight, best practices, lessons learned, stakeholder dynamics, or reusable heuristics before creating an OKF knowledge node, work artifact, or skill proposal.\n\nThe tool asks one focused question at a time. It uses what/how/why/who/and-then questioning plus circular stakeholder-perspective questions to fill a knowledge-node quality gate: topic and purpose, use and wider context, application, additional context, implications and results, evidence, confidence, use cases, and non-use boundaries.\n\nDo not call this tool for simple fact lookup, direct OKF/vector/graph retrieval, identity questions, or ordinary drafting where enough context already exists. Do not expose its raw output to the user; Actor Twin remains the visible voice.",
+        "workflowId": {
+          "__rl": true,
+          "value": "6zW7jA7bIIcbmIO3",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/6zW7jA7bIIcbmIO3",
+          "cachedResultName": "Me.IDs Knowledge Retrieval Interviewer - staging"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      }
+    },
+    {
+      "id": "meids-agentic-butler-skill-orchestrator-tool",
+      "name": "Skill Orchestrator",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        240
+      ],
+      "parameters": {
+        "description": "Call this tool for approved multi-step skill execution or bounded work artifacts that require task decomposition. Timeout/fallback requirement: if it cannot complete promptly, return partial result, failed step, missing dependency, and next recovery action. Do not request approval for no-write drafts.",
+        "workflowId": {
+          "__rl": true,
+          "value": "8ER9laJuKS6UrQJF",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/8ER9laJuKS6UrQJF",
+          "cachedResultName": "MeIDs Skill Orchestrator Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      }
+    },
+    {
+      "id": "9198534b-6a12-499c-9119-b84979a78703",
+      "name": "Critical Faculty Agent",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        240
+      ],
+      "parameters": {
+        "description": "Call this internal workflow tool when a route decision, answer, knowledge claim, skill proposal, task-agent result, graph implication, vector-readiness decision, or proposed action needs independent decision-quality critique.\n\nUse it for ambiguity, weak evidence, contradictions, stale or draft knowledge, hidden assumptions, approval-boundary uncertainty, high-impact recommendations, generated capability proposals, or premortem-style risk review.\n\nDo not call it for ordinary chat, simple drafting, low-risk formatting, or identity/status questions. Critical Faculty cannot approve, execute, persist, send, schedule, publish, delete, commit, or activate anything. It returns critique, recommendation, Knowledge Fabric action advice, and caller next step.",
+        "workflowId": {
+          "__rl": true,
+          "value": "MH1nWMs8IFyNKN1E",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/MH1nWMs8IFyNKN1E",
+          "cachedResultName": "Me.IDs Critical Faculty Agent - staging"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      }
     }
   ],
   "connections": {
@@ -159,10 +273,44 @@
           }
         ]
       ]
+    },
+    "Knowledge Retrieval Interviewer": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agentic Butler AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skill Orchestrator": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agentic Butler AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Critical Faculty Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agentic Butler AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
   "staticData": null
 }

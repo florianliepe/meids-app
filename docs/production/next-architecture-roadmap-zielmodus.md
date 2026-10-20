@@ -324,3 +324,13 @@ Current interpretation:
 - Agent contracts, n8n import-ready workflow artifacts, Actor Twin routing simulation, backend proxy contract, and Azure Search index schema contracts are locally valid.
 - Azure vector activation is **ready for secret activation**, but live indexing remains blocked until a hosted backend and embedding secrets are configured.
 - Next practical execution step is live n8n UAT/import alignment for Package 1, followed by hosted backend setup for Package 2.
+
+## Active Package 1 Remediation
+
+Use `docs/production/zielmodus-package-1-agent-runtime-remediation.md` as the current operator instruction for the first three live-runtime remediation targets:
+
+1. Remove the normal Agentic Butler approval loop.
+2. Stabilize the frontend workflow response contract.
+3. Keep the live n8n CI validator advisory only until live workflow alignment passes.
+
+Recommended next step: update the live Agentic Butler workflow first, because Knowledge Fabric handoff is already reported as working and Butler approval semantics are the remaining user-visible blocker.

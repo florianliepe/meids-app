@@ -27,6 +27,21 @@ const workflows = [
     wrapped: "agentic-butler.ai-agent.wrapped.json",
     requiredNodes: ["Receive request", "Agentic Butler AI Agent", "Agentic Butler Chat Model", "Contract response normalizer", "Return JSON"],
   },
+  {
+    label: "Knowledge Retrieval Interviewer",
+    source: "workflows/n8n/implementations/knowledge-retrieval-interviewer.ai-agent.workflow.json",
+    importable: "knowledge-retrieval-interviewer.ai-agent.importable.json",
+    importReady: "knowledge-retrieval-interviewer.ai-agent.import.json",
+    wrapped: "knowledge-retrieval-interviewer.ai-agent.wrapped.json",
+    requiredNodes: [
+      "Receive request",
+      "Receive workflow call",
+      "Knowledge Retrieval Interviewer AI Agent",
+      "Knowledge Retrieval Interviewer Chat Model",
+      "Contract response normalizer",
+      "Return JSON",
+    ],
+  },
 ];
 
 function readJson(relativePath) {

@@ -54,6 +54,14 @@ if (receive.parameters?.path !== "meids/actor-twin/chat") {
   fail(`Receive request path must be meids/actor-twin/chat, got ${receive.parameters?.path || "<missing>"}`);
 }
 
+const actorSystemMessage = nodeByName(workflow, "Actor Twin AI Agent").parameters?.options?.systemMessage || "";
+assertIncludes(actorSystemMessage, "what do we know", "Knowledge Fabric tool routing description");
+assertIncludes(actorSystemMessage, "save this as knowledge", "Knowledge Fabric ingest routing description");
+assertIncludes(actorSystemMessage, "use vector cache", "Knowledge Fabric vector routing description");
+assertIncludes(actorSystemMessage, "draft/write/prepare/compose", "Agentic Butler work-artifact routing description");
+assertIncludes(actorSystemMessage, "new skill/agent/task-agent/subagent", "Agentic Butler capability-creation routing description");
+assertIncludes(actorSystemMessage, "route knowledge first", "Combined knowledge/work routing description");
+
 const normalizeCode = nodeByName(workflow, "Normalize route decision").parameters?.jsCode || "";
 assertIncludes(normalizeCode, "const embedded = safeJson(aiText) || safeJson(ai?.output) || safeJson(ai) || {};", "Normalize route decision");
 assertIncludes(normalizeCode, "return '';", "Normalize route decision fallback");

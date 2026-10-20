@@ -10,6 +10,8 @@ The MeIDs frontend should not call private n8n production webhooks directly. The
 - trace-chain persistence
 - approval queue persistence
 - approval resume into Agentic Butler
+- post-turn Learning Agent dispatch
+- score-backed Knowledge Fabric duplicate/merge preflight
 
 ## Runtime Flow
 
@@ -22,6 +24,15 @@ The MeIDs frontend should not call private n8n production webhooks directly. The
 7. Human resumes through `/api/agents/approvals/:approval_id/resume`.
 8. Backend forwards a `resume_after_approval` envelope to Agentic Butler.
 
+## Runtime Support Endpoints
+
+| Endpoint | Purpose | Boundary |
+|---|---|---|
+| `POST /api/learning/post-turn` | Fire-and-forget dispatch to the Learning Agent after Actor Twin has already answered. | Returns `202 accepted`; normal chat must not wait for learning synthesis. |
+| `POST /api/knowledge/duplicate-check` | Creates duplicate/merge evidence from vector, lexical, graph, and scope signals before Knowledge Fabric creates or updates an OKF concept. | If Azure Search is not configured, returns `duplicate_check.status=insufficient_evidence`. |
+| `POST /api/vector-index/search` | Retrieves approved or selected pending vector context. | Backend-only secrets; browser must not receive Azure keys. |
+| `POST /api/vector-index/rebuild` | Upserts approved/reviewable OKF chunks into Azure AI Search. | Trusted refresh requires review policy. |
+
 ## Azure App Service Setup
 
 Configure these app settings:
@@ -32,6 +43,9 @@ Configure these app settings:
 | `N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL` | Knowledge Fabric Agent ingest webhook |
 | `N8N_AGENTIC_BUTLER_WEBHOOK_URL` | Agentic Butler run/resume webhook |
 | `N8N_WEBHOOK_AUTH_TOKEN` | Optional bearer token if n8n webhook auth is enabled |
+| `N8N_AGENT_TIMEOUT_MS` | Optional backend timeout for n8n agent proxy calls; defaults to 120000 |
+| `N8N_LEARNING_AGENT_DISPATCH_WEBHOOK_URL` | Optional explicit post-turn Learning Agent dispatch webhook. If omitted, backend derives `/webhook/meids/learning/dispatch` from `N8N_API_BASE_URL` |
+| `MEIDS_POST_TURN_LEARNING_ENABLED` | Optional switch for backend trace-triggered Learning Agent dispatch; defaults to enabled |
 | `ALLOWED_FRONTEND_ORIGINS` | GitHub Pages or hosted frontend origin |
 | `MEIDS_STORAGE_MODE` | `file` for local MVP, `postgres` for hosted durable storage |
 | `DATABASE_URL` | Postgres connection string for trace-chain persistence and approval queue |
@@ -47,6 +61,11 @@ Use `npm start` as the startup command.
 ## Hosted Backend Proxy Mode
 
 For approval resume outside local mode, host `backend/server.js` as a Node web app and set frontend `apiBaseUrl` / `agentBackendBaseUrl` to the hosted backend origin. The browser then calls `/api/agents/*`; the backend calls n8n, stores traces, and resumes approval-gated Butler runs.
+
+For score-backed Knowledge Fabric duplicate checks, configure `MEIDS_BACKEND_URL`
+inside n8n to the same hosted backend origin. Knowledge Fabric calls
+`POST /api/knowledge/duplicate-check` before concept creation and passes the
+response to its AI Agent as `duplicate_score_evidence`.
 
 Recommended deployment phases:
 

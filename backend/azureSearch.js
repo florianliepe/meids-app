@@ -1,48 +1,93 @@
 const crypto = require("node:crypto");
+const { buildKnowledgeSecurityFilter } = require("./knowledgeAccess");
+const http = require("node:http");
+const https = require("node:https");
 
 const DEFAULT_API_VERSION = "2025-09-01";
 const DEFAULT_AZURE_OPENAI_API_VERSION = "2024-02-01";
 const DEFAULT_APPROVED_INDEX = "meids-okf-approved-v1";
 const DEFAULT_WORKING_INDEX = "meids-okf-working-v1";
 const DEFAULT_EMBEDDING_DIMENSIONS = 1536;
+const SEARCH_TOKEN_RESOURCE = "https://search.azure.com";
+const COGNITIVE_SERVICES_TOKEN_RESOURCE = "https://cognitiveservices.azure.com";
+const MANAGED_IDENTITY_API_VERSION = "2019-08-01";
+
+const managedIdentityTokenCache = new Map();
+const managedIdentityTokenPromises = new Map();
 
 function cleanBaseUrl(value = "") {
   return String(value || "").trim().replace(/\/+$/, "");
 }
 
+function normalizeSearchAuthMode(value = "") {
+  return String(value || "api_key").trim().toLowerCase() === "managed_identity"
+    ? "managed_identity"
+    : "api_key";
+}
+
+function normalizeEmbeddingAuthMode(value = "") {
+  return String(value || "api_key").trim().toLowerCase() === "managed_identity"
+    ? "managed_identity"
+    : "api_key";
+}
+
 function azureSearchConfigFromEnv(env = process.env) {
   const endpoint = cleanBaseUrl(env.AZURE_SEARCH_ENDPOINT || env.AZURE_AI_SEARCH_ENDPOINT || "");
   const apiKey = String(env.AZURE_SEARCH_API_KEY || env.AZURE_AI_SEARCH_API_KEY || "").trim();
+  const authMode = normalizeSearchAuthMode(env.AZURE_SEARCH_AUTH_MODE);
+  const identityEndpoint = cleanBaseUrl(env.IDENTITY_ENDPOINT || "");
+  const identityHeader = String(env.IDENTITY_HEADER || "").trim();
+  const identityClientId = String(env.AZURE_SEARCH_MANAGED_IDENTITY_CLIENT_ID || "").trim();
   const approvedIndex = String(env.AZURE_SEARCH_APPROVED_INDEX || DEFAULT_APPROVED_INDEX).trim();
   const workingIndex = String(env.AZURE_SEARCH_WORKING_INDEX || DEFAULT_WORKING_INDEX).trim();
   const apiVersion = String(env.AZURE_SEARCH_API_VERSION || DEFAULT_API_VERSION).trim();
+  const requestTimeoutMs = Math.max(1000, Number(env.AZURE_SEARCH_REQUEST_TIMEOUT_MS || 10000));
   const embeddingDimensions = Number(env.AZURE_OPENAI_EMBEDDING_DIMENSIONS || DEFAULT_EMBEDDING_DIMENSIONS);
   const embeddingEndpoint = cleanBaseUrl(env.AZURE_OPENAI_ENDPOINT || "");
   const embeddingApiKey = String(env.AZURE_OPENAI_API_KEY || "").trim();
+  const embeddingAuthMode = normalizeEmbeddingAuthMode(env.AZURE_OPENAI_AUTH_MODE);
   const embeddingDeployment = String(env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || "").trim();
   const embeddingApiVersion = String(env.AZURE_OPENAI_API_VERSION || DEFAULT_AZURE_OPENAI_API_VERSION).trim();
+  const deterministicVectorsAllowed = ["true", "1", "yes", "on"].includes(String(env.MEIDS_ALLOW_DETERMINISTIC_VECTORS || "").trim().toLowerCase());
   const missing = [];
   if (!endpoint) missing.push("AZURE_SEARCH_ENDPOINT");
-  if (!apiKey) missing.push("AZURE_SEARCH_API_KEY");
+  if (authMode === "managed_identity") {
+    if (!identityEndpoint) missing.push("IDENTITY_ENDPOINT");
+    if (!identityHeader) missing.push("IDENTITY_HEADER");
+  } else if (!apiKey) {
+    missing.push("AZURE_SEARCH_API_KEY");
+  }
   if (!approvedIndex) missing.push("AZURE_SEARCH_APPROVED_INDEX");
   if (!workingIndex) missing.push("AZURE_SEARCH_WORKING_INDEX");
   const embeddingMissing = [];
   if (!embeddingEndpoint) embeddingMissing.push("AZURE_OPENAI_ENDPOINT");
-  if (!embeddingApiKey) embeddingMissing.push("AZURE_OPENAI_API_KEY");
+  if (embeddingAuthMode === "managed_identity") {
+    if (!identityEndpoint) embeddingMissing.push("IDENTITY_ENDPOINT");
+    if (!identityHeader) embeddingMissing.push("IDENTITY_HEADER");
+  } else if (!embeddingApiKey) {
+    embeddingMissing.push("AZURE_OPENAI_API_KEY");
+  }
   if (!embeddingDeployment) embeddingMissing.push("AZURE_OPENAI_EMBEDDING_DEPLOYMENT");
   return {
     endpoint,
     apiKey,
+    authMode,
+    identityEndpoint,
+    identityHeader,
+    identityClientId,
     approvedIndex,
     workingIndex,
     apiVersion,
+    requestTimeoutMs,
     embeddingDimensions,
     embeddingEndpoint,
     embeddingApiKey,
+    embeddingAuthMode,
     embeddingDeployment,
     embeddingApiVersion,
     configured: missing.length === 0,
     embeddingConfigured: embeddingMissing.length === 0,
+    deterministicVectorsAllowed,
     missing,
     embeddingMissing,
   };
@@ -55,16 +100,27 @@ function statusFromConfig(config = azureSearchConfigFromEnv()) {
     provider: "azure_ai_search",
     endpoint_configured: Boolean(config.endpoint),
     api_key_configured: Boolean(config.apiKey),
+    authentication: {
+      mode: config.authMode || "api_key",
+      managed_identity_endpoint_available: Boolean(config.identityEndpoint && config.identityHeader),
+      user_assigned_identity: Boolean(config.identityClientId),
+    },
     approved_index: config.approvedIndex,
     working_index: config.workingIndex,
     api_version: config.apiVersion,
+    request_timeout_ms: config.requestTimeoutMs,
     embedding: {
       status: config.embeddingConfigured ? "configured" : "blocked",
       endpoint_configured: Boolean(config.embeddingEndpoint),
       deployment_configured: Boolean(config.embeddingDeployment),
+      authentication_mode: config.embeddingAuthMode || "api_key",
       api_version: config.embeddingApiVersion,
       dimensions: config.embeddingDimensions,
       missing: config.embeddingMissing,
+    },
+    vector_fallback: {
+      deterministic_vectors_allowed: Boolean(config.deterministicVectorsAllowed),
+      use: "uat_only_when_azure_openai_embeddings_are_unavailable",
     },
     missing: config.missing,
     policy: {
@@ -76,6 +132,119 @@ function statusFromConfig(config = azureSearchConfigFromEnv()) {
   };
 }
 
+function tokenExpiryMillis(value) {
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric * 1000;
+  const parsed = Date.parse(String(value || ""));
+  return Number.isFinite(parsed) ? parsed : Date.now() + 5 * 60 * 1000;
+}
+
+function requestManagedIdentityToken(tokenUrl, identityHeader, timeoutMs = 10000) {
+  const client = tokenUrl.protocol === "https:" ? https : http;
+  return new Promise((resolve, reject) => {
+    const request = client.get(tokenUrl, {
+      headers: {
+        "X-IDENTITY-HEADER": identityHeader,
+        Metadata: "true",
+      },
+    }, (response) => {
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("end", () => resolve({
+        status: response.statusCode || 500,
+        text: Buffer.concat(chunks).toString("utf8"),
+      }));
+    });
+    request.setTimeout(timeoutMs, () => {
+      request.destroy(new Error(`Managed identity token request timed out after ${timeoutMs} ms`));
+    });
+    request.on("error", reject);
+  });
+}
+
+function requestHttpText(targetUrl, options = {}, timeoutMs = 10000) {
+  const client = targetUrl.protocol === "https:" ? https : http;
+  return new Promise((resolve, reject) => {
+    const request = client.request(targetUrl, {
+      method: options.method || "GET",
+      headers: options.headers || {},
+    }, (response) => {
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("end", () => resolve({
+        status: response.statusCode || 500,
+        text: Buffer.concat(chunks).toString("utf8"),
+      }));
+    });
+    request.setTimeout(timeoutMs, () => {
+      request.destroy(new Error(`HTTP request timed out after ${timeoutMs} ms`));
+    });
+    request.on("error", reject);
+    if (options.body) request.write(options.body);
+    request.end();
+  });
+}
+
+async function managedIdentityAccessToken(config = azureSearchConfigFromEnv(), resource = SEARCH_TOKEN_RESOURCE) {
+  if (!config.identityEndpoint || !config.identityHeader) {
+    const error = new Error("App Service managed identity endpoint is unavailable.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const cacheKey = `${config.identityEndpoint}:${config.identityClientId || "system"}:${resource}`;
+  const cached = managedIdentityTokenCache.get(cacheKey);
+  if (cached?.accessToken && cached.expiresAt > Date.now() + 60 * 1000) return cached.accessToken;
+  if (managedIdentityTokenPromises.has(cacheKey)) return managedIdentityTokenPromises.get(cacheKey);
+  const tokenPromise = (async () => {
+    const tokenUrl = new URL(config.identityEndpoint);
+    tokenUrl.searchParams.set("resource", resource);
+    tokenUrl.searchParams.set("api-version", MANAGED_IDENTITY_API_VERSION);
+    if (config.identityClientId) tokenUrl.searchParams.set("client_id", config.identityClientId);
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        const response = await requestManagedIdentityToken(tokenUrl, config.identityHeader, config.requestTimeoutMs);
+        const text = response.text;
+        let data = {};
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          data = {};
+        }
+        if (response.status < 200 || response.status >= 300 || !data.access_token) {
+          const error = new Error(data.error_description || data.error || text || `Managed identity token request returned ${response.status}`);
+          error.statusCode = response.status || 502;
+          throw error;
+        }
+        managedIdentityTokenCache.set(cacheKey, {
+          accessToken: data.access_token,
+          expiresAt: tokenExpiryMillis(data.expires_on),
+        });
+        return data.access_token;
+      } catch (error) {
+        lastError = error;
+        if (attempt < 3) {
+          await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
+        }
+      }
+    }
+    throw lastError;
+  })();
+  managedIdentityTokenPromises.set(cacheKey, tokenPromise);
+  try {
+    return await tokenPromise;
+  } finally {
+    managedIdentityTokenPromises.delete(cacheKey);
+  }
+}
+
+async function azureSearchAuthHeaders(config = azureSearchConfigFromEnv()) {
+  if (config.authMode === "managed_identity") {
+    return { Authorization: `Bearer ${await managedIdentityAccessToken(config)}` };
+  }
+  return { "api-key": config.apiKey };
+}
+
 function stableVector(text, dimensions) {
   const hash = crypto.createHash("sha256").update(String(text || "")).digest();
   return Array.from({ length: dimensions }, (_, index) => {
@@ -84,11 +253,26 @@ function stableVector(text, dimensions) {
   });
 }
 
+function deterministicVectorFromText(text, dimensions = DEFAULT_EMBEDDING_DIMENSIONS) {
+  return stableVector(text, Number(dimensions || DEFAULT_EMBEDDING_DIMENSIONS));
+}
+
+function deterministicVectorsRequested(request = {}, config = azureSearchConfigFromEnv()) {
+  const mode = String(request.vector_mode || request.embedding_mode || "").trim().toLowerCase();
+  return Boolean(
+    config.deterministicVectorsAllowed
+    || request.allow_deterministic_vectors === true
+    || request.allowDeterministicVectors === true
+    || mode === "deterministic_fallback"
+    || mode === "deterministic_hash_fallback"
+  );
+}
+
 function normalizeReviewState(value = "") {
   const normalized = String(value || "").trim().toLowerCase().replace(/_/g, "-");
   if (normalized === "approved") return "approved";
   if (normalized === "candidate") return "candidate";
-  if (normalized === "pending-review" || normalized === "pending") return "pending-review";
+  if (["pending-review", "pending", "review-needed", "updated", "draft"].includes(normalized)) return "pending-review";
   return normalized || "pending-review";
 }
 
@@ -105,10 +289,21 @@ function vectorDocumentFromOkf(document = {}, request = {}, options = {}) {
   const chunkId = document.chunk_id || "chunk-0001";
   const reviewState = normalizeReviewState(document.review_state);
   const visibility = metadata.visibility_scope || document.visibility_scope || (reviewState === "approved" ? "private" : "private");
+  const ownerUserId = metadata.owner_user_id || document.owner_user_id || request.user_id || metadata.user_id || "";
+  const allowedUserIds = Array.isArray(metadata.allowed_user_ids)
+    ? metadata.allowed_user_ids
+    : Array.isArray(document.allowed_user_ids) ? document.allowed_user_ids : [];
+  const allowedGroupIds = Array.isArray(metadata.allowed_group_ids)
+    ? metadata.allowed_group_ids
+    : Array.isArray(document.allowed_group_ids) ? document.allowed_group_ids : [];
   return {
     id: document.vector_doc_id || crypto.createHash("sha1").update(`${request.organization_id || "org"}:${request.twin_id}:${conceptId}:${chunkId}`).digest("hex"),
     organization_id: request.organization_id || metadata.organization_id || "default",
     user_id: request.user_id || metadata.user_id || "",
+    owner_user_id: ownerUserId,
+    allowed_user_ids: [...new Set([ownerUserId, ...allowedUserIds].filter(Boolean))],
+    allowed_group_ids: [...new Set(allowedGroupIds.filter(Boolean))],
+    acl_version: metadata.acl_version || document.acl_version || "v1",
     twin_id: request.twin_id || document.twin_id || "",
     visibility_scope: visibility,
     knowledge_state: reviewState,
@@ -158,17 +353,24 @@ async function azureSearchRequest(path, options = {}, config = azureSearchConfig
     throw error;
   }
   const separator = path.includes("?") ? "&" : "?";
-  const response = await fetch(`${config.endpoint}${path}${separator}api-version=${encodeURIComponent(config.apiVersion)}`, {
-    ...options,
+  const targetUrl = new URL(`${config.endpoint}${path}${separator}api-version=${encodeURIComponent(config.apiVersion)}`);
+  const response = await requestHttpText(targetUrl, {
+    method: options.method || "GET",
     headers: {
       "Content-Type": "application/json",
-      "api-key": config.apiKey,
+      ...(await azureSearchAuthHeaders(config)),
       ...(options.headers || {}),
     },
-  });
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : {};
-  if (!response.ok) {
+    body: options.body,
+  }, Number(config.requestTimeoutMs || 10000));
+  const text = response.text;
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
+  if (response.status < 200 || response.status >= 300) {
     const error = new Error(data.error?.message || data.message || text || `Azure AI Search returned ${response.status}`);
     error.statusCode = response.status;
     throw error;
@@ -183,11 +385,14 @@ async function azureOpenAiEmbedding(text, config = azureSearchConfigFromEnv()) {
     throw error;
   }
   const url = `${config.embeddingEndpoint}/openai/deployments/${encodeURIComponent(config.embeddingDeployment)}/embeddings?api-version=${encodeURIComponent(config.embeddingApiVersion)}`;
+  const authHeaders = config.embeddingAuthMode === "managed_identity"
+    ? { Authorization: `Bearer ${await managedIdentityAccessToken(config, COGNITIVE_SERVICES_TOKEN_RESOURCE)}` }
+    : { "api-key": config.embeddingApiKey };
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "api-key": config.embeddingApiKey,
+      ...authHeaders,
     },
     body: JSON.stringify({ input: String(text || "") }),
   });
@@ -210,6 +415,15 @@ async function azureOpenAiEmbedding(text, config = azureSearchConfigFromEnv()) {
 async function enrichVectorDocument(document = {}, request = {}, config = azureSearchConfigFromEnv()) {
   if (Array.isArray(document.content_vector)) {
     return vectorDocumentFromOkf(document, request, { embeddingDimensions: config.embeddingDimensions });
+  }
+  if (deterministicVectorsRequested(request, config)) {
+    return vectorDocumentFromOkf({
+      ...document,
+      metadata: {
+        ...(document.metadata || {}),
+        embedding_provider: "deterministic_hash_fallback",
+      },
+    }, request, { embeddingDimensions: config.embeddingDimensions });
   }
   const text = document.text || document.summary || document.title || "";
   const contentVector = await azureOpenAiEmbedding(text, config);
@@ -239,7 +453,34 @@ async function upsertVectorDocuments(request = {}, config = azureSearchConfigFro
     }, config);
     results.push({ index: indexName, count: value.length, result: data });
   }
-  return { status: "upserted", operation: "upsert", document_count: docs.length, results };
+  const suppliedCount = inputDocuments.filter((document) => Array.isArray(document.content_vector)).length;
+  const embeddingProvider = suppliedCount === inputDocuments.length
+    ? "caller_supplied_vectors"
+    : deterministicVectorsRequested(request, config)
+      ? "deterministic_hash_fallback"
+      : "azure_openai";
+  return {
+    status: "upserted",
+    operation: "upsert",
+    document_count: docs.length,
+    embedding: {
+      provider: embeddingProvider,
+      dimensions: config.embeddingDimensions,
+      caller_supplied_vectors: suppliedCount,
+      deterministic_fallback: embeddingProvider === "deterministic_hash_fallback",
+    },
+    results,
+  };
+}
+
+async function deleteVectorDocuments(indexName, documentIds = [], config = azureSearchConfigFromEnv()) {
+  const ids = [...new Set(documentIds.map((value) => String(value || "").trim()).filter(Boolean))];
+  if (!ids.length) return { status: "completed", operation: "delete", document_count: 0, index: indexName };
+  const data = await azureSearchRequest(`/indexes/${encodeURIComponent(indexName)}/docs/index`, {
+    method: "POST",
+    body: JSON.stringify({ value: ids.map((id) => ({ id, "@search.action": "delete" })) }),
+  }, config);
+  return { status: "completed", operation: "delete", document_count: ids.length, index: indexName, result: data };
 }
 
 async function getIndexReadiness(config = azureSearchConfigFromEnv()) {
@@ -256,8 +497,31 @@ async function getIndexReadiness(config = azureSearchConfigFromEnv()) {
   }
   const checks = await Promise.all(Object.entries(base).map(async ([key, item]) => {
     try {
+      if (config.authMode === "managed_identity") {
+        const result = await azureSearchRequest(`/indexes/${encodeURIComponent(item.name)}/docs/search`, {
+          method: "POST",
+          body: JSON.stringify({
+            search: "*",
+            count: true,
+            top: 1,
+            select: "id",
+          }),
+        }, config);
+        return [key, {
+          ...item,
+          status: "ready",
+          validation: "document_query",
+          document_count: result["@odata.count"] ?? 0,
+        }];
+      }
       const stats = await azureSearchRequest(`/indexes/${encodeURIComponent(item.name)}/stats`, { method: "GET" }, config);
-      return [key, { ...item, status: "ready", document_count: stats.documentCount ?? 0, storage_size: stats.storageSize ?? 0 }];
+      return [key, {
+        ...item,
+        status: "ready",
+        validation: "index_statistics",
+        document_count: stats.documentCount ?? 0,
+        storage_size: stats.storageSize ?? 0,
+      }];
     } catch (error) {
       return [key, { ...item, status: "blocked", error: error.message, status_code: error.statusCode || 500 }];
     }
@@ -266,25 +530,27 @@ async function getIndexReadiness(config = azureSearchConfigFromEnv()) {
 }
 
 async function searchVectorKnowledge(query = {}, config = azureSearchConfigFromEnv()) {
-  const twinId = query.twin_id || query.twin || "";
-  const organizationId = query.organization_id || "default";
   const includePending = query.source_policy === "selected_pending";
   const indexes = includePending ? [config.approvedIndex, config.workingIndex] : [config.approvedIndex];
+  const queryText = String(query.query || query.text || "").trim();
   const body = {
     search: query.query || query.text || "*",
     top: Number(query.top || 5),
-    filter: query.filter || buildActorTwinFilter({
-      organizationId,
-      twinId,
-      includeShared: query.include_shared !== false,
-      includePending,
-    }),
+    filter: query.access_context
+      ? buildKnowledgeSecurityFilter(query.access_context, { includePending })
+      : buildActorTwinFilter({
+        organizationId: query.organization_id || "default",
+        twinId: query.twin_id || query.twin || "",
+        includeShared: query.include_shared !== false,
+        includePending,
+      }),
     select: "id,organization_id,user_id,twin_id,visibility_scope,knowledge_state,okf_concept_id,okf_type,title,summary,chunk_text,repo_path,evidence_id,graph_node_id,graph_cluster_id,tags",
   };
-  if (config.embeddingConfigured && String(query.query || query.text || "").trim()) {
+  let retrievalMode = "keyword_only";
+  if (config.embeddingConfigured && queryText) {
     body.vectorQueries = [{
       kind: "vector",
-      vector: await azureOpenAiEmbedding(query.query || query.text, config),
+      vector: await azureOpenAiEmbedding(queryText, config),
       fields: "content_vector",
       k: Number(query.k || query.top || 5),
     }];
@@ -292,6 +558,25 @@ async function searchVectorKnowledge(query = {}, config = azureSearchConfigFromE
     body.semanticConfiguration = query.semantic_configuration || "okf-semantic";
     body.captions = "extractive";
     body.answers = "extractive";
+    retrievalMode = "hybrid_vector_semantic";
+  }
+  if (!body.vectorQueries && Array.isArray(query.query_vector)) {
+    body.vectorQueries = [{
+      kind: "vector",
+      vector: query.query_vector,
+      fields: "content_vector",
+      k: Number(query.k || query.top || 5),
+    }];
+    retrievalMode = "hybrid_caller_vector_keyword";
+  }
+  if (!body.vectorQueries && queryText && deterministicVectorsRequested(query, config)) {
+    body.vectorQueries = [{
+      kind: "vector",
+      vector: deterministicVectorFromText(queryText, config.embeddingDimensions),
+      fields: "content_vector",
+      k: Number(query.k || query.top || 5),
+    }];
+    retrievalMode = "hybrid_deterministic_vector_keyword";
   }
   const results = [];
   for (const indexName of indexes) {
@@ -308,7 +593,7 @@ async function searchVectorKnowledge(query = {}, config = azureSearchConfigFromE
   return {
     status: "completed",
     provider: "azure_ai_search",
-    retrieval_mode: body.vectorQueries ? "hybrid_vector_semantic" : "keyword_only",
+    retrieval_mode: retrievalMode,
     source_policy: includePending ? "selected_pending" : "approved_only",
     filter: body.filter,
     results,
@@ -320,9 +605,12 @@ module.exports = {
   DEFAULT_WORKING_INDEX,
   azureSearchConfigFromEnv,
   statusFromConfig,
+  managedIdentityAccessToken,
+  deterministicVectorFromText,
   vectorDocumentFromOkf,
   buildActorTwinFilter,
   getIndexReadiness,
   upsertVectorDocuments,
+  deleteVectorDocuments,
   searchVectorKnowledge,
 };

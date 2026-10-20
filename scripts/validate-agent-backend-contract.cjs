@@ -29,6 +29,12 @@ const readme = read("backend/README.md");
   "/api/approvals",
   "/api/traces",
   "/api/admin/n8n/status",
+  "/api/knowledge/duplicate-check",
+  "/api/knowledge/stage",
+  "/api/knowledge/promote",
+  "/api/knowledge/rebuild-search",
+  "/api/learning/increments",
+  "/api/learning/post-turn",
   "/resume",
   "N8N_ACTOR_TWIN_WEBHOOK_URL",
   "N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL",
@@ -38,6 +44,11 @@ const readme = read("backend/README.md");
   "N8N_ADMIN_ENABLED",
   "normalizeAgentResponse",
   "buildApprovalRecord",
+  "handleKnowledgeDuplicateCheck",
+  "handlePostTurnLearning",
+  "queuePostTurnLearning",
+  "postTurnLearningPayloadFromTrace",
+  "MEIDS_POST_TURN_LEARNING_ENABLED",
 ].forEach((needle) => requireText("backend/server.js", backend, needle));
 
 [

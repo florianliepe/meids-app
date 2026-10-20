@@ -1,0 +1,58 @@
+name: Deploy Me.IDs backend to Azure App Service
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: "Azure App Service app name, without .azurewebsites.net"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meids-backend-app-service
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install production dependencies
+        run: npm ci --omit=dev
+
+      - name: Validate backend contract
+        run: npm run check:backend
+
+      - name: Prepare deploy package
+        shell: bash
+        run: |
+          rm -rf deploy-package
+          mkdir -p deploy-package/scripts
+          cp -R backend package.json package-lock.json deploy-package/
+          cp scripts/bootstrap-production-postgres.cjs scripts/run-postgres-migrations.cjs deploy-package/scripts/
+          cd deploy-package
+          npm ci --omit=dev
+          zip -r ../meids-backend.zip .
+
+      - name: Deploy backend
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ inputs.app_name }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_MEIDS_BACKEND }}
+          package: meids-backend.zip
+
+      - name: Show backend URL
+        run: |
+          echo "MEIDS_BACKEND_URL=https://${{ inputs.app_name }}.azurewebsites.net" >> "$GITHUB_STEP_SUMMARY"
+          echo "After deployment, configure the App Service application settings from deploy/backend-proxy.app-service.env.example."

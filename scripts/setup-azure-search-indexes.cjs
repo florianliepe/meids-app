@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { execFileSync } = require("node:child_process");
 
 const root = path.resolve(__dirname, "..");
 const schemaDir = path.join(root, "contracts", "azure-search");
@@ -25,10 +26,31 @@ function configFromEnv() {
   const endpoint = cleanBaseUrl(process.env.AZURE_SEARCH_ENDPOINT || process.env.AZURE_AI_SEARCH_ENDPOINT || "");
   const apiKey = String(process.env.AZURE_SEARCH_API_KEY || process.env.AZURE_AI_SEARCH_API_KEY || "").trim();
   const apiVersion = String(process.env.AZURE_SEARCH_API_VERSION || "2025-09-01").trim();
+  const authMode = String(process.env.AZURE_SEARCH_AUTH_MODE || (apiKey ? "api_key" : "azure_cli")).trim().toLowerCase();
   const missing = [];
   if (!endpoint) missing.push("AZURE_SEARCH_ENDPOINT");
-  if (!apiKey) missing.push("AZURE_SEARCH_API_KEY");
-  return { endpoint, apiKey, apiVersion, missing };
+  if (authMode === "api_key" && !apiKey) missing.push("AZURE_SEARCH_API_KEY");
+  if (!["api_key", "azure_cli"].includes(authMode)) missing.push("AZURE_SEARCH_AUTH_MODE=api_key or azure_cli");
+  return { endpoint, apiKey, apiVersion, authMode, missing };
+}
+
+function authHeaders(config) {
+  if (config.authMode === "api_key") return { "api-key": config.apiKey };
+  const args = [
+    "account",
+    "get-access-token",
+    "--resource",
+    "https://search.azure.com",
+    "--query",
+    "accessToken",
+    "-o",
+    "tsv",
+  ];
+  const token = process.platform === "win32"
+    ? execFileSync("cmd.exe", ["/d", "/s", "/c", `az ${args.join(" ")}`], { encoding: "utf8", windowsHide: true }).trim()
+    : execFileSync("az", args, { encoding: "utf8" }).trim();
+  if (!token) fail("Azure CLI did not return an Azure AI Search access token.");
+  return { Authorization: `Bearer ${token}` };
 }
 
 async function putIndex(schema, config) {
@@ -36,7 +58,7 @@ async function putIndex(schema, config) {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      "api-key": config.apiKey,
+      ...authHeaders(config),
     },
     body: JSON.stringify(schema),
   });
@@ -66,6 +88,7 @@ async function main() {
       dry_run: true,
       endpoint_configured: Boolean(config.endpoint),
       api_key_configured: Boolean(config.apiKey),
+      authentication: config.authMode,
       api_version: config.apiVersion,
       missing: config.missing,
       indexes: schemas.map(({ schema }) => schema.name),

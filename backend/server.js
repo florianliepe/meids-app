@@ -9,15 +9,29 @@ const {
   upsertVectorDocuments,
   searchVectorKnowledge,
 } = require("./azureSearch");
+const {
+  signKnowledgeAccessToken,
+  verifyKnowledgeAccessToken,
+  signingKeyFromEnv,
+} = require("./knowledgeAccess");
+const {
+  stageKnowledge,
+  stageLearning,
+  promoteKnowledge,
+  backfillKnowledgeSearch,
+  processOutboxBatch,
+} = require("./knowledgePersistence");
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = path.resolve(process.env.MEIDS_DATA_DIR || path.join(process.cwd(), ".data"));
 const TRACE_FILE = path.join(DATA_DIR, "agent-traces.jsonl");
 const APPROVAL_FILE = path.join(DATA_DIR, "agent-approvals.json");
-const POSTGRES_SSL = String(process.env.DATABASE_SSL || "").toLowerCase() === "true";
+const POSTGRES_SSL = String(process.env.DATABASE_SSL || "true").toLowerCase() === "true";
+const POSTGRES_TOKEN_RESOURCE = "https://ossrdbms-aad.database.windows.net";
 
 let pgPoolPromise = null;
 let pgSchemaReady = false;
+let postgresIdentityToken = { value: "", expiresAt: 0 };
 
 const AGENTS = {
   actor_twin: {
@@ -438,11 +452,11 @@ async function ensureDataDir() {
 }
 
 function storageMode() {
-  return String(process.env.MEIDS_STORAGE_MODE || (process.env.DATABASE_URL ? "postgres" : "file")).toLowerCase();
+  return String(process.env.MEIDS_STORAGE_MODE || (process.env.DATABASE_URL || process.env.DATABASE_HOST ? "postgres" : "file")).toLowerCase();
 }
 
 function postgresEnabled() {
-  return storageMode() === "postgres" && Boolean(process.env.DATABASE_URL);
+  return storageMode() === "postgres" && Boolean(process.env.DATABASE_URL || process.env.DATABASE_HOST);
 }
 
 function requirePg() {
@@ -459,13 +473,25 @@ async function getPgPool() {
   if (!postgresEnabled()) return null;
   if (!pgPoolPromise) {
     const { Pool } = requirePg();
-    pgPoolPromise = Promise.resolve(new Pool({
+    const managedIdentity = String(process.env.POSTGRES_AUTH_MODE || "").toLowerCase() === "managed_identity";
+    pgPoolPromise = Promise.resolve(new Pool(managedIdentity ? {
+      host: process.env.DATABASE_HOST,
+      port: Number(process.env.DATABASE_PORT || 5432),
+      database: process.env.DATABASE_NAME || "meids_prod",
+      user: process.env.DATABASE_USER,
+      password: postgresManagedIdentityAccessToken,
+      ssl: POSTGRES_SSL ? { rejectUnauthorized: true } : undefined,
+      max: Number(process.env.DATABASE_POOL_MAX || 10),
+    } : {
       connectionString: process.env.DATABASE_URL,
-      ssl: POSTGRES_SSL ? { rejectUnauthorized: false } : undefined,
+      ssl: POSTGRES_SSL ? { rejectUnauthorized: true } : undefined,
+      max: Number(process.env.DATABASE_POOL_MAX || 10),
     }));
   }
   const pool = await pgPoolPromise;
-  await ensurePostgresSchema(pool);
+  const schemaManaged = String(process.env.POSTGRES_AUTH_MODE || "").toLowerCase() === "managed_identity"
+    || ["true", "1", "on"].includes(String(process.env.MEIDS_DATABASE_SCHEMA_MANAGED || "false").toLowerCase());
+  if (!schemaManaged) await ensurePostgresSchema(pool);
   return pool;
 }
 
@@ -592,6 +618,42 @@ async function appendTrace(record) {
     await fs.appendFile(TRACE_FILE, `${JSON.stringify(record)}\n`, "utf8");
   }
   queuePostTurnLearning(record);
+}
+
+async function postgresManagedIdentityAccessToken() {
+  if (postgresIdentityToken.value && postgresIdentityToken.expiresAt > Date.now() + 60_000) {
+    return postgresIdentityToken.value;
+  }
+  const endpoint = String(process.env.IDENTITY_ENDPOINT || "").trim();
+  const identityHeader = String(process.env.IDENTITY_HEADER || "").trim();
+  if (!endpoint || !identityHeader) throw new Error("App Service managed identity endpoint is unavailable for PostgreSQL.");
+  const url = new URL(endpoint);
+  url.searchParams.set("resource", POSTGRES_TOKEN_RESOURCE);
+  url.searchParams.set("api-version", "2019-08-01");
+  const clientId = String(process.env.POSTGRES_MANAGED_IDENTITY_CLIENT_ID || "").trim();
+  if (clientId) url.searchParams.set("client_id", clientId);
+  const response = await fetch(url, {
+    headers: {
+      "X-IDENTITY-HEADER": identityHeader,
+      Metadata: "true",
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  const raw = await response.text();
+  let data = {};
+  try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
+  if (!response.ok || !data.access_token) {
+    throw new Error(data.error_description || data.error || raw || `Managed identity token request returned ${response.status}`);
+  }
+  const numericExpiry = Number(data.expires_on);
+  const expiresAt = Number.isFinite(numericExpiry) && numericExpiry > 0
+    ? numericExpiry * 1000
+    : Date.parse(String(data.expires_on || ""));
+  postgresIdentityToken = {
+    value: data.access_token,
+    expiresAt: Number.isFinite(expiresAt) ? expiresAt : Date.now() + 5 * 60_000,
+  };
+  return postgresIdentityToken.value;
 }
 
 async function readTraces(limit = 100) {
@@ -1066,13 +1128,14 @@ async function handleVectorStatus(req, res) {
 
 async function handleVectorRebuild(req, res) {
   const body = await readBody(req);
+  const accessContext = knowledgeAccessContextFromRequest(req, body);
   const config = azureSearchConfigFromEnv();
   const dryRun = body.dry_run === true || body.dryRun === true || !config.configured;
   const request = {
     operation: body.operation || "upsert",
-    organization_id: body.organization_id || "default",
-    user_id: body.user_id || "",
-    twin_id: body.twin_id || body.twin || "unknown",
+    organization_id: accessContext?.tenant_id || body.organization_id || "default",
+    user_id: accessContext?.user_id || body.user_id || "",
+    twin_id: body.twin_id || body.twin || accessContext?.active_twin_id || "unknown",
     source_policy: body.source_policy || (body.mode === "approved" ? "approved_only" : "selected_pending"),
     repo_name: body.repo_name || "",
     commit_sha: body.commit_sha || "",
@@ -1132,6 +1195,7 @@ async function handleVectorRebuild(req, res) {
 
 async function handleVectorSearch(req, res) {
   const body = await readBody(req);
+  const accessContext = knowledgeAccessContextFromRequest(req, body);
   const config = azureSearchConfigFromEnv();
   if (!config.configured) {
     jsonResponse(res, 503, {
@@ -1142,7 +1206,12 @@ async function handleVectorSearch(req, res) {
     });
     return;
   }
-  const result = await searchVectorKnowledge(body, config);
+  const result = await searchVectorKnowledge({
+    ...body,
+    access_context: accessContext,
+    organization_id: accessContext?.tenant_id || body.organization_id,
+    twin_id: accessContext?.active_twin_id || body.twin_id || body.twin,
+  }, config);
   jsonResponse(res, 200, result);
 }
 
@@ -1225,6 +1294,7 @@ function summarizeDuplicateHit(candidate = {}, hit = {}) {
 
 async function handleKnowledgeDuplicateCheck(req, res) {
   const body = await readBody(req);
+  const accessContext = knowledgeAccessContextFromRequest(req, body);
   const candidate = body.candidate || body.concept || body;
   const queryText = [
     candidate.title || candidate.name,
@@ -1257,11 +1327,21 @@ async function handleKnowledgeDuplicateCheck(req, res) {
   }
   const retrieval = await searchVectorKnowledge({
     query: queryText,
+    query_vector: Array.isArray(candidate.query_vector)
+      ? candidate.query_vector
+      : Array.isArray(candidate.content_vector)
+        ? candidate.content_vector
+        : Array.isArray(body.query_vector)
+          ? body.query_vector
+          : Array.isArray(body.content_vector)
+            ? body.content_vector
+            : undefined,
     twin_id: candidate.twin_id || body.twin_id || body.twin || "",
     organization_id: body.organization_id || candidate.organization_id || "default",
     source_policy: body.source_policy || "selected_pending",
     top: Number(body.top || 8),
     include_shared: body.include_shared !== false,
+    access_context: accessContext,
   }, config);
   const hits = retrieval.results.flatMap((item) => item.value || []);
   const mergeCandidates = hits.map((hit) => summarizeDuplicateHit(candidate, hit))
@@ -1414,7 +1494,7 @@ function backendHealthPayload() {
     runtime: "meids-agent-backend-proxy",
     storage: {
       mode: postgresEnabled() ? "postgres" : "file",
-      postgres_configured: Boolean(process.env.DATABASE_URL),
+      postgres_configured: Boolean(process.env.DATABASE_URL || process.env.DATABASE_HOST),
       data_dir: postgresEnabled() ? "" : DATA_DIR,
     },
     n8n_admin: {
@@ -1451,6 +1531,26 @@ function frontendStatusPayload() {
     voice_transcription: health.voice_transcription,
     vector_search: health.vector_search,
   };
+}
+
+async function backendReadinessPayload() {
+  const health = backendHealthPayload();
+  if (!postgresEnabled()) {
+    health.storage.database_status = "not_applicable";
+    return health;
+  }
+
+  try {
+    const pool = await getPgPool();
+    await pool.query("SELECT 1");
+    health.storage.database_status = "ready";
+    return health;
+  } catch (error) {
+    health.status = "degraded";
+    health.storage.database_status = "error";
+    health.storage.database_error = String(error?.message || error);
+    return health;
+  }
 }
 
 function parseAzureClientPrincipal(req) {
@@ -1518,11 +1618,31 @@ function permissionsFromRoles(roles = []) {
   };
 }
 
-function sessionFromPrincipal(principal) {
-  const userId = String(principal.userId || principal.userDetails || "").trim();
-  const email = String(principal.userDetails || principal.userId || "").trim();
-  const allowedTwinIds = csvSetting("MEIDS_AUTH_ALLOWED_TWIN_IDS", process.env.MEIDS_ACTIVE_TWIN || "florian");
-  const roles = meidsRolesFromPrincipal(principal);
+function sessionFromPrincipal(principal, mapping = null) {
+  const principalId = String(principal.userId || principal.userDetails || "").trim();
+  const principalEmail = String(principal.userDetails || principal.userId || "").trim();
+  const userId = mapping?.user_id || principalId;
+  const email = mapping?.email || principalEmail;
+  const allowedTwinIds = mapping?.allowed_twin_ids?.length
+    ? mapping.allowed_twin_ids
+    : csvSetting("MEIDS_AUTH_ALLOWED_TWIN_IDS", process.env.MEIDS_ACTIVE_TWIN || "florian");
+  const roles = mapping?.roles?.length ? mapping.roles : meidsRolesFromPrincipal(principal);
+  const tenantId = mapping?.tenant_id || process.env.MEIDS_TENANT_ID || "eraneos";
+  const activeTwinId = allowedTwinIds.includes(mapping?.active_twin_id)
+    ? mapping.active_twin_id
+    : allowedTwinIds[0] || "";
+  const accessClaims = {
+    tenant_id: tenantId,
+    user_id: userId,
+    active_twin_id: activeTwinId,
+    allowed_twin_ids: allowedTwinIds,
+    group_ids: mapping?.group_ids || csvSetting("MEIDS_AUTH_GROUP_IDS"),
+    roles,
+    visibility_scopes: ["private", "twin_shared", "team_shared", "org_shared"],
+    knowledge_scope: "active_twin",
+  };
+  const accessTokenTtlSeconds = 300;
+  const knowledgeAccessToken = signKnowledgeAccessToken(accessClaims, { ttlSeconds: accessTokenTtlSeconds });
   return {
     status: "authenticated",
     provider: "microsoft_entra_id",
@@ -1530,29 +1650,423 @@ function sessionFromPrincipal(principal) {
     user: {
       id: userId,
       email,
-      name: email,
+      name: mapping?.display_name || email,
       identity_provider: principal.identityProvider || "aad",
     },
     tenant: {
-      id: process.env.MEIDS_TENANT_ID || "eraneos",
-      name: process.env.MEIDS_TENANT_NAME || "Eraneos",
+      id: tenantId,
+      name: mapping?.tenant_name || process.env.MEIDS_TENANT_NAME || "Eraneos",
     },
     roles,
-    active_twin_id: allowedTwinIds[0] || "",
+    active_twin_id: activeTwinId,
     allowed_twin_ids: allowedTwinIds,
+    knowledge_access_contract: "meids.knowledge-access.v1",
+    knowledge_access_token: knowledgeAccessToken,
+    knowledge_access_expires_at: knowledgeAccessToken
+      ? new Date(Date.now() + accessTokenTtlSeconds * 1000).toISOString()
+      : "",
     permissions: permissionsFromRoles(roles),
     auth_context: {
-      tenant_id: process.env.MEIDS_TENANT_ID || "eraneos",
+      tenant_id: tenantId,
       user_id: userId,
       user_email: email,
-      active_twin_id: allowedTwinIds[0] || "",
+      active_twin_id: activeTwinId,
       roles,
-      allowed_scopes: ["private", "team_shared", "org_shared"],
+      allowed_twin_ids: allowedTwinIds,
+      group_ids: accessClaims.group_ids,
+      allowed_scopes: accessClaims.visibility_scopes,
+      knowledge_scope: "active_twin",
+      mapping_source: mapping ? "postgres" : "environment_bootstrap",
     },
   };
 }
 
-function handleSession(req, res) {
+function databaseAuthorizationEnabled() {
+  return ["true", "1", "on", "enabled"].includes(String(process.env.MEIDS_AUTHZ_DATABASE_ENABLED || "false").toLowerCase());
+}
+
+async function resolveAuthorizationMapping(principal) {
+  if (!databaseAuthorizationEnabled()) return null;
+  const pool = await getPgPool();
+  if (!pool) {
+    const error = new Error("Database authorization is enabled but PostgreSQL is unavailable.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const principalId = String(principal.userId || "").trim();
+  const principalEmail = String(principal.userDetails || "").trim();
+  const result = await pool.query(`
+    SELECT
+      u.user_id,
+      u.email,
+      u.display_name,
+      u.tenant_id,
+      u.active_twin_id,
+      tenant.display_name AS tenant_name,
+      COALESCE(array_remove(array_agg(DISTINCT access.twin_id), NULL), ARRAY[]::text[]) AS allowed_twin_ids,
+      COALESCE(array_remove(array_agg(DISTINCT access.access_role), NULL), ARRAY[]::text[]) AS roles
+    FROM identity.app_user u
+    JOIN identity.tenant tenant ON tenant.tenant_id = u.tenant_id
+    LEFT JOIN twin.user_twin_access access ON access.tenant_id = u.tenant_id AND access.user_id = u.user_id
+    WHERE u.status = 'active'
+      AND (lower(u.entra_object_id) = lower($1) OR lower(u.email) = lower($2))
+    GROUP BY u.user_id, u.email, u.display_name, u.tenant_id, u.active_twin_id, tenant.display_name
+  `, [principalId, principalEmail]);
+  const user = result.rows[0];
+  if (!user) {
+    const error = new Error("The signed-in identity has no active Me.IDs production mapping.");
+    error.statusCode = 403;
+    throw error;
+  }
+  const groups = await pool.query(`
+    SELECT group_id FROM identity.user_group
+    WHERE tenant_id = $1 AND user_id = $2
+    ORDER BY group_id
+  `, [user.tenant_id, user.user_id]);
+  return {
+    ...user,
+    allowed_twin_ids: user.allowed_twin_ids || [],
+    roles: user.roles || [],
+    group_ids: groups.rows.map((row) => row.group_id),
+  };
+}
+
+const TWIN_PROFILE_FIELDS = [
+  "organization",
+  "default_language",
+  "role_context",
+  "tone",
+  "workstreams",
+  "stakeholders",
+  "risk_posture",
+  "purpose",
+  "decision_principles",
+  "escalation_boundaries",
+  "success_metrics",
+  "source_intake_notes",
+  "voice_provider",
+  "voice_id",
+  "voice_label",
+  "voice_instructions",
+  "voice_consent_ref",
+  "picture_path",
+  "picture_uploaded_at",
+  "picture_focus_x",
+  "picture_focus_y",
+];
+
+function cleanTwinId(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+}
+
+function twinProfileFromBody(body = {}, existing = {}) {
+  const profile = { ...(existing && typeof existing === "object" ? existing : {}) };
+  for (const field of TWIN_PROFILE_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(body, field)) continue;
+    if (["picture_focus_x", "picture_focus_y"].includes(field)) {
+      const number = Number(body[field]);
+      profile[field] = Number.isFinite(number) ? Math.max(0, Math.min(100, number)) : 50;
+    } else {
+      profile[field] = String(body[field] || "").trim().slice(0, 10_000);
+    }
+  }
+  profile.default_language = profile.default_language || "en";
+  profile.risk_posture = profile.risk_posture || "balanced";
+  return profile;
+}
+
+function twinResponseRow(row = {}) {
+  const profile = row.profile && typeof row.profile === "object" ? row.profile : {};
+  return {
+    ...profile,
+    twin_id: row.twin_id,
+    tenant_id: row.tenant_id,
+    owner_user_id: row.owner_user_id,
+    display_name: row.display_name,
+    status: row.status,
+    access_role: row.access_role,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+async function requireTwinRequestMapping(req) {
+  if (!databaseAuthorizationEnabled()) {
+    const error = new Error("Twin persistence requires database-backed authorization.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const principal = parseAzureClientPrincipal(req);
+  if (!principal) {
+    const error = new Error("Microsoft Entra authentication is required.");
+    error.statusCode = 401;
+    throw error;
+  }
+  return resolveAuthorizationMapping(principal);
+}
+
+async function requireKnowledgeRequestMapping(req, body = {}) {
+  const principal = parseAzureClientPrincipal(req);
+  if (principal) return resolveAuthorizationMapping(principal);
+  const access = knowledgeAccessContextFromRequest(req, body);
+  if (access?.tenant_id && access?.user_id && access?.allowed_twin_ids?.length) {
+    return {
+      tenant_id: access.tenant_id,
+      user_id: access.user_id,
+      active_twin_id: access.active_twin_id,
+      allowed_twin_ids: access.allowed_twin_ids,
+      group_ids: access.group_ids || [],
+      roles: access.roles || [],
+    };
+  }
+  const error = new Error("Microsoft Entra authentication or a signed knowledge access token is required.");
+  error.statusCode = 401;
+  throw error;
+}
+
+async function handleKnowledgeStage(req, res) {
+  if (!postgresEnabled()) {
+    const error = new Error("Knowledge persistence requires PostgreSQL storage mode.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const body = await readBody(req);
+  const mapping = await requireKnowledgeRequestMapping(req, body);
+  jsonResponse(res, 201, await stageKnowledge(await getPgPool(), mapping, body));
+}
+
+async function handleLearningIncrement(req, res) {
+  if (!postgresEnabled()) {
+    const error = new Error("Learning persistence requires PostgreSQL storage mode.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const body = await readBody(req);
+  const mapping = await requireKnowledgeRequestMapping(req, body);
+  jsonResponse(res, 201, await stageLearning(await getPgPool(), mapping, body));
+}
+
+async function handleKnowledgePromote(req, res) {
+  if (!postgresEnabled()) {
+    const error = new Error("Knowledge promotion requires PostgreSQL storage mode.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const body = await readBody(req);
+  const mapping = await requireKnowledgeRequestMapping(req, body);
+  jsonResponse(res, 200, await promoteKnowledge(await getPgPool(), mapping, body));
+}
+
+async function handleKnowledgeBackfill(req, res) {
+  if (!postgresEnabled()) {
+    const error = new Error("Knowledge backfill requires PostgreSQL storage mode.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const body = await readBody(req);
+  const mapping = await requireKnowledgeRequestMapping(req, body);
+  jsonResponse(res, 200, await backfillKnowledgeSearch(await getPgPool(), mapping, body));
+}
+
+async function ownedTwin(pool, mapping, twinId, roles = ["owner", "editor"]) {
+  const result = await pool.query(`
+    SELECT twin_row.*, access.access_role
+    FROM twin.twin twin_row
+    JOIN twin.user_twin_access access
+      ON access.tenant_id = twin_row.tenant_id
+      AND access.twin_id = twin_row.twin_id
+    WHERE twin_row.tenant_id = $1
+      AND access.user_id = $2
+      AND twin_row.twin_id = $3
+      AND access.access_role = ANY($4::text[])
+  `, [mapping.tenant_id, mapping.user_id, twinId, roles]);
+  if (!result.rows[0]) {
+    const error = new Error("Twin not found or the signed-in user cannot modify it.");
+    error.statusCode = 404;
+    throw error;
+  }
+  return result.rows[0];
+}
+
+async function handleTwinsList(req, res, url) {
+  const mapping = await requireTwinRequestMapping(req);
+  const pool = await getPgPool();
+  const includeArchived = String(url.searchParams.get("include_archived") || "").toLowerCase() === "true";
+  const result = await pool.query(`
+    SELECT twin_row.*, access.access_role
+    FROM twin.twin twin_row
+    JOIN twin.user_twin_access access
+      ON access.tenant_id = twin_row.tenant_id
+      AND access.twin_id = twin_row.twin_id
+    WHERE twin_row.tenant_id = $1
+      AND access.user_id = $2
+      AND ($3::boolean OR twin_row.status <> 'archived')
+    ORDER BY twin_row.updated_at DESC, twin_row.display_name ASC
+  `, [mapping.tenant_id, mapping.user_id, includeArchived]);
+  const twins = result.rows.map(twinResponseRow);
+  const activeTwin = twins.some((twin) => twin.twin_id === mapping.active_twin_id && twin.status === "active")
+    ? mapping.active_twin_id
+    : twins.find((twin) => twin.status === "active")?.twin_id || "";
+  jsonResponse(res, 200, { twins, active_twin: activeTwin, activity: [] });
+}
+
+async function handleTwinCreate(req, res) {
+  const mapping = await requireTwinRequestMapping(req);
+  const body = await readBody(req);
+  const displayName = String(body.display_name || "").trim().slice(0, 200);
+  if (!displayName) {
+    const error = new Error("Twin display name is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const pool = await getPgPool();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const baseId = cleanTwinId(displayName) || `twin-${Date.now().toString(36)}`;
+    let twinId = baseId;
+    for (let suffix = 2; suffix < 100; suffix += 1) {
+      const duplicate = await client.query("SELECT 1 FROM twin.twin WHERE twin_id = $1", [twinId]);
+      if (!duplicate.rowCount) break;
+      twinId = `${baseId.slice(0, 58)}-${suffix}`;
+    }
+    const created = await client.query(`
+      INSERT INTO twin.twin (twin_id, tenant_id, owner_user_id, display_name, status, profile)
+      VALUES ($1, $2, $3, $4, 'active', $5::jsonb)
+      RETURNING *
+    `, [twinId, mapping.tenant_id, mapping.user_id, displayName, JSON.stringify(twinProfileFromBody(body))]);
+    await client.query(`
+      INSERT INTO twin.user_twin_access (tenant_id, user_id, twin_id, access_role, granted_by)
+      VALUES ($1, $2, $3, 'owner', $2)
+    `, [mapping.tenant_id, mapping.user_id, twinId]);
+    await client.query(`
+      UPDATE identity.app_user
+      SET active_twin_id = COALESCE(active_twin_id, $3), updated_at = now()
+      WHERE tenant_id = $1 AND user_id = $2
+    `, [mapping.tenant_id, mapping.user_id, twinId]);
+    await client.query("COMMIT");
+    jsonResponse(res, 201, {
+      status: "created",
+      twin: twinResponseRow({ ...created.rows[0], access_role: "owner" }),
+      active_twin: mapping.active_twin_id || twinId,
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function handleTwinUpdate(req, res) {
+  const mapping = await requireTwinRequestMapping(req);
+  const body = await readBody(req);
+  const twinId = cleanTwinId(body.twin_id);
+  const pool = await getPgPool();
+  const current = await ownedTwin(pool, mapping, twinId);
+  const displayName = String(body.display_name || current.display_name).trim().slice(0, 200);
+  if (!displayName) {
+    const error = new Error("Twin display name is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const result = await pool.query(`
+    UPDATE twin.twin
+    SET display_name = $4, profile = $5::jsonb, updated_at = now()
+    WHERE tenant_id = $1 AND owner_user_id = $2 AND twin_id = $3
+    RETURNING *
+  `, [mapping.tenant_id, current.owner_user_id, twinId, displayName, JSON.stringify(twinProfileFromBody(body, current.profile))]);
+  jsonResponse(res, 200, { status: "updated", twin: twinResponseRow({ ...result.rows[0], access_role: current.access_role }) });
+}
+
+async function handleTwinStatus(req, res, status) {
+  const mapping = await requireTwinRequestMapping(req);
+  const body = await readBody(req);
+  const twinId = cleanTwinId(body.twin_id);
+  const pool = await getPgPool();
+  const current = await ownedTwin(pool, mapping, twinId, ["owner"]);
+  const result = await pool.query(`
+    UPDATE twin.twin SET status = $4, updated_at = now()
+    WHERE tenant_id = $1 AND owner_user_id = $2 AND twin_id = $3
+    RETURNING *
+  `, [mapping.tenant_id, current.owner_user_id, twinId, status]);
+  if (status === "archived" && mapping.active_twin_id === twinId) {
+    const fallback = await pool.query(`
+      SELECT twin_row.twin_id
+      FROM twin.twin twin_row
+      JOIN twin.user_twin_access access ON access.tenant_id = twin_row.tenant_id AND access.twin_id = twin_row.twin_id
+      WHERE twin_row.tenant_id = $1 AND access.user_id = $2 AND twin_row.status = 'active'
+      ORDER BY twin_row.updated_at DESC LIMIT 1
+    `, [mapping.tenant_id, mapping.user_id]);
+    await pool.query(`UPDATE identity.app_user SET active_twin_id = $3, updated_at = now() WHERE tenant_id = $1 AND user_id = $2`, [mapping.tenant_id, mapping.user_id, fallback.rows[0]?.twin_id || null]);
+  }
+  jsonResponse(res, 200, {
+    status: status === "archived" ? "archived" : "restored",
+    twin: twinResponseRow({ ...result.rows[0], access_role: current.access_role }),
+  });
+}
+
+async function handleTwinActivate(req, res) {
+  const mapping = await requireTwinRequestMapping(req);
+  const body = await readBody(req);
+  const twinId = cleanTwinId(body.twin_id);
+  const pool = await getPgPool();
+  const current = await ownedTwin(pool, mapping, twinId, ["owner", "editor", "reviewer", "viewer"]);
+  if (current.status !== "active") {
+    const error = new Error("Only active twins can be selected.");
+    error.statusCode = 409;
+    throw error;
+  }
+  await pool.query(`
+    UPDATE identity.app_user SET active_twin_id = $3, updated_at = now()
+    WHERE tenant_id = $1 AND user_id = $2
+  `, [mapping.tenant_id, mapping.user_id, twinId]);
+  jsonResponse(res, 200, { status: "activated", active_twin: twinId });
+}
+
+function knowledgeAuthEnforced() {
+  return ["true", "1", "on", "enabled"].includes(String(process.env.MEIDS_ENFORCE_KNOWLEDGE_AUTH || "false").toLowerCase());
+}
+
+function knowledgeAccessContextFromRequest(req, body = {}) {
+  const authorization = String(req.headers.authorization || "");
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1] || "";
+  const token = bearer
+    || body.knowledge_access_token
+    || body.auth_context?.knowledge_access_token
+    || body.metadata?.authorization?.knowledgeAccessToken
+    || "";
+  if (token) {
+    const verified = verifyKnowledgeAccessToken(token);
+    return {
+      ...verified,
+      knowledge_scope: body.knowledge_scope === "all_assigned_twins"
+        ? "all_assigned_twins"
+        : verified.knowledge_scope,
+    };
+  }
+  if (knowledgeAuthEnforced()) {
+    const error = new Error("A signed knowledge access token is required.");
+    error.statusCode = signingKeyFromEnv() ? 401 : 503;
+    throw error;
+  }
+  return null;
+}
+
+async function handleSession(req, res) {
+  if (knowledgeAuthEnforced() && !signingKeyFromEnv()) {
+    jsonResponse(res, 503, {
+      status: "blocked",
+      error: "Knowledge authorization is enabled but its signing key is unavailable.",
+    });
+    return;
+  }
   const principal = parseAzureClientPrincipal(req);
   if (!principal) {
     const devEmail = String(process.env.MEIDS_AUTH_DEV_USER_EMAIL || "").trim();
@@ -1573,7 +2087,8 @@ function handleSession(req, res) {
     });
     return;
   }
-  jsonResponse(res, 200, sessionFromPrincipal(principal));
+  const mapping = await resolveAuthorizationMapping(principal);
+  jsonResponse(res, 200, sessionFromPrincipal(principal, mapping));
 }
 
 async function routeRequest(req, res) {
@@ -1585,7 +2100,8 @@ async function routeRequest(req, res) {
   }
   try {
     if (req.method === "GET" && url.pathname === "/api/health") {
-      jsonResponse(res, 200, backendHealthPayload());
+      const health = await backendReadinessPayload();
+      jsonResponse(res, health.status === "ok" ? 200 : 503, health);
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/status") {
@@ -1593,11 +2109,35 @@ async function routeRequest(req, res) {
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/session") {
-      handleSession(req, res);
+      await handleSession(req, res);
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/admin/n8n/status") {
       await handleN8nAdminStatus(req, res);
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/twins") {
+      await handleTwinsList(req, res, url);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/twins") {
+      await handleTwinCreate(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/twins/update") {
+      await handleTwinUpdate(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/twins/active") {
+      await handleTwinActivate(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/twins/archive") {
+      await handleTwinStatus(req, res, "archived");
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/twins/restore") {
+      await handleTwinStatus(req, res, "active");
       return;
     }
     if (req.method === "POST" && PATH_TO_AGENT[url.pathname]) {
@@ -1640,6 +2180,22 @@ async function routeRequest(req, res) {
       await handleKnowledgeDuplicateCheck(req, res);
       return;
     }
+    if (req.method === "POST" && url.pathname === "/api/knowledge/stage") {
+      await handleKnowledgeStage(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/knowledge/promote") {
+      await handleKnowledgePromote(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/knowledge/rebuild-search") {
+      await handleKnowledgeBackfill(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/learning/increments") {
+      await handleLearningIncrement(req, res);
+      return;
+    }
     if (req.method === "POST" && url.pathname === "/api/learning/post-turn") {
       await handlePostTurnLearning(req, res);
       return;
@@ -1661,6 +2217,45 @@ async function routeRequest(req, res) {
 if (require.main === module) {
   http.createServer(routeRequest).listen(PORT, () => {
     console.log(`MeIDs agent backend proxy listening on ${PORT}`);
+    if (String(process.env.AZURE_SEARCH_STARTUP_PROBE || "").toLowerCase() === "true") {
+      const config = azureSearchConfigFromEnv();
+      getIndexReadiness(config)
+        .then((indexReadiness) => {
+          console.log(JSON.stringify({
+            event: "azure_search_startup_probe",
+            status: Object.values(indexReadiness).every((item) => item.status === "ready") ? "ready" : "blocked",
+            authentication: config.authMode,
+            indexes: indexReadiness,
+          }));
+        })
+        .catch((error) => {
+          console.error(JSON.stringify({
+            event: "azure_search_startup_probe",
+            status: "failed",
+            authentication: config.authMode,
+            status_code: error.statusCode || 500,
+            error: error.message || "Azure AI Search startup probe failed",
+          }));
+        });
+    }
+    if (["true", "1", "on", "enabled"].includes(String(process.env.MEIDS_OUTBOX_PROJECTOR_ENABLED || "false").toLowerCase())) {
+      let workerRunning = false;
+      const intervalMs = Math.max(5_000, Number(process.env.MEIDS_OUTBOX_INTERVAL_MS || 15_000));
+      const runWorker = async () => {
+        if (workerRunning || !postgresEnabled()) return;
+        workerRunning = true;
+        try {
+          const result = await processOutboxBatch(await getPgPool());
+          if (result.claimed) console.log(JSON.stringify({ event: "outbox_projection", ...result }));
+        } catch (error) {
+          console.error(JSON.stringify({ event: "outbox_projection", status: "failed", error: error.message || String(error) }));
+        } finally {
+          workerRunning = false;
+        }
+      };
+      setTimeout(runWorker, 3_000);
+      setInterval(runWorker, intervalMs).unref();
+    }
   });
 }
 

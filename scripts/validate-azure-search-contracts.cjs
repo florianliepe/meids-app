@@ -15,6 +15,10 @@ const requiredFields = [
   "id",
   "organization_id",
   "user_id",
+  "owner_user_id",
+  "allowed_user_ids",
+  "allowed_group_ids",
+  "acl_version",
   "twin_id",
   "visibility_scope",
   "knowledge_state",
@@ -63,7 +67,7 @@ for (const fileName of requiredSchemas) {
   for (const field of requiredFields) {
     if (!byName.has(field)) fail(`${fileName}: missing field ${field}`);
   }
-  for (const field of ["organization_id", "twin_id", "visibility_scope", "knowledge_state", "permission_tags"]) {
+  for (const field of ["organization_id", "owner_user_id", "allowed_user_ids", "allowed_group_ids", "acl_version", "twin_id", "visibility_scope", "knowledge_state", "permission_tags"]) {
     if (byName.get(field)?.filterable !== true) fail(`${fileName}: ${field} must be filterable for security trimming`);
   }
   const vector = byName.get("content_vector");
@@ -87,10 +91,14 @@ const doc = adapter.vectorDocumentFromOkf({
   metadata: { type: "Decision Principle", cluster: "client-delivery", evidence_refs: [], evidence_review_states: [] },
 }, { organization_id: "org", twin_id: "florian" });
 if (doc.organization_id !== "org" || doc.twin_id !== "florian") fail("Vector document tenant/twin mapping failed");
+if (!Array.isArray(doc.allowed_user_ids) || doc.acl_version !== "v1") fail("Vector document ACL mapping failed");
 if (!Array.isArray(doc.content_vector) || doc.content_vector.length !== 1536) fail("Vector document fallback vector dimensions failed");
+const deterministicVector = adapter.deterministicVectorFromText("Test concept text.", 1536);
+if (!Array.isArray(deterministicVector) || deterministicVector.length !== 1536) fail("Deterministic vector helper dimensions failed");
 const status = adapter.statusFromConfig({
   configured: true,
   embeddingConfigured: true,
+  deterministicVectorsAllowed: true,
   endpoint: "https://example.search.windows.net",
   apiKey: "configured",
   approvedIndex: "approved",
@@ -105,6 +113,38 @@ const status = adapter.statusFromConfig({
   embeddingMissing: [],
 });
 if (status.embedding.status !== "configured") fail("Embedding status mapping failed");
+if (status.vector_fallback?.deterministic_vectors_allowed !== true) fail("Deterministic vector fallback status mapping failed");
+const managedIdentityConfig = adapter.azureSearchConfigFromEnv({
+  AZURE_SEARCH_ENDPOINT: "https://example.search.windows.net",
+  AZURE_SEARCH_AUTH_MODE: "managed_identity",
+  AZURE_SEARCH_APPROVED_INDEX: "approved",
+  AZURE_SEARCH_WORKING_INDEX: "working",
+  IDENTITY_ENDPOINT: "http://127.0.0.1:41741/msi/token",
+  IDENTITY_HEADER: "test-identity-header",
+});
+if (!managedIdentityConfig.configured || managedIdentityConfig.authMode !== "managed_identity") {
+  fail("Managed identity Search configuration failed");
+}
+if (managedIdentityConfig.apiKey) fail("Managed identity Search configuration must not require an API key");
+const managedIdentityStatus = adapter.statusFromConfig(managedIdentityConfig);
+if (managedIdentityStatus.authentication?.mode !== "managed_identity") fail("Managed identity status mapping failed");
+if (managedIdentityStatus.authentication?.managed_identity_endpoint_available !== true) {
+  fail("Managed identity endpoint readiness mapping failed");
+}
+const managedIdentityEmbeddingConfig = adapter.azureSearchConfigFromEnv({
+  AZURE_SEARCH_ENDPOINT: "https://example.search.windows.net",
+  AZURE_SEARCH_API_KEY: "search-key",
+  AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com",
+  AZURE_OPENAI_AUTH_MODE: "managed_identity",
+  AZURE_OPENAI_EMBEDDING_DEPLOYMENT: "text-embedding-3-small",
+  IDENTITY_ENDPOINT: "http://127.0.0.1:41741/msi/token",
+  IDENTITY_HEADER: "test-identity-header",
+});
+if (!managedIdentityEmbeddingConfig.embeddingConfigured) fail("Managed identity embedding configuration failed");
+if (managedIdentityEmbeddingConfig.embeddingApiKey) fail("Managed identity embeddings must not require an API key");
+if (adapter.statusFromConfig(managedIdentityEmbeddingConfig).embedding.authentication_mode !== "managed_identity") {
+  fail("Managed identity embedding status mapping failed");
+}
 const readiness = readJson(readinessAsset);
 if (readiness.status !== "ready_for_secret_activation") fail("Azure vector readiness asset must be ready_for_secret_activation");
 const liveActivation = readJson(liveActivationAsset);

@@ -8,6 +8,10 @@ const agents = {
   actor_twin: "Actor Twin",
   knowledge_fabric_agent: "Knowledge Fabric Agent",
   agentic_butler: "Agentic Butler",
+  skill_orchestrator: "Skill Orchestrator",
+  task_agent: "Task Agent",
+  critical_faculty: "Critical Faculty Agent",
+  learning_agent: "Learning Agent",
 };
 
 const expectedResponseStatusByAgent = {
@@ -36,7 +40,7 @@ function usage() {
     "  node scripts/record-n8n-live-probe-evidence.cjs --agent actor_twin --trace-id trace_123 --execution-url https://... --response-status completed",
     "",
     "Required:",
-    "  --agent actor_twin|knowledge_fabric_agent|agentic_butler",
+    `  --agent ${Object.keys(agents).join("|")}`,
     "  --trace-id <non-demo trace id returned by n8n>",
     "",
     "Optional:",

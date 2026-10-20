@@ -59,6 +59,13 @@ function isN8nChatWebhook(url) {
 function inferChatRouteFromText(text = "", expected = {}) {
   const value = String(text || "");
   const lower = value.toLowerCase();
+  if (
+    /\b(answered|answer)\s+directly\b/i.test(value) ||
+    /\bno\s+(knowledge retrieval|retrieval|delegation|work artifact|tool)\b/i.test(value) ||
+    /\bno .* was needed\b/i.test(value)
+  ) {
+    return { decision: "answer_direct", target_agent: "actor_twin" };
+  }
   if (/decision:\s*answer_direct/i.test(value) || /\bidentity\/self-description\b/i.test(value)) {
     return { decision: "answer_direct", target_agent: "actor_twin" };
   }
@@ -173,13 +180,18 @@ function normalizeResponse(data, envelope) {
   const decision = route.decision || route.route_decision || chatInference.decision || "answer_direct";
   const delegate = output.delegate_result && typeof output.delegate_result === "object" ? output.delegate_result : null;
   const trace = response.trace || parsed.trace || output.trace || {};
+  const answerText = String(output.answer || output.summary || "");
+  const inferredApprovalRequired =
+    Boolean(response.approval?.required || output.approval?.required || delegate?.approval?.required) ||
+    /approval required before activation/i.test(answerText) ||
+    /approval_required[\"`']?\s*[:=]\s*true/i.test(answerText);
   return {
     request_id: response.request_id || envelope.request_id,
-    status: response.status || parsed.status || (response.approval?.required || output.approval?.required ? "approval_required" : "completed"),
+    status: response.status === "completed" && inferredApprovalRequired ? "approval_required" : response.status || parsed.status || (inferredApprovalRequired ? "approval_required" : "completed"),
     agent_id: response.agent_id || "actor_twin",
     route_decision: decision,
     target_agent: route.target_agent || trace.target_agent || delegate?.agent_id || chatInference.target_agent || targetAgentForDecision(decision),
-    approval_required: Boolean(response.approval?.required || output.approval?.required || delegate?.approval?.required),
+    approval_required: inferredApprovalRequired,
     trace_id: trace.trace_id || output.trace?.trace_id || "",
     delegate_agent_id: delegate?.agent_id || "",
     delegate_status: delegate?.status || "",
@@ -428,10 +440,10 @@ async function runCase(testCase) {
       status: failed.length ? "failed" : "passed",
       live_alignment_required: liveAlignmentRequired,
     },
-    next_action: knowledgeFabricMemoryError || agenticButlerNodeMissing
+    next_action: actorWorkflowEmptyOrMisrouted
+      ? "Patch the active embedded Actor Twin n8n workflow: update the Actor Twin system prompt and both Call n8n Workflow Tool descriptions from prompts/actor-twin/tool-descriptions.md, verify Knowledge Fabric and Agentic Butler tools are connected to the AI Agent, then rerun npm run uat:agents:live. If using API apply, configure N8N_API_BASE_URL, N8N_API_KEY, and the live workflow ids first."
+      : knowledgeFabricMemoryError || agenticButlerNodeMissing
       ? "Actor Twin embedded chat is reachable, but downstream n8n worker workflows need repair: remove or correctly wire the Knowledge Fabric Simple Memory node, and repair the Agentic Butler workflow/tool reference that returns 'Referenced node does not exist'. Then rerun npm run uat:agents:live."
-      : actorWorkflowEmptyOrMisrouted
-      ? "Import and publish workflows/n8n/import-ready/actor-twin-direct-orchestrator.uat-live-urls.import.json into the active Actor Twin workflow for webhook path meids/actor-twin/chat, then import/publish the Knowledge Fabric and Agentic Butler AI-agent workflows and rerun npm run uat:agents:live."
       : delegatedButlerWithoutTrace || createSkillNotDelegated
       ? "Import and publish workflows/n8n/import-ready/actor-twin-direct-orchestrator.uat-live-urls.import.json into the active Actor Twin workflow. In n8n, verify Switch by route has no route_decision.approval_required pre-delegation branch and that the agentic_butler output connects to Call Agentic Butler, then rerun npm run uat:agents:live."
       : knowledgeFabricEmpty

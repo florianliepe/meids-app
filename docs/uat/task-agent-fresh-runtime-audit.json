@@ -1,0 +1,81 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-09-07T19:35:35.203Z",
+  "scope": "Agent prompt size and n8n execution duration audit. No secrets are stored.",
+  "filters": {
+    "since": "2026-09-07T00:00:00.000Z",
+    "agent": "task_agent",
+    "limit": 10
+  },
+  "prompt_metrics": [
+    {
+      "agent": "actor_twin",
+      "path": "prompts/actor-twin/system.md",
+      "chars": 8447,
+      "approx_tokens": 2112
+    },
+    {
+      "agent": "knowledge_retrieval_interviewer",
+      "path": "prompts/knowledge-retrieval-interviewer/system.md",
+      "chars": 7504,
+      "approx_tokens": 1876
+    },
+    {
+      "agent": "critical_faculty",
+      "path": "prompts/critical-faculty/system.md",
+      "chars": 5472,
+      "approx_tokens": 1368
+    },
+    {
+      "agent": "skill_orchestrator",
+      "path": "prompts/skill-orchestrator/system.md",
+      "chars": 5418,
+      "approx_tokens": 1355
+    },
+    {
+      "agent": "agentic_butler",
+      "path": "prompts/agentic-butler/system.md",
+      "chars": 5346,
+      "approx_tokens": 1337
+    },
+    {
+      "agent": "learning_agent",
+      "path": "prompts/learning-agent/system.md",
+      "chars": 5303,
+      "approx_tokens": 1326
+    },
+    {
+      "agent": "knowledge_fabric_agent",
+      "path": "prompts/knowledge-fabric-agent/system.md",
+      "chars": 4381,
+      "approx_tokens": 1096
+    },
+    {
+      "agent": "task_agent",
+      "path": "prompts/task-agent/system.md",
+      "chars": 2756,
+      "approx_tokens": 689
+    }
+  ],
+  "execution_metrics": [
+    {
+      "id": "YXcl8Wb68Oup3Z8n",
+      "agent": "task_agent",
+      "status": "measured",
+      "filtered_since": "2026-09-07T00:00:00.000Z",
+      "fetched_sample_size": 10,
+      "sample_size": 3,
+      "success_count": 3,
+      "failure_count": 0,
+      "avg_ms": 9346,
+      "p50_ms": 10202,
+      "p90_ms": 10883,
+      "max_ms": 10883
+    }
+  ],
+  "recommendations": [
+    "Prompts above 1800 approximate tokens should be split into core instruction plus optional reference, or compressed before production.",
+    "Keep Actor Twin as the only frontend chat and avoid exposing subagent conversations in the UI.",
+    "Use backend proxy for production to avoid browser-to-n8n latency/security coupling and to persist traces durably."
+  ]
+}

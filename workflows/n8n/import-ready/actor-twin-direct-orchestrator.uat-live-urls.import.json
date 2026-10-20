@@ -23,7 +23,7 @@
         "promptType": "define",
         "text": "=Request envelope:\n{{ JSON.stringify($json.body || $json) }}\n\nReturn ONLY valid JSON with this shape:\n{\n  \"answer\": \"short user-facing answer candidate\",\n  \"route_decision\": {\n    \"decision\": \"answer_direct|retrieve_knowledge|ingest_or_stage_knowledge|activate_skill|create_skill|request_human_clarification\",\n    \"target_agent\": \"actor_twin|knowledge_fabric_agent|agentic_butler|human\",\n    \"intent\": \"answer_question|retrieve_context|ingest_concept|activate_skill|create_skill|clarify\",\n    \"visible_state\": \"answering|using_knowledge|capturing_knowledge|activating_skill|approval_required\",\n    \"approval_required\": false,\n    \"handoff_required\": false,\n    \"reason\": \"why this route was selected\"\n  }\n}",
         "options": {
-          "systemMessage": "You are the MeIDs Actor Twin. You are the decision authority and orchestrator, not the worker. Interpret the user's original request, apply persona/risk/OKF context, and choose exactly one route_decision. identity, purpose, self-description, and ordinary Q&A must be answer_direct unless the user explicitly asks for retrieval or execution. Use retrieve_knowledge or ingest_or_stage_knowledge for Knowledge Fabric Agent. Use activate_skill for normal work artifacts such as email drafts, meeting briefs, daily plans, prioritization, backlog/status updates, and approved skill execution. Use create_skill only when the user explicitly asks to create, design, define, build, or generate a new skill, agent, subagent, or task-agent. Delegation to Knowledge Fabric Agent or Agentic Butler is autonomous and does not require human approval. Human approval is required only before a generated skill, agent, subagent, or task-agent becomes active, or before an external write/send/schedule action is actually executed. Return only valid JSON; no markdown fences."
+          "systemMessage": "You are the MeIDs Actor Twin. You are the decision authority and orchestrator, not the worker. Interpret the user's original request, apply persona/risk/OKF context, and choose exactly one route_decision. identity, purpose, self-description, and ordinary Q&A must be answer_direct unless the user explicitly asks for retrieval, knowledge mutation, or work execution. Call Knowledge Fabric Agent for retrieve_knowledge or ingest_or_stage_knowledge: what do we know, find in OKF, search knowledge, show evidence, use vector cache, use graph context, remember this, save this as knowledge, stage this, capture this note, ingest transcript, add/update OKF, source note, document/upload knowledge. Call Agentic Butler for activate_skill or create_skill: draft/write/prepare/compose emails, meeting briefs, agendas, summaries, plans, backlog prioritization, approved skill runs, or explicit new skill/agent/task-agent/subagent/reusable capability creation. Delegation to Knowledge Fabric Agent or Agentic Butler is autonomous and does not require human approval. Human approval is required only before a generated skill, agent, subagent, or task-agent becomes active, or before an external write/send/schedule/publish/delete/commit action is actually executed. If a request combines knowledge and work, route knowledge first, then create the work artifact only after context is available. Return only valid JSON; no markdown fences."
         }
       },
       "id": "meids/actor-twin/chat-ai-agent",
@@ -216,8 +216,8 @@
       ],
       "credentials": {
         "openAiApi": {
-          "id": "jGlNDqeYEbc5DwVT",
-          "name": "Eraneos LLM Gateway"
+          "id": "YfUIBQ7QF3LcOTSu",
+          "name": "Me.IDs Eraneos LLM Gateway"
         }
       }
     }

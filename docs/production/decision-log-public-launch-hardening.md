@@ -1,0 +1,29 @@
+# Decision Log: Public Launch Hardening
+
+Date: 2026-10-20
+
+| ID | Decision | Rationale | Status |
+| --- | --- | --- | --- |
+| PL-001 | Search and Blob use dedicated private endpoints and private DNS zones in the production VNet. | The backend already uses regional VNet integration; browser clients do not need direct data-plane access. | Accepted |
+| PL-002 | Public access is disabled only after private DNS and managed-identity probes pass. | Prevents a configuration-induced outage and gives a clear rollback boundary. | Accepted |
+| PL-003 | The current Search contract remains at 1,536 vector dimensions for launch. | Changing dimensions requires index replacement and a complete re-embedding migration. | Accepted |
+| PL-004 | Deterministic vectors stay disabled in production. | They prove plumbing but do not provide semantic retrieval quality. | Accepted |
+| PL-005 | Approved knowledge is retained indefinitely until Legal/Records Management approves deletion rules. | Accidental deletion of reviewed intellectual capital is a higher risk than temporary over-retention during launch preparation. | Interim policy; human approval required |
+| PL-006 | Same-zone PostgreSQL HA remains the launch exception while Azure rejects an alternate zone. | It preserves synchronous HA and the existing private data plane without a destructive server replacement. | Accepted exception |
+| PL-007 | n8n maintenance requires resource ownership, a pre-change export, and a maintenance window. | The host is shared and is not visible in the accessible Azure subscriptions. | Human-gated |
+| PL-008 | Embedding credentials are stored in Key Vault and never in n8n workflow JSON, frontend configuration, or source control. | The embedding call is a backend concern and must retain a single secret boundary. | Accepted |
+| PL-009 | The Actor Twin forwards identity and authorization to callable workflows through explicit typed n8n inputs. | AI may formulate the delegated query, but user, tenant, twin, and signed-access values must be copied deterministically from Chat Trigger metadata. | Implemented |
+| PL-010 | The frontend cache-busts runtime configuration and application assets with one public-launch release identifier. | Azure Static Web Apps otherwise served a stale runtime configuration that omitted signed knowledge context. | Implemented |
+| PL-011 | The expired Butler LLM credential is rotated in n8n, not copied into workflow JSON or source control. | n8n external secrets are unavailable in this deployment; manual credential rotation retains the narrowest secret boundary. | Human-gated |
+| PL-012 | Same-zone HA plus 35-day geo-redundant backups is an explicit launch exception, not equivalent to zone-redundant HA. | West Europe rejected the requested alternate-zone allocation, and the 2026-10-20 capability API reports both `ZoneRedundantHa` and `ZoneRedundantHaAndGeoBackup` disabled. The current service remains healthy while capacity is rechecked. | Accepted exception; owner sign-off required |
+| PL-013 | Backend voice uses a Key Vault reference to the approved Eraneos gateway key in the production vault. | The backend identity already has `Key Vault Secrets User`; this avoids a plaintext App Service secret while keeping the existing approved gateway. | Implemented |
+| PL-014 | All Search services in the shared resource group have public network access disabled, including the legacy UAT service. | A launch recheck found the legacy service enabled even though the production service and private endpoint were correct. Closing it removes an unnecessary public surface. | Implemented and revalidated |
+
+## Human decisions still required
+
+1. Embedding provider/deployment, quota owner, and data-processing approval.
+2. Rotation of the expired `Me.IDs Eraneos LLM Gateway` credential in n8n.
+3. Approved-knowledge retention period, deletion authority, and legal-hold
+   process.
+4. Launch-risk owner sign-off for the temporary same-zone PostgreSQL HA
+   exception.

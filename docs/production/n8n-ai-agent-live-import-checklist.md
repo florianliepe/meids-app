@@ -33,7 +33,7 @@ Expected live workflow ids from the current n8n UAT setup:
 
 | Agent | Expected workflow id |
 | --- | --- |
-| Actor Twin | `eKI3qM7nyCNn9r1q` for the current published duplicate, or `fDn8yXo3W41hh3yR` for the older default script target |
+| Actor Twin | `eKI3qM7nyCNn9r1q` for the current published embedded-chat workflow; `fDn8yXo3W41hh3yR` is the older historical script target |
 | Knowledge Fabric Agent | `7Ci86PxXipwvYpKv` |
 | Agentic Butler | `KZOqZRUAnVfFEAYJ` |
 
@@ -59,6 +59,9 @@ node scripts\prepare-n8n-agent-workflow-api-update.cjs --agent=agentic_butler --
 The `N8N_API_KEY` value must be provided through a local shell secret or hosted
 secret store. It must not be committed.
 
+Detailed API-key setup and failed-test mitigation are documented in
+`docs/production/zielmodus-n8n-api-key-and-live-uat-mitigation.md`.
+
 ## Required Live Workflow Shape
 
 The Actor Twin workflow must keep this active path:
@@ -70,6 +73,25 @@ The Actor Twin workflow must keep this active path:
    - `MeIDs Knowledge Fabric Agent`
    - `MeIDs Agentic Butler`
 5. Published workflow with public chat enabled.
+
+## Actor Twin Workflow Tool Descriptions
+
+Use the canonical tool-description source in `prompts/actor-twin/tool-descriptions.md`.
+
+For the Knowledge Fabric workflow tool, the description must make retrieval and
+ingest/update criteria explicit: `what do we know`, `find in OKF`, `search
+knowledge`, `show evidence`, `use vector cache`, `use graph context`,
+`remember this`, `save this as knowledge`, `stage this`, `capture this note`,
+`ingest this transcript`, `add/update OKF`, `source note`, and document/upload
+knowledge requests.
+
+For the Agentic Butler workflow tool, the description must make work-artifact
+and capability-creation criteria explicit: email drafts, meeting briefs,
+agendas, summaries, plans, backlog prioritization, approved skill runs, and
+explicit new skill/agent/task-agent/subagent/reusable capability creation.
+
+Do not describe either tool as a generic fallback assistant. Wrong-tool routing
+is more likely when the tool description is broad.
 
 The worker/direct-probe workflows must keep this active path:
 
