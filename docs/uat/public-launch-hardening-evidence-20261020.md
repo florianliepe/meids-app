@@ -44,6 +44,14 @@ Date: 2026-10-20
   input contract.
 - Workflow backups are stored under
   `exports/n8n-live-backups/20261020T143450Z-public-launch-auth-context/`.
+- Source baseline `43d65a9` is pushed to `origin/main`.
+- GitHub backend deployment uses OIDC identity
+  `id-meids-github-deployer`, federated only to the repository's `main`
+  branch and scoped as `Website Contributor` on
+  `meids-prod-backend-1853a19b`.
+- Frontend Azure Static Web Apps and GitHub Pages deployments were triggered
+  by the source-baseline push; backend deployment is path-scoped to backend or
+  package changes.
 
 ## Code fixes included
 

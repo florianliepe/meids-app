@@ -5,6 +5,10 @@ Date: 2026-10-20
 Only the actions below still require a person because they involve a secret,
 tenant approval, legal ownership, or launch-risk acceptance.
 
+Backend deployment itself no longer requires a publish profile: GitHub OIDC is
+configured with a repository-and-branch-bound identity and App-Service-only
+Azure role assignment.
+
 ## 1. Rotate the n8n LLM Gateway credential
 
 Do not paste the key into chat, workflow JSON, or source control.

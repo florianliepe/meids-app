@@ -18,6 +18,7 @@ Date: 2026-10-20
 | PL-012 | Same-zone HA plus 35-day geo-redundant backups is an explicit launch exception, not equivalent to zone-redundant HA. | West Europe rejected the requested alternate-zone allocation, and the 2026-10-20 capability API reports both `ZoneRedundantHa` and `ZoneRedundantHaAndGeoBackup` disabled. The current service remains healthy while capacity is rechecked. | Accepted exception; owner sign-off required |
 | PL-013 | Backend voice uses a Key Vault reference to the approved Eraneos gateway key in the production vault. | The backend identity already has `Key Vault Secrets User`; this avoids a plaintext App Service secret while keeping the existing approved gateway. | Implemented |
 | PL-014 | All Search services in the shared resource group have public network access disabled, including the legacy UAT service. | A launch recheck found the legacy service enabled even though the production service and private endpoint were correct. Closing it removes an unnecessary public surface. | Implemented and revalidated |
+| PL-015 | GitHub deploys the backend through OIDC using a user-assigned identity scoped to `Website Contributor` on the single App Service. | A publish-profile secret was absent and would create a long-lived credential. Repository-bound federation gives short-lived tokens and a narrow Azure scope. | Implemented |
 
 ## Human decisions still required
 
