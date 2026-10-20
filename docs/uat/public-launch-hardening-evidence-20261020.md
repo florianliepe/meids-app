@@ -67,6 +67,10 @@ Date: 2026-10-20
   `/login`; and direct unauthenticated App Service access returned `401`.
   This confirms that the supported production API route remains behind the
   Static Web App authentication boundary.
+- Public-repository exposure check found no tracked GitHub PAT, classic GitHub
+  token, JWT, or Azure Storage connection string. GitHub secret scanning
+  reported zero open alerts. One lexical `sk-` match was inspected and was a
+  harmless UAT filename containing `task-skill-orchestrator`, not a key.
 
 ## Code fixes included
 
