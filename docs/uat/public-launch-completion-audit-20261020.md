@@ -16,7 +16,7 @@ the requirement has direct current evidence and no remaining action.
 | Production semantic embedding UAT | Human-required | `docs/production/public-launch-human-actions.md` defines the semantic ingest and complete rebuild acceptance path | Run after the approved deployment exists |
 | n8n publication recovery | Complete | Live API revalidation: Actor `eKI3qM7nyCNn9r1q`, Knowledge Fabric `7Ci86PxXipwvYpKv`, and Butler `KZOqZRUAnVfFEAYJ` are active on versions updated 2026-10-20 14:34 UTC | None |
 | Explicit n8n identity propagation | Complete | Actor forwards `query`, signed access token, tenant, user, twin, and organization; callable triggers expose matching typed fields; canonical and live workflow checks pass | None |
-| Knowledge Fabric response sanitization | Ready | Live workflow topology removes `_knowledge_access_token`, `content_vector`, and `query_vector` before `Return JSON` | Confirm with the persisted authenticated chat UAT |
+| Knowledge Fabric response sanitization | Complete | Execution `33062` returned no `knowledge_access_token`, `content_vector`, or `query_vector`; sanitized evidence is in `docs/uat/authenticated-knowledge-fabric-uat-20261020.json` | None |
 | Search private networking | Complete | `srch-meids-prod-1853a19b` is running, local auth disabled, public access disabled, and private endpoint `10.42.3.4` is active | None |
 | Storage private networking | Complete | `stmeidsprod1853a19b` has public access disabled, default deny, shared-key access disabled, and private endpoint `10.42.3.5` | None |
 | Legacy Search public-surface closure | Complete | `srch-intellectual-twin` public network access is disabled | None |
@@ -30,20 +30,19 @@ the requirement has direct current evidence and no remaining action.
 | Azure frontend deployment | Complete | Azure Static Web Apps run `39446483047` passed; authenticated API routes redirect unauthenticated users to `/login` | None |
 | GitHub Pages sandbox deployment | Complete | GitHub Pages run `39446483102` passed | None |
 | Repository secret exposure | Complete | GitHub secret scanning has zero open alerts; tracked-source pattern scan found no credential material | None |
-| Authenticated Knowledge Fabric chat UAT | Human-required | Test procedure in `docs/production/public-launch-human-actions.md` | User approval is required because the test creates one persisted `review_needed` concept |
+| Authenticated Knowledge Fabric chat UAT | Complete | Actor execution `33061` and Knowledge Fabric execution `33062` staged exactly one authenticated `review_needed` concept; the approved cleanup rejected revision `1` and confirmed Search exclusion | None |
 | Agentic Butler normal/new-skill UAT | Human-required | Workflow is active; routing and approval-boundary fixture tests pass | Rotate the expired n8n LLM gateway credential, then run normal draft and new-skill tests |
 
 ## Current verdict
 
 The automated infrastructure, deployment, publication, private-networking, and
 contract-validation scope is complete. Public launch is **not approved** yet.
-Five human-required gates remain:
+Four human-required gates remain:
 
 1. Provision and approve production semantic embeddings.
 2. Approve knowledge-retention governance.
 3. Sign the temporary SameZone PostgreSQL HA exception.
-4. Approve and run the persisted authenticated Knowledge Fabric chat UAT.
-5. Rotate the n8n Butler LLM credential and run its two acceptance cases.
+4. Rotate the n8n Butler LLM credential and run its two acceptance cases.
 
 The machine-readable companion report is
 `docs/uat/public-launch-readiness-20261020.json`. Re-run it with:

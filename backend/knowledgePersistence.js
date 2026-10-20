@@ -337,6 +337,79 @@ async function promoteKnowledge(pool, mapping, body = {}) {
   }
 }
 
+async function rejectKnowledge(pool, mapping, body = {}) {
+  const conceptId = cleanText(body.concept_id, 128);
+  const revision = Number(body.revision);
+  if (!conceptId || !Number.isInteger(revision) || revision < 1) {
+    const error = new Error("concept_id and a positive revision are required.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await setRequestContext(client, mapping);
+    const record = await client.query(
+      `SELECT concept_row.*, chunk.search_document_id
+       FROM knowledge.concept concept_row
+       JOIN knowledge.concept_revision revision_row
+         ON revision_row.concept_id = concept_row.concept_id AND revision_row.revision = $2
+       JOIN knowledge.chunk chunk
+         ON chunk.concept_id = concept_row.concept_id AND chunk.revision = $2 AND chunk.chunk_ordinal = 0
+       JOIN twin.user_twin_access access
+         ON access.tenant_id = concept_row.tenant_id AND access.twin_id = concept_row.twin_id
+       WHERE concept_row.concept_id = $1
+         AND access.user_id = $3
+         AND access.access_role IN ('owner', 'reviewer')
+       FOR UPDATE`,
+      [conceptId, revision, mapping.user_id],
+    );
+    const concept = record.rows[0];
+    if (!concept) {
+      const error = new Error("Concept revision not found or reviewer access is missing.");
+      error.statusCode = 404;
+      throw error;
+    }
+    await client.query(
+      `UPDATE knowledge.concept
+       SET review_state = 'rejected', updated_at = now()
+       WHERE concept_id = $1`,
+      [conceptId],
+    );
+    await client.query(
+      `INSERT INTO knowledge.review_action (tenant_id, concept_id, revision, action, actor_user_id, rationale)
+       VALUES ($1, $2, $3, 'reject', $4, $5)`,
+      [mapping.tenant_id, conceptId, revision, mapping.user_id, cleanText(body.rationale, 5_000) || null],
+    );
+    const payload = {
+      organization_id: mapping.tenant_id,
+      user_id: mapping.user_id,
+      twin_id: concept.twin_id,
+      revision,
+      document: { vector_doc_id: concept.search_document_id },
+    };
+    await client.query(
+      `INSERT INTO runtime.outbox_event
+        (tenant_id, aggregate_type, aggregate_id, event_type, payload, dedupe_key)
+       VALUES ($1, 'knowledge.concept', $2, 'knowledge.revision.rejected', $3::jsonb, $4)
+       ON CONFLICT (dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING`,
+      [mapping.tenant_id, conceptId, JSON.stringify(payload), `knowledge:${conceptId}:${revision}:rejected`],
+    );
+    await client.query(
+      `INSERT INTO audit.event (tenant_id, actor_user_id, action, resource_type, resource_id, details)
+       VALUES ($1, $2, 'knowledge.reject', 'knowledge.concept', $3, $4::jsonb)`,
+      [mapping.tenant_id, mapping.user_id, conceptId, JSON.stringify({ revision, review_state: "rejected" })],
+    );
+    await client.query("COMMIT");
+    return { status: "rejected", concept_id: conceptId, revision, review_state: "rejected", outbox_status: "pending" };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function backfillKnowledgeSearch(pool, mapping, body = {}) {
   const allowedRoles = new Set(["admin", "owner", "reviewer", "knowledge_curator"]);
   if (!(mapping.roles || []).some((role) => allowedRoles.has(String(role).toLowerCase()))) {
@@ -502,6 +575,14 @@ async function projectEvent(event) {
     }
     return { blob_uri: blobUri, search };
   }
+  if (event.event_type === "knowledge.revision.rejected") {
+    const documentId = cleanText(payload.document?.vector_doc_id, 256);
+    if (!documentId) throw new Error("Rejected knowledge event has no search document id.");
+    const config = azureSearchConfigFromEnv();
+    const working = await deleteVectorDocuments(config.workingIndex, [documentId], config);
+    const approved = await deleteVectorDocuments(config.approvedIndex, [documentId], config);
+    return { blob_uri: blobUri, search: { working, approved } };
+  }
   return { blob_uri: blobUri };
 }
 
@@ -601,6 +682,7 @@ module.exports = {
   stageKnowledge,
   stageLearning,
   promoteKnowledge,
+  rejectKnowledge,
   backfillKnowledgeSearch,
   processOutboxBatch,
 };

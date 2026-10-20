@@ -75,6 +75,18 @@ Date: 2026-10-20
   contracts, all agent fixtures and routing/handoff contracts, frontend
   JavaScript syntax, 18 OKF fixture files, graph promotions, vector-adapter
   fixtures, and the PostgreSQL graph projection schema.
+- Authenticated Knowledge Fabric UAT passed under tag
+  `KF-UAT-20261020-1792526117614`. Actor execution `33061` called Knowledge
+  Fabric execution `33062`, which staged concept
+  `2228b10b-0d69-4d8b-b8cc-bd0f7b9ff287` revision `1` as `review_needed` for
+  tenant/organization `eraneos` and user/twin `florian`.
+- The successful Knowledge Fabric response contained no access token, content
+  vector, or query vector. Duplicate evidence was supplied by Azure AI Search
+  and included vector, lexical, graph, and scope score sources.
+- The approved cleanup rejected the UAT revision through the governed review
+  route. A follow-up authenticated Search probe confirmed that the rejected
+  concept is no longer returned. Sanitized evidence is stored in
+  `docs/uat/authenticated-knowledge-fabric-uat-20261020.json`.
 
 ## Code fixes included
 
@@ -89,7 +101,7 @@ Date: 2026-10-20
 
 | Gate | State | Evidence/next action |
 | --- | --- | --- |
-| Authenticated Knowledge Fabric chat UAT | Ready to run | Submit one authenticated knowledge-staging request and verify the fresh n8n execution reports `_auth_diagnostic.present=true`. |
+| Authenticated Knowledge Fabric chat UAT | Complete | Execution `33062` staged one authenticated `review_needed` concept without exposing token/vector fields; the approved cleanup rejected it and confirmed Search exclusion. |
 | Agentic Butler skill UAT | Blocked | The `Me.IDs Eraneos LLM Gateway` credential expired on 2026-10-17. Rotate it in n8n and rerun a draft-only skill. |
 | Semantic production embeddings | Blocked | No Azure OpenAI resource is available in the visible subscriptions. Provision an approved 1,536-dimension deployment and grant the backend identity access. |
 | Retention approval | Blocked | Complete and approve `knowledge-retention-policy-template.md`. |

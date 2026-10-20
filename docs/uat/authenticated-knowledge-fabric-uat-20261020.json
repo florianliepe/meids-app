@@ -1,0 +1,55 @@
+{
+  "schema": "meids.authenticated-knowledge-fabric-uat.v1",
+  "generated_at": "2026-10-20T20:16:00Z",
+  "status": "passed",
+  "uat_id": "KF-UAT-20261020-1792526117614",
+  "executions": {
+    "actor_twin": "33061",
+    "knowledge_fabric": "33062",
+    "cleanup_session": "33067"
+  },
+  "authentication": {
+    "diagnostic_present": true,
+    "token_segments": 3,
+    "token_exposed": false
+  },
+  "ownership": {
+    "tenant_id": "eraneos",
+    "organization_id": "eraneos",
+    "user_id": "florian",
+    "twin_id": "florian"
+  },
+  "persistence": {
+    "concept_id": "2228b10b-0d69-4d8b-b8cc-bd0f7b9ff287",
+    "revision": 1,
+    "initial_review_state": "review_needed",
+    "stage_status": "staged",
+    "stage_outbox_status": "pending"
+  },
+  "duplicate_check": {
+    "provider": "azure_ai_search",
+    "retrieval_mode": "keyword_only",
+    "status": "strong_duplicate",
+    "recommended_action": "stage_merge_delta_or_reject_duplicate",
+    "merge_candidate_count": 5,
+    "retrieval_result_count": 2,
+    "score_sources": [
+      "vector_similarity",
+      "lexical_overlap",
+      "graph_proximity",
+      "scope_compatibility"
+    ]
+  },
+  "response_sanitization": {
+    "knowledge_access_token": false,
+    "content_vector": false,
+    "query_vector": false
+  },
+  "cleanup": {
+    "decision": "reject",
+    "status": "rejected",
+    "review_state": "rejected",
+    "outbox_status": "pending",
+    "search_probe_target_present": false
+  }
+}

@@ -18,7 +18,7 @@ This backend is the production boundary for agent runtime calls. GitHub Pages ma
 - `POST /api/vector-index/search`
 - `POST /api/knowledge/duplicate-check`
 - `POST /api/knowledge/stage`
-- `POST /api/knowledge/promote`
+- `POST /api/knowledge/promote` with `decision: "approve"` (default) or `decision: "reject"`
 - `POST /api/learning/increments`
 - `POST /api/learning/post-turn`
 

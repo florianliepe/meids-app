@@ -95,7 +95,20 @@ if (Get-Command gh -ErrorAction SilentlyContinue) {
   }
 }
 
-$gates += New-Gate 'Authenticated Knowledge Fabric chat UAT' 'human_required' 'Requires approval to create one persisted review_needed test concept.'
+$knowledgeUatEvidencePath = Join-Path $PSScriptRoot '..\docs\uat\authenticated-knowledge-fabric-uat-20261020.json'
+$knowledgeUatPassed = $false
+if (Test-Path -LiteralPath $knowledgeUatEvidencePath) {
+  try {
+    $knowledgeUatEvidence = Get-Content -LiteralPath $knowledgeUatEvidencePath -Raw | ConvertFrom-Json
+    $knowledgeUatPassed = $knowledgeUatEvidence.status -eq 'passed' -and
+      $knowledgeUatEvidence.persistence.initial_review_state -eq 'review_needed' -and
+      $knowledgeUatEvidence.cleanup.review_state -eq 'rejected' -and
+      $knowledgeUatEvidence.cleanup.search_probe_target_present -eq $false
+  } catch {
+    $knowledgeUatPassed = $false
+  }
+}
+$gates += New-Gate 'Authenticated Knowledge Fabric chat UAT' $(if ($knowledgeUatPassed) { 'pass' } else { 'human_required' }) $(if ($knowledgeUatPassed) { 'Execution 33062 staged one authenticated review_needed concept; cleanup rejected it and the Search probe confirmed it is absent.' } else { 'Requires approval to create one persisted review_needed test concept.' })
 $gates += New-Gate 'Agentic Butler credential and skill UAT' 'human_required' 'Rotate the expired n8n LLM gateway credential, then test normal and new-skill routes.'
 $gates += New-Gate 'Knowledge retention governance' 'human_required' 'Legal/Records, Security, and the data owner must approve the retention template.'
 

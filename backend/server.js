@@ -18,6 +18,7 @@ const {
   stageKnowledge,
   stageLearning,
   promoteKnowledge,
+  rejectKnowledge,
   backfillKnowledgeSearch,
   processOutboxBatch,
 } = require("./knowledgePersistence");
@@ -1244,6 +1245,9 @@ function candidateDuplicateTerms(candidate = {}) {
     candidate.name,
     candidate.purpose,
     candidate.summary,
+    candidate.text,
+    candidate.query,
+    candidate.chatInput,
     ...(Array.isArray(candidate.aliases) ? candidate.aliases : []),
     ...(Array.isArray(candidate.tags) ? candidate.tags : []),
   ].filter(Boolean);
@@ -1301,13 +1305,15 @@ async function handleKnowledgeDuplicateCheck(req, res) {
     candidate.purpose,
     candidate.summary,
     candidate.text,
+    candidate.query,
+    candidate.chatInput,
     Array.isArray(candidate.aliases) ? candidate.aliases.join(" ") : "",
   ].filter(Boolean).join("\n").trim();
   if (!queryText) {
     jsonResponse(res, 400, {
       status: "failed",
       duplicate_check: { status: "insufficient_evidence" },
-      error: "Duplicate check requires candidate title, purpose, summary, text, or aliases.",
+      error: "Duplicate check requires candidate title, purpose, summary, text, query, chatInput, or aliases.",
     });
     return;
   }
@@ -1860,7 +1866,27 @@ async function handleKnowledgePromote(req, res) {
   }
   const body = await readBody(req);
   const mapping = await requireKnowledgeRequestMapping(req, body);
+  if (String(body.decision || "approve").toLowerCase() === "reject") {
+    jsonResponse(res, 200, await rejectKnowledge(await getPgPool(), mapping, body));
+    return;
+  }
   jsonResponse(res, 200, await promoteKnowledge(await getPgPool(), mapping, body));
+}
+
+async function handleKnowledgeReject(req, res) {
+  if (!postgresEnabled()) {
+    const error = new Error("Knowledge rejection requires PostgreSQL storage mode.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const body = await readBody(req);
+  if (String(body.decision || "reject").toLowerCase() !== "reject") {
+    const error = new Error("The knowledge review endpoint currently supports decision=reject only.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const mapping = await requireKnowledgeRequestMapping(req, body);
+  jsonResponse(res, 200, await rejectKnowledge(await getPgPool(), mapping, body));
 }
 
 async function handleKnowledgeBackfill(req, res) {
@@ -2186,6 +2212,14 @@ async function routeRequest(req, res) {
     }
     if (req.method === "POST" && url.pathname === "/api/knowledge/promote") {
       await handleKnowledgePromote(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/knowledge/reject") {
+      await handleKnowledgeReject(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/knowledge/review") {
+      await handleKnowledgeReject(req, res);
       return;
     }
     if (req.method === "POST" && url.pathname === "/api/knowledge/rebuild-search") {

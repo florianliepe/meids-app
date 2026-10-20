@@ -1,129 +1,129 @@
 {
-    "schema":  "meids.public-launch-readiness.v1",
-    "generated_at":  "2026-10-20T15:25:57.4840978Z",
-    "subscription_id":  "25c9ce59-90a1-4e8a-a2d4-1853a19bce22",
-    "resource_group":  "rg-ai-intellectual-twin",
-    "summary":  {
-                    "pass":  7,
-                    "blocked":  0,
-                    "human_required":  5,
-                    "unknown":  0
-                },
-    "gates":  [
-                  {
-                      "name":  "Backend App Service",
-                      "state":  "pass",
-                      "evidence":  "state=Running; httpsOnly=True; managedIdentity=True"
-                  },
-                  {
-                      "name":  "Production Storage private boundary",
-                      "state":  "pass",
-                      "evidence":  "publicNetworkAccess=Disabled; defaultAction=Deny; sharedKey=False"
-                  },
-                  {
-                      "name":  "Production Search private boundary",
-                      "state":  "pass",
-                      "evidence":  "status=running; provisioning=Succeeded; publicNetworkAccess=Disabled; localAuthDisabled=True"
-                  },
-                  {
-                      "name":  "Legacy Search public closure",
-                      "state":  "pass",
-                      "evidence":  "publicNetworkAccess=Disabled"
-                  },
-                  {
-                      "name":  "PostgreSQL service",
-                      "state":  "pass",
-                      "evidence":  "state=Ready; publicNetworkAccess=Disabled; ha=SameZone; standbyZone=1; retentionDays=35; geoBackup=Enabled"
-                  },
-                  {
-                      "name":  "Zone-redundant PostgreSQL HA",
-                      "state":  "human_required",
-                      "evidence":  "West Europe currently reports ZoneRedundantHa unavailable; risk-owner sign-off is required for SameZone launch."
-                  },
-                  {
-                      "name":  "Production semantic embeddings",
-                      "state":  "human_required",
-                      "evidence":  "azureOpenAiAccounts=0; endpointConfigured=False; deploymentConfigured=False; authModeConfigured=True; dimensionsConfigured=True"
-                  },
-                  {
-                      "name":  "Published n8n primary workflows",
-                      "state":  "pass",
-                      "evidence":  "active=3/3"
-                  },
-                  {
-                      "name":  "GitHub deployment workflows",
-                      "state":  "pass",
-                      "evidence":  "successful=3/3"
-                  },
-                  {
-                      "name":  "Authenticated Knowledge Fabric chat UAT",
-                      "state":  "human_required",
-                      "evidence":  "Requires approval to create one persisted review_needed test concept."
-                  },
-                  {
-                      "name":  "Agentic Butler credential and skill UAT",
-                      "state":  "human_required",
-                      "evidence":  "Rotate the expired n8n LLM gateway credential, then test normal and new-skill routes."
-                  },
-                  {
-                      "name":  "Knowledge retention governance",
-                      "state":  "human_required",
-                      "evidence":  "Legal/Records, Security, and the data owner must approve the retention template."
-                  }
-              ],
-    "n8n_workflows":  [
-                          {
-                              "role":  "actor_twin",
-                              "id":  "eKI3qM7nyCNn9r1q",
-                              "name":  "MeIDs Actor Twin - staging",
-                              "active":  true,
-                              "updatedAt":  "2026-10-20T14:34:50.069Z",
-                              "nodes":  8
-                          },
-                          {
-                              "role":  "knowledge_fabric",
-                              "id":  "7Ci86PxXipwvYpKv",
-                              "name":  "MeIDs Knowledge Fabric Agent - staging",
-                              "active":  true,
-                              "updatedAt":  "2026-10-20T14:34:53.119Z",
-                              "nodes":  11
-                          },
-                          {
-                              "role":  "agentic_butler",
-                              "id":  "KZOqZRUAnVfFEAYJ",
-                              "name":  "Me.IDs Agentic Butler - staging",
-                              "active":  true,
-                              "updatedAt":  "2026-10-20T14:34:55.630Z",
-                              "nodes":  9
-                          }
-                      ],
-    "deployment_runs":  [
-                            {
-                                "conclusion":  "success",
-                                "createdAt":  "2026-10-20T15:13:52Z",
-                                "databaseId":  39446482213,
-                                "headSha":  "2789c5ba824a4c65be1ec1421e07c92c3cc91be3",
-                                "status":  "completed",
-                                "url":  "https://github.com/florianliepe/meids-app/actions/runs/39446482213",
-                                "workflowName":  "Deploy Me.IDs backend to Azure App Service"
-                            },
-                            {
-                                "conclusion":  "success",
-                                "createdAt":  "2026-10-20T15:13:52Z",
-                                "databaseId":  39446483047,
-                                "headSha":  "2789c5ba824a4c65be1ec1421e07c92c3cc91be3",
-                                "status":  "completed",
-                                "url":  "https://github.com/florianliepe/meids-app/actions/runs/39446483047",
-                                "workflowName":  "Deploy Me.IDs frontend to Azure Static Web Apps"
-                            },
-                            {
-                                "conclusion":  "success",
-                                "createdAt":  "2026-10-20T15:13:52Z",
-                                "databaseId":  39446483102,
-                                "headSha":  "2789c5ba824a4c65be1ec1421e07c92c3cc91be3",
-                                "status":  "completed",
-                                "url":  "https://github.com/florianliepe/meids-app/actions/runs/39446483102",
-                                "workflowName":  "Deploy MeIDs frontend to GitHub Pages"
-                            }
-                        ]
+  "schema": "meids.public-launch-readiness.v1",
+  "generated_at": "2026-10-20T20:18:16.5457686Z",
+  "subscription_id": "25c9ce59-90a1-4e8a-a2d4-1853a19bce22",
+  "resource_group": "rg-ai-intellectual-twin",
+  "summary": {
+    "pass": 8,
+    "blocked": 0,
+    "human_required": 4,
+    "unknown": 0
+  },
+  "gates": [
+    {
+      "name": "Backend App Service",
+      "state": "pass",
+      "evidence": "state=Running; httpsOnly=True; managedIdentity=True"
+    },
+    {
+      "name": "Production Storage private boundary",
+      "state": "pass",
+      "evidence": "publicNetworkAccess=Disabled; defaultAction=Deny; sharedKey=False"
+    },
+    {
+      "name": "Production Search private boundary",
+      "state": "pass",
+      "evidence": "status=running; provisioning=Succeeded; publicNetworkAccess=Disabled; localAuthDisabled=True"
+    },
+    {
+      "name": "Legacy Search public closure",
+      "state": "pass",
+      "evidence": "publicNetworkAccess=Disabled"
+    },
+    {
+      "name": "PostgreSQL service",
+      "state": "pass",
+      "evidence": "state=Ready; publicNetworkAccess=Disabled; ha=SameZone; standbyZone=1; retentionDays=35; geoBackup=Enabled"
+    },
+    {
+      "name": "Zone-redundant PostgreSQL HA",
+      "state": "human_required",
+      "evidence": "West Europe currently reports ZoneRedundantHa unavailable; risk-owner sign-off is required for SameZone launch."
+    },
+    {
+      "name": "Production semantic embeddings",
+      "state": "human_required",
+      "evidence": "azureOpenAiAccounts=0; endpointConfigured=False; deploymentConfigured=False; authModeConfigured=True; dimensionsConfigured=True"
+    },
+    {
+      "name": "Published n8n primary workflows",
+      "state": "pass",
+      "evidence": "active=3/3"
+    },
+    {
+      "name": "GitHub deployment workflows",
+      "state": "pass",
+      "evidence": "successful=3/3"
+    },
+    {
+      "name": "Authenticated Knowledge Fabric chat UAT",
+      "state": "pass",
+      "evidence": "Execution 33062 staged one authenticated review_needed concept; cleanup rejected it and the Search probe confirmed it is absent."
+    },
+    {
+      "name": "Agentic Butler credential and skill UAT",
+      "state": "human_required",
+      "evidence": "Rotate the expired n8n LLM gateway credential, then test normal and new-skill routes."
+    },
+    {
+      "name": "Knowledge retention governance",
+      "state": "human_required",
+      "evidence": "Legal/Records, Security, and the data owner must approve the retention template."
+    }
+  ],
+  "n8n_workflows": [
+    {
+      "role": "actor_twin",
+      "id": "eKI3qM7nyCNn9r1q",
+      "name": "MeIDs Actor Twin - staging",
+      "active": true,
+      "updatedAt": "2026-10-20T20:01:53.577Z",
+      "nodes": 8
+    },
+    {
+      "role": "knowledge_fabric",
+      "id": "7Ci86PxXipwvYpKv",
+      "name": "MeIDs Knowledge Fabric Agent - staging",
+      "active": true,
+      "updatedAt": "2026-10-20T19:57:18.953Z",
+      "nodes": 11
+    },
+    {
+      "role": "agentic_butler",
+      "id": "KZOqZRUAnVfFEAYJ",
+      "name": "Me.IDs Agentic Butler - staging",
+      "active": true,
+      "updatedAt": "2026-10-20T14:34:55.63Z",
+      "nodes": 9
+    }
+  ],
+  "deployment_runs": [
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-20T15:13:52Z",
+      "databaseId": 39446482213,
+      "headSha": "2789c5ba824a4c65be1ec1421e07c92c3cc91be3",
+      "status": "completed",
+      "url": "https://github.com/florianliepe/meids-app/actions/runs/39446482213",
+      "workflowName": "Deploy Me.IDs backend to Azure App Service"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-20T15:13:52Z",
+      "databaseId": 39446483047,
+      "headSha": "2789c5ba824a4c65be1ec1421e07c92c3cc91be3",
+      "status": "completed",
+      "url": "https://github.com/florianliepe/meids-app/actions/runs/39446483047",
+      "workflowName": "Deploy Me.IDs frontend to Azure Static Web Apps"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-20T15:13:52Z",
+      "databaseId": 39446483102,
+      "headSha": "2789c5ba824a4c65be1ec1421e07c92c3cc91be3",
+      "status": "completed",
+      "url": "https://github.com/florianliepe/meids-app/actions/runs/39446483102",
+      "workflowName": "Deploy MeIDs frontend to GitHub Pages"
+    }
+  ]
 }
