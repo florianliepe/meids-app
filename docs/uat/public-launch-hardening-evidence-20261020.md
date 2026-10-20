@@ -42,6 +42,11 @@ Date: 2026-10-20
   `tenant_id`, `user_id`, `twin_id`, and `organization_id`.
 - Knowledge Fabric and Butler Execute Workflow Triggers expose the same typed
   input contract.
+- Read-only n8n API revalidation after publication confirmed all three primary
+  workflows active: Actor Twin `eKI3qM7nyCNn9r1q` (8 nodes), Knowledge Fabric
+  `7Ci86PxXipwvYpKv` (11 nodes), and Agentic Butler
+  `KZOqZRUAnVfFEAYJ` (9 nodes). Their live update timestamps are
+  `2026-10-20T14:34:50Z` through `14:34:55Z`.
 - Workflow backups are stored under
   `exports/n8n-live-backups/20261020T143450Z-public-launch-auth-context/`.
 - Source baseline `43d65a9` is pushed to `origin/main`.
@@ -93,3 +98,11 @@ Date: 2026-10-20
    skill or generated-agent activation requests enter approval.
 5. Search can be rebuilt completely from PostgreSQL/Blob without deterministic
    production vectors.
+
+## Embedding resource inventory
+
+The `Microsoft.CognitiveServices` provider is registered and lists West Europe
+as a supported account location. An authenticated subscription inventory on
+2026-10-20 returned no Cognitive Services/OpenAI accounts. The launch blocker
+is therefore resource provisioning and model approval, not an unregistered
+provider or a missing application capability.
