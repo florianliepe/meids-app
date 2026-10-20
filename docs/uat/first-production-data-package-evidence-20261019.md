@@ -38,13 +38,26 @@ The transactional production data path is operational for signed Knowledge Fabri
 ## Open production gates
 
 1. Approve and configure the production 1,536-dimension embedding provider. The current five-row rebuild is complete because those rows already contain caller-supplied UAT vectors; future rows without vectors are safely deferred.
-2. Recover the n8n publication worker/editor state. The public publish API activates the correct routing graph, but the editor remains on `Publishing...`; node-only response changes may remain cached until the n8n runtime is recovered.
-3. Remove internal vectors from the live Knowledge Fabric response after that publication recovery. The canonical workflow already contains the sanitizer, but execution `32444` still used the prior cached response-node implementation.
-4. Add private endpoints and private DNS for Storage and Search, then disable their public network endpoints.
-5. Re-test zone-redundant PostgreSQL HA before public launch; retain same-zone HA if the region still blocks allocation.
+2. Run the final authenticated Knowledge Fabric chat UAT against the published
+   workflow and confirm no token or vector appears in the response or trace.
+3. Obtain retention-policy and temporary SameZone HA risk-owner sign-off.
+
+## Closure update: 2026-10-20
+
+- n8n publication recovery is complete. Actor Twin, Knowledge Fabric, and
+  Agentic Butler are active on versions published between `14:34:50Z` and
+  `14:34:55Z`.
+- The live Knowledge Fabric response path now removes
+  `_knowledge_access_token`, `content_vector`, and `query_vector` before the
+  response node. Runtime acceptance remains part of the final authenticated
+  chat UAT above.
+- Production Search and Blob private endpoints and private DNS are active;
+  public network access is disabled.
+- PostgreSQL HA was revalidated. West Europe currently reports
+  `ZoneRedundantHa=Disabled`; healthy SameZone HA remains the documented
+  temporary exception with 35-day retention and geo backup.
 
 ## Human inputs
 
 - Provide or approve the embedding service route: endpoint, deployment/model, dimensions, authentication method, and quota owner.
-- Approve a short n8n maintenance window if publication-worker recovery requires restarting the shared n8n App Service.
 - Confirm approved-knowledge retention/deletion policy.
