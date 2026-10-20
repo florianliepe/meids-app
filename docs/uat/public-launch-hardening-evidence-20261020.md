@@ -45,13 +45,23 @@ Date: 2026-10-20
 - Workflow backups are stored under
   `exports/n8n-live-backups/20261020T143450Z-public-launch-auth-context/`.
 - Source baseline `43d65a9` is pushed to `origin/main`.
+- OIDC deployment update `2789c5b` is pushed to `origin/main`.
 - GitHub backend deployment uses OIDC identity
   `id-meids-github-deployer`, federated only to the repository's `main`
   branch and scoped as `Website Contributor` on
   `meids-prod-backend-1853a19b`.
-- Frontend Azure Static Web Apps and GitHub Pages deployments were triggered
-  by the source-baseline push; backend deployment is path-scoped to backend or
-  package changes.
+- GitHub Actions run `39446482213` passed after the federated credential was
+  aligned with the enterprise-bound repository subject. OIDC sign-in, backend
+  contract validation, package deployment, and App Service state verification
+  all passed.
+- Azure Static Web Apps run `39446483047` passed, including frontend, n8n,
+  OKF, graph, vector, and PostgreSQL projection validation.
+- GitHub Pages sandbox run `39446483102` passed from the same commit.
+- Post-deploy boundary probe: the Azure Static Web App root returned `200`;
+  unauthenticated `/api/health` through the Static Web App returned `302` to
+  `/login`; and direct unauthenticated App Service access returned `401`.
+  This confirms that the supported production API route remains behind the
+  Static Web App authentication boundary.
 
 ## Code fixes included
 
