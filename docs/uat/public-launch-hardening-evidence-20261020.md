@@ -71,6 +71,10 @@ Date: 2026-10-20
   token, JWT, or Azure Storage connection string. GitHub secret scanning
   reported zero open alerts. One lexical `sk-` match was inspected and was a
   harmless UAT filename containing `task-skill-orchestrator`, not a key.
+- Exact-current-main validation passed for the backend and knowledge-access
+  contracts, all agent fixtures and routing/handoff contracts, frontend
+  JavaScript syntax, 18 OKF fixture files, graph promotions, vector-adapter
+  fixtures, and the PostgreSQL graph projection schema.
 
 ## Code fixes included
 
