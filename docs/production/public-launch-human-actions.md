@@ -40,10 +40,31 @@ dimensions, managed-identity authentication.
    subscription and region.
 2. Deploy `text-embedding-3-small` with sufficient quota for ingestion and
    rebuild traffic.
-3. Assign the managed identity of
-   `meids-prod-backend-1853a19b` the **Cognitive Services OpenAI User** role on
-   the Azure OpenAI resource.
-4. Set these App Service settings:
+3. Ensure the operator running the activation has permission to assign the
+   **Cognitive Services OpenAI User** role on the Azure OpenAI resource. The
+   helper assigns that role to the managed identity of
+   `meids-prod-backend-1853a19b`.
+4. From the repository root, validate and activate the approved resource with
+   the guarded helper. The first command makes no Azure changes:
+
+   ```powershell
+   .\scripts\activate-production-embeddings.ps1 `
+     -AzureOpenAiResourceGroup '<resource-group>' `
+     -AzureOpenAiAccountName '<account-name>' `
+     -EmbeddingDeploymentName '<deployment-name>'
+
+   .\scripts\activate-production-embeddings.ps1 `
+     -AzureOpenAiResourceGroup '<resource-group>' `
+     -AzureOpenAiAccountName '<account-name>' `
+     -EmbeddingDeploymentName '<deployment-name>' `
+     -Apply -Confirm
+   ```
+
+   The activation script validates `text-embedding-3-small`, assigns the
+   managed-identity role, removes any `AZURE_OPENAI_API_KEY` setting, applies
+   the four non-secret settings, restarts the backend, and verifies the
+   control-plane state.
+5. The resulting App Service settings are:
 
    ```text
    AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com
@@ -52,7 +73,6 @@ dimensions, managed-identity authentication.
    AZURE_OPENAI_EMBEDDING_DIMENSIONS=1536
    ```
 
-5. Restart the backend App Service.
 6. Run one semantic embedding probe, ingest one reviewed OKF concept, and
    verify that Azure AI Search receives exactly 1,536 numeric dimensions.
 7. Run a complete PostgreSQL-to-Search rebuild and compare document counts.
