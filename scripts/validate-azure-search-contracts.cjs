@@ -76,9 +76,15 @@ for (const fileName of requiredSchemas) {
   if (!vector.vectorSearchProfile) fail(`${fileName}: content_vector must declare vectorSearchProfile`);
   if (!schema.vectorSearch?.profiles?.length) fail(`${fileName}: vectorSearch.profiles missing`);
   if (!schema.semantic?.configurations?.length) fail(`${fileName}: semantic configuration missing`);
+  if (!schema.semantic.configurations.some((configuration) => configuration.name === "meids-semantic")) {
+    fail(`${fileName}: canonical meids-semantic configuration missing`);
+  }
 }
 
 const adapter = require("../backend/azureSearch");
+if (adapter.DEFAULT_SEMANTIC_CONFIGURATION !== "meids-semantic") {
+  fail("Runtime semantic configuration must match the canonical Search schemas");
+}
 const filter = adapter.buildActorTwinFilter({ organizationId: "org", twinId: "florian", includeShared: true });
 for (const literal of ["organization_id eq 'org'", "knowledge_state eq 'approved'", "twin_id eq 'florian'", "visibility_scope eq 'org_shared'"]) {
   if (!filter.includes(literal)) fail(`Actor Twin filter missing ${literal}`);

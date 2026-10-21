@@ -8,6 +8,7 @@ const DEFAULT_AZURE_OPENAI_API_VERSION = "2024-02-01";
 const DEFAULT_APPROVED_INDEX = "meids-okf-approved-v1";
 const DEFAULT_WORKING_INDEX = "meids-okf-working-v1";
 const DEFAULT_EMBEDDING_DIMENSIONS = 1536;
+const DEFAULT_SEMANTIC_CONFIGURATION = "meids-semantic";
 const SEARCH_TOKEN_RESOURCE = "https://search.azure.com";
 const COGNITIVE_SERVICES_TOKEN_RESOURCE = "https://cognitiveservices.azure.com";
 const MANAGED_IDENTITY_API_VERSION = "2019-08-01";
@@ -582,7 +583,7 @@ async function searchVectorKnowledge(query = {}, config = azureSearchConfigFromE
       k: Number(query.k || query.top || 5),
     }];
     body.queryType = "semantic";
-    body.semanticConfiguration = query.semantic_configuration || "okf-semantic";
+    body.semanticConfiguration = query.semantic_configuration || DEFAULT_SEMANTIC_CONFIGURATION;
     body.captions = "extractive";
     body.answers = "extractive";
     retrievalMode = "hybrid_vector_semantic";
@@ -628,6 +629,7 @@ async function searchVectorKnowledge(query = {}, config = azureSearchConfigFromE
 }
 
 module.exports = {
+  DEFAULT_SEMANTIC_CONFIGURATION,
   DEFAULT_APPROVED_INDEX,
   DEFAULT_WORKING_INDEX,
   azureSearchConfigFromEnv,
