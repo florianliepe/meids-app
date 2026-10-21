@@ -1,12 +1,12 @@
 {
   "schema": "meids.public-launch-readiness.v1",
-  "generated_at": "2026-10-21T08:34:54.1764480Z",
+  "generated_at": "2026-10-21T11:40:17.2302990Z",
   "subscription_id": "25c9ce59-90a1-4e8a-a2d4-1853a19bce22",
   "resource_group": "rg-ai-intellectual-twin",
   "summary": {
-    "pass": 11,
+    "pass": 12,
     "blocked": 0,
-    "human_required": 1,
+    "human_required": 0,
     "unknown": 0
   },
   "gates": [
@@ -42,8 +42,8 @@
     },
     {
       "name": "Production semantic embeddings",
-      "state": "human_required",
-      "evidence": "provider=unconfigured; azureOpenAiAccounts=0; dimensionsConfigured=True; gatewayEndpointConfigured=False; gatewayModelConfigured=False"
+      "state": "pass",
+      "evidence": "provider=eraneos_gateway; azureOpenAiAccounts=0; dimensionsConfigured=True; gatewayEndpointConfigured=True; gatewayModelConfigured=True"
     },
     {
       "name": "Published n8n primary workflows",
@@ -100,29 +100,29 @@
   "deployment_runs": [
     {
       "conclusion": "success",
-      "createdAt": "2026-10-20T20:19:14Z",
-      "databaseId": 39490953456,
-      "headSha": "43c1a76446425eda0ef4436b95d93d8e3a39e9c6",
+      "createdAt": "2026-10-21T11:36:12Z",
+      "databaseId": 39593169874,
+      "headSha": "69fc6aa1136eac414003f02b7125c309ecab7efe",
       "status": "completed",
-      "url": "https://github.com/florianliepe/meids-app/actions/runs/39490953456",
+      "url": "https://github.com/florianliepe/meids-app/actions/runs/39593169874",
       "workflowName": "Deploy Me.IDs backend to Azure App Service"
     },
     {
       "conclusion": "success",
-      "createdAt": "2026-10-20T20:19:14Z",
-      "databaseId": 39490953472,
-      "headSha": "43c1a76446425eda0ef4436b95d93d8e3a39e9c6",
+      "createdAt": "2026-10-21T11:31:33Z",
+      "databaseId": 39592592956,
+      "headSha": "53be306556fdb7074e1def3dffe139847600c5d8",
       "status": "completed",
-      "url": "https://github.com/florianliepe/meids-app/actions/runs/39490953472",
+      "url": "https://github.com/florianliepe/meids-app/actions/runs/39592592956",
       "workflowName": "Deploy Me.IDs frontend to Azure Static Web Apps"
     },
     {
       "conclusion": "success",
-      "createdAt": "2026-10-20T20:19:14Z",
-      "databaseId": 39490953671,
-      "headSha": "43c1a76446425eda0ef4436b95d93d8e3a39e9c6",
+      "createdAt": "2026-10-21T11:31:33Z",
+      "databaseId": 39592592731,
+      "headSha": "53be306556fdb7074e1def3dffe139847600c5d8",
       "status": "completed",
-      "url": "https://github.com/florianliepe/meids-app/actions/runs/39490953671",
+      "url": "https://github.com/florianliepe/meids-app/actions/runs/39592592731",
       "workflowName": "Deploy MeIDs frontend to GitHub Pages"
     }
   ]

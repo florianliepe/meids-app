@@ -169,12 +169,13 @@ if (adapter.statusFromConfig(eraneosGatewayEmbeddingConfig).embedding.provider !
 const readiness = readJson(readinessAsset);
 if (readiness.status !== "ready_for_secret_activation") fail("Azure vector readiness asset must be ready_for_secret_activation");
 const liveActivation = readJson(liveActivationAsset);
-if (liveActivation.status !== "blocked_until_backend_and_embedding_secrets") fail("Azure vector live activation asset must reflect current live blockers");
-if (liveActivation.portal_observation?.search_endpoint !== "https://srch-intellectual-twin.search.windows.net") {
-  fail("Azure vector live activation asset must reference srch-intellectual-twin endpoint");
+if (liveActivation.status !== "active_semantic_production") fail("Azure vector live activation asset must reflect semantic production activation");
+if (liveActivation.portal_observation?.search_endpoint !== "https://srch-meids-prod-1853a19b.search.windows.net") {
+  fail("Azure vector live activation asset must reference the production Search endpoint");
 }
 if (liveActivation.readiness?.azure_search_service_ready !== true) fail("Azure Search service must be marked ready in live activation asset");
-if (liveActivation.readiness?.azure_search_indexes_ready !== false) fail("Azure Search indexes must remain blocked until live setup executes");
+if (liveActivation.readiness?.azure_search_indexes_ready !== true) fail("Azure Search indexes must be marked ready after live setup");
+if (liveActivation.activation_evidence?.deterministic_fallback !== false) fail("Production deterministic fallback must be disabled");
 const n8nNode = readJson(n8nVectorRefreshNode);
 if (n8nNode.node?.parameters?.url !== "={{ $env.MEIDS_BACKEND_URL }}/api/vector-index/rebuild") {
   fail("Knowledge Fabric vector refresh node must call backend /api/vector-index/rebuild");

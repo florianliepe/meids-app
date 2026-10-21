@@ -1,0 +1,54 @@
+{
+  "schema": "meids.production-semantic-embedding-uat.v1",
+  "generated_at": "2026-10-21T11:39:00Z",
+  "status": "passed",
+  "provider": {
+    "id": "eraneos_gateway",
+    "endpoint": "https://ai-gateway.eraneos.com/v1/embeddings",
+    "model": "text-embedding-3-large",
+    "dimensions": 1536,
+    "credential_boundary": "Azure Key Vault reference on the backend App Service"
+  },
+  "governed_ingest": {
+    "concept_id": "611b5911-bc29-45f1-9cb8-9084e3450de3",
+    "revision": 1,
+    "initial_review_state": "review_needed",
+    "outbox_status_on_stage": "pending",
+    "caller_supplied_vector": false
+  },
+  "retrieval": {
+    "provider": "azure_ai_search",
+    "retrieval_mode": "hybrid_vector_semantic",
+    "target_found": true,
+    "target_state": "pending-review",
+    "semantic_configuration": "meids-semantic"
+  },
+  "complete_rebuild": {
+    "status": "completed",
+    "source_rows": 9,
+    "projected_documents": 9,
+    "deferred_documents": 0,
+    "embedding_provider": "eraneos_gateway",
+    "embedding_dimensions": 1536,
+    "caller_supplied_vectors": 5,
+    "deterministic_fallback": false
+  },
+  "cleanup": {
+    "decision": "reject",
+    "review_state": "rejected",
+    "projector_polls": 3,
+    "search_target_present_after_cleanup": false
+  },
+  "security": {
+    "signed_knowledge_access_token_used": true,
+    "token_exposed": false,
+    "gateway_key_exposed": false,
+    "vector_exposed": false,
+    "unsigned_vector_rebuild_status": 401
+  },
+  "deployments": {
+    "embedding_activation_commit": "53be306556fdb7074e1def3dffe139847600c5d8",
+    "semantic_alignment_commit": "69fc6aa1136eac414003f02b7125c309ecab7efe",
+    "backend_run": 39593169874
+  }
+}

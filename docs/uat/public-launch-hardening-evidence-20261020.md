@@ -97,6 +97,15 @@ Date: 2026-10-20
 - Florian Liepe accepted the SameZone PostgreSQL exception through
   2027-01-21. Capacity is rechecked quarterly and zone-redundant HA is adopted
   when available.
+- Production semantic embedding UAT passed with the Eraneos AI Gateway model
+  `text-embedding-3-large`. A governed `review_needed` concept was retrieved
+  with `hybrid_vector_semantic`; a complete nine-row rebuild projected all
+  documents with zero deferrals, 1,536 dimensions, and
+  `deterministic_fallback=false`; cleanup rejected and removed the UAT concept.
+- The first retrieval probe found a runtime/schema name mismatch
+  (`okf-semantic` versus canonical `meids-semantic`). Commit `69fc6aa` aligned
+  runtime behavior and added a contract assertion; deployment run
+  `39593169874` passed.
 
 ## Code fixes included
 
@@ -113,7 +122,7 @@ Date: 2026-10-20
 | --- | --- | --- |
 | Authenticated Knowledge Fabric chat UAT | Complete | Execution `33062` staged one authenticated `review_needed` concept without exposing token/vector fields; the approved cleanup rejected it and confirmed Search exclusion. |
 | Agentic Butler skill UAT | Complete | Executions `33256` and `33253` passed normal and approval-gated acceptance criteria. |
-| Semantic production embeddings | Ready for activation | Backend supports the approved Eraneos AI Gateway; configure its base URL and model ID, deploy, and run semantic ingest/rebuild UAT. |
+| Semantic production embeddings | Complete | `docs/uat/production-semantic-embedding-uat-20261021.json` records governed ingest, hybrid semantic retrieval, complete rebuild, and cleanup without deterministic fallback. |
 | Retention approval | Accepted for launch | Florian Liepe approved the launch schedule on 2026-10-21; enterprise Legal/Records and Security alignment remains required before external customer use. |
 | Zone-redundant PostgreSQL HA | Accepted exception | Risk owner Florian Liepe accepted SameZone through 2027-01-21; capacity is rechecked quarterly. |
 
@@ -129,10 +138,9 @@ Date: 2026-10-20
 5. Search can be rebuilt completely from PostgreSQL/Blob without deterministic
    production vectors.
 
-## Embedding resource inventory
+## Embedding provider inventory
 
-The `Microsoft.CognitiveServices` provider is registered and lists West Europe
-as a supported account location. An authenticated subscription inventory on
-2026-10-20 returned no Cognitive Services/OpenAI accounts. The launch blocker
-is therefore resource provisioning and model approval, not an unregistered
-provider or a missing application capability.
+Production uses the approved OpenAI-compatible Eraneos AI Gateway rather than
+a subscription-local Azure OpenAI account. The backend App Service holds only
+a Key Vault reference, uses model `text-embedding-3-large`, requests 1,536
+dimensions, and rejects dimension mismatches before Search writes.

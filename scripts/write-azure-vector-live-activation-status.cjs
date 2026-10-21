@@ -6,82 +6,81 @@ const outputPath = path.join(root, "frontend", "assets", "azure-vector-live-acti
 const checkMode = process.argv.includes("--check");
 
 const evidence = {
-  schema_version: "0.1.0",
+  schema_version: "0.2.0",
   generated_at: new Date().toISOString(),
-  status: "blocked_until_backend_and_embedding_secrets",
-  boundary: "Public-safe live activation status. No Azure keys, OpenAI keys, or backend secrets are stored here.",
+  status: "active_semantic_production",
+  boundary: "Public-safe live activation status. No Azure keys, gateway keys, or backend secrets are stored here.",
   portal_observation: {
-    observed_at: "2026-08-12",
+    observed_at: "2026-10-21",
     subscription_id: "25c9ce59-90a1-4e8a-a2d4-1853a19bce22",
     resource_group: "rg-ai-intellectual-twin",
-    search_service: "srch-intellectual-twin",
-    search_endpoint: "https://srch-intellectual-twin.search.windows.net",
+    backend_app_service: "meids-prod-backend-1853a19b",
+    search_service: "srch-meids-prod-1853a19b",
+    search_endpoint: "https://srch-meids-prod-1853a19b.search.windows.net",
     location: "West Europe",
     pricing_tier: "Basic",
     status: "Running",
-    observed_indexes: [],
+    observed_indexes: ["meids-okf-approved-v1", "meids-okf-working-v1"],
     resource_group_resources_observed: [
-      {
-        name: "srch-intellectual-twin",
-        type: "Search service (Foundry IQ)",
-        location: "West Europe"
-      }
+      { name: "srch-meids-prod-1853a19b", type: "Search service (Foundry IQ)", location: "West Europe" },
+      { name: "meids-prod-backend-1853a19b", type: "App Service", location: "West Europe" }
     ]
   },
   readiness: {
     azure_search_service_ready: true,
-    azure_search_indexes_ready: false,
-    backend_app_service_identified: false,
-    backend_secret_slots_ready: false,
-    azure_openai_embeddings_identified: false,
-    first_live_upsert_completed: false,
-    actor_twin_vector_uat_completed: false,
-    knowledge_fabric_vector_refresh_wired: false
+    azure_search_indexes_ready: true,
+    backend_app_service_identified: true,
+    backend_secret_slots_ready: true,
+    semantic_embeddings_identified: true,
+    first_live_upsert_completed: true,
+    actor_twin_vector_uat_completed: true,
+    knowledge_fabric_vector_refresh_wired: true
   },
   required_backend_settings: [
+    "MEIDS_EMBEDDING_PROVIDER",
+    "ERANEOS_AI_GATEWAY_BASE_URL",
+    "ERANEOS_AI_GATEWAY_EMBEDDING_MODEL",
+    "ERANEOS_AI_GATEWAY_API_KEY",
+    "MEIDS_ALLOW_DETERMINISTIC_VECTORS",
     "AZURE_SEARCH_ENDPOINT",
-    "AZURE_SEARCH_API_KEY",
+    "AZURE_SEARCH_AUTH_MODE",
     "AZURE_SEARCH_APPROVED_INDEX",
     "AZURE_SEARCH_WORKING_INDEX",
     "AZURE_SEARCH_API_VERSION",
-    "AZURE_OPENAI_ENDPOINT",
-    "AZURE_OPENAI_API_KEY",
-    "AZURE_OPENAI_EMBEDDING_DEPLOYMENT",
-    "AZURE_OPENAI_API_VERSION",
     "AZURE_OPENAI_EMBEDDING_DIMENSIONS"
   ],
   required_hosted_backend: {
-    purpose: "Secrets, Azure Search writes, embedding calls, vector retrieval, trace persistence, and n8n backend proxy calls must run server-side.",
-    current_blocker: "No backend App Service resource was visible in rg-ai-intellectual-twin during portal inspection.",
-    expected_endpoint_shape: "https://YOUR-BACKEND-HOST/api/vector-index/status"
+    purpose: "Secrets, Azure Search writes, embedding calls, vector retrieval, trace persistence, and n8n backend proxy calls run server-side.",
+    current_blocker: "none",
+    endpoint: "https://meids-prod-backend-1853a19b.azurewebsites.net"
   },
-  commands_after_secret_activation: {
-    index_setup_dry_run: "npm run setup:azure-search -- --dry-run",
-    index_setup_live: "npm run setup:azure-search",
-    hosted_status_probe: "Invoke-RestMethod -Uri \"https://YOUR-BACKEND-HOST/api/vector-index/status\" -Method Get",
-    first_upsert_dry_run: "node scripts/run-first-vector-upsert.cjs --dry-run --backend-url https://YOUR-BACKEND-HOST",
-    first_upsert_live: "node scripts/run-first-vector-upsert.cjs --backend-url https://YOUR-BACKEND-HOST",
-    actor_twin_vector_probe: "Invoke-RestMethod -Uri \"https://YOUR-BACKEND-HOST/api/vector-index/search\" -Method Post -ContentType \"application/json\" -Body '{\"query\":\"client delivery steering\",\"twin_id\":\"florian\",\"organization_id\":\"default\",\"source_policy\":\"approved_only\",\"top\":5}'"
+  activation_evidence: {
+    provider: "eraneos_gateway",
+    model: "text-embedding-3-large",
+    dimensions: 1536,
+    retrieval_mode: "hybrid_vector_semantic",
+    rebuild_source_rows: 9,
+    rebuild_deferred_documents: 0,
+    deterministic_fallback: false,
+    evidence_path: "docs/uat/production-semantic-embedding-uat-20261021.json"
   },
   next_actions: [
-    "Create or identify a hosted MeIDs backend App Service for backend/server.js.",
-    "Create or identify an Azure OpenAI embedding resource/deployment with 1536 dimensions.",
-    "Configure backend-only Azure Search and Azure OpenAI settings in App Service settings or Key Vault references.",
-    "Run Azure Search index setup from a trusted backend/operator environment.",
-    "Run the first approved OKF vector upsert against the hosted backend.",
-    "Wire Knowledge Fabric n8n approval flow to call the hosted backend vector refresh endpoint."
+    "Monitor gateway latency, error rate, and token consumption during UAT.",
+    "Repeat the signed rebuild after any embedding model, dimension, or Search schema change.",
+    "Rotate the gateway key through Key Vault without exposing it to frontend or workflow JSON."
   ]
 };
 
 function validate(data) {
   const errors = [];
-  if (data.status !== "blocked_until_backend_and_embedding_secrets") errors.push("Unexpected live activation status.");
-  if (data.portal_observation.search_endpoint !== "https://srch-intellectual-twin.search.windows.net") errors.push("Unexpected Azure Search endpoint.");
+  if (data.status !== "active_semantic_production") errors.push("Unexpected live activation status.");
+  if (data.portal_observation.search_endpoint !== "https://srch-meids-prod-1853a19b.search.windows.net") errors.push("Unexpected Azure Search endpoint.");
   if (!Array.isArray(data.portal_observation.observed_indexes)) errors.push("observed_indexes must be an array.");
   if (data.readiness.azure_search_service_ready !== true) errors.push("Azure Search service should be marked ready.");
-  if (data.readiness.azure_search_indexes_ready !== false) errors.push("Azure Search indexes should remain false until setup executes.");
+  if (data.readiness.azure_search_indexes_ready !== true) errors.push("Azure Search indexes should be marked ready.");
+  if (data.readiness.semantic_embeddings_identified !== true) errors.push("Semantic embeddings should be marked ready.");
+  if (data.activation_evidence.deterministic_fallback !== false) errors.push("Production deterministic fallback must remain disabled.");
   if (data.required_backend_settings.length < 10) errors.push("Required backend settings list is incomplete.");
-  if (!data.commands_after_secret_activation.index_setup_live.includes("setup:azure-search")) errors.push("Missing index setup command.");
   return errors;
 }
 

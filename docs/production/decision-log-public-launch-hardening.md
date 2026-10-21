@@ -23,12 +23,11 @@ Date: 2026-10-20
 | PL-017 | Rejection reuses the authenticated `/api/knowledge/promote` review route with `decision: reject`, emits an auditable outbox event, and removes the revision from both Search indexes. | The existing route is already admitted by the Azure authentication boundary, while newly introduced literal review paths are rejected before reaching the application. Reusing the governed endpoint preserves least privilege and gives UAT cleanup the same authorization and audit controls as promotion. | Implemented and UAT-tested |
 | PL-018 | The temporary SameZone PostgreSQL HA exception is owned by Florian Liepe through 2027-01-21 and reviewed quarterly. | A 90-day exception prevents an open-ended resilience downgrade. The service retains 35-day backup retention, geo-redundant backup, and a passed restore drill while West Europe zone-redundant capacity is unavailable. | Accepted through 2027-01-21 |
 | PL-019 | An Azure support request for zone-redundant PostgreSQL capacity is advisory, not a launch prerequisite. | The regional capability API already reports the feature unavailable. A support case may provide capacity guidance or an ETA, but it does not replace the accepted exception or guarantee capacity. | Accepted |
-| PL-020 | Production embeddings may use the OpenAI-compatible Eraneos AI Gateway, with the API key held in Key Vault and a fixed 1,536-dimensional contract. | This reuses the approved enterprise gateway without exposing a secret to n8n or the frontend. The backend validates vector dimensions before Search writes. | Implementation complete; activation values pending |
+| PL-020 | Production embeddings use the OpenAI-compatible Eraneos AI Gateway with `text-embedding-3-large`, the API key held in Key Vault, and a fixed 1,536-dimensional contract. | This reuses the approved enterprise gateway without exposing a secret to n8n or the frontend. Governed ingest, hybrid semantic retrieval, complete rebuild, and cleanup passed without deterministic fallback. | Implemented and UAT-tested |
 | PL-021 | The corrected callable-only Agentic Butler replaces the stale published child snapshot. | Fresh UAT proved normal drafting remains autonomous while new capability proposals stop at `skill_spec_approval`; the superseded workflow was deactivated only after both cases passed. | Implemented and UAT-tested |
+| PL-022 | The runtime semantic configuration name is fixed to the canonical Search schema value `meids-semantic`. | The first semantic probe exposed a runtime request for `okf-semantic` while both canonical indexes define `meids-semantic`. A contract assertion now prevents recurrence. | Implemented and UAT-tested |
 
 ## Human decisions still required
 
-1. Supply and activate the approved Eraneos embedding gateway base URL and
-   model ID, then run semantic ingest and rebuild UAT.
-2. Complete the enterprise Legal/Records and Security review of the approved
+1. Complete the enterprise Legal/Records and Security review of the approved
    launch retention schedule before external customer production use.

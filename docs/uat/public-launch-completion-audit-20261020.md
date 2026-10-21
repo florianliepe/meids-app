@@ -12,8 +12,8 @@ the requirement has direct current evidence and no remaining action.
 | Requirement | State | Authoritative evidence | Remaining action |
 | --- | --- | --- | --- |
 | Zielmodus instructions and decision record | Complete | `docs/production/zielmodus-public-launch-hardening.md`; `docs/production/decision-log-public-launch-hardening.md` | None |
-| Production embedding implementation | Ready | `backend/azureSearch.js` supports Azure OpenAI and the OpenAI-compatible Eraneos AI Gateway, keeps credentials server-side, and enforces 1,536 dimensions | Configure the approved gateway base URL and embedding model ID, deploy, and run semantic UAT |
-| Production semantic embedding UAT | Human-required | `docs/production/public-launch-human-actions.md` defines the semantic ingest and complete rebuild acceptance path | Run after the approved deployment exists |
+| Production embedding implementation | Complete | `backend/azureSearch.js` uses the OpenAI-compatible Eraneos AI Gateway, keeps credentials server-side, and enforces 1,536 dimensions | None |
+| Production semantic embedding UAT | Complete | `docs/uat/production-semantic-embedding-uat-20261021.json`: governed ingest, hybrid semantic retrieval, complete rebuild, and cleanup passed | None |
 | n8n publication recovery | Complete | Actor `eKI3qM7nyCNn9r1q` and Knowledge Fabric `7Ci86PxXipwvYpKv` remain active; Actor now targets corrected callable Butler `tK8c6ZN89IpMRulz` | None |
 | Explicit n8n identity propagation | Complete | Actor forwards `query`, signed access token, tenant, user, twin, and organization; callable triggers expose matching typed fields; canonical and live workflow checks pass | None |
 | Knowledge Fabric response sanitization | Complete | Execution `33062` returned no `knowledge_access_token`, `content_vector`, or `query_vector`; sanitized evidence is in `docs/uat/authenticated-knowledge-fabric-uat-20261020.json` | None |
@@ -35,21 +35,18 @@ the requirement has direct current evidence and no remaining action.
 
 ## Current verdict
 
-The automated infrastructure, deployment, publication, private-networking, and
-contract-validation scope is complete. Public launch is **not approved** yet.
-One technical activation gate and one enterprise-governance follow-up remain:
-
-1. Configure the approved Eraneos embedding gateway base URL and model ID,
-   deploy, and pass semantic ingest/rebuild UAT.
-2. Complete formal Legal/Records and Security alignment before external
-   customer production use.
+The automated infrastructure, deployment, publication, private-networking,
+semantic-retrieval, and contract-validation scope is complete. All twelve
+machine-verifiable launch gates pass. Formal Legal/Records and Security
+alignment remains a governance precondition before external customer
+production use.
 
 The machine-readable companion report is
-`docs/uat/public-launch-readiness-20261020.json`. Re-run it with:
+`docs/uat/public-launch-readiness-20261021.json`. Re-run it with:
 
 ```powershell
 .\scripts\check-public-launch-readiness.ps1 `
-  -OutputPath docs/uat/public-launch-readiness-20261020.json
+  -OutputPath docs/uat/public-launch-readiness-20261021.json
 ```
 
 Do not mark the launch package complete until every human-required row above
