@@ -87,6 +87,16 @@ Date: 2026-10-20
   route. A follow-up authenticated Search probe confirmed that the rejected
   concept is no longer returned. Sanitized evidence is stored in
   `docs/uat/authenticated-knowledge-fabric-uat-20261020.json`.
+- Butler credential rotation and replacement-workflow UAT passed on
+  2026-10-21. Normal draft execution `33256` completed without approval or an
+  external side effect. New-skill execution `33253` returned
+  `approval_required`, gate `skill_spec_approval`, route `create_skill`, and
+  `skill_execute=false`. Neither response exposed credential material.
+- The corrected callable-only Butler is `tK8c6ZN89IpMRulz`; Actor Twin was
+  rebound to it and the stale workflow `KZOqZRUAnVfFEAYJ` was deactivated.
+- Florian Liepe accepted the SameZone PostgreSQL exception through
+  2027-01-21. Capacity is rechecked quarterly and zone-redundant HA is adopted
+  when available.
 
 ## Code fixes included
 
@@ -102,10 +112,10 @@ Date: 2026-10-20
 | Gate | State | Evidence/next action |
 | --- | --- | --- |
 | Authenticated Knowledge Fabric chat UAT | Complete | Execution `33062` staged one authenticated `review_needed` concept without exposing token/vector fields; the approved cleanup rejected it and confirmed Search exclusion. |
-| Agentic Butler skill UAT | Blocked | The `Me.IDs Eraneos LLM Gateway` credential expired on 2026-10-17. Rotate it in n8n and rerun a draft-only skill. |
-| Semantic production embeddings | Blocked | No Azure OpenAI resource is available in the visible subscriptions. Provision an approved 1,536-dimension deployment and grant the backend identity access. |
-| Retention approval | Blocked | Complete and approve `knowledge-retention-policy-template.md`. |
-| Zone-redundant PostgreSQL HA | Accepted exception | Azure rejected alternate-zone allocation in West Europe; obtain risk-owner sign-off and recheck capacity before launch. |
+| Agentic Butler skill UAT | Complete | Executions `33256` and `33253` passed normal and approval-gated acceptance criteria. |
+| Semantic production embeddings | Ready for activation | Backend supports the approved Eraneos AI Gateway; configure its base URL and model ID, deploy, and run semantic ingest/rebuild UAT. |
+| Retention approval | Accepted for launch | Florian Liepe approved the launch schedule on 2026-10-21; enterprise Legal/Records and Security alignment remains required before external customer use. |
+| Zone-redundant PostgreSQL HA | Accepted exception | Risk owner Florian Liepe accepted SameZone through 2027-01-21; capacity is rechecked quarterly. |
 
 ## UAT acceptance criteria
 

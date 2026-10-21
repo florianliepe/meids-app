@@ -1,0 +1,129 @@
+{
+  "schema": "meids.public-launch-readiness.v1",
+  "generated_at": "2026-10-21T08:34:54.1764480Z",
+  "subscription_id": "25c9ce59-90a1-4e8a-a2d4-1853a19bce22",
+  "resource_group": "rg-ai-intellectual-twin",
+  "summary": {
+    "pass": 11,
+    "blocked": 0,
+    "human_required": 1,
+    "unknown": 0
+  },
+  "gates": [
+    {
+      "name": "Backend App Service",
+      "state": "pass",
+      "evidence": "state=Running; httpsOnly=True; managedIdentity=True"
+    },
+    {
+      "name": "Production Storage private boundary",
+      "state": "pass",
+      "evidence": "publicNetworkAccess=Disabled; defaultAction=Deny; sharedKey=False"
+    },
+    {
+      "name": "Production Search private boundary",
+      "state": "pass",
+      "evidence": "status=running; provisioning=Succeeded; publicNetworkAccess=Disabled; localAuthDisabled=True"
+    },
+    {
+      "name": "Legacy Search public closure",
+      "state": "pass",
+      "evidence": "publicNetworkAccess=Disabled"
+    },
+    {
+      "name": "PostgreSQL service",
+      "state": "pass",
+      "evidence": "state=Ready; publicNetworkAccess=Disabled; ha=SameZone; standbyZone=1; retentionDays=35; geoBackup=Enabled"
+    },
+    {
+      "name": "Zone-redundant PostgreSQL HA",
+      "state": "pass",
+      "evidence": "Risk owner Florian Liepe accepted SameZone through 2027-01-21; 35-day retention, geo backup, and restore-drill evidence apply; capacity is rechecked quarterly."
+    },
+    {
+      "name": "Production semantic embeddings",
+      "state": "human_required",
+      "evidence": "provider=unconfigured; azureOpenAiAccounts=0; dimensionsConfigured=True; gatewayEndpointConfigured=False; gatewayModelConfigured=False"
+    },
+    {
+      "name": "Published n8n primary workflows",
+      "state": "pass",
+      "evidence": "active=3/3"
+    },
+    {
+      "name": "GitHub deployment workflows",
+      "state": "pass",
+      "evidence": "successful=3/3"
+    },
+    {
+      "name": "Authenticated Knowledge Fabric chat UAT",
+      "state": "pass",
+      "evidence": "Execution 33062 staged one authenticated review_needed concept; cleanup rejected it and the Search probe confirmed it is absent."
+    },
+    {
+      "name": "Agentic Butler credential and skill UAT",
+      "state": "pass",
+      "evidence": "Normal execution 33256 and new-skill execution 33253 passed; no credential material was exposed."
+    },
+    {
+      "name": "Knowledge retention governance",
+      "state": "pass",
+      "evidence": "Florian Liepe approved the Me.IDs launch schedule on 2026-10-21; enterprise Legal/Records and Security alignment remains a precondition for external customer production use."
+    }
+  ],
+  "n8n_workflows": [
+    {
+      "role": "actor_twin",
+      "id": "eKI3qM7nyCNn9r1q",
+      "name": "MeIDs Actor Twin - staging",
+      "active": true,
+      "updatedAt": "2026-10-21T08:28:19.996Z",
+      "nodes": 8
+    },
+    {
+      "role": "knowledge_fabric",
+      "id": "7Ci86PxXipwvYpKv",
+      "name": "MeIDs Knowledge Fabric Agent - staging",
+      "active": true,
+      "updatedAt": "2026-10-20T19:57:18.953Z",
+      "nodes": 11
+    },
+    {
+      "role": "agentic_butler",
+      "id": "tK8c6ZN89IpMRulz",
+      "name": "Me.IDs Agentic Butler - staging v2",
+      "active": true,
+      "updatedAt": "2026-10-21T08:28:10.003Z",
+      "nodes": 7
+    }
+  ],
+  "deployment_runs": [
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-20T20:19:14Z",
+      "databaseId": 39490953456,
+      "headSha": "43c1a76446425eda0ef4436b95d93d8e3a39e9c6",
+      "status": "completed",
+      "url": "https://github.com/florianliepe/meids-app/actions/runs/39490953456",
+      "workflowName": "Deploy Me.IDs backend to Azure App Service"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-20T20:19:14Z",
+      "databaseId": 39490953472,
+      "headSha": "43c1a76446425eda0ef4436b95d93d8e3a39e9c6",
+      "status": "completed",
+      "url": "https://github.com/florianliepe/meids-app/actions/runs/39490953472",
+      "workflowName": "Deploy Me.IDs frontend to Azure Static Web Apps"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-20T20:19:14Z",
+      "databaseId": 39490953671,
+      "headSha": "43c1a76446425eda0ef4436b95d93d8e3a39e9c6",
+      "status": "completed",
+      "url": "https://github.com/florianliepe/meids-app/actions/runs/39490953671",
+      "workflowName": "Deploy MeIDs frontend to GitHub Pages"
+    }
+  ]
+}

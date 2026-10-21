@@ -32,16 +32,28 @@ approve.
 
 ## Acceptance record
 
-- Data owner:
-- Legal/Records approver:
-- Security approver:
-- Effective date:
-- Review cadence:
-- Approved-knowledge retention:
-- Review-needed retention:
-- Trace/audit retention:
-- User-offboarding rule:
-- Legal-hold process reference:
+- Data owner: Florian Liepe
+- Launch-policy approver: Florian Liepe
+- Effective date: 2026-10-21
+- Review cadence: annual and upon material regulatory, contractual, or
+  architecture change; first review no later than 2027-10-21
+- Approved-knowledge retention: retain until governed deletion, legal-hold
+  release, or supersession under an approved records schedule
+- Review-needed retention: retain the current revision until review or
+  explicit deletion; superseded Blob versions expire after 90 days
+- Rejected knowledge: retain decision and audit metadata for 12 months; remove
+  rejected content from active Search indexes immediately
+- Trace/audit retention: retain audit metadata for 12 months and raw n8n
+  execution payloads for 30 days unless an incident or legal hold applies
+- User-offboarding rule: private knowledge is quarantined for 90 days before
+  governed deletion or transfer; approved organization-shared knowledge is
+  retained under the organization's ownership
+- Legal-hold process reference: the data owner or Security records the hold,
+  scope, reason, start date, and release approval; automated deletion remains
+  suspended for the scoped records until release
+- Enterprise governance note: this is the approved Me.IDs launch schedule.
+  Formal Legal/Records and Security policy alignment remains required before
+  external customer production use.
 
 No destructive lifecycle rule for approved knowledge should be deployed until
 this section is completed and approved.

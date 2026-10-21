@@ -1,0 +1,30 @@
+{
+  "schema": "meids.agentic-butler-uat.v1",
+  "status": "passed",
+  "tested_at": "2026-10-21T08:36:00Z",
+  "workflow": {
+    "id": "tK8c6ZN89IpMRulz",
+    "name": "Me.IDs Agentic Butler - staging v2",
+    "actor_workflow_id": "eKI3qM7nyCNn9r1q",
+    "superseded_workflow_id": "KZOqZRUAnVfFEAYJ"
+  },
+  "normal_draft": {
+    "execution_id": "33256",
+    "status": "completed",
+    "approval_required": false,
+    "external_side_effect": false,
+    "credential_material_exposed": false
+  },
+  "new_skill_proposal": {
+    "execution_id": "33253",
+    "status": "approval_required",
+    "approval_gate": "skill_spec_approval",
+    "route_decision": "create_skill",
+    "skill_execute": false,
+    "credential_material_exposed": false
+  },
+  "remediation": {
+    "reason": "The original workflow continued serving a stale published child snapshot after credential rotation and normalizer publication.",
+    "action": "A corrected callable-only workflow was activated, the Actor Twin workflow tool was rebound, and the stale workflow was deactivated after both acceptance cases passed."
+  }
+}

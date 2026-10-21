@@ -21,12 +21,14 @@ Date: 2026-10-20
 | PL-015 | GitHub deploys the backend through OIDC using a user-assigned identity scoped to `Website Contributor` on the single App Service. | A publish-profile secret was absent and would create a long-lived credential. Repository-bound federation gives short-lived tokens and a narrow Azure scope. | Implemented |
 | PL-016 | The backend deploy identity uses the enterprise-bound GitHub federation subject `repo:florianliepe@223366137/meids-app@1325795427:ref:refs/heads/main`. | This GitHub enterprise emits immutable owner and repository IDs in the OIDC subject. Binding the exact signed assertion keeps federation limited to `main` while avoiding a long-lived deployment secret. | Implemented and deployment-tested |
 | PL-017 | Rejection reuses the authenticated `/api/knowledge/promote` review route with `decision: reject`, emits an auditable outbox event, and removes the revision from both Search indexes. | The existing route is already admitted by the Azure authentication boundary, while newly introduced literal review paths are rejected before reaching the application. Reusing the governed endpoint preserves least privilege and gives UAT cleanup the same authorization and audit controls as promotion. | Implemented and UAT-tested |
+| PL-018 | The temporary SameZone PostgreSQL HA exception is owned by Florian Liepe through 2027-01-21 and reviewed quarterly. | A 90-day exception prevents an open-ended resilience downgrade. The service retains 35-day backup retention, geo-redundant backup, and a passed restore drill while West Europe zone-redundant capacity is unavailable. | Accepted through 2027-01-21 |
+| PL-019 | An Azure support request for zone-redundant PostgreSQL capacity is advisory, not a launch prerequisite. | The regional capability API already reports the feature unavailable. A support case may provide capacity guidance or an ETA, but it does not replace the accepted exception or guarantee capacity. | Accepted |
+| PL-020 | Production embeddings may use the OpenAI-compatible Eraneos AI Gateway, with the API key held in Key Vault and a fixed 1,536-dimensional contract. | This reuses the approved enterprise gateway without exposing a secret to n8n or the frontend. The backend validates vector dimensions before Search writes. | Implementation complete; activation values pending |
+| PL-021 | The corrected callable-only Agentic Butler replaces the stale published child snapshot. | Fresh UAT proved normal drafting remains autonomous while new capability proposals stop at `skill_spec_approval`; the superseded workflow was deactivated only after both cases passed. | Implemented and UAT-tested |
 
 ## Human decisions still required
 
-1. Embedding provider/deployment, quota owner, and data-processing approval.
-2. Rotation of the expired `Me.IDs Eraneos LLM Gateway` credential in n8n.
-3. Approved-knowledge retention period, deletion authority, and legal-hold
-   process.
-4. Launch-risk owner sign-off for the temporary same-zone PostgreSQL HA
-   exception.
+1. Supply and activate the approved Eraneos embedding gateway base URL and
+   model ID, then run semantic ingest and rebuild UAT.
+2. Complete the enterprise Legal/Records and Security review of the approved
+   launch retention schedule before external customer production use.

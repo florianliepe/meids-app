@@ -34,6 +34,18 @@ AZURE_OPENAI_API_VERSION=2024-02-01
 AZURE_OPENAI_EMBEDDING_DIMENSIONS=1536
 ```
 
+Alternatively, use the OpenAI-compatible Eraneos AI Gateway while keeping the same 1536-dimensional Search indexes:
+
+```text
+MEIDS_EMBEDDING_PROVIDER=eraneos_gateway
+ERANEOS_AI_GATEWAY_BASE_URL=https://<gateway>/v1
+ERANEOS_AI_GATEWAY_EMBEDDING_MODEL=<embedding-model-id>
+ERANEOS_AI_GATEWAY_API_KEY=@Microsoft.KeyVault(...)
+AZURE_OPENAI_EMBEDDING_DIMENSIONS=1536
+```
+
+The backend calls `POST {ERANEOS_AI_GATEWAY_BASE_URL}/embeddings` with bearer authentication. The configured model must support a 1536-dimensional response, or support the OpenAI-compatible `dimensions` request parameter.
+
 ## Backend Endpoints
 
 - `GET /api/vector-index/status`

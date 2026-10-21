@@ -56,10 +56,10 @@
         "description": "Call this tool for draft/write/prepare/compose/summarize/plan/prioritize work, approved skill execution, new skill or agent proposals, and all implicit/tacit knowledge elicitation. For tacit knowledge, circular questions, decision criteria, best practices, lessons learned, process insight, or stakeholder dynamics, Agentic Butler must run its Knowledge Retrieval Interviewer tool. No approval is required for normal no-write work; approval is required only before generated capabilities become active or before external side effects.",
         "workflowId": {
           "__rl": true,
-          "value": "KZOqZRUAnVfFEAYJ",
+          "value": "tK8c6ZN89IpMRulz",
           "mode": "list",
-          "cachedResultUrl": "/workflow/KZOqZRUAnVfFEAYJ",
-          "cachedResultName": "MeIDs Agentic Butler - staging"
+          "cachedResultUrl": "/workflow/tK8c6ZN89IpMRulz",
+          "cachedResultName": "Me.IDs Agentic Butler - staging v2"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",

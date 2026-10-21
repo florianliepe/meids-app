@@ -131,6 +131,15 @@ for (const workflowFile of workflowFiles) {
     }
   }
   if (workflowFile.includes("agentic-butler")) {
+    if (!/create\|shape\|design\|generate\|build\|define\|propose\|draft/.test(raw)) {
+      fail(`${path.relative(root, workflowFile)} must recognize propose/draft wording for explicit new-skill approval intent.`);
+    }
+    if (!/input\.input\?\.message \|\| input\.query \|\| input\.message/.test(raw)) {
+      fail(`${path.relative(root, workflowFile)} must inspect the top-level workflow-tool query for explicit skill creation intent.`);
+    }
+    if (!/const isCreateSkill = explicitCreation \|\|/.test(raw)) {
+      fail(`${path.relative(root, workflowFile)} must gate an explicit user request to create a skill even when Actor routing metadata is incomplete.`);
+    }
     if (!/status: approvalRequired \? 'approval_required' : 'completed'/.test(raw)) {
       fail(`${path.relative(root, workflowFile)} must allow autonomous completed Butler runs.`);
     }

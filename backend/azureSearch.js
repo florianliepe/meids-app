@@ -31,6 +31,12 @@ function normalizeEmbeddingAuthMode(value = "") {
     : "api_key";
 }
 
+function normalizeEmbeddingProvider(value = "") {
+  return String(value || "azure_openai").trim().toLowerCase() === "eraneos_gateway"
+    ? "eraneos_gateway"
+    : "azure_openai";
+}
+
 function azureSearchConfigFromEnv(env = process.env) {
   const endpoint = cleanBaseUrl(env.AZURE_SEARCH_ENDPOINT || env.AZURE_AI_SEARCH_ENDPOINT || "");
   const apiKey = String(env.AZURE_SEARCH_API_KEY || env.AZURE_AI_SEARCH_API_KEY || "").trim();
@@ -43,10 +49,17 @@ function azureSearchConfigFromEnv(env = process.env) {
   const apiVersion = String(env.AZURE_SEARCH_API_VERSION || DEFAULT_API_VERSION).trim();
   const requestTimeoutMs = Math.max(1000, Number(env.AZURE_SEARCH_REQUEST_TIMEOUT_MS || 10000));
   const embeddingDimensions = Number(env.AZURE_OPENAI_EMBEDDING_DIMENSIONS || DEFAULT_EMBEDDING_DIMENSIONS);
-  const embeddingEndpoint = cleanBaseUrl(env.AZURE_OPENAI_ENDPOINT || "");
-  const embeddingApiKey = String(env.AZURE_OPENAI_API_KEY || "").trim();
+  const embeddingProvider = normalizeEmbeddingProvider(env.MEIDS_EMBEDDING_PROVIDER);
+  const embeddingEndpoint = cleanBaseUrl(embeddingProvider === "eraneos_gateway"
+    ? env.ERANEOS_AI_GATEWAY_BASE_URL || env.OPENAI_BASE_URL || ""
+    : env.AZURE_OPENAI_ENDPOINT || "");
+  const embeddingApiKey = String(embeddingProvider === "eraneos_gateway"
+    ? env.ERANEOS_AI_GATEWAY_API_KEY || env.OPENAI_API_KEY || ""
+    : env.AZURE_OPENAI_API_KEY || "").trim();
   const embeddingAuthMode = normalizeEmbeddingAuthMode(env.AZURE_OPENAI_AUTH_MODE);
-  const embeddingDeployment = String(env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || "").trim();
+  const embeddingDeployment = String(embeddingProvider === "eraneos_gateway"
+    ? env.ERANEOS_AI_GATEWAY_EMBEDDING_MODEL || env.OPENAI_EMBEDDING_MODEL || ""
+    : env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || "").trim();
   const embeddingApiVersion = String(env.AZURE_OPENAI_API_VERSION || DEFAULT_AZURE_OPENAI_API_VERSION).trim();
   const deterministicVectorsAllowed = ["true", "1", "yes", "on"].includes(String(env.MEIDS_ALLOW_DETERMINISTIC_VECTORS || "").trim().toLowerCase());
   const missing = [];
@@ -60,14 +73,14 @@ function azureSearchConfigFromEnv(env = process.env) {
   if (!approvedIndex) missing.push("AZURE_SEARCH_APPROVED_INDEX");
   if (!workingIndex) missing.push("AZURE_SEARCH_WORKING_INDEX");
   const embeddingMissing = [];
-  if (!embeddingEndpoint) embeddingMissing.push("AZURE_OPENAI_ENDPOINT");
-  if (embeddingAuthMode === "managed_identity") {
+  if (!embeddingEndpoint) embeddingMissing.push(embeddingProvider === "eraneos_gateway" ? "ERANEOS_AI_GATEWAY_BASE_URL" : "AZURE_OPENAI_ENDPOINT");
+  if (embeddingProvider === "azure_openai" && embeddingAuthMode === "managed_identity") {
     if (!identityEndpoint) embeddingMissing.push("IDENTITY_ENDPOINT");
     if (!identityHeader) embeddingMissing.push("IDENTITY_HEADER");
   } else if (!embeddingApiKey) {
-    embeddingMissing.push("AZURE_OPENAI_API_KEY");
+    embeddingMissing.push(embeddingProvider === "eraneos_gateway" ? "ERANEOS_AI_GATEWAY_API_KEY" : "AZURE_OPENAI_API_KEY");
   }
-  if (!embeddingDeployment) embeddingMissing.push("AZURE_OPENAI_EMBEDDING_DEPLOYMENT");
+  if (!embeddingDeployment) embeddingMissing.push(embeddingProvider === "eraneos_gateway" ? "ERANEOS_AI_GATEWAY_EMBEDDING_MODEL" : "AZURE_OPENAI_EMBEDDING_DEPLOYMENT");
   return {
     endpoint,
     apiKey,
@@ -80,6 +93,7 @@ function azureSearchConfigFromEnv(env = process.env) {
     apiVersion,
     requestTimeoutMs,
     embeddingDimensions,
+    embeddingProvider,
     embeddingEndpoint,
     embeddingApiKey,
     embeddingAuthMode,
@@ -111,6 +125,7 @@ function statusFromConfig(config = azureSearchConfigFromEnv()) {
     request_timeout_ms: config.requestTimeoutMs,
     embedding: {
       status: config.embeddingConfigured ? "configured" : "blocked",
+      provider: config.embeddingProvider || "azure_openai",
       endpoint_configured: Boolean(config.embeddingEndpoint),
       deployment_configured: Boolean(config.embeddingDeployment),
       authentication_mode: config.embeddingAuthMode || "api_key",
@@ -384,22 +399,30 @@ async function azureOpenAiEmbedding(text, config = azureSearchConfigFromEnv()) {
     error.statusCode = 503;
     throw error;
   }
-  const url = `${config.embeddingEndpoint}/openai/deployments/${encodeURIComponent(config.embeddingDeployment)}/embeddings?api-version=${encodeURIComponent(config.embeddingApiVersion)}`;
-  const authHeaders = config.embeddingAuthMode === "managed_identity"
-    ? { Authorization: `Bearer ${await managedIdentityAccessToken(config, COGNITIVE_SERVICES_TOKEN_RESOURCE)}` }
-    : { "api-key": config.embeddingApiKey };
+  const isGateway = config.embeddingProvider === "eraneos_gateway";
+  const url = isGateway
+    ? `${config.embeddingEndpoint}/embeddings`
+    : `${config.embeddingEndpoint}/openai/deployments/${encodeURIComponent(config.embeddingDeployment)}/embeddings?api-version=${encodeURIComponent(config.embeddingApiVersion)}`;
+  const authHeaders = isGateway
+    ? { Authorization: `Bearer ${config.embeddingApiKey}` }
+    : config.embeddingAuthMode === "managed_identity"
+      ? { Authorization: `Bearer ${await managedIdentityAccessToken(config, COGNITIVE_SERVICES_TOKEN_RESOURCE)}` }
+      : { "api-key": config.embeddingApiKey };
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...authHeaders,
     },
-    body: JSON.stringify({ input: String(text || "") }),
+    body: JSON.stringify({
+      input: String(text || ""),
+      ...(isGateway ? { model: config.embeddingDeployment, dimensions: config.embeddingDimensions } : {}),
+    }),
   });
   const raw = await response.text();
   const data = raw ? JSON.parse(raw) : {};
   if (!response.ok) {
-    const error = new Error(data.error?.message || data.message || raw || `Azure OpenAI embeddings returned ${response.status}`);
+    const error = new Error(data.error?.message || data.message || raw || `${isGateway ? "Eraneos AI Gateway" : "Azure OpenAI"} embeddings returned ${response.status}`);
     error.statusCode = response.status;
     throw error;
   }
@@ -458,7 +481,7 @@ async function upsertVectorDocuments(request = {}, config = azureSearchConfigFro
     ? "caller_supplied_vectors"
     : deterministicVectorsRequested(request, config)
       ? "deterministic_hash_fallback"
-      : "azure_openai";
+      : config.embeddingProvider || "azure_openai";
   return {
     status: "upserted",
     operation: "upsert",

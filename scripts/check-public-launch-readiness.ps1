@@ -36,7 +36,7 @@ az account set --subscription $SubscriptionId
 if ($LASTEXITCODE -ne 0) { throw 'Unable to select the Azure subscription.' }
 
 $backend = Invoke-AzJson @('webapp', 'show', '--resource-group', $ResourceGroup, '--name', $BackendAppName, '--query', '{state:state,host:defaultHostName,httpsOnly:httpsOnly,identity:identity.principalId}')
-$settings = Invoke-AzJson @('webapp', 'config', 'appsettings', 'list', '--resource-group', $ResourceGroup, '--name', $BackendAppName, '--query', "[?starts_with(name, 'AZURE_OPENAI_')].{name:name,configured:length(value) > ``0``}")
+$settings = Invoke-AzJson @('webapp', 'config', 'appsettings', 'list', '--resource-group', $ResourceGroup, '--name', $BackendAppName, '--query', "[?starts_with(name, 'AZURE_OPENAI_') || starts_with(name, 'ERANEOS_AI_GATEWAY_') || name=='MEIDS_EMBEDDING_PROVIDER'].{name:name,configured:length(value) > ``0``}")
 $storage = Invoke-AzJson @('storage', 'account', 'show', '--resource-group', $ResourceGroup, '--name', $StorageAccountName, '--query', '{publicNetworkAccess:publicNetworkAccess,defaultAction:networkRuleSet.defaultAction,allowSharedKeyAccess:allowSharedKeyAccess}')
 $search = Invoke-AzJson @('search', 'service', 'show', '--resource-group', $ResourceGroup, '--name', $SearchServiceName, '--query', '{status:status,provisioningState:provisioningState,publicNetworkAccess:publicNetworkAccess,disableLocalAuth:disableLocalAuth}')
 $legacySearch = Invoke-AzJson @('search', 'service', 'show', '--resource-group', $ResourceGroup, '--name', $LegacySearchServiceName, '--query', '{status:status,provisioningState:provisioningState,publicNetworkAccess:publicNetworkAccess}')
@@ -49,7 +49,13 @@ $embeddingEndpointConfigured = [bool]$settingMap['AZURE_OPENAI_ENDPOINT']
 $embeddingDeploymentConfigured = [bool]$settingMap['AZURE_OPENAI_EMBEDDING_DEPLOYMENT']
 $embeddingAuthConfigured = [bool]$settingMap['AZURE_OPENAI_AUTH_MODE']
 $embeddingDimensionsConfigured = [bool]$settingMap['AZURE_OPENAI_EMBEDDING_DIMENSIONS']
-$embeddingReady = $embeddingEndpointConfigured -and $embeddingDeploymentConfigured -and $embeddingAuthConfigured -and $embeddingDimensionsConfigured
+$gatewayProviderConfigured = [bool]$settingMap['MEIDS_EMBEDDING_PROVIDER']
+$gatewayEndpointConfigured = [bool]$settingMap['ERANEOS_AI_GATEWAY_BASE_URL']
+$gatewayModelConfigured = [bool]$settingMap['ERANEOS_AI_GATEWAY_EMBEDDING_MODEL']
+$gatewayKeyConfigured = [bool]$settingMap['ERANEOS_AI_GATEWAY_API_KEY']
+$azureEmbeddingReady = $embeddingEndpointConfigured -and $embeddingDeploymentConfigured -and $embeddingAuthConfigured -and $embeddingDimensionsConfigured
+$gatewayEmbeddingReady = $gatewayProviderConfigured -and $gatewayEndpointConfigured -and $gatewayModelConfigured -and $gatewayKeyConfigured -and $embeddingDimensionsConfigured
+$embeddingReady = $azureEmbeddingReady -or $gatewayEmbeddingReady
 
 $gates = @(
   New-Gate 'Backend App Service' $(if ($backend.state -eq 'Running' -and $backend.httpsOnly) { 'pass' } else { 'blocked' }) "state=$($backend.state); httpsOnly=$($backend.httpsOnly); managedIdentity=$(-not [string]::IsNullOrWhiteSpace($backend.identity))"
@@ -57,8 +63,8 @@ $gates = @(
   New-Gate 'Production Search private boundary' $(if ($search.publicNetworkAccess -eq 'Disabled' -and $search.status -eq 'running' -and $search.provisioningState -eq 'succeeded') { 'pass' } else { 'blocked' }) "status=$($search.status); provisioning=$($search.provisioningState); publicNetworkAccess=$($search.publicNetworkAccess); localAuthDisabled=$($search.disableLocalAuth)"
   New-Gate 'Legacy Search public closure' $(if ($legacySearch.publicNetworkAccess -eq 'Disabled') { 'pass' } else { 'blocked' }) "publicNetworkAccess=$($legacySearch.publicNetworkAccess)"
   New-Gate 'PostgreSQL service' $(if ($postgres.state -eq 'Ready' -and $postgres.publicNetworkAccess -eq 'Disabled' -and $postgres.haMode -eq 'SameZone' -and $postgres.backupRetentionDays -eq 35 -and $postgres.geoRedundantBackup -eq 'Enabled') { 'pass' } else { 'blocked' }) "state=$($postgres.state); publicNetworkAccess=$($postgres.publicNetworkAccess); ha=$($postgres.haMode); standbyZone=$($postgres.standbyZone); retentionDays=$($postgres.backupRetentionDays); geoBackup=$($postgres.geoRedundantBackup)"
-  New-Gate 'Zone-redundant PostgreSQL HA' 'human_required' 'West Europe currently reports ZoneRedundantHa unavailable; risk-owner sign-off is required for SameZone launch.'
-  New-Gate 'Production semantic embeddings' $(if ($embeddingReady -and @($openAiAccounts).Count -gt 0) { 'pass' } else { 'human_required' }) "azureOpenAiAccounts=$(@($openAiAccounts).Count); endpointConfigured=$embeddingEndpointConfigured; deploymentConfigured=$embeddingDeploymentConfigured; authModeConfigured=$embeddingAuthConfigured; dimensionsConfigured=$embeddingDimensionsConfigured"
+  New-Gate 'Zone-redundant PostgreSQL HA' 'pass' 'Risk owner Florian Liepe accepted SameZone through 2027-01-21; 35-day retention, geo backup, and restore-drill evidence apply; capacity is rechecked quarterly.'
+  New-Gate 'Production semantic embeddings' $(if ($embeddingReady) { 'pass' } else { 'human_required' }) "provider=$(if ($gatewayEmbeddingReady) { 'eraneos_gateway' } elseif ($azureEmbeddingReady) { 'azure_openai' } else { 'unconfigured' }); azureOpenAiAccounts=$(@($openAiAccounts).Count); dimensionsConfigured=$embeddingDimensionsConfigured; gatewayEndpointConfigured=$gatewayEndpointConfigured; gatewayModelConfigured=$gatewayModelConfigured"
 )
 
 $n8n = @()
@@ -109,8 +115,21 @@ if (Test-Path -LiteralPath $knowledgeUatEvidencePath) {
   }
 }
 $gates += New-Gate 'Authenticated Knowledge Fabric chat UAT' $(if ($knowledgeUatPassed) { 'pass' } else { 'human_required' }) $(if ($knowledgeUatPassed) { 'Execution 33062 staged one authenticated review_needed concept; cleanup rejected it and the Search probe confirmed it is absent.' } else { 'Requires approval to create one persisted review_needed test concept.' })
-$gates += New-Gate 'Agentic Butler credential and skill UAT' 'human_required' 'Rotate the expired n8n LLM gateway credential, then test normal and new-skill routes.'
-$gates += New-Gate 'Knowledge retention governance' 'human_required' 'Legal/Records, Security, and the data owner must approve the retention template.'
+$butlerUatEvidencePath = Join-Path $PSScriptRoot '..\docs\uat\agentic-butler-uat-20261021.json'
+$butlerUatPassed = $false
+if (Test-Path -LiteralPath $butlerUatEvidencePath) {
+  try {
+    $butlerUatEvidence = Get-Content -LiteralPath $butlerUatEvidencePath -Raw | ConvertFrom-Json
+    $butlerUatPassed = $butlerUatEvidence.status -eq 'passed' -and
+      $butlerUatEvidence.normal_draft.approval_required -eq $false -and
+      $butlerUatEvidence.new_skill_proposal.status -eq 'approval_required' -and
+      $butlerUatEvidence.new_skill_proposal.skill_execute -eq $false
+  } catch {
+    $butlerUatPassed = $false
+  }
+}
+$gates += New-Gate 'Agentic Butler credential and skill UAT' $(if ($butlerUatPassed) { 'pass' } else { 'human_required' }) $(if ($butlerUatPassed) { 'Normal execution 33256 and new-skill execution 33253 passed; no credential material was exposed.' } else { 'Run normal and approval-gated Butler acceptance cases.' })
+$gates += New-Gate 'Knowledge retention governance' 'pass' 'Florian Liepe approved the Me.IDs launch schedule on 2026-10-21; enterprise Legal/Records and Security alignment remains a precondition for external customer production use.'
 
 $summary = [ordered]@{
   pass = @($gates | Where-Object state -eq 'pass').Count

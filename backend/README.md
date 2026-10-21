@@ -82,6 +82,10 @@ Azure AI Search vector retrieval:
 - `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`: embedding deployment name.
 - `AZURE_OPENAI_API_VERSION`: defaults to `2024-02-01`.
 - `AZURE_OPENAI_EMBEDDING_DIMENSIONS`: defaults to `1536`.
+- `MEIDS_EMBEDDING_PROVIDER`: set to `eraneos_gateway` to use the OpenAI-compatible Eraneos AI Gateway; otherwise defaults to `azure_openai`.
+- `ERANEOS_AI_GATEWAY_BASE_URL`: OpenAI-compatible base URL ending before `/embeddings`.
+- `ERANEOS_AI_GATEWAY_EMBEDDING_MODEL`: gateway model ID used for embeddings.
+- `ERANEOS_AI_GATEWAY_API_KEY`: backend-only gateway key, preferably supplied through an Azure Key Vault reference.
 - `MEIDS_ALLOW_DETERMINISTIC_VECTORS`: optional UAT-only fallback. When `true`,
   `/api/vector-index/rebuild` can generate stable deterministic vectors if a
   request also uses `vector_mode=deterministic_fallback` or

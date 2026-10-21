@@ -145,6 +145,21 @@ if (managedIdentityEmbeddingConfig.embeddingApiKey) fail("Managed identity embed
 if (adapter.statusFromConfig(managedIdentityEmbeddingConfig).embedding.authentication_mode !== "managed_identity") {
   fail("Managed identity embedding status mapping failed");
 }
+const eraneosGatewayEmbeddingConfig = adapter.azureSearchConfigFromEnv({
+  AZURE_SEARCH_ENDPOINT: "https://example.search.windows.net",
+  AZURE_SEARCH_API_KEY: "search-key",
+  MEIDS_EMBEDDING_PROVIDER: "eraneos_gateway",
+  ERANEOS_AI_GATEWAY_BASE_URL: "https://gateway.example/v1/",
+  ERANEOS_AI_GATEWAY_API_KEY: "gateway-key",
+  ERANEOS_AI_GATEWAY_EMBEDDING_MODEL: "embedding-model-id",
+  AZURE_OPENAI_EMBEDDING_DIMENSIONS: "1536",
+});
+if (!eraneosGatewayEmbeddingConfig.embeddingConfigured) fail("Eraneos gateway embedding configuration failed");
+if (eraneosGatewayEmbeddingConfig.embeddingProvider !== "eraneos_gateway") fail("Eraneos gateway provider mapping failed");
+if (eraneosGatewayEmbeddingConfig.embeddingEndpoint !== "https://gateway.example/v1") fail("Eraneos gateway URL normalization failed");
+if (adapter.statusFromConfig(eraneosGatewayEmbeddingConfig).embedding.provider !== "eraneos_gateway") {
+  fail("Eraneos gateway embedding status mapping failed");
+}
 const readiness = readJson(readinessAsset);
 if (readiness.status !== "ready_for_secret_activation") fail("Azure vector readiness asset must be ready_for_secret_activation");
 const liveActivation = readJson(liveActivationAsset);
