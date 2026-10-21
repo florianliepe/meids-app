@@ -54,6 +54,16 @@ or application-role claim; a merely authenticated identity is not admitted.
 5. Review guest membership quarterly. Remove stale group membership and, when
    policy permits, disable or remove the B2B identity.
 
+After the guest object exists, an operator can apply direct membership with:
+
+```powershell
+.\scripts\add-meids-entra-user.ps1 -UserObjectId '<entra-object-id>'
+```
+
+Use `-Owner` only for explicitly approved privileged operators. If Entra ID
+Governance or P2 licensing is unavailable, perform and record the quarterly
+membership review manually.
+
 ## Azure admin blocker and exact request
 
 The current subscription owner can create Azure resources and Entra groups but
