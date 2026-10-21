@@ -1600,13 +1600,33 @@ function csvSetting(name, fallback = "") {
     .filter(Boolean);
 }
 
-function meidsRolesFromPrincipal(principal = {}) {
+function principalClaimValues(principal = {}, claimTypes = []) {
+  const acceptedTypes = new Set(claimTypes.map((value) => String(value).toLowerCase()));
+  return (Array.isArray(principal.claims) ? principal.claims : [])
+    .filter((claim) => acceptedTypes.has(String(claim?.typ || claim?.type || "").toLowerCase()))
+    .flatMap((claim) => {
+      const value = claim?.val ?? claim?.value;
+      return Array.isArray(value) ? value : [value];
+    })
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+}
+
+function explicitMeidsRolesFromPrincipal(principal = {}) {
   const platformRoles = Array.isArray(principal.userRoles) ? principal.userRoles : [];
-  const configuredDefaults = csvSetting("MEIDS_AUTH_DEFAULT_ROLES", "viewer");
-  const roles = platformRoles
+  const claimRoles = principalClaimValues(principal, [
+    "roles",
+    "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
+  ]);
+  return [...new Set([...platformRoles, ...claimRoles]
     .filter((role) => !["anonymous", "authenticated"].includes(String(role).toLowerCase()))
-    .map((role) => String(role).replace(/^meids[.:_-]/i, "").toLowerCase());
-  return [...new Set(roles.length ? roles : configuredDefaults)];
+    .map((role) => String(role).replace(/^meids[.:_-]/i, "").toLowerCase())
+    .map((role) => role === "user" ? "viewer" : role))];
+}
+
+function meidsRolesFromPrincipal(principal = {}) {
+  const roles = explicitMeidsRolesFromPrincipal(principal);
+  return roles.length ? roles : csvSetting("MEIDS_AUTH_DEFAULT_ROLES", "viewer");
 }
 
 function permissionsFromRoles(roles = []) {
@@ -1632,7 +1652,10 @@ function sessionFromPrincipal(principal, mapping = null) {
   const allowedTwinIds = mapping?.allowed_twin_ids?.length
     ? mapping.allowed_twin_ids
     : csvSetting("MEIDS_AUTH_ALLOWED_TWIN_IDS", process.env.MEIDS_ACTIVE_TWIN || "florian");
-  const roles = mapping?.roles?.length ? mapping.roles : meidsRolesFromPrincipal(principal);
+  const roles = [...new Set([
+    ...(mapping?.roles || []),
+    ...meidsRolesFromPrincipal(principal),
+  ])];
   const tenantId = mapping?.tenant_id || process.env.MEIDS_TENANT_ID || "eraneos";
   const activeTwinId = allowedTwinIds.includes(mapping?.active_twin_id)
     ? mapping.active_twin_id
@@ -1691,6 +1714,95 @@ function databaseAuthorizationEnabled() {
   return ["true", "1", "on", "enabled"].includes(String(process.env.MEIDS_AUTHZ_DATABASE_ENABLED || "false").toLowerCase());
 }
 
+function jitAuthorizationEnabled() {
+  return ["true", "1", "on", "enabled"].includes(String(process.env.MEIDS_AUTHZ_JIT_ENABLED || "false").toLowerCase());
+}
+
+function jitAuthorizationEntitlements(principal = {}) {
+  const explicitRoles = explicitMeidsRolesFromPrincipal(principal);
+  const groupClaims = principalClaimValues(principal, [
+    "groups",
+    "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups",
+  ]).map((value) => value.toLowerCase());
+  const usersGroupId = String(process.env.MEIDS_AUTHZ_USER_GROUP_ID || "").trim().toLowerCase();
+  const ownersGroupId = String(process.env.MEIDS_AUTHZ_OWNER_GROUP_ID || "").trim().toLowerCase();
+  const user = explicitRoles.includes("viewer")
+    || explicitRoles.includes("owner")
+    || Boolean(usersGroupId && groupClaims.includes(usersGroupId))
+    || Boolean(ownersGroupId && groupClaims.includes(ownersGroupId));
+  const owner = explicitRoles.includes("owner") || Boolean(ownersGroupId && groupClaims.includes(ownersGroupId));
+  return { user, owner, usersGroupId, ownersGroupId };
+}
+
+function jitUserId(principal = {}) {
+  const objectId = String(principal.userId || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return `entra-${objectId.slice(0, 24)}`;
+}
+
+async function ensureJitAuthorizationMapping(pool, principal) {
+  if (!jitAuthorizationEnabled()) return false;
+  const entitlement = jitAuthorizationEntitlements(principal);
+  if (!entitlement.user) return false;
+  const entraObjectId = String(principal.userId || "").trim().toLowerCase();
+  const email = String(principal.userDetails || "").trim().toLowerCase();
+  if (!entraObjectId || !email) return false;
+  const tenantId = String(process.env.MEIDS_TENANT_ID || "eraneos").trim().toLowerCase();
+  const tenantName = String(process.env.MEIDS_TENANT_NAME || "Eraneos").trim();
+  const displayName = principalClaimValues(principal, ["name", "displayname"])[0] || email;
+  const userId = jitUserId(principal);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(`
+      INSERT INTO identity.tenant (tenant_id, display_name, status)
+      VALUES ($1, $2, 'active')
+      ON CONFLICT (tenant_id) DO UPDATE SET display_name = EXCLUDED.display_name, status = 'active'
+    `, [tenantId, tenantName]);
+    await client.query(`
+      INSERT INTO identity.app_user
+        (user_id, tenant_id, entra_object_id, email, display_name, status, updated_at)
+      VALUES ($1, $2, $3, $4, $5, 'active', now())
+      ON CONFLICT (tenant_id, entra_object_id) DO UPDATE SET
+        email = EXCLUDED.email,
+        display_name = EXCLUDED.display_name,
+        status = 'active',
+        updated_at = now()
+    `, [userId, tenantId, entraObjectId, email, displayName]);
+    const resolvedUser = await client.query(`
+      SELECT user_id FROM identity.app_user
+      WHERE tenant_id = $1 AND lower(entra_object_id) = lower($2)
+    `, [tenantId, entraObjectId]);
+    const resolvedUserId = resolvedUser.rows[0]?.user_id;
+    const groupMappings = [
+      entitlement.usersGroupId && { groupId: "meids-users", entraGroupId: entitlement.usersGroupId, displayName: "Me.IDs Users" },
+      entitlement.owner && entitlement.ownersGroupId
+        ? { groupId: "meids-owners", entraGroupId: entitlement.ownersGroupId, displayName: "Me.IDs Owners" }
+        : null,
+    ].filter(Boolean);
+    for (const group of groupMappings) {
+      await client.query(`
+        INSERT INTO identity.security_group (group_id, tenant_id, display_name, entra_group_id)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (group_id) DO UPDATE SET
+          display_name = EXCLUDED.display_name,
+          entra_group_id = EXCLUDED.entra_group_id
+      `, [group.groupId, tenantId, group.displayName, group.entraGroupId]);
+      await client.query(`
+        INSERT INTO identity.user_group (tenant_id, user_id, group_id)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (tenant_id, user_id, group_id) DO NOTHING
+      `, [tenantId, resolvedUserId, group.groupId]);
+    }
+    await client.query("COMMIT");
+    return true;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function resolveAuthorizationMapping(principal) {
   if (!databaseAuthorizationEnabled()) return null;
   const pool = await getPgPool();
@@ -1701,6 +1813,7 @@ async function resolveAuthorizationMapping(principal) {
   }
   const principalId = String(principal.userId || "").trim();
   const principalEmail = String(principal.userDetails || "").trim();
+  await ensureJitAuthorizationMapping(pool, principal);
   const result = await pool.query(`
     SELECT
       u.user_id,

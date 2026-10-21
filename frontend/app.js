@@ -335,7 +335,7 @@ function logoutUrl() {
 }
 
 function authenticatedSession() {
-  return Boolean(state.authSession?.status === "authenticated");
+  return ["authenticated", "access_pending"].includes(state.authSession?.status);
 }
 
 function sessionActiveTwinIds(session = state.authSession) {
@@ -356,9 +356,11 @@ async function loadAuthSession() {
   try {
     state.authSession = await getJson("/api/session");
   } catch (error) {
+    const status = Number(error.status || 0) === 403 ? "access_pending" : "unauthenticated";
     state.authSession = {
-      status: "unauthenticated",
-      error: compactError(error.message || String(error)),
+      status,
+      http_status: Number(error.status || 0),
+      error: compactError(error.details?.error || error.message || String(error)),
     };
   }
   state.authChecked = true;
@@ -378,7 +380,9 @@ function applyAuthState() {
   const stateCopy = $("#loginStateCopy");
   if (stateCopy) {
     stateCopy.textContent = authenticated
-      ? `Signed in as ${state.authSession.user?.email || state.authSession.user?.name || "Microsoft account"}.`
+      ? state.authSession.status === "access_pending"
+        ? "Microsoft identity verified. Me.IDs access is not provisioned yet."
+        : `Signed in as ${state.authSession.user?.email || state.authSession.user?.name || "Microsoft account"}.`
       : "Sign in with Microsoft to access your intellectual twin workspace.";
   }
   const accessCopy = $("#loginAccessCopy");
@@ -387,8 +391,10 @@ function applyAuthState() {
       ? ""
       : authenticated && hasTwinAccess
         ? `Access granted for ${allowedTwins.length} twin${allowedTwins.length === 1 ? "" : "s"}.`
-        : authenticated
-          ? "Access pending: no twin is assigned to this account yet."
+        : state.authSession?.status === "access_pending"
+          ? "Access pending: ask a Me.IDs group owner to add and provision this account. Signing in again will not change this state."
+          : authenticated
+            ? "Access granted. Create your first twin to enter the workspace."
           : "Invited external users are allowed when they are added to Microsoft Entra ID and mapped to a Me.IDs twin.";
   }
   const signIn = $("#loginMicrosoftBtn");
@@ -401,7 +407,7 @@ function applyAuthState() {
     enter.textContent = enabled && !authenticated ? "Sign in required" : "Enter workspace";
   }
   const createTwin = $("#landingCreateTwinBtn");
-  if (createTwin) createTwin.disabled = enabled && !authenticated;
+  if (createTwin) createTwin.disabled = enabled && state.authSession?.status !== "authenticated";
   $$(".nav-item, #twinSelect").forEach((item) => {
     item.disabled = enabled && !canEnterWorkspace();
   });

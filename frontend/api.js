@@ -29,7 +29,20 @@
 
   async function requestJson(url, options = {}) {
     const response = await fetch(apiUrl(url), options);
-    if (!response.ok) throw new Error(await response.text());
+    if (!response.ok) {
+      const responseBody = await response.text();
+      let details = null;
+      try {
+        details = responseBody ? JSON.parse(responseBody) : null;
+      } catch (error) {
+        details = null;
+      }
+      const requestError = new Error(details?.error || responseBody || `${response.status} ${response.statusText}`);
+      requestError.status = response.status;
+      requestError.statusText = response.statusText;
+      requestError.details = details;
+      throw requestError;
+    }
     return response.json();
   }
 
