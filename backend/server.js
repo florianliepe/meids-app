@@ -1649,8 +1649,8 @@ function sessionFromPrincipal(principal, mapping = null) {
   const principalEmail = String(principal.userDetails || principal.userId || "").trim();
   const userId = mapping?.user_id || principalId;
   const email = mapping?.email || principalEmail;
-  const allowedTwinIds = mapping?.allowed_twin_ids?.length
-    ? mapping.allowed_twin_ids
+  const allowedTwinIds = mapping
+    ? (mapping.allowed_twin_ids || [])
     : csvSetting("MEIDS_AUTH_ALLOWED_TWIN_IDS", process.env.MEIDS_ACTIVE_TWIN || "florian");
   const roles = [...new Set([
     ...(mapping?.roles || []),

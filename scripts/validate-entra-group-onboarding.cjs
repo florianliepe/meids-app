@@ -15,6 +15,7 @@ const checks = [
   [backend.includes("MEIDS_AUTHZ_OWNER_GROUP_ID"), "backend has a configured owners-group boundary"],
   [backend.includes("await ensureJitAuthorizationMapping(pool, principal)"), "database mapping can be provisioned before authorization lookup"],
   [backend.includes('role === "user" ? "viewer" : role'), "default Me.IDs User app role maps to viewer"],
+  [backend.includes('mapping\n    ? (mapping.allowed_twin_ids || [])'), "mapped users without twins do not inherit an environment fallback twin"],
 ];
 
 const failures = checks.filter(([passed]) => !passed);

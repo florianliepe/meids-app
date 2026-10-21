@@ -121,3 +121,4 @@ identity is blocked by Entra while a direct `Me.IDs Users` member receives a
 | ENTRA-005 | Treat HTTP 403 as access pending, not unauthenticated. | Reauthentication cannot create a missing authorization mapping and caused the loop. |
 | ENTRA-006 | Review guest access quarterly. | External access needs periodic recertification by accountable group owners. |
 | ENTRA-007 | Provision Adem without a seeded twin as the temporary UAT bridge. | Authentication is valid but the preconfigured SWA provider cannot emit the not-yet-created Me.IDs application roles. A database identity removes the immediate block while preserving user-owned first-twin creation. |
+| ENTRA-008 | Never apply environment fallback twins to a database-mapped identity. | A newly provisioned user must begin with no twin rather than inheriting another user's bootstrap twin. |
