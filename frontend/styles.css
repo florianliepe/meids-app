@@ -129,6 +129,10 @@ body.theme-dark {
   margin: 14px 0 10px;
 }
 
+.login-actions [hidden] {
+  display: none !important;
+}
+
 body.auth-blocked .shell {
   pointer-events: none;
   user-select: none;
