@@ -1612,7 +1612,7 @@ function principalClaimValues(principal = {}, claimTypes = []) {
     .filter(Boolean);
 }
 
-function explicitMeidsRolesFromPrincipal(principal = {}) {
+function rawMeidsRolesFromPrincipal(principal = {}) {
   const platformRoles = Array.isArray(principal.userRoles) ? principal.userRoles : [];
   const claimRoles = principalClaimValues(principal, [
     "roles",
@@ -1620,8 +1620,23 @@ function explicitMeidsRolesFromPrincipal(principal = {}) {
   ]);
   return [...new Set([...platformRoles, ...claimRoles]
     .filter((role) => !["anonymous", "authenticated"].includes(String(role).toLowerCase()))
-    .map((role) => String(role).replace(/^meids[.:_-]/i, "").toLowerCase())
-    .map((role) => role === "user" ? "viewer" : role))];
+    .map((role) => String(role).replace(/^meids[.:_-]/i, "").toLowerCase()))];
+}
+
+function explicitMeidsRolesFromPrincipal(principal = {}) {
+  return rawMeidsRolesFromPrincipal(principal)
+    .map((role) => ["user", "employee"].includes(role) ? "viewer" : role);
+}
+
+function principalIdentityEmail(principal = {}) {
+  return String(
+    principalClaimValues(principal, [
+      "email",
+      "emails",
+      "preferred_username",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+    ])[0] || principal.userDetails || ""
+  ).trim().toLowerCase();
 }
 
 function meidsRolesFromPrincipal(principal = {}) {
@@ -1719,19 +1734,23 @@ function jitAuthorizationEnabled() {
 }
 
 function jitAuthorizationEntitlements(principal = {}) {
+  const rawRoles = rawMeidsRolesFromPrincipal(principal);
   const explicitRoles = explicitMeidsRolesFromPrincipal(principal);
+  const identityEmail = principalIdentityEmail(principal);
+  const employee = rawRoles.includes("employee") && identityEmail.endsWith("@eraneos.com");
   const groupClaims = principalClaimValues(principal, [
     "groups",
     "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups",
   ]).map((value) => value.toLowerCase());
   const usersGroupId = String(process.env.MEIDS_AUTHZ_USER_GROUP_ID || "").trim().toLowerCase();
   const ownersGroupId = String(process.env.MEIDS_AUTHZ_OWNER_GROUP_ID || "").trim().toLowerCase();
-  const user = explicitRoles.includes("viewer")
+  const user = employee
+    || rawRoles.includes("user")
     || explicitRoles.includes("owner")
     || Boolean(usersGroupId && groupClaims.includes(usersGroupId))
     || Boolean(ownersGroupId && groupClaims.includes(ownersGroupId));
   const owner = explicitRoles.includes("owner") || Boolean(ownersGroupId && groupClaims.includes(ownersGroupId));
-  return { user, owner, usersGroupId, ownersGroupId };
+  return { user, owner, employee, usersGroupId, ownersGroupId };
 }
 
 function jitUserId(principal = {}) {
@@ -1744,7 +1763,7 @@ async function ensureJitAuthorizationMapping(pool, principal) {
   const entitlement = jitAuthorizationEntitlements(principal);
   if (!entitlement.user) return false;
   const entraObjectId = String(principal.userId || "").trim().toLowerCase();
-  const email = String(principal.userDetails || "").trim().toLowerCase();
+  const email = principalIdentityEmail(principal);
   if (!entraObjectId || !email) return false;
   const tenantId = String(process.env.MEIDS_TENANT_ID || "eraneos").trim().toLowerCase();
   const tenantName = String(process.env.MEIDS_TENANT_NAME || "Eraneos").trim();

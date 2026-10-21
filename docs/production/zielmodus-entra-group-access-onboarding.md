@@ -17,16 +17,21 @@ the user back to sign-in, producing the observed loop.
 
 ## Target authorization layers
 
-1. **Entra admission:** the `Me.IDs Users` security group is assigned to the
-   Me.IDs enterprise application. `User assignment required` is enabled.
-2. **Entra privilege:** the `Me.IDs Owners` security group receives the
+1. **Eraneos workforce admission:** the existing dynamic
+   `AZ_USC_Eraneos-Standard-Users` group is assigned directly to the
+   `MeIDs.Employee` application role. Its members become potential users and
+   receive a personal database identity on first successful session.
+2. **Guest admission:** accepted B2B guest objects are added directly to
+   `Me.IDs Users`, which is assigned to the `MeIDs.User` application role.
+   `User assignment required` is enabled.
+3. **Entra privilege:** the `Me.IDs Owners` security group receives the
    `MeIDs.Owner` application role. Its members are also direct members of
    `Me.IDs Users`.
-3. **Me.IDs provisioning:** an admitted identity is inserted or refreshed in
+4. **Me.IDs provisioning:** an admitted identity is inserted or refreshed in
    `identity.app_user` on its first session request. `MeIDs.User` becomes the
    read-oriented `viewer` role. The user can then create a first twin and owns
    that twin.
-4. **Data authorization:** `twin.user_twin_access`, tenant ID, user ID, and
+5. **Data authorization:** `twin.user_twin_access`, tenant ID, user ID, and
    knowledge visibility continue to enforce access to specific twins and
    knowledge. Entra group membership never grants blanket access to another
    user's knowledge.
@@ -37,10 +42,18 @@ the user back to sign-in, producing the observed loop.
 |---|---|---|---|
 | `Me.IDs Users` | `6d05aad5-e0ea-4bc5-84b0-003f43611079` | Florian Liepe, Adem Korkutan | Florian Liepe, Adem Korkutan |
 | `Me.IDs Owners` | `849d2888-ecd3-42e8-ad91-fd3178b83734` | Florian Liepe, Adem Korkutan | Florian Liepe, Adem Korkutan |
+| `AZ_USC_Eraneos-Standard-Users` | `2ba08970-e4a4-4152-9985-1f8283ff7688` | centrally governed | dynamic Eraneos workforce (about 1,493 resolved members on 2026-10-21) |
 
 The backend App Service has the two group IDs and
 `MEIDS_AUTHZ_JIT_ENABLED=true`. Provisioning still requires an explicit group
 or application-role claim; a merely authenticated identity is not admitted.
+
+Do not copy all workforce members into `Me.IDs Users` and do not nest the
+workforce group into it. Enterprise-application assignments do not expand
+nested groups, while copied membership drifts. Assign the workforce group
+directly to `MeIDs.Employee`. The backend accepts this role only when the
+signed-in identity resolves to an `@eraneos.com` address. This excludes the
+service-account exception present in the source group's dynamic rule.
 
 ## External guest procedure
 
@@ -70,8 +83,9 @@ The current subscription owner can create Azure resources and Entra groups but
 cannot register an Entra application. An Entra administrator must perform one
 of these options:
 
-- Temporarily assign Florian Liepe the **Application Developer** directory role,
-  then let the deployment script create the application; or
+- Temporarily assign Florian Liepe the **Cloud Application Administrator**
+  directory role, then let the deployment script create the application,
+  service principal, app roles, owners, and group assignments; or
 - Create the application with the following exact settings.
 
 ### Admin-created application
@@ -80,24 +94,45 @@ of these options:
    `213a6ca3-4808-4047-8aca-814d2cde4474`.
 2. Add web redirect URI
    `https://victorious-flower-0f10a8303.6.azurestaticapps.net/.auth/login/aad/callback`.
-3. Add application role `Me.IDs User`, value `MeIDs.User`, allowed member type
+3. Add application role `Me.IDs Employee`, value `MeIDs.Employee`, allowed
+   member type `Users/Groups`.
+4. Add application role `Me.IDs User`, value `MeIDs.User`, allowed member type
    `Users/Groups`.
-4. Add application role `Me.IDs Owner`, value `MeIDs.Owner`, allowed member type
+5. Add application role `Me.IDs Owner`, value `MeIDs.Owner`, allowed member type
    `Users/Groups`.
-5. Set token configuration group claim to `Security groups`.
-6. Add Florian Liepe (`4277841b-d713-47b6-8168-172ac3cde535`) and Adem Korkutan
+6. Set token configuration group claim to `Security groups`.
+7. Add Florian Liepe (`4277841b-d713-47b6-8168-172ac3cde535`) and Adem Korkutan
    (`5c3a147c-0a3b-4d85-bed9-d63653bb5d0d`) as application owners.
-7. In the enterprise application, set `Assignment required?` to `Yes`.
-8. Assign `Me.IDs Users` to `MeIDs.User` and `Me.IDs Owners` to `MeIDs.Owner`.
-9. Create a client secret and store it directly as the Azure Static Web App
+8. In the enterprise application, set `Assignment required?` to `Yes`.
+9. Assign `AZ_USC_Eraneos-Standard-Users` to `MeIDs.Employee`, `Me.IDs Users`
+   to `MeIDs.User`, and `Me.IDs Owners` to `MeIDs.Owner`.
+10. Create a client secret and store it directly as the Azure Static Web App
    setting `AZURE_CLIENT_SECRET`. Do not send the secret in chat or commit it.
-10. Store the application/client ID as Static Web App setting
+11. Store the application/client ID as Static Web App setting
     `AZURE_CLIENT_ID` and provide only that non-secret ID to the project owner.
 
+The repeatable implementation is captured in:
+
+```powershell
+.\scripts\configure-meids-entra-production-app.ps1 -ConfigureStaticWebApp
+```
+
+Run it as an identity with sufficient Entra application-administration rights.
+It is idempotent for the application, roles, owners, and group-role
+assignments. It creates a one-year client secret only when
+`-ConfigureStaticWebApp` is supplied and writes the value directly to the
+Static Web App settings without printing it.
+
 After the admin step, add the custom single-tenant provider to
-`frontend/staticwebapp.config.json`, deploy it, and verify that an unassigned
+`frontend/staticwebapp.config.json` using
+`docs/production/staticwebapp-entra-production-auth.fragment.json`, deploy it,
+and verify that an unassigned
 identity is blocked by Entra while a direct `Me.IDs Users` member receives a
 200 session and can create a first twin.
+
+Do not deploy the fragment before both Static Web App settings exist. The
+current preconfigured provider remains active until the application
+registration and enterprise-application assignments are complete.
 
 ## UAT gates
 
@@ -122,3 +157,6 @@ identity is blocked by Entra while a direct `Me.IDs Users` member receives a
 | ENTRA-006 | Review guest access quarterly. | External access needs periodic recertification by accountable group owners. |
 | ENTRA-007 | Provision Adem without a seeded twin as the temporary UAT bridge. | Authentication is valid but the preconfigured SWA provider cannot emit the not-yet-created Me.IDs application roles. A database identity removes the immediate block while preserving user-owned first-twin creation. |
 | ENTRA-008 | Never apply environment fallback twins to a database-mapped identity. | A newly provisioned user must begin with no twin rather than inheriting another user's bootstrap twin. |
+| ENTRA-009 | Assign the existing workforce group directly to `MeIDs.Employee`. | Direct app-role assignment avoids copied membership and the unsupported nested-group assumption. |
+| ENTRA-010 | Keep workforce, guest, and owner admission as separate app roles. | Internal eligibility can be broad while guest access and privileged access remain explicit and reviewable. |
+| ENTRA-011 | Restrict employee-role JIT to `@eraneos.com`. | The source group includes a documented non-workforce exception; the backend must not provision that exception as an employee. |

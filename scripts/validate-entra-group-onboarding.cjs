@@ -14,7 +14,8 @@ const checks = [
   [backend.includes("MEIDS_AUTHZ_USER_GROUP_ID"), "backend has a configured users-group boundary"],
   [backend.includes("MEIDS_AUTHZ_OWNER_GROUP_ID"), "backend has a configured owners-group boundary"],
   [backend.includes("await ensureJitAuthorizationMapping(pool, principal)"), "database mapping can be provisioned before authorization lookup"],
-  [backend.includes('role === "user" ? "viewer" : role'), "default Me.IDs User app role maps to viewer"],
+  [backend.includes('["user", "employee"].includes(role) ? "viewer" : role'), "Me.IDs User and Employee app roles map to viewer"],
+  [backend.includes('rawRoles.includes("employee") && identityEmail.endsWith("@eraneos.com")'), "employee JIT is restricted to Eraneos identities"],
   [backend.includes('? (mapping.allowed_twin_ids || [])'), "mapped users without twins do not inherit an environment fallback twin"],
 ];
 
