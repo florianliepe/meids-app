@@ -38,13 +38,13 @@ Alternatively, use the OpenAI-compatible Eraneos AI Gateway while keeping the sa
 
 ```text
 MEIDS_EMBEDDING_PROVIDER=eraneos_gateway
-ERANEOS_AI_GATEWAY_BASE_URL=https://<gateway>/v1
-ERANEOS_AI_GATEWAY_EMBEDDING_MODEL=<embedding-model-id>
+ERANEOS_AI_GATEWAY_BASE_URL=https://ai-gateway.eraneos.com/v1/embeddings
+ERANEOS_AI_GATEWAY_EMBEDDING_MODEL=text-embedding-3-large
 ERANEOS_AI_GATEWAY_API_KEY=@Microsoft.KeyVault(...)
 AZURE_OPENAI_EMBEDDING_DIMENSIONS=1536
 ```
 
-The backend calls `POST {ERANEOS_AI_GATEWAY_BASE_URL}/embeddings` with bearer authentication. The configured model must support a 1536-dimensional response, or support the OpenAI-compatible `dimensions` request parameter.
+The backend accepts either the full `/v1/embeddings` endpoint or the `/v1` base URL and calls the normalized endpoint with bearer authentication. The configured model must support a 1536-dimensional response, or support the OpenAI-compatible `dimensions` request parameter.
 
 ## Backend Endpoints
 

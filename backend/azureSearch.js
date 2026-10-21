@@ -19,6 +19,10 @@ function cleanBaseUrl(value = "") {
   return String(value || "").trim().replace(/\/+$/, "");
 }
 
+function cleanGatewayEmbeddingBaseUrl(value = "") {
+  return cleanBaseUrl(value).replace(/\/embeddings$/i, "");
+}
+
 function normalizeSearchAuthMode(value = "") {
   return String(value || "api_key").trim().toLowerCase() === "managed_identity"
     ? "managed_identity"
@@ -50,9 +54,9 @@ function azureSearchConfigFromEnv(env = process.env) {
   const requestTimeoutMs = Math.max(1000, Number(env.AZURE_SEARCH_REQUEST_TIMEOUT_MS || 10000));
   const embeddingDimensions = Number(env.AZURE_OPENAI_EMBEDDING_DIMENSIONS || DEFAULT_EMBEDDING_DIMENSIONS);
   const embeddingProvider = normalizeEmbeddingProvider(env.MEIDS_EMBEDDING_PROVIDER);
-  const embeddingEndpoint = cleanBaseUrl(embeddingProvider === "eraneos_gateway"
-    ? env.ERANEOS_AI_GATEWAY_BASE_URL || env.OPENAI_BASE_URL || ""
-    : env.AZURE_OPENAI_ENDPOINT || "");
+  const embeddingEndpoint = embeddingProvider === "eraneos_gateway"
+    ? cleanGatewayEmbeddingBaseUrl(env.ERANEOS_AI_GATEWAY_BASE_URL || env.OPENAI_BASE_URL || "")
+    : cleanBaseUrl(env.AZURE_OPENAI_ENDPOINT || "");
   const embeddingApiKey = String(embeddingProvider === "eraneos_gateway"
     ? env.ERANEOS_AI_GATEWAY_API_KEY || env.OPENAI_API_KEY || ""
     : env.AZURE_OPENAI_API_KEY || "").trim();

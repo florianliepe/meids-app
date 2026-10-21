@@ -149,7 +149,7 @@ const eraneosGatewayEmbeddingConfig = adapter.azureSearchConfigFromEnv({
   AZURE_SEARCH_ENDPOINT: "https://example.search.windows.net",
   AZURE_SEARCH_API_KEY: "search-key",
   MEIDS_EMBEDDING_PROVIDER: "eraneos_gateway",
-  ERANEOS_AI_GATEWAY_BASE_URL: "https://gateway.example/v1/",
+  ERANEOS_AI_GATEWAY_BASE_URL: "https://gateway.example/v1/embeddings",
   ERANEOS_AI_GATEWAY_API_KEY: "gateway-key",
   ERANEOS_AI_GATEWAY_EMBEDDING_MODEL: "embedding-model-id",
   AZURE_OPENAI_EMBEDDING_DIMENSIONS: "1536",
