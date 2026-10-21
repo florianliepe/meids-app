@@ -11,7 +11,6 @@ function twinIds() {
     .split(",")
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
-  if (!values.length) throw new Error("MEIDS_SEED_TWIN_IDS must contain at least one twin ID.");
   return [...new Set(values)];
 }
 
@@ -88,7 +87,8 @@ async function main() {
     user_id: userId,
     entra_object_id: entraObjectId,
     twin_ids: twins,
-    access_role: "owner",
+    access_role: twins.length ? "owner" : "viewer",
+    next_action: twins.length ? "Use an assigned twin." : "Sign in and create the first owned twin.",
   }, null, 2)}\n`);
 }
 
