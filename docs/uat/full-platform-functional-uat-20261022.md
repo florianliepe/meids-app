@@ -2,11 +2,11 @@
 
 ## Executive result
 
-**Overall status: FAILED / public launch blocked.**
+**Overall status: CONDITIONALLY BLOCKED / core application remediation passed, n8n publication evidence remains open.**
 
 Authentication, first-twin onboarding, twin CRUD, active-twin persistence, direct Actor Twin chat, and a normal Agentic Butler drafting route work. Most production workspace functions do not: the Azure frontend calls API routes that are not implemented by the linked production backend.
 
-The platform is suitable for continued controlled UAT, but not for a public launch that promises picture upload, knowledge ingestion/review, voice concept capture, skill creation, graph/traces, or production-agent operations.
+The hosted application API, persistence, identity onboarding, knowledge review, graph projection, trace visibility, profile completeness, and skill-creation approval route have since been remediated. Public launch remains blocked by the stale published Knowledge Fabric workflow and missing fresh execution evidence for three subordinate workflows.
 
 ## Test context
 
@@ -161,6 +161,23 @@ The 2026-10-22 Zielmodus remediation implements the code-side entry criteria as 
 - `backend/migrations/011_workspace_interaction_contracts.sql` adds RLS-protected skill and voice-draft storage.
 - Twin completeness is now computed by the backend from canonical persisted fields.
 - Live Actor Twin authorization-context bindings were refreshed. Knowledge Fabric and Butler canonical workflows were republished; internal delegation remains `Call n8n Workflow Tool` first.
+
+### Final remediation delta
+
+| Finding | State | Evidence or mitigation |
+|---|---|---|
+| Frontend/backend route parity | CLOSED | The launch-critical manifest now validates 46 authenticated routes, including voice preflight and handoff-ledger contracts. |
+| Twin/profile persistence | CLOSED | Create, activate, update, reload, and canonical completeness were verified in authenticated UAT. |
+| Text knowledge ingest and review | CLOSED | Synthetic knowledge was staged as `review_needed` and rejected after evidence capture. |
+| Graph and activity traces | CLOSED | Governed concept projection and RLS-scoped activity events load for the active twin. |
+| Voice quality display | CLOSED IN CODE; DEPLOY/RETEST REQUIRED | Backend score contract is `0..1`, includes `word_count`, covered dimensions, and blocking reasons. Evidence confidence now uses the same normalized scale. |
+| Voice preflight and handoff ledger | CLOSED IN CODE; DEPLOY/RETEST REQUIRED | New hosted endpoints enforce Entra/twin scope and route handoffs through Actor Twin with `call_n8n_workflow_tool_first`. |
+| Skill creation | CLOSED | Live Actor Twin to Butler route returns `approval_required` within 14 seconds. |
+| Knowledge Fabric live handoff | OPEN P0 | Live Actor routing is correct, but production n8n still executes an older published HTTP scoring node and rejects its protected backend call. |
+| Seven-agent fresh proof | OPEN P1 | Actor Twin, Butler, and Critical Faculty are fresh; Knowledge Fabric fails; Skill Orchestrator, Task Agent, and Learning Agent remain stale. |
+| Picture browser upload | RETEST REQUIRED | The authenticated endpoint contract exists; browser file-chooser automation did not yield a reliable evidence capture in this run. |
+
+The live validator now treats delegated authorization and persistence failures as failures even when the outer n8n chat webhook returns HTTP 200. Latest result: 3/4 live interaction cases pass; only Knowledge Fabric fails.
 
 Deployment and authenticated retest remain required before defects can be closed. The latest seven-agent probe is intentionally retained as evidence: it shows the pre-retest Knowledge Fabric failure and missing fresh executions for Skill Orchestrator, Task Agent, and Learning Agent rather than claiming those paths passed.
 

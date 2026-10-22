@@ -26,7 +26,13 @@ const complete = qualityAssessment({
   transcript: "The topic is invoice approval. We need it because financial control prevents duplicate payment. First the requester submits evidence, then the responsible finance owner checks it and the controller approves. The result is an auditable payment decision.",
   replies: ["The finance owner is responsible and the requester is informed."],
 });
-if (!complete.ready || complete.eligibility_score < 70) throw new Error("Complete circular interview sample must pass the quality gate.");
+if (!complete.ready || complete.eligibility_score < 0.7) throw new Error("Complete circular interview sample must pass the quality gate.");
+if (complete.eligibility_score > 1 || complete.consistency_score > 1) {
+  throw new Error("Voice quality scores must use the frontend's 0..1 contract.");
+}
+if (!Number.isInteger(complete.word_count) || complete.word_count < 45) {
+  throw new Error("Voice quality assessment must expose the assessed word count.");
+}
 if (REVIEW_FROM_UI["pending-review"] !== "review_needed" || REVIEW_FROM_UI["needs-rework"] !== "updated") {
   throw new Error("Frontend and database review states are not mapped correctly.");
 }

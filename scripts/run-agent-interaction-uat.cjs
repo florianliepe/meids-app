@@ -96,6 +96,12 @@ function chatOutputFailure(text = "") {
   const value = String(text || "");
   if (/referenced node doesn't exist/i.test(value)) return "agentic_butler_n8n_node_missing: Referenced node does not exist";
   if (/simple memory/i.test(value)) return "knowledge_fabric_n8n_memory_error: Simple Memory node failed";
+  if (/authorization failed|signed knowledge access token is required|not authorized/i.test(value)) {
+    return "n8n_delegate_authorization_failure: delegated workflow rejected its protected backend call";
+  }
+  if (/could(?: not|n't) (?:validate|save|stage)|was not saved|not saved|delegat(?:ed|ion).*(?:failed|unavailable)/i.test(value)) {
+    return "n8n_delegate_failure: embedded chat reported an unsuccessful delegated result";
+  }
   if (/backend calls?.*failed|call failed|ingestion call failed|failed on infrastructure/i.test(value)) {
     return "n8n_delegate_failure: embedded chat reported downstream workflow failure";
   }
@@ -427,6 +433,9 @@ async function runCase(testCase) {
   const agenticButlerNodeMissing = results.some((item) =>
     item.findings.some((finding) => finding.includes("agentic_butler_n8n_node_missing"))
   );
+  const delegatedAuthorizationFailure = results.some((item) =>
+    item.findings.some((finding) => finding.includes("n8n_delegate_authorization_failure") || finding.includes("n8n_delegate_failure"))
+  );
   const artifact = {
     schema_version: "0.1.0",
     generated_at: new Date().toISOString(),
@@ -444,6 +453,8 @@ async function runCase(testCase) {
       ? "Patch the active embedded Actor Twin n8n workflow: update the Actor Twin system prompt and both Call n8n Workflow Tool descriptions from prompts/actor-twin/tool-descriptions.md, verify Knowledge Fabric and Agentic Butler tools are connected to the AI Agent, then rerun npm run uat:agents:live. If using API apply, configure N8N_API_BASE_URL, N8N_API_KEY, and the live workflow ids first."
       : knowledgeFabricMemoryError || agenticButlerNodeMissing
       ? "Actor Twin embedded chat is reachable, but downstream n8n worker workflows need repair: remove or correctly wire the Knowledge Fabric Simple Memory node, and repair the Agentic Butler workflow/tool reference that returns 'Referenced node does not exist'. Then rerun npm run uat:agents:live."
+      : delegatedAuthorizationFailure
+      ? "Repair or republish the failing downstream workflow. For Knowledge Fabric, verify the active production version no longer calls the protected backend without a service credential, then rerun npm run uat:agents:live."
       : delegatedButlerWithoutTrace || createSkillNotDelegated
       ? "Import and publish workflows/n8n/import-ready/actor-twin-direct-orchestrator.uat-live-urls.import.json into the active Actor Twin workflow. In n8n, verify Switch by route has no route_decision.approval_required pre-delegation branch and that the agentic_butler output connects to Call Agentic Butler, then rerun npm run uat:agents:live."
       : knowledgeFabricEmpty

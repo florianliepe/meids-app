@@ -148,15 +148,23 @@ function qualityAssessment(body) {
   };
   const coverage = Object.values(dimensions).filter(Boolean).length / Object.keys(dimensions).length;
   const wordScore = Math.min(1, words.length / 90);
-  const score = Math.round((coverage * 0.7 + wordScore * 0.3) * 100);
+  const score = Number((coverage * 0.7 + wordScore * 0.3).toFixed(2));
+  const ready = words.length >= 45 && missing.length <= 1;
   return {
-    ready: words.length >= 45 && missing.length <= 1,
+    ready,
+    final_ready: ready,
     category: clean(body.category || "process_insight", 100),
     category_label: clean(body.category || "Process insight", 100),
     summary: transcript.split(/[.!?]\s/)[0].slice(0, 240) || "Voice knowledge concept",
     consistency_score: score,
     eligibility_score: score,
+    word_count: words.length,
     missing_dimensions: missing,
+    covered_dimensions: Object.entries(dimensions).filter(([, present]) => present).map(([name]) => name),
+    blocking_reasons: [
+      ...(words.length < 45 ? [`Add ${45 - words.length} or more words.`] : []),
+      ...(missing.length > 1 ? [`Close at least ${missing.length - 1} more W-question dimensions.`] : []),
+    ],
     dimensions,
     next_question: missing.length ? questionByDimension[missing[0]] : "What exception or failure mode would an experienced colleague know to watch for?",
   };
@@ -481,6 +489,91 @@ function createWorkspaceApi(deps) {
     jsonResponse(res, 200, { assessment, agent: { id: "knowledge_retrieval_agent", mode: "circular_interview" }, conversation: { turn_count: (body.replies || []).length + 1 } });
   }
 
+  async function voicePreflight(req, res, url) {
+    const { mapping } = await context(req, {}, true);
+    const twinId = assertTwin(mapping, url.searchParams.get("twin"));
+    const n8nReady = Boolean(process.env.N8N_ACTOR_TWIN_WEBHOOK_URL);
+    jsonResponse(res, 200, {
+      status: n8nReady ? "ready" : "degraded",
+      criteria: { approval_state: "approved", version: "circular-w-questions-v1" },
+      agent: { mode: "actor_twin_routed", n8n_configured: n8nReady },
+      summary: { local_uat_ready: true, n8n_ready: n8nReady, twin_id: twinId },
+      checks: [
+        { key: "identity_scope", label: "Identity and twin scope", state: "ready", message: "Entra identity, tenant, and selected twin are enforced by the backend." },
+        { key: "quality_gate", label: "Circular interview gate", state: "ready", message: "What, how, why, who, and what-then dimensions are scored before commit." },
+        { key: "agent_route", label: "Actor Twin route", state: n8nReady ? "ready" : "warning", message: n8nReady ? "Agent handoffs enter through Actor Twin and use workflow-tool delegation." : "Actor Twin webhook is not configured in this backend instance." },
+      ],
+    });
+  }
+
+  async function voiceAgentHandoff(req, res) {
+    const body = await readBody(req);
+    const { mapping, pool } = await context(req, body, true);
+    const twinId = assertTwin(mapping, body.twin || body.twin_id);
+    const transcript = clean(body.transcript, 50_000);
+    if (!transcript) throw httpError(400, "Transcript is required.");
+    const target = ["mcp", "n8n", "github"].includes(clean(body.target, 20).toLowerCase())
+      ? clean(body.target, 20).toLowerCase()
+      : "n8n";
+    const requestId = `voice-handoff-${Date.now().toString(36)}-${crypto.randomBytes(3).toString("hex")}`;
+    const envelope = {
+      envelope_version: "0.1.0",
+      request_id: requestId,
+      timestamp: new Date().toISOString(),
+      agent_id: "actor_twin",
+      intent: "route_request",
+      principal: { tenant_id: mapping.tenant_id, user_id: mapping.user_id, roles: mapping.roles || [] },
+      input: {
+        query: `Prepare governed ${target} context from this voice concept. Do not execute an external side effect.`,
+        transcript,
+        category: clean(body.category || "knowledge", 100),
+        replies: Array.isArray(body.replies) ? body.replies : [],
+        human_note: clean(body.human_note, 2_000),
+        execute: false,
+      },
+      context: {
+        active_twin_id: twinId,
+        allowed_twin_ids: mapping.allowed_twin_ids,
+        routing_policy: "call_n8n_workflow_tool_first",
+        target_capability: "knowledge_fabric_agent",
+        side_effect_policy: "prepare_only",
+      },
+    };
+    const delegated = await proxyToN8n("actor_twin", envelope);
+    const payloadHash = crypto.createHash("sha256").update(JSON.stringify(envelope.input)).digest("hex");
+    await withContext(pool, mapping, (client) => audit(client, mapping, "voice.agent_handoff", "runtime.voice_handoff", requestId, {
+      twin_id: twinId,
+      target,
+      payload_hash: payloadHash,
+      status: delegated.status || "completed",
+    }));
+    jsonResponse(res, 201, {
+      status: delegated.status || "completed",
+      handoff_path: requestId,
+      target,
+      payload_hash: payloadHash,
+      evidence: { path: clean(body.evidence_path, 500) || `voice-handoff:${requestId}` },
+      approval_boundary: "Prepared through Actor Twin; external execution remains approval-gated.",
+      orchestration: { entry_agent: "actor_twin", delegation: "Call n8n Workflow Tool" },
+      result: delegated.output || delegated,
+    });
+  }
+
+  async function voiceAgentHandoffs(req, res, url) {
+    const { mapping, pool } = await context(req, {}, true);
+    const limit = Math.min(50, Number(url.searchParams.get("limit")) || 8);
+    const result = await withContext(pool, mapping, (client) => client.query(
+      `SELECT resource_id, details, created_at FROM audit.event
+       WHERE tenant_id = $1 AND actor_user_id = $2 AND action = 'voice.agent_handoff'
+       ORDER BY created_at DESC LIMIT $3`,
+      [mapping.tenant_id, mapping.user_id, limit],
+    ));
+    jsonResponse(res, 200, {
+      status: "ready",
+      handoffs: result.rows.map((row) => ({ path: row.resource_id, ...row.details, created_at: row.created_at })),
+    });
+  }
+
   async function voiceDraft(req, res) {
     const body = await readBody(req);
     const { mapping, pool } = await context(req, body, true);
@@ -542,7 +635,7 @@ function createWorkspaceApi(deps) {
         raw: { type: "Voice Concept", category: body.category, assessment },
       },
       source: { type: "voice_transcript", label: clean(body.source_label || "voice-concept-conversation", 200) },
-      evidence: [{ citation: { type: "voice_transcript", title: assessment.summary, conversation_turns: (body.replies || []).length + 1 }, confidence: assessment.eligibility_score / 100 }],
+      evidence: [{ citation: { type: "voice_transcript", title: assessment.summary, conversation_turns: (body.replies || []).length + 1 }, confidence: assessment.eligibility_score }],
       change_reason: "Guided voice capture quality gate passed",
     });
     jsonResponse(res, 201, {
@@ -682,11 +775,14 @@ function createWorkspaceApi(deps) {
     else if (route === "GET /api/skills/refinements") await stableEmpty(res, "skill_refinements");
     else if (route === "GET /api/skills/telemetry") await stableEmpty(res, "telemetry");
     else if (route === "GET /api/voice/concepts/criteria") await voiceCriteria(res);
+    else if (route === "GET /api/voice/concepts/preflight") await voicePreflight(req, res, url);
     else if (route === "POST /api/voice/concepts/assess") await voiceAssess(req, res);
     else if (route === "POST /api/voice/concepts/draft") await voiceDraft(req, res);
     else if (route === "GET /api/voice/concepts/drafts") await voiceDrafts(req, res, url);
     else if (route === "POST /api/voice/concepts/drafts/detail") await voiceDraftDetail(req, res);
     else if (route === "POST /api/voice/concepts/commit") await voiceCommit(req, res);
+    else if (route === "POST /api/voice/concepts/agent-handoff") await voiceAgentHandoff(req, res);
+    else if (route === "GET /api/voice/concepts/agent-handoffs") await voiceAgentHandoffs(req, res, url);
     else if (route === "GET /api/activity") await activity(req, res, url);
     else if (route === "GET /api/review-dashboard") await reviewDashboard(req, res, url);
     else if (route === "GET /api/okf/graph") await graphRead(req, res, url);

@@ -1,17 +1,17 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-10-22T15:08:10.004Z",
+  "generated_at": "2026-10-22T18:21:03.260Z",
   "purpose": "Executable UAT evidence for Actor Twin direct orchestration through live n8n.",
   "boundary": "Public-safe test prompts only. No private knowledge, secrets, or external write actions.",
   "actor_twin_webhook_host": "eraneos-agentic-platform.azurewebsites.net",
   "summary": {
     "total": 4,
-    "passed": 2,
-    "failed": 2,
+    "passed": 3,
+    "failed": 1,
     "status": "failed",
-    "live_alignment_required": true
+    "live_alignment_required": false
   },
-  "next_action": "Patch the active embedded Actor Twin n8n workflow: update the Actor Twin system prompt and both Call n8n Workflow Tool descriptions from prompts/actor-twin/tool-descriptions.md, verify Knowledge Fabric and Agentic Butler tools are connected to the AI Agent, then rerun npm run uat:agents:live. If using API apply, configure N8N_API_BASE_URL, N8N_API_KEY, and the live workflow ids first.",
+  "next_action": "Repair or republish the failing downstream workflow. For Knowledge Fabric, verify the active production version no longer calls the protected backend without a service credential, then rerun npm run uat:agents:live.",
   "cases": [
     {
       "case_id": "actor_answer",
@@ -22,8 +22,8 @@
       "expected_response_status": "completed",
       "query": "Who is Florian in this public-safe staging twin? Answer briefly without creating work.",
       "status": "passed",
-      "started_at": "2026-10-22T15:06:48.984Z",
-      "completed_at": "2026-10-22T15:06:52.867Z",
+      "started_at": "2026-10-22T18:20:30.017Z",
+      "completed_at": "2026-10-22T18:20:32.389Z",
       "http_status": 200,
       "actual_target_agent": "actor_twin",
       "route_decision": "answer_direct",
@@ -33,9 +33,9 @@
       "delegate_agent_id": "",
       "delegate_status": "",
       "delegate_trace_id": "",
-      "answer_preview": "In this public-safe staging twin, I don't have a stored identity record for \"Florian\" to surface — and per this environment's scope, I won't create, save, or stage any new knowledge entry to find out. If you can tell me ",
+      "answer_preview": "In this public-safe staging environment, I don't have a stored identity record to pull up for \"Florian\" — I'm the Me.IDs Actor Twin, and no such person profile is loaded in this context for me to reference directly.\n\nIf ",
       "response_shape": "object(output)",
-      "raw_response_preview": "{\"output\":\"In this public-safe staging twin, I don't have a stored identity record for \\\"Florian\\\" to surface — and per this environment's scope, I won't create, save, or stage any new knowledge entry to find out. If you can tell me who Florian is or what context he's connected to, I can respond directly without initiating any retrieval or write action.\"}",
+      "raw_response_preview": "{\"output\":\"In this public-safe staging environment, I don't have a stored identity record to pull up for \\\"Florian\\\" — I'm the Me.IDs Actor Twin, and no such person profile is loaded in this context for me to reference directly.\\n\\nIf you're asking because you want me to look up or confirm who Florian is as a known contact/stakeholder in the knowledge base, I'd need to retrieve that via Knowledge Fabric — just say so and I'll fetch it. Otherwise, I don't have a direct answer to give without pulling that record.\"}",
       "request_shape": "embedded_n8n_chat",
       "findings": []
     },
@@ -48,8 +48,8 @@
       "expected_response_status": "completed",
       "query": "Remember this public-safe source note as pending OKF evidence: Client alignment meeting moved to Friday and needs a decision log.",
       "status": "failed",
-      "started_at": "2026-10-22T15:06:52.867Z",
-      "completed_at": "2026-10-22T15:07:01.506Z",
+      "started_at": "2026-10-22T18:20:32.389Z",
+      "completed_at": "2026-10-22T18:20:38.422Z",
       "http_status": 200,
       "actual_target_agent": "knowledge_fabric_agent",
       "route_decision": "ingest_or_stage_knowledge",
@@ -59,12 +59,12 @@
       "delegate_agent_id": "",
       "delegate_status": "",
       "delegate_trace_id": "",
-      "answer_preview": "Delegated via Knowledge Fabric Agent.\n\nI attempted to stage this as pending OKF evidence, but the call failed due to an authorization error (credentials/tenant context issue) — not a content problem.\n\n**Status:** Not yet",
+      "answer_preview": "Delegated via Knowledge Fabric Agent.\n\nI attempted to stage your note as pending OKF evidence, but the request failed due to an authorization error — the Knowledge Fabric connection couldn't validate credentials for this",
       "response_shape": "object(output)",
-      "raw_response_preview": "{\"output\":\"Delegated via Knowledge Fabric Agent.\\n\\nI attempted to stage this as pending OKF evidence, but the call failed due to an authorization error (credentials/tenant context issue) — not a content problem.\\n\\n**Status:** Not yet saved.\\n**Likely missing dependency:** Authentication/credential mapping for Knowledge Fabric access in this session.\\n**Next recovery step:** Retry the save, or check that your tenant/user auth context is active. Want me to retry now?\\n\\nThe note I attempted to stage, for reference:\\n> \\\"Client alignment meeting moved to Friday and needs a decision log.\\\" (tagged: meeting schedule change, action item — decision log required, status: review_needed)\"}",
+      "raw_response_preview": "{\"output\":\"Delegated via Knowledge Fabric Agent.\\n\\nI attempted to stage your note as pending OKF evidence, but the request failed due to an authorization error — the Knowledge Fabric connection couldn't validate credentials for this action.\\n\\n**Status:** Not saved yet.\\n**Likely cause:** Auth/session dependency issue on the Knowledge Fabric Agent connector.\\n**Next step:** Retry the save, or let me know if you'd like me to attempt it again now — if the issue persists, it will need a credentials/session refresh on the workflow side before this note can be staged as review_needed evidence.\\n\\nYour note content is preserved here in case you want me to retry:\\n*\\\"Client alignment meeting moved to Friday and needs a decision log.\\\"*\"}",
       "request_shape": "embedded_n8n_chat",
       "findings": [
-        "n8n_delegate_failure: embedded chat reported downstream workflow failure"
+        "n8n_delegate_failure: embedded chat reported an unsuccessful delegated result"
       ]
     },
     {
@@ -76,8 +76,8 @@
       "expected_response_status": "completed",
       "query": "Write an email for the dev team to define the next features for the MeIDs app. Draft only; do not send.",
       "status": "passed",
-      "started_at": "2026-10-22T15:07:01.506Z",
-      "completed_at": "2026-10-22T15:07:24.996Z",
+      "started_at": "2026-10-22T18:20:38.422Z",
+      "completed_at": "2026-10-22T18:20:48.727Z",
       "http_status": 200,
       "actual_target_agent": "agentic_butler",
       "route_decision": "activate_skill",
@@ -87,9 +87,9 @@
       "delegate_agent_id": "",
       "delegate_status": "",
       "delegate_trace_id": "",
-      "answer_preview": "Delegated via Agentic Butler.\n\nHere's the draft email — not sent, ready for your review/edits:\n\n---\n\n**To:** Dev Team\n**Subject:** Planning the Next MeIDs Feature Set – Your Input Needed\n\nHi team,\n\nAs we wrap up the curr",
+      "answer_preview": "Delegated via Agentic Butler.\n\nHere's the draft email — not sent, ready for your review and edits:\n\n---\n\n**To:** Dev Team\n**Subject:** Planning the Next Feature Set for Me.IDs — Your Input Needed\n\nHi team,\n\nAs we wrap up",
       "response_shape": "object(output)",
-      "raw_response_preview": "{\"output\":\"Delegated via Agentic Butler.\\n\\nHere's the draft email — not sent, ready for your review/edits:\\n\\n---\\n\\n**To:** Dev Team\\n**Subject:** Planning the Next MeIDs Feature Set – Your Input Needed\\n\\nHi team,\\n\\nAs we wrap up the current cycle, I'd like us to align on what comes next for MeIDs. The goal of this email is to kick off a short, collaborative planning process to prioritize our upcoming feature set.\\n\\nTo get there, I'd love your input on:\\n- Candidate features or backlog items you think we should consider\\n- Any technical debt or improvements that should be bundled in\\n\\n**Proposed lightweight process:**\\n1. **Idea collection:** Everyone drops feature ideas/backlog items (reply-all or shared doc) by [date].\\n2. **Prioritization criteria:** We'll rank based on user impact, effort/complexity, and strategic fit (open to adjusting these).\\n3. **Decision point:** We finalize the shortlist by [date], either via async thread or a quick sync.\\n\\nCould you reply with your to",
+      "raw_response_preview": "{\"output\":\"Delegated via Agentic Butler.\\n\\nHere's the draft email — not sent, ready for your review and edits:\\n\\n---\\n\\n**To:** Dev Team\\n**Subject:** Planning the Next Feature Set for Me.IDs — Your Input Needed\\n\\nHi team,\\n\\nAs we wrap up the current cycle, I'd like to start shaping the next feature set for Me.IDs. The goal of this thread is to collaboratively identify, prioritize, and sequence what we build next — so your input and perspective here matter a lot.\\n\\n**Purpose**\\nWe're kicking off planning for the upcoming feature cycle. Before we commit to a roadmap, I want to gather proposals and prioritization input directly from the people building the product.\\n\\n**What I'm asking from you**\\nPlease submit 1–3 feature ideas (big or small) using the structure below. No need to over-engineer the write-up — just enough detail for us to compare and discuss as a group.\\n\\nSuggested structure for each proposal:\\n- **Feature name:** Short, descriptive title\\n- **User problem solved:**",
       "request_shape": "embedded_n8n_chat",
       "findings": []
     },
@@ -101,30 +101,23 @@
       "expected_intent": "create_skill",
       "expected_response_status": "approval_required",
       "query": "Create a new skill for preparing a weekly executive steering update from email, calendar, and Teams exports.",
-      "status": "failed",
-      "started_at": "2026-10-22T15:07:24.996Z",
-      "completed_at": "2026-10-22T15:08:10.004Z",
-      "http_status": 0,
-      "actual_target_agent": "actor_twin",
-      "route_decision": "answer_direct",
-      "response_status": "completed",
-      "approval_required": false,
+      "status": "passed",
+      "started_at": "2026-10-22T18:20:48.727Z",
+      "completed_at": "2026-10-22T18:21:03.260Z",
+      "http_status": 200,
+      "actual_target_agent": "agentic_butler",
+      "route_decision": "create_skill",
+      "response_status": "approval_required",
+      "approval_required": true,
       "trace_id": "",
       "delegate_agent_id": "",
       "delegate_status": "",
       "delegate_trace_id": "",
-      "answer_preview": "",
-      "response_shape": "object(error)",
-      "raw_response_preview": "{\"error\":\"Request timed out after 45000ms\"}",
+      "answer_preview": "Delegated via Agentic Butler. Approval required before activation.\n\n**New Skill Proposal: \"Weekly Executive Steering Update Agent\"**\n\n**Concept**\nDrafts a weekly executive steering update for a named program/business uni",
+      "response_shape": "object(output)",
+      "raw_response_preview": "{\"output\":\"Delegated via Agentic Butler. Approval required before activation.\\n\\n**New Skill Proposal: \\\"Weekly Executive Steering Update Agent\\\"**\\n\\n**Concept**\\nDrafts a weekly executive steering update for a named program/business unit by extracting status, risks, decisions, and action items from authorized email, calendar, and Teams exports. It's a draft-producing capability, not an autonomous send/publish tool.\\n\\n**How it works**\\n1. Ingest & normalize the three exports into a common schema\\n2. Filter to the relevant program via keywords/tags/participants\\n3. Extract status, risks/blockers, decisions, milestones, action items\\n4. Cross-reference/dedupe across sources (flagged as the highest technical-risk step — entity resolution)\\n5. Prioritize by **severity first, then recency** — a fix was built in so risks raised by junior staff aren't buried under senior-sourced items\\n6. Draft the update in a standard steering-report structure\\n7. Flag low-confidence items (single-source, ",
       "request_shape": "embedded_n8n_chat",
-      "findings": [
-        "HTTP 0",
-        "target_agent expected agentic_butler, got actor_twin",
-        "route_decision expected create_skill, got answer_direct",
-        "response_status expected approval_required, got completed",
-        "live_actor_workflow_not_aligned: expected delegated route returned direct Actor Twin route",
-        "empty_live_response: live workflow response did not include a usable normalized answer or delegate result"
-      ]
+      "findings": []
     }
   ]
 }

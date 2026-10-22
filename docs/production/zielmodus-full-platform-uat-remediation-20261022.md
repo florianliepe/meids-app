@@ -71,3 +71,17 @@ Exit gate: all P0/P1 scenarios pass or have an explicitly accepted owner, mitiga
 ## Human interaction policy
 
 Human action is requested only for tenant consent, unavailable Azure capacity, secret creation/rotation, destructive data decisions, or explicit production-risk acceptance. Routine code, migration, deployment, and reversible configuration changes are executed autonomously.
+
+## Execution status and remaining gate
+
+1. **Completed:** close and validate the 46-route hosted API contract.
+2. **Completed:** normalize voice scoring and evidence confidence to `0..1`.
+3. **Completed:** add hosted voice preflight and handoff-ledger routes with tenant/twin authorization.
+4. **Completed:** preserve Actor Twin as the voice handoff entry point and encode `call_n8n_workflow_tool_first`.
+5. **Completed:** make delegated n8n authorization/persistence failures release-blocking in live UAT.
+6. **Completed:** replace the Knowledge Fabric scoring call in canonical/import-ready JSON with a no-merge guarded fallback until service-to-service authentication exists.
+7. **Pending operational decision:** restart the shared n8n App Service once, or have its operator repair the stuck publication worker, because API publication reports the new workflow while production executions still run the older HTTP Request node.
+8. **After publication recovery:** republish Knowledge Fabric and capture fresh successful executions for Knowledge Fabric, Skill Orchestrator, Task Agent, and Learning Agent.
+9. **After Azure deployment:** repeat authenticated picture, voice assess/draft/commit, preflight, and handoff-ledger browser tests.
+
+The n8n restart is not performed implicitly because it briefly interrupts the shared agent platform. No direct Task Agent route will be introduced as a workaround.

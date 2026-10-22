@@ -1,8 +1,8 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-10-22T15:38:53.557Z",
+  "generated_at": "2026-10-22T18:19:26.812Z",
   "scope": "Public-safe n8n live execution evidence for Actor Twin and six workflow-tool subagents. No secrets are stored.",
-  "freshness_since": "2026-10-21T15:38:52.725Z",
+  "freshness_since": "2026-10-21T18:19:25.292Z",
   "status": "partial",
   "summary": {
     "workflow_count": 7,
@@ -22,22 +22,22 @@
       "status": "fresh_connected",
       "fresh_success": true,
       "fetched_sample_size": 20,
-      "fresh_sample_size": 8,
+      "fresh_sample_size": 20,
       "latest_fresh_execution": {
-        "id": "33765",
+        "id": "33852",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-22T15:07:22.580Z",
-        "stopped_at": "2026-10-22T15:08:49.523Z",
-        "duration_ms": 86943
+        "started_at": "2026-10-22T18:19:06.712Z",
+        "stopped_at": "2026-10-22T18:19:20.040Z",
+        "duration_ms": 13328
       },
       "latest_available_execution": {
-        "id": "33765",
+        "id": "33852",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-22T15:07:22.580Z",
-        "stopped_at": "2026-10-22T15:08:49.523Z",
-        "duration_ms": 86943
+        "started_at": "2026-10-22T18:19:06.712Z",
+        "stopped_at": "2026-10-22T18:19:20.040Z",
+        "duration_ms": 13328
       }
     },
     {
@@ -47,22 +47,22 @@
       "status": "fresh_failed",
       "fresh_success": false,
       "fetched_sample_size": 20,
-      "fresh_sample_size": 2,
+      "fresh_sample_size": 8,
       "latest_fresh_execution": {
-        "id": "33762",
+        "id": "33849",
         "status": "error",
         "finished": false,
-        "started_at": "2026-10-22T15:06:53.509Z",
-        "stopped_at": "2026-10-22T15:06:53.884Z",
-        "duration_ms": 375
+        "started_at": "2026-10-22T18:18:55.407Z",
+        "stopped_at": "2026-10-22T18:18:56.038Z",
+        "duration_ms": 631
       },
       "latest_available_execution": {
-        "id": "33762",
+        "id": "33849",
         "status": "error",
         "finished": false,
-        "started_at": "2026-10-22T15:06:53.509Z",
-        "stopped_at": "2026-10-22T15:06:53.884Z",
-        "duration_ms": 375
+        "started_at": "2026-10-22T18:18:55.407Z",
+        "stopped_at": "2026-10-22T18:18:56.038Z",
+        "duration_ms": 631
       }
     },
     {
@@ -71,23 +71,23 @@
       "label": "Agentic Butler",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 4,
-      "fresh_sample_size": 2,
+      "fetched_sample_size": 16,
+      "fresh_sample_size": 14,
       "latest_fresh_execution": {
-        "id": "33766",
+        "id": "33853",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-22T15:07:27.360Z",
-        "stopped_at": "2026-10-22T15:08:39.559Z",
-        "duration_ms": 72199
+        "started_at": "2026-10-22T18:19:07.790Z",
+        "stopped_at": "2026-10-22T18:19:09.220Z",
+        "duration_ms": 1430
       },
       "latest_available_execution": {
-        "id": "33766",
+        "id": "33853",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-22T15:07:27.360Z",
-        "stopped_at": "2026-10-22T15:08:39.559Z",
-        "duration_ms": 72199
+        "started_at": "2026-10-22T18:19:07.790Z",
+        "stopped_at": "2026-10-22T18:19:09.220Z",
+        "duration_ms": 1430
       }
     },
     {
@@ -118,23 +118,23 @@
       "label": "Critical Faculty Agent",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 13,
-      "fresh_sample_size": 1,
+      "fetched_sample_size": 19,
+      "fresh_sample_size": 7,
       "latest_fresh_execution": {
-        "id": "33767",
+        "id": "33854",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-22T15:07:55.344Z",
-        "stopped_at": "2026-10-22T15:08:19.279Z",
-        "duration_ms": 23935
+        "started_at": "2026-10-22T18:19:08.319Z",
+        "stopped_at": "2026-10-22T18:19:08.843Z",
+        "duration_ms": 524
       },
       "latest_available_execution": {
-        "id": "33767",
+        "id": "33854",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-22T15:07:55.344Z",
-        "stopped_at": "2026-10-22T15:08:19.279Z",
-        "duration_ms": 23935
+        "started_at": "2026-10-22T18:19:08.319Z",
+        "stopped_at": "2026-10-22T18:19:08.843Z",
+        "duration_ms": 524
       }
     },
     {

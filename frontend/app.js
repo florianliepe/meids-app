@@ -8231,7 +8231,7 @@ function renderLoadingState(label = "Loading data...") {
   return renderStateCard("loading", label, "Refreshing the local workspace state.");
 }
 
-function renderErrorState(title, detail = "Restart the local MVP server, then refresh this view.") {
+function renderErrorState(title, detail = "This hosted capability is temporarily unavailable. Retry, then contact the Me.IDs operator with the visible correlation reference.") {
   return renderStateCard("error", title, detail);
 }
 
@@ -9936,7 +9936,7 @@ async function safeRefreshVoiceTranscriptHandoffs() {
     await refreshVoiceTranscriptHandoffs();
   } catch (error) {
     state.voiceTranscriptHandoffs = [];
-    renderVoiceAgentHandoffLedger("Handoff ledger unavailable. Restart the local MVP server.");
+    renderVoiceAgentHandoffLedger("Handoff ledger unavailable. Retry or contact the Me.IDs operator with the correlation reference.");
     console.warn("Voice transcript handoff refresh failed", error);
   }
 }
