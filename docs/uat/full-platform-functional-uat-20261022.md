@@ -172,6 +172,7 @@ The 2026-10-22 Zielmodus remediation implements the code-side entry criteria as 
 | Graph and activity traces | CLOSED | Governed concept projection and RLS-scoped activity events load for the active twin. |
 | Voice quality display | CLOSED IN CODE; DEPLOY/RETEST REQUIRED | Backend score contract is `0..1`, includes `word_count`, covered dimensions, and blocking reasons. Evidence confidence now uses the same normalized scale. |
 | Voice preflight and handoff ledger | CLOSED IN CODE; DEPLOY/RETEST REQUIRED | New hosted endpoints enforce Entra/twin scope and route handoffs through Actor Twin with `call_n8n_workflow_tool_first`. |
+| Voice draft audit write | CLOSED IN CODE; MIGRATION/RETEST REQUIRED | Authenticated UAT exposed missing `audit.event` INSERT RLS. Migration `013` permits only current tenant/user events and validates referenced twin scope. |
 | Skill creation | CLOSED | Live Actor Twin to Butler route returns `approval_required` within 14 seconds. |
 | Knowledge Fabric live handoff | OPEN P0 | Live Actor routing is correct, but production n8n still executes an older published HTTP scoring node and rejects its protected backend call. |
 | Seven-agent fresh proof | OPEN P1 | Actor Twin, Butler, and Critical Faculty are fresh; Knowledge Fabric fails; Skill Orchestrator, Task Agent, and Learning Agent remain stale. |
