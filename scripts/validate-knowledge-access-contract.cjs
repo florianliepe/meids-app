@@ -27,6 +27,11 @@ assert.match(ownFilter, /owner_user_id eq '4277841b-d713-47b6-8168-172ac3cde535'
 assert.match(ownFilter, /search\.in\(twin_id, 'florian', '\|'\)/);
 assert.doesNotMatch(ownFilter, /lucas/);
 assert.match(ownFilter, /allowed_group_ids/);
+assert.match(
+  ownFilter,
+  /visibility_scope eq 'private' and search\.in\(twin_id, 'florian', '\|'\)/,
+  "private knowledge must remain scoped to the active twin",
+);
 
 const overarching = buildKnowledgeSecurityFilter({ ...claims, knowledge_scope: "all_assigned_twins" });
 assert.match(overarching, /florian\|lucas/);

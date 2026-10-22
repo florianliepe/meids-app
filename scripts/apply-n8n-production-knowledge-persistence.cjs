@@ -4,7 +4,7 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const backendUrl = String(process.env.MEIDS_BACKEND_URL || "https://meids-prod-backend-1853a19b.azurewebsites.net").replace(/\/+$/, "");
-const workflowId = String(process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "mv6AbIxxvV0Sa5OO");
+const workflowId = String(process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "oPs77Qzrg9Repzgp");
 const applyLive = process.argv.includes("--apply");
 
 function readJson(file) {

@@ -25,7 +25,7 @@ const workflows = [
     ].join("\n"),
   },
   {
-    id: process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "mv6AbIxxvV0Sa5OO",
+    id: process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "oPs77Qzrg9Repzgp",
     label: "knowledge-fabric",
     agentNames: ["Knowledge Fabric AI Agent"],
     patch: [

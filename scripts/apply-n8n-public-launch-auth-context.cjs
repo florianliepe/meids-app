@@ -6,11 +6,12 @@ const root = path.resolve(__dirname, "..");
 const applyLive = process.argv.includes("--apply");
 const workflowIds = {
   actor: String(process.env.N8N_ACTOR_TWIN_WORKFLOW_ID || "eKI3qM7nyCNn9r1q"),
-  knowledge: String(process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "mv6AbIxxvV0Sa5OO"),
+  knowledge: String(process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "oPs77Qzrg9Repzgp"),
   butler: String(process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "KZOqZRUAnVfFEAYJ"),
 };
 
 const inputDefinitions = [
+  { name: "operation", type: "string" },
   { name: "query", type: "string" },
   { name: "knowledge_access_token", type: "string" },
   { name: "tenant_id", type: "string" },
@@ -65,6 +66,7 @@ function patchActorTool(workflow, namePattern) {
   node.parameters.workflowInputs = {
     mappingMode: "defineBelow",
     value: {
+      operation: "={{ $fromAI('operation', 'Use retrieve for read-only lookup/search; use stage only for explicit knowledge writes.', 'string') }}",
       query: "={{ $fromAI('query', 'Concise delegated request including the user intent and relevant context.', 'string') }}",
       knowledge_access_token: chatMetadataExpression("authorization?.knowledgeAccessToken"),
       tenant_id: chatMetadataExpression("identity?.tenantId"),

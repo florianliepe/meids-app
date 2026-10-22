@@ -1,10 +1,10 @@
 {
-  "name": "MeIDs Knowledge Fabric Agent - staging v2",
+  "name": "MeIDs Knowledge Fabric Agent - staging v3",
   "nodes": [
     {
       "id": "meids-knowledge-fabric-ingest-webhook",
       "name": "Receive request",
-      "webhookId": "6323bd9c-42ee-4a9c-8bf1-93c27fc1ff16",
+      "webhookId": "34491ee8-209c-44df-8524-471181f6b399",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
@@ -13,7 +13,7 @@
       ],
       "parameters": {
         "httpMethod": "POST",
-        "path": "meids/knowledge-fabric/ingest-v2",
+        "path": "meids/knowledge-fabric/ingest-v3",
         "responseMode": "responseNode",
         "options": {}
       }
@@ -25,7 +25,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        700,
+        800,
         0
       ],
       "parameters": {
@@ -38,7 +38,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1420,
+        1504,
         0
       ],
       "parameters": {
@@ -53,8 +53,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.3,
       "position": [
-        280,
-        220
+        288,
+        224
       ],
       "parameters": {
         "model": {
@@ -80,8 +80,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        300,
-        0
+        368,
+        -16
       ],
       "parameters": {
         "promptType": "define",
@@ -99,38 +99,36 @@
       "typeVersion": 1.1,
       "position": [
         0,
-        180
+        192
       ],
       "parameters": {
-        "inputSource": "workflowInputs",
         "workflowInputs": {
           "values": [
             {
-              "name": "query",
+              "name": "operation",
               "type": "string"
             },
             {
-              "name": "knowledge_access_token",
-              "type": "string"
+              "name": "query"
             },
             {
-              "name": "tenant_id",
-              "type": "string"
+              "name": "knowledge_access_token"
             },
             {
-              "name": "user_id",
-              "type": "string"
+              "name": "tenant_id"
             },
             {
-              "name": "twin_id",
-              "type": "string"
+              "name": "user_id"
             },
             {
-              "name": "organization_id",
-              "type": "string"
+              "name": "twin_id"
+            },
+            {
+              "name": "organization_id"
             }
           ]
-        }
+        },
+        "inputSource": "workflowInputs"
       }
     },
     {
@@ -140,8 +138,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        240,
-        0
+        256,
+        -144
       ],
       "parameters": {
         "jsCode": "return items.map((item) => ({ json: { ...item.json, source: 'guarded_fallback', error: 'Protected duplicate scoring requires a service-to-service Entra credential for n8n; no merge decision is permitted.' } }));"
@@ -154,7 +152,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        480,
+        640,
         0
       ],
       "parameters": {
@@ -167,7 +165,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        160,
+        144,
         0
       ],
       "parameters": {
@@ -180,7 +178,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        940,
+        1040,
         0
       ],
       "parameters": {
@@ -210,11 +208,107 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1180,
+        1280,
         0
       ],
       "parameters": {
         "jsCode": "const internal = $('Contract response normalizer').first().json; const { _knowledge_access_token, ...response } = internal; const sanitizeConcept = (value) => { if (!value || typeof value !== 'object') return value; const { content_vector, query_vector, ...safe } = value; return safe; }; const output = { ...response.output, created_candidates: (response.output.created_candidates || []).map(sanitizeConcept), persistence_candidate: sanitizeConcept(response.output.persistence_candidate), persistence: $json, review_state: $json.review_state || response.output.review_state }; return [{ json: { ...response, output, trace: { ...response.trace, persistence_status: $json.status || 'staged' } } }];"
+      }
+    },
+    {
+      "id": "meids/knowledge/determine-operation",
+      "name": "Determine knowledge operation",
+      "notes": "Fail-closed routing: ambiguous requests are retrieval-only. Only explicit stage/write intent may reach persistence.",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        140
+      ],
+      "parameters": {
+        "jsCode": "const input = $json.body ?? $json;\nconst query = String(input.query || input.input?.query || input.input?.text || input.chatInput || '').trim();\nconst requested = String(input.operation || input.intent || input.context?.route_decision?.decision || '').trim().toLowerCase();\nconst readOnly = /\\b(read[- ]?only|retrieve|search|find|lookup|show|inspect|what do we know|existing knowledge|evidence lookup)\\b/i.test(query);\nconst writeIntent = /\\b(remember|save|store|stage|ingest|capture|create|update|add|attach)\\b/i.test(query);\nconst operation = requested.includes('retrieve') || requested === 'read' || readOnly\n  ? 'retrieve'\n  : requested.includes('stage') || requested.includes('ingest') || requested.includes('create') || requested.includes('update') || writeIntent\n    ? 'stage'\n    : 'retrieve';\nreturn [{ json: { ...input, query, operation, knowledge_operation: operation } }];"
+      }
+    },
+    {
+      "id": "meids/knowledge/switch-operation",
+      "name": "Switch knowledge operation",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -280,
+        140
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.knowledge_operation }}",
+                    "rightValue": "retrieve",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      }
+    },
+    {
+      "id": "meids/knowledge/retrieve-scoped",
+      "name": "Retrieve scoped knowledge",
+      "notes": "Read-only, token-scoped Azure AI Search retrieval. This path never reaches knowledge staging.",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        -80
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://meids-prod-backend-1853a19b.azurewebsites.net/api/vector-index/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.query, top: 5, source_policy: 'approved_only', knowledge_access_token: $json.knowledge_access_token, twin_id: $json.twin_id, organization_id: $json.organization_id }) }}",
+        "options": {
+          "timeout": 15000
+        }
+      }
+    },
+    {
+      "id": "meids/knowledge/normalize-retrieval",
+      "name": "Normalize retrieval response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        -80
+      ],
+      "parameters": {
+        "jsCode": "const input = $('Determine knowledge operation').first().json;\nconst buckets = Array.isArray($json.results) ? $json.results : [];\nconst matches = buckets.flatMap((bucket) => (Array.isArray(bucket.value) ? bucket.value.map((item) => ({ ...item, index: bucket.index })) : []));\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nreturn [{ json: {\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: input.request_id || 'req_' + executionId,\n  agent_id: 'knowledge_fabric_agent',\n  status: 'completed',\n  operation: 'retrieve',\n  output: {\n    summary: matches.length ? 'Retrieved ' + matches.length + ' scoped knowledge matches.' : 'No matching approved knowledge found.',\n    read_only: true,\n    retrieval_mode: $json.retrieval_mode || 'unknown',\n    source_policy: $json.source_policy || 'approved_only',\n    matches,\n    created_candidates: [],\n    review_state: 'unchanged'\n  },\n  trace: {\n    stored: false,\n    trace_id: 'n8n_exec_' + executionId,\n    used_agents: ['knowledge_fabric_agent_retrieval'],\n    target_agent: 'knowledge_fabric_agent',\n    route_decision: 'retrieve_knowledge',\n    handoff_status: 'handoff_completed'\n  }\n} }];"
       }
     }
   ],
@@ -223,7 +317,7 @@
       "main": [
         [
           {
-            "node": "Prepare duplicate request",
+            "node": "Determine knowledge operation",
             "type": "main",
             "index": 0
           }
@@ -267,7 +361,7 @@
       "main": [
         [
           {
-            "node": "Prepare duplicate request",
+            "node": "Determine knowledge operation",
             "type": "main",
             "index": 0
           }
@@ -328,11 +422,61 @@
           }
         ]
       ]
+    },
+    "Determine knowledge operation": {
+      "main": [
+        [
+          {
+            "node": "Switch knowledge operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch knowledge operation": {
+      "main": [
+        [
+          {
+            "node": "Retrieve scoped knowledge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare duplicate request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve scoped knowledge": {
+      "main": [
+        [
+          {
+            "node": "Normalize retrieval response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize retrieval response": {
+      "main": [
+        [
+          {
+            "node": "Return JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
+    "executionOrder": "v1"
   },
   "staticData": null
 }

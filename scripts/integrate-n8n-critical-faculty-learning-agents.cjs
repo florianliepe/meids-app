@@ -9,7 +9,7 @@ const outRoot = path.join(root, "exports", "n8n-live-backups");
 const defaults = {
   actorTwin: "eKI3qM7nyCNn9r1q",
   agenticButler: "KZOqZRUAnVfFEAYJ",
-  knowledgeFabric: "mv6AbIxxvV0Sa5OO",
+  knowledgeFabric: "oPs77Qzrg9Repzgp",
   taskAgentTemplate: "YXcl8Wb68Oup3Z8n",
 };
 

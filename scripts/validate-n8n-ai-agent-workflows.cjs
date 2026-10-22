@@ -76,12 +76,27 @@ function hasMainPath(workflow, fromNode, toNode) {
 }
 
 function hasKnowledgeFabricScoringPath(workflow, fromNode, aiNode) {
-  const reachesScore = hasMainPath(workflow, fromNode, "Score duplicate and merge evidence")
+  const operationRouted = hasMainPath(workflow, fromNode, "Determine knowledge operation")
+    && hasMainPath(workflow, "Determine knowledge operation", "Switch knowledge operation")
+    && (hasMainPath(workflow, "Switch knowledge operation", "Prepare duplicate request")
+      || hasMainPath(workflow, "Switch knowledge operation", aiNode));
+  const hasScoreNodes = Boolean(nodeByName(workflow, "Prepare duplicate request"));
+  if (operationRouted && !hasScoreNodes) return true;
+  const reachesScore = operationRouted || hasMainPath(workflow, fromNode, "Score duplicate and merge evidence")
     || (hasMainPath(workflow, fromNode, "Prepare duplicate request")
       && hasMainPath(workflow, "Prepare duplicate request", "Score duplicate and merge evidence"));
   return reachesScore
+    && hasMainPath(workflow, "Prepare duplicate request", "Score duplicate and merge evidence")
     && hasMainPath(workflow, "Score duplicate and merge evidence", "Attach duplicate score evidence")
     && hasMainPath(workflow, "Attach duplicate score evidence", aiNode);
+}
+
+function hasKnowledgeFabricRetrievalPath(workflow, fromNode) {
+  return hasMainPath(workflow, fromNode, "Determine knowledge operation")
+    && hasMainPath(workflow, "Determine knowledge operation", "Switch knowledge operation")
+    && hasMainPath(workflow, "Switch knowledge operation", "Retrieve scoped knowledge")
+    && hasMainPath(workflow, "Retrieve scoped knowledge", "Normalize retrieval response")
+    && hasMainPath(workflow, "Normalize retrieval response", "Return JSON");
 }
 
 function hasAcceptedResponsePath(workflow, agent) {
@@ -196,6 +211,17 @@ function validateWorkflow(agent, workflow, workflowPath) {
   if (!systemMessage || systemMessage.length < 80) fail(`${rel(workflowPath)} ${agent.aiNode} system prompt is too thin`);
   if (!response.parameters?.jsCode?.includes("trace_id")) fail(`${rel(workflowPath)} response adapter must preserve trace_id`);
   if (!response.parameters?.jsCode?.includes("agent_id")) fail(`${rel(workflowPath)} response adapter must preserve agent_id`);
+  if (agent.agent_id === "knowledge_fabric_agent") {
+    for (const inputNode of ["Receive request", "Receive workflow call"]) {
+      if (!hasKnowledgeFabricRetrievalPath(workflow, inputNode)) {
+        fail(`${rel(workflowPath)} must expose a read-only retrieval path from ${inputNode}`);
+      }
+    }
+    const operationCode = nodeByName(workflow, "Determine knowledge operation")?.parameters?.jsCode || "";
+    if (!operationCode.includes(": 'retrieve'")) {
+      fail(`${rel(workflowPath)} ambiguous knowledge requests must default to retrieval`);
+    }
+  }
 }
 
 for (const agent of agents) {

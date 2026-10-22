@@ -118,7 +118,7 @@ function buildKnowledgeSecurityFilter(claims, options = {}) {
     ? "(knowledge_state eq 'approved' or knowledge_state eq 'pending-review' or knowledge_state eq 'candidate')"
     : "knowledge_state eq 'approved'";
   const scopeRules = [
-    `(visibility_scope eq 'private' and (owner_user_id eq ${odataLiteral(access.user_id)} or user_id eq ${odataLiteral(access.user_id)} or allowed_user_ids/any(user: user eq ${odataLiteral(access.user_id)})))`,
+    `(visibility_scope eq 'private' and ${searchIn("twin_id", twinIds)} and (owner_user_id eq ${odataLiteral(access.user_id)} or user_id eq ${odataLiteral(access.user_id)} or allowed_user_ids/any(user: user eq ${odataLiteral(access.user_id)})))`,
   ];
   if (access.visibility_scopes.includes("twin_shared")) {
     scopeRules.push(`(visibility_scope eq 'twin_shared' and ${searchIn("twin_id", twinIds)})`);

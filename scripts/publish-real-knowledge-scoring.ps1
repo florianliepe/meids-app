@@ -57,7 +57,7 @@ $items = @(
     local = "workflows/n8n/learning-agent.workflow.json"
   },
   @{
-    id = if ([Environment]::GetEnvironmentVariable("N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID", "User")) { [Environment]::GetEnvironmentVariable("N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID", "User") } else { "mv6AbIxxvV0Sa5OO" }
+    id = if ([Environment]::GetEnvironmentVariable("N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID", "User")) { [Environment]::GetEnvironmentVariable("N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID", "User") } else { "oPs77Qzrg9Repzgp" }
     label = "knowledge-fabric"
     local = "workflows/n8n/knowledge-fabric-agent.workflow.json"
   }

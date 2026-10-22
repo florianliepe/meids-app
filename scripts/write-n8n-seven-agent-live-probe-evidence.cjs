@@ -7,7 +7,7 @@ const defaultOutput = path.join(root, "docs", "uat", "n8n-seven-agent-live-probe
 
 const workflows = [
   { id: process.env.N8N_ACTOR_TWIN_WORKFLOW_ID || "eKI3qM7nyCNn9r1q", agent: "actor_twin", label: "Actor Twin" },
-  { id: process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "mv6AbIxxvV0Sa5OO", agent: "knowledge_fabric_agent", label: "Knowledge Fabric Agent" },
+  { id: process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "oPs77Qzrg9Repzgp", agent: "knowledge_fabric_agent", label: "Knowledge Fabric Agent" },
   { id: process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "KZOqZRUAnVfFEAYJ", agent: "agentic_butler", label: "Agentic Butler" },
   { id: process.env.N8N_SKILL_ORCHESTRATOR_WORKFLOW_ID || "8ER9laJuKS6UrQJF", agent: "skill_orchestrator", label: "Skill Orchestrator" },
   { id: process.env.N8N_TASK_AGENT_WORKFLOW_ID || "YXcl8Wb68Oup3Z8n", agent: "task_agent", label: "Task Agent" },

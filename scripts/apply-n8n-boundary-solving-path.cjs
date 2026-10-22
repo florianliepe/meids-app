@@ -8,7 +8,7 @@ const outRoot = path.join(root, "exports", "n8n-live-backups");
 
 const defaults = {
   learningAgent: "zX0s3hOByJ4HWQye",
-  knowledgeFabric: "mv6AbIxxvV0Sa5OO",
+  knowledgeFabric: "oPs77Qzrg9Repzgp",
 };
 
 function env(name, fallback = "") {

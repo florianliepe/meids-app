@@ -67,17 +67,18 @@
         192
       ],
       "parameters": {
-        "description": "Call this tool to retrieve, stage, create, or update OKF knowledge, source notes, evidence records, learning documents, concept deltas, candidate graph edges, vector-refresh decisions, and review-needed knowledge states.\n\nAll new or changed learning output from Learning Agent must be staged as review_needed or updated_review_needed. Do not promote concepts, graph edges, or trusted vector refreshes without review policy.",
+        "description": "Stage Learning Agent outputs through Knowledge Fabric as review_needed or updated_review_needed. Use operation=stage. Do not use this tool for read-only retrieval, concept approval, graph promotion, or trusted vector promotion.",
         "workflowId": {
           "__rl": true,
-          "value": "mv6AbIxxvV0Sa5OO",
+          "value": "oPs77Qzrg9Repzgp",
           "mode": "list",
-          "cachedResultUrl": "/workflow/mv6AbIxxvV0Sa5OO",
-          "cachedResultName": "MeIDs Knowledge Fabric Agent - staging v2"
+          "cachedResultUrl": "/workflow/oPs77Qzrg9Repzgp",
+          "cachedResultName": "MeIDs Knowledge Fabric Agent - staging v3"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
           "value": {
+            "operation": "stage",
             "query": "={{ $fromAI('query', 'Reusable learning document or concept delta to stage in review_needed state.', 'string') }}",
             "knowledge_access_token": "={{ $json.knowledge_access_token || $json.metadata?.authorization?.knowledgeAccessToken || '' }}",
             "tenant_id": "={{ $json.tenant_id || $json.context?.tenant_id || $json.metadata?.identity?.tenantId || '' }}",
@@ -87,12 +88,76 @@
           },
           "matchingColumns": [],
           "schema": [
-            { "id": "query", "displayName": "query", "required": true, "defaultMatch": false, "display": true, "canBeUsedToMatch": true, "type": "string", "removed": false },
-            { "id": "knowledge_access_token", "displayName": "knowledge_access_token", "required": false, "defaultMatch": false, "display": true, "canBeUsedToMatch": true, "type": "string", "removed": false },
-            { "id": "tenant_id", "displayName": "tenant_id", "required": false, "defaultMatch": false, "display": true, "canBeUsedToMatch": true, "type": "string", "removed": false },
-            { "id": "user_id", "displayName": "user_id", "required": false, "defaultMatch": false, "display": true, "canBeUsedToMatch": true, "type": "string", "removed": false },
-            { "id": "twin_id", "displayName": "twin_id", "required": false, "defaultMatch": false, "display": true, "canBeUsedToMatch": true, "type": "string", "removed": false },
-            { "id": "organization_id", "displayName": "organization_id", "required": false, "defaultMatch": false, "display": true, "canBeUsedToMatch": true, "type": "string", "removed": false }
+            {
+              "id": "operation",
+              "displayName": "operation",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "query",
+              "displayName": "query",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "knowledge_access_token",
+              "displayName": "knowledge_access_token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "tenant_id",
+              "displayName": "tenant_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "twin_id",
+              "displayName": "twin_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "organization_id",
+              "displayName": "organization_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
           ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false

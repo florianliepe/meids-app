@@ -26,7 +26,7 @@ const agents = [
     promoted_workflow: "knowledge-fabric-agent.workflow.json",
     required_ai_node: "Knowledge Fabric AI Agent",
     required_model_node: "Knowledge Fabric Chat Model",
-    expected_live_workflow: "mv6AbIxxvV0Sa5OO",
+    expected_live_workflow: "oPs77Qzrg9Repzgp",
     role: "Background ingest, OKF concept staging, evidence, CRUD, graph candidate, and vector-boundary agent.",
   },
   {
