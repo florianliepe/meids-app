@@ -182,10 +182,10 @@
         "description": "Call this tool for direct OKF/vector/graph retrieval, evidence lookup, source-note handling, and automatic create/update of knowledge concepts in review_needed or updated_review_needed state. Pass the delegated knowledge request as query; authenticated tenant, user, twin, and organization context is mapped automatically. Do not use it for tacit-knowledge interviews, circular questions, deep-dive elicitation, implicit decision criteria, or best-practice extraction; route those to Agentic Butler.",
         "workflowId": {
           "__rl": true,
-          "value": "7Ci86PxXipwvYpKv",
+          "value": "mv6AbIxxvV0Sa5OO",
           "mode": "list",
-          "cachedResultUrl": "/workflow/7Ci86PxXipwvYpKv",
-          "cachedResultName": "MeIDs Knowledge Fabric Agent - staging"
+          "cachedResultUrl": "/workflow/mv6AbIxxvV0Sa5OO",
+          "cachedResultName": "MeIDs Knowledge Fabric Agent - staging v2"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",

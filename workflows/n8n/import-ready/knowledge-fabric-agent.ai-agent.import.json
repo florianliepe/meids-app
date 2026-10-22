@@ -1,5 +1,5 @@
 {
-  "name": "MeIDs Knowledge Fabric Agent - staging",
+  "name": "MeIDs Knowledge Fabric Agent - staging v2",
   "nodes": [
     {
       "id": "meids-knowledge-fabric-ingest-webhook",
@@ -13,7 +13,7 @@
       ],
       "parameters": {
         "httpMethod": "POST",
-        "path": "meids/knowledge-fabric/ingest",
+        "path": "meids/knowledge-fabric/ingest-v2",
         "responseMode": "responseNode",
         "options": {}
       }

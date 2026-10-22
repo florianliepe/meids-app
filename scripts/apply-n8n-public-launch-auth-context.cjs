@@ -6,7 +6,7 @@ const root = path.resolve(__dirname, "..");
 const applyLive = process.argv.includes("--apply");
 const workflowIds = {
   actor: String(process.env.N8N_ACTOR_TWIN_WORKFLOW_ID || "eKI3qM7nyCNn9r1q"),
-  knowledge: String(process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "7Ci86PxXipwvYpKv"),
+  knowledge: String(process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "mv6AbIxxvV0Sa5OO"),
   butler: String(process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "KZOqZRUAnVfFEAYJ"),
 };
 

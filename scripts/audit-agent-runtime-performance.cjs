@@ -7,7 +7,7 @@ const defaultOutput = path.join(root, "docs", "uat", "agent-runtime-performance-
 
 const workflows = [
   { id: process.env.N8N_ACTOR_TWIN_WORKFLOW_ID || "eKI3qM7nyCNn9r1q", agent: "actor_twin" },
-  { id: process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "7Ci86PxXipwvYpKv", agent: "knowledge_fabric_agent" },
+  { id: process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "mv6AbIxxvV0Sa5OO", agent: "knowledge_fabric_agent" },
   { id: process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "KZOqZRUAnVfFEAYJ", agent: "agentic_butler" },
   { id: process.env.N8N_SKILL_ORCHESTRATOR_WORKFLOW_ID || "8ER9laJuKS6UrQJF", agent: "skill_orchestrator" },
   { id: process.env.N8N_TASK_AGENT_WORKFLOW_ID || "YXcl8Wb68Oup3Z8n", agent: "task_agent" },

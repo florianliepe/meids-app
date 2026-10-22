@@ -32,7 +32,7 @@ const workflows = [
     ],
   },
   {
-    id: process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "7Ci86PxXipwvYpKv",
+    id: process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "mv6AbIxxvV0Sa5OO",
     label: "knowledge-fabric",
     agentNames: ["Knowledge Fabric AI Agent"],
     marker: "Next Refinement Guardrail: score-backed duplicate merge",

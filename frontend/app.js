@@ -494,11 +494,11 @@ async function bootMeidsApp() {
     showLanding();
     return;
   }
-  if (runtimeConfig.n8nChatEnabled) void ensureN8nChat();
   await loadAgentRuntimeConfig();
   state.knowledgeFabricIngestQueue = readKnowledgeFabricIngestQueue();
   await refreshAll();
   applyAuthState();
+  if (runtimeConfig.n8nChatEnabled) void ensureN8nChat();
   applyInitialRoute();
   if ($("#chat")?.classList.contains("active") && runtimeConfig.n8nChatEnabled) {
     renderChatSkillMode();
@@ -8498,6 +8498,7 @@ function bindTwinSwitch() {
       state.activeTwin = twin;
       state.selectedTwinId = twin;
       await refreshAll();
+      await refreshN8nChatAuthorizationContext();
     } catch (error) {
       setOutputStatus("#twinResult", "error", "Could not activate twin", error.message);
       renderTwinOptions();
@@ -12383,6 +12384,7 @@ async function activateSelectedTwin() {
     state.activeTwin = result.active_twin || state.selectedTwinId;
     $("#twinResult").textContent = JSON.stringify(result, null, 2);
     await safeRefreshTwins();
+    await refreshN8nChatAuthorizationContext();
     showToast("Active twin switched", state.selectedTwinId, "success");
   } catch (error) {
     $("#twinResult").textContent = `Activate twin failed: ${error.message}`;
@@ -15853,6 +15855,13 @@ function reloadN8nChatContext() {
   if (mount) mount.innerHTML = "";
   renderN8nInteractionContext();
   void ensureN8nChat();
+}
+
+async function refreshN8nChatAuthorizationContext() {
+  await loadAuthSession();
+  applyAuthState();
+  if (!runtimeConfig.n8nChatEnabled) return;
+  reloadN8nChatContext();
 }
 
 function scheduleN8nChatContextReload() {

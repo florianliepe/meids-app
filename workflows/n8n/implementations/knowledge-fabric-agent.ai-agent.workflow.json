@@ -2,15 +2,15 @@
   "schema_version": "0.1.0",
   "exported_at": "2026-08-11T10:46:35.549Z",
   "source": "n8n live staging workflow export via Codex",
-  "workflow_id": "7Ci86PxXipwvYpKv",
-  "name": "MeIDs Knowledge Fabric Agent - staging",
+  "workflow_id": "mv6AbIxxvV0Sa5OO",
+  "name": "MeIDs Knowledge Fabric Agent - staging v2",
   "active": true,
   "boundary": "Public-safe workflow structure. Contains node names, parameters, and credential references only; no secret values.",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "meids/knowledge-fabric/ingest",
+        "path": "meids/knowledge-fabric/ingest-v2",
         "responseMode": "responseNode",
         "options": {}
       },
