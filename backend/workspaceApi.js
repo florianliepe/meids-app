@@ -558,13 +558,21 @@ function createWorkspaceApi(deps) {
   async function activity(req, res, url) {
     const { mapping, pool } = await context(req);
     const twinId = assertTwin(mapping, url.searchParams.get("twin"));
-    const result = await pool.query(
+    const result = await withContext(pool, mapping, (client) => client.query(
       `SELECT action, resource_type, resource_id, details, created_at, actor_user_id
        FROM audit.event WHERE tenant_id = $1
-         AND (details->>'twin_id' = $2 OR resource_id = $2 OR details->>'active_twin_id' = $2)
+         AND (
+           details->>'twin_id' = $2
+           OR resource_id = $2
+           OR details->>'active_twin_id' = $2
+           OR resource_id IN (
+             SELECT concept_id::text FROM knowledge.concept
+             WHERE tenant_id = $1 AND twin_id = $2
+           )
+         )
        ORDER BY created_at DESC LIMIT $3`,
       [mapping.tenant_id, twinId, Math.min(200, Number(url.searchParams.get("limit")) || 50)],
-    );
+    ));
     const records = result.rows.map((row) => ({ ...row.details, action: row.action, path: row.resource_id, actor: row.actor_user_id, timestamp: row.created_at }));
     jsonResponse(res, 200, {
       crud: records.filter((row) => /twin|review|archive|skill/.test(row.action)),
