@@ -334,8 +334,12 @@ function logoutUrl() {
   return authConfig().logoutUrl || runtimeConfig.logoutUrl || "/.auth/logout";
 }
 
-function authenticatedSession() {
+function identityVerifiedSession() {
   return ["authenticated", "access_pending"].includes(state.authSession?.status);
+}
+
+function authenticatedSession() {
+  return state.authSession?.status === "authenticated";
 }
 
 function sessionActiveTwinIds(session = state.authSession) {
@@ -345,6 +349,14 @@ function sessionActiveTwinIds(session = state.authSession) {
 function canEnterWorkspace() {
   if (!authEnabled()) return true;
   return authenticatedSession() && sessionActiveTwinIds().length > 0;
+}
+
+function canCreateTwin() {
+  return !authEnabled() || authenticatedSession();
+}
+
+function canAccessView(viewId) {
+  return canEnterWorkspace() || (viewId === "twins" && canCreateTwin());
 }
 
 async function loadAuthSession() {
@@ -370,11 +382,12 @@ async function loadAuthSession() {
 function applyAuthState() {
   const enabled = authEnabled();
   const authenticated = authenticatedSession();
+  const identityVerified = identityVerifiedSession();
   const allowedTwins = sessionActiveTwinIds();
   const hasTwinAccess = allowedTwins.length > 0;
   document.body.classList.toggle("auth-required", enabled);
   document.body.classList.toggle("auth-authenticated", enabled && authenticated);
-  document.body.classList.toggle("auth-blocked", enabled && (!authenticated || !hasTwinAccess));
+  document.body.classList.toggle("auth-blocked", enabled && !authenticated);
   const loginPanel = $("#loginPanel");
   if (loginPanel) loginPanel.hidden = !enabled;
   const stateCopy = $("#loginStateCopy");
@@ -398,16 +411,16 @@ function applyAuthState() {
           : "Invited external users are allowed when they are added to Microsoft Entra ID and mapped to a Me.IDs twin.";
   }
   const signIn = $("#loginMicrosoftBtn");
-  if (signIn) signIn.hidden = !enabled || authenticated;
+  if (signIn) signIn.hidden = !enabled || identityVerified;
   const signOut = $("#logoutMicrosoftBtn");
-  if (signOut) signOut.hidden = !enabled || !authenticated;
+  if (signOut) signOut.hidden = !enabled || !identityVerified;
   const enter = $("#enterWorkspaceBtn");
   if (enter) {
     enter.disabled = enabled && !canEnterWorkspace();
     enter.textContent = enabled && !authenticated ? "Sign in required" : "Enter workspace";
   }
   const createTwin = $("#landingCreateTwinBtn");
-  if (createTwin) createTwin.disabled = enabled && state.authSession?.status !== "authenticated";
+  if (createTwin) createTwin.disabled = !canCreateTwin();
   $$(".nav-item, #twinSelect").forEach((item) => {
     item.disabled = enabled && !canEnterWorkspace();
   });
@@ -621,8 +634,11 @@ function bindLanding() {
     window.location.href = logoutUrl();
   });
   $("#landingCreateTwinBtn")?.addEventListener("click", () => {
-    dismiss();
-    if (!canEnterWorkspace()) return;
+    if (!canCreateTwin()) {
+      applyAuthState();
+      return;
+    }
+    landing.classList.add("dismissed");
     showView("twins");
     $("#twinDisplayName")?.focus();
   });
@@ -688,7 +704,7 @@ function applyInitialRoute() {
 }
 
 function showView(viewId) {
-  if (!canEnterWorkspace()) {
+  if (!canAccessView(viewId)) {
     showLanding();
     applyAuthState();
     return;
@@ -12305,7 +12321,13 @@ async function createTwin() {
     state.selectedTwinId = result.twin?.twin_id || result.active_twin;
     state.activeTwin = result.active_twin || state.activeTwin;
     $("#twinResult").textContent = JSON.stringify(result, null, 2);
+    await loadAuthSession();
+    applyAuthState();
     await safeRefreshTwins();
+    if (canEnterWorkspace()) {
+      $("#landing")?.classList.add("dismissed");
+      window.localStorage.setItem(storageKeys.landingDismissed, "true");
+    }
     showToast("Twin created", result.twin?.display_name || state.selectedTwinId, "success");
   } catch (error) {
     $("#twinResult").textContent = `Create twin failed: ${error.message}`;
