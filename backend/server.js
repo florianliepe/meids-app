@@ -1639,6 +1639,23 @@ function principalIdentityEmail(principal = {}) {
   ).trim().toLowerCase();
 }
 
+function principalTenantId(principal = {}) {
+  return principalClaimValues(principal, [
+    "tid",
+    "http://schemas.microsoft.com/identity/claims/tenantid",
+  ])[0] || "";
+}
+
+function trustedApplicationPrincipal(principal = {}) {
+  const identityProvider = String(principal.identityProvider || "").trim().toLowerCase();
+  const allowedProviders = csvSetting("MEIDS_AUTH_ALLOWED_IDPS", "eraneos,aad")
+    .map((value) => value.toLowerCase());
+  if (!allowedProviders.includes(identityProvider)) return false;
+  const expectedTenantId = String(process.env.MEIDS_ENTRA_TENANT_ID || "").trim().toLowerCase();
+  const actualTenantId = principalTenantId(principal).trim().toLowerCase();
+  return !expectedTenantId || !actualTenantId || actualTenantId === expectedTenantId;
+}
+
 function meidsRolesFromPrincipal(principal = {}) {
   const roles = explicitMeidsRolesFromPrincipal(principal);
   return roles.length ? roles : csvSetting("MEIDS_AUTH_DEFAULT_ROLES", "viewer");
@@ -1652,10 +1669,13 @@ function permissionsFromRoles(roles = []) {
   const reviewer = editor || set.has("reviewer");
   return {
     can_chat: true,
+    can_create_twin: true,
+    can_edit_own_knowledge: true,
     can_review_knowledge: reviewer,
     can_create_skill: editor,
     can_approve_skill_activation: owner,
     can_admin_agents: admin,
+    can_manage_users: owner,
   };
 }
 
@@ -1737,20 +1757,26 @@ function jitAuthorizationEntitlements(principal = {}) {
   const rawRoles = rawMeidsRolesFromPrincipal(principal);
   const explicitRoles = explicitMeidsRolesFromPrincipal(principal);
   const identityEmail = principalIdentityEmail(principal);
-  const employee = rawRoles.includes("employee") && identityEmail.endsWith("@eraneos.com");
+  const trustedApplicationUser = trustedApplicationPrincipal(principal);
+  const employee = trustedApplicationUser && identityEmail.endsWith("@eraneos.com");
   const groupClaims = principalClaimValues(principal, [
     "groups",
     "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups",
   ]).map((value) => value.toLowerCase());
   const usersGroupId = String(process.env.MEIDS_AUTHZ_USER_GROUP_ID || "").trim().toLowerCase();
   const ownersGroupId = String(process.env.MEIDS_AUTHZ_OWNER_GROUP_ID || "").trim().toLowerCase();
-  const user = employee
+  const ownerUserIds = csvSetting("MEIDS_AUTHZ_OWNER_USER_IDS").map((value) => value.toLowerCase());
+  const principalId = String(principal.userId || "").trim().toLowerCase();
+  const user = trustedApplicationUser
+    || employee
     || rawRoles.includes("user")
     || explicitRoles.includes("owner")
     || Boolean(usersGroupId && groupClaims.includes(usersGroupId))
     || Boolean(ownersGroupId && groupClaims.includes(ownersGroupId));
-  const owner = explicitRoles.includes("owner") || Boolean(ownersGroupId && groupClaims.includes(ownersGroupId));
-  return { user, owner, employee, usersGroupId, ownersGroupId };
+  const owner = explicitRoles.includes("owner")
+    || ownerUserIds.includes(principalId)
+    || Boolean(ownersGroupId && groupClaims.includes(ownersGroupId));
+  return { user, owner, employee, trustedApplicationUser, usersGroupId, ownersGroupId };
 }
 
 function jitUserId(principal = {}) {
@@ -1792,6 +1818,18 @@ async function ensureJitAuthorizationMapping(pool, principal) {
       WHERE tenant_id = $1 AND lower(entra_object_id) = lower($2)
     `, [tenantId, entraObjectId]);
     const resolvedUserId = resolvedUser.rows[0]?.user_id;
+    await client.query(`
+      INSERT INTO identity.user_application_role (tenant_id, user_id, role, granted_by)
+      VALUES ($1, $2, 'user', $2)
+      ON CONFLICT (tenant_id, user_id, role) DO NOTHING
+    `, [tenantId, resolvedUserId]);
+    if (entitlement.owner) {
+      await client.query(`
+        INSERT INTO identity.user_application_role (tenant_id, user_id, role, granted_by)
+        VALUES ($1, $2, 'owner', 'bootstrap-owner')
+        ON CONFLICT (tenant_id, user_id, role) DO NOTHING
+      `, [tenantId, resolvedUserId]);
+    }
     const groupMappings = [
       entitlement.usersGroupId && { groupId: "meids-users", entraGroupId: entitlement.usersGroupId, displayName: "Me.IDs Users" },
       entitlement.owner && entitlement.ownersGroupId
@@ -1841,14 +1879,20 @@ async function resolveAuthorizationMapping(principal) {
       u.tenant_id,
       u.active_twin_id,
       tenant.display_name AS tenant_name,
-      COALESCE(array_remove(array_agg(DISTINCT access.twin_id), NULL), ARRAY[]::text[]) AS allowed_twin_ids,
-      COALESCE(array_remove(array_agg(DISTINCT access.access_role), NULL), ARRAY[]::text[]) AS roles
+      COALESCE((
+        SELECT array_agg(DISTINCT access.twin_id ORDER BY access.twin_id)
+        FROM twin.user_twin_access access
+        WHERE access.tenant_id = u.tenant_id AND access.user_id = u.user_id
+      ), ARRAY[]::text[]) AS allowed_twin_ids,
+      COALESCE((
+        SELECT array_agg(DISTINCT app_role.role ORDER BY app_role.role)
+        FROM identity.user_application_role app_role
+        WHERE app_role.tenant_id = u.tenant_id AND app_role.user_id = u.user_id
+      ), ARRAY['user']::text[]) AS roles
     FROM identity.app_user u
     JOIN identity.tenant tenant ON tenant.tenant_id = u.tenant_id
-    LEFT JOIN twin.user_twin_access access ON access.tenant_id = u.tenant_id AND access.user_id = u.user_id
     WHERE u.status = 'active'
       AND (lower(u.entra_object_id) = lower($1) OR lower(u.email) = lower($2))
-    GROUP BY u.user_id, u.email, u.display_name, u.tenant_id, u.active_twin_id, tenant.display_name
   `, [principalId, principalEmail]);
   const user = result.rows[0];
   if (!user) {
@@ -2030,6 +2074,116 @@ async function handleKnowledgeBackfill(req, res) {
   const body = await readBody(req);
   const mapping = await requireKnowledgeRequestMapping(req, body);
   jsonResponse(res, 200, await backfillKnowledgeSearch(await getPgPool(), mapping, body));
+}
+
+const APPLICATION_ROLES = new Set(["user", "editor", "admin", "owner"]);
+
+async function requireApplicationManager(req) {
+  const mapping = await requireTwinRequestMapping(req);
+  const roles = new Set((mapping.roles || []).map((role) => String(role).toLowerCase()));
+  if (!roles.has("owner") && !roles.has("admin")) {
+    const error = new Error("Owner or admin authorization is required.");
+    error.statusCode = 403;
+    throw error;
+  }
+  return mapping;
+}
+
+async function handleAdminUsersList(req, res) {
+  const mapping = await requireApplicationManager(req);
+  const result = await (await getPgPool()).query(`
+    SELECT
+      app_user.user_id,
+      app_user.email,
+      app_user.display_name,
+      app_user.status,
+      app_user.created_at,
+      COALESCE((
+        SELECT array_agg(role_row.role ORDER BY role_row.role)
+        FROM identity.user_application_role role_row
+        WHERE role_row.tenant_id = app_user.tenant_id AND role_row.user_id = app_user.user_id
+      ), ARRAY['user']::text[]) AS roles,
+      (SELECT count(*)::int FROM twin.user_twin_access twin_access
+       WHERE twin_access.tenant_id = app_user.tenant_id AND twin_access.user_id = app_user.user_id) AS twin_count
+    FROM identity.app_user app_user
+    WHERE app_user.tenant_id = $1
+    ORDER BY app_user.display_name, app_user.email
+  `, [mapping.tenant_id]);
+  jsonResponse(res, 200, { users: result.rows });
+}
+
+async function handleAdminUserRoles(req, res) {
+  const mapping = await requireApplicationManager(req);
+  const body = await readBody(req);
+  const targetUserId = String(body.user_id || "").trim().toLowerCase();
+  const requestedRoles = [...new Set((Array.isArray(body.roles) ? body.roles : [])
+    .map((role) => String(role).trim().toLowerCase())
+    .filter(Boolean))];
+  if (!targetUserId || requestedRoles.some((role) => !APPLICATION_ROLES.has(role))) {
+    const error = new Error("A valid user_id and roles from user, editor, admin, owner are required.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!requestedRoles.includes("user")) requestedRoles.unshift("user");
+  const actorRoles = new Set((mapping.roles || []).map((role) => String(role).toLowerCase()));
+  const pool = await getPgPool();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const target = await client.query(`
+      SELECT user_id FROM identity.app_user
+      WHERE tenant_id = $1 AND user_id = $2 AND status = 'active'
+      FOR UPDATE
+    `, [mapping.tenant_id, targetUserId]);
+    if (!target.rowCount) {
+      const error = new Error("The target user is not an active Me.IDs user.");
+      error.statusCode = 404;
+      throw error;
+    }
+    const existing = await client.query(`
+      SELECT role FROM identity.user_application_role
+      WHERE tenant_id = $1 AND user_id = $2
+    `, [mapping.tenant_id, targetUserId]);
+    const existingRoles = existing.rows.map((row) => row.role);
+    const changesOwner = existingRoles.includes("owner") !== requestedRoles.includes("owner");
+    if (changesOwner && !actorRoles.has("owner")) {
+      const error = new Error("Only an owner can grant or revoke the owner role.");
+      error.statusCode = 403;
+      throw error;
+    }
+    if (existingRoles.includes("owner") && !requestedRoles.includes("owner")) {
+      const otherOwners = await client.query(`
+        SELECT count(*)::int AS count FROM identity.user_application_role
+        WHERE tenant_id = $1 AND role = 'owner' AND user_id <> $2
+      `, [mapping.tenant_id, targetUserId]);
+      if (otherOwners.rows[0].count < 1) {
+        const error = new Error("The final application owner cannot be removed.");
+        error.statusCode = 409;
+        throw error;
+      }
+    }
+    await client.query(`
+      DELETE FROM identity.user_application_role
+      WHERE tenant_id = $1 AND user_id = $2
+    `, [mapping.tenant_id, targetUserId]);
+    for (const role of requestedRoles) {
+      await client.query(`
+        INSERT INTO identity.user_application_role (tenant_id, user_id, role, granted_by)
+        VALUES ($1, $2, $3, $4)
+      `, [mapping.tenant_id, targetUserId, role, mapping.user_id]);
+    }
+    await client.query(`
+      INSERT INTO audit.event (tenant_id, actor_user_id, action, resource_type, resource_id, details)
+      VALUES ($1, $2, 'application_roles_updated', 'app_user', $3, $4::jsonb)
+    `, [mapping.tenant_id, mapping.user_id, targetUserId, JSON.stringify({ before: existingRoles, after: requestedRoles })]);
+    await client.query("COMMIT");
+    jsonResponse(res, 200, { status: "updated", user_id: targetUserId, roles: requestedRoles });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function ownedTwin(pool, mapping, twinId, roles = ["owner", "editor"]) {
@@ -2240,7 +2394,7 @@ async function handleSession(req, res) {
     jsonResponse(res, 401, {
       status: "unauthenticated",
       provider: "microsoft_entra_id",
-      login_url: "/.auth/login/aad",
+      login_url: "/.auth/login/eraneos",
       external_users_allowed: true,
     });
     return;
@@ -2272,6 +2426,14 @@ async function routeRequest(req, res) {
     }
     if (req.method === "GET" && url.pathname === "/api/admin/n8n/status") {
       await handleN8nAdminStatus(req, res);
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/admin/users") {
+      await handleAdminUsersList(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/admin/users/roles") {
+      await handleAdminUserRoles(req, res);
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/twins") {

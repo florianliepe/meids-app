@@ -26,8 +26,14 @@ try {
     DATABASE_SSL = "true"
     MEIDS_STORAGE_MODE = "postgres"
     MEIDS_DATABASE_SCHEMA_MANAGED = "true"
-    MEIDS_AUTHZ_DATABASE_ENABLED = "false"
-    MEIDS_ENFORCE_KNOWLEDGE_AUTH = "false"
+    MEIDS_AUTHZ_DATABASE_ENABLED = "true"
+    MEIDS_AUTHZ_JIT_ENABLED = "true"
+    MEIDS_AUTH_ALLOWED_IDPS = "eraneos,aad"
+    MEIDS_ENTRA_TENANT_ID = "213a6ca3-4808-4047-8aca-814d2cde4474"
+    MEIDS_AUTHZ_OWNER_USER_IDS = "4277841b-d713-47b6-8168-172ac3cde535,5c3a147c-0a3b-4d85-bed9-d63653bb5d0d"
+    MEIDS_AUTHZ_USER_GROUP_ID = "6d05aad5-e0ea-4bc5-84b0-003f43611079"
+    MEIDS_AUTHZ_OWNER_GROUP_ID = "849d2888-ecd3-42e8-ad91-fd3178b83734"
+    MEIDS_ENFORCE_KNOWLEDGE_AUTH = "true"
     MEIDS_AUTH_CONTEXT_SIGNING_KEY = "@Microsoft.KeyVault(VaultName=$KeyVaultName;SecretName=meids-auth-context-signing-key)"
   } | ConvertTo-Json -Compress
   [IO.File]::WriteAllText($tempFile, $settingsJson, (New-Object Text.UTF8Encoding($false)))
