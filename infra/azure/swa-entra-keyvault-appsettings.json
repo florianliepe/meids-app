@@ -1,0 +1,7 @@
+{
+  "properties": {
+    "AZURE_CLIENT_ID": "@Microsoft.KeyVault(VaultName=kv-meids-prod-1853a19b;SecretName=Client-Entra-ID)",
+    "AZURE_CLIENT_SECRET": "@Microsoft.KeyVault(VaultName=kv-meids-prod-1853a19b;SecretName=Entra-Client-ID-Sectret-Value)",
+    "AZURE_TENANT_ID": "@Microsoft.KeyVault(VaultName=kv-meids-prod-1853a19b;SecretName=tenant-ID)"
+  }
+}

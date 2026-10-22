@@ -1,8 +1,30 @@
 {
+  "auth": {
+    "identityProviders": {
+      "customOpenIdConnectProviders": {
+        "eraneos": {
+          "registration": {
+            "clientIdSettingName": "AZURE_CLIENT_ID",
+            "clientCredential": {
+              "clientSecretSettingName": "AZURE_CLIENT_SECRET"
+            },
+            "openIdConnectConfiguration": {
+              "wellKnownOpenIdConfiguration": "https://login.microsoftonline.com/213a6ca3-4808-4047-8aca-814d2cde4474/v2.0/.well-known/openid-configuration"
+            }
+          },
+          "login": {
+            "nameClaimType": "name",
+            "scopes": ["openid", "profile", "email"],
+            "loginParameterNames": []
+          }
+        }
+      }
+    }
+  },
   "routes": [
     {
       "route": "/login",
-      "redirect": "/.auth/login/aad?post_login_redirect_uri=/",
+      "redirect": "/.auth/login/eraneos?post_login_redirect_uri=/",
       "statusCode": 302
     },
     {

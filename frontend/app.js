@@ -327,7 +327,7 @@ function authEnabled() {
 }
 
 function loginUrl() {
-  return authConfig().loginUrl || runtimeConfig.loginUrl || "/.auth/login/aad";
+  return authConfig().loginUrl || runtimeConfig.loginUrl || "/.auth/login/eraneos";
 }
 
 function logoutUrl() {

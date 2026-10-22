@@ -144,7 +144,7 @@ function runtimeConfigJs() {
   auth: {
     enabled: ${authEnabled},
     provider: "azure_static_web_apps_entra_id",
-    loginUrl: "/.auth/login/aad",
+    loginUrl: "/.auth/login/eraneos",
     logoutUrl: "/.auth/logout",
     allowInvitedExternalUsers: true,
     plannedSubdomain: "intellectual-twin",
