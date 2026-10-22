@@ -184,6 +184,19 @@ function skillRecord(row) {
   };
 }
 
+function voiceDraftRecord(row) {
+  const assessment = row.assessment || {};
+  return {
+    ...row,
+    path: String(row.draft_id),
+    title: assessment.summary || row.category,
+    consistency_score: Number(assessment.consistency_score) || 0,
+    eligibility_score: Number(assessment.eligibility_score) || 0,
+    final_ready: Boolean(assessment.final_ready ?? assessment.ready),
+    word_count: Number(assessment.word_count) || 0,
+  };
+}
+
 function createWorkspaceApi(deps) {
   const {
     getPgPool,
@@ -601,7 +614,7 @@ function createWorkspaceApi(deps) {
        ORDER BY updated_at DESC LIMIT $4`,
       [mapping.tenant_id, twinId, mapping.user_id, Math.min(100, Number(url.searchParams.get("limit")) || 20)],
     ));
-    jsonResponse(res, 200, { drafts: result.rows.map((row) => ({ ...row, path: String(row.draft_id), title: row.assessment?.summary || row.category })) });
+    jsonResponse(res, 200, { drafts: result.rows.map(voiceDraftRecord) });
   }
 
   async function voiceDraftDetail(req, res) {
@@ -612,7 +625,7 @@ function createWorkspaceApi(deps) {
       [mapping.tenant_id, mapping.user_id, clean(body.path, 128)],
     ));
     if (!result.rowCount) throw httpError(404, "Voice concept draft not found.");
-    jsonResponse(res, 200, { draft: { ...result.rows[0], path: String(result.rows[0].draft_id) } });
+    jsonResponse(res, 200, { draft: voiceDraftRecord(result.rows[0]) });
   }
 
   async function voiceCommit(req, res) {
