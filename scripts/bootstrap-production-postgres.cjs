@@ -154,7 +154,9 @@ async function applyMigrations() {
       if (existing.rows[0]) {
         const storedChecksum = existing.rows[0].checksum;
         if (storedChecksum !== checksums.canonical && !checksums.acceptedLegacy.has(storedChecksum)) {
-          throw new Error(`Applied migration changed: ${file}`);
+          throw new Error(
+            `Applied migration changed: ${file} (stored=${storedChecksum}, canonical=${checksums.canonical})`,
+          );
         }
         if (storedChecksum !== checksums.canonical) {
           await client.query(
