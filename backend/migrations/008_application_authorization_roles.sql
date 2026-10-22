@@ -18,4 +18,8 @@ ON CONFLICT (tenant_id, user_id, role) DO NOTHING;
 CREATE INDEX IF NOT EXISTS idx_user_application_role_user
   ON identity.user_application_role (tenant_id, user_id);
 
+GRANT SELECT, INSERT, UPDATE, DELETE
+  ON identity.user_application_role
+  TO meids_app_runtime;
+
 COMMIT;
