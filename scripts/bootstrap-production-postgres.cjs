@@ -38,10 +38,18 @@ function migrationChecksums(sql) {
 
 const knownLegacyMigrationChecksums = new Map([
   ["006_knowledge_persistence_outbox.sql", "87e4fee33c23297393d1f7cc88385fe9b8307394670d003a47b3ef756ca4c0d2"],
+  ["007_chunk_vector_and_review_state.sql", "308336f8466dfa41413e187d07db857ba978c48edf2229c6ef3dda1c32a3889f"],
 ]);
 
 async function verifyKnownLegacyMigration(client, file, checksum) {
   if (knownLegacyMigrationChecksums.get(file) !== checksum) return false;
+  if (file === "007_chunk_vector_and_review_state.sql") {
+    const vectorColumn = await client.query(
+      `SELECT 1 FROM information_schema.columns
+       WHERE table_schema = 'knowledge' AND table_name = 'chunk' AND column_name = 'content_vector'`,
+    );
+    return Boolean(vectorColumn.rowCount);
+  }
   const expectedColumns = [
     ["knowledge", "concept", "approved_revision"],
     ["knowledge", "concept_revision", "blob_uri"],
