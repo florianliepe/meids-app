@@ -21,6 +21,8 @@ const checks = [
   [/await refreshAll\(\);[\s\S]{0,120}if \(runtimeConfig\.n8nChatEnabled\) void ensureN8nChat\(\);/.test(app), "n8n chat initializes after the active twin is loaded"],
   [/postJson\("\/api\/twins\/active"[\s\S]{0,300}refreshN8nChatAuthorizationContext\(\)/.test(app), "twin switching refreshes the n8n authorization context"],
   [/async function refreshN8nChatAuthorizationContext\(\)[\s\S]{0,180}await loadAuthSession\(\);[\s\S]{0,180}reloadN8nChatContext\(\);/.test(app), "n8n context refresh renews the signed token before remounting chat"],
+  [app.includes('const storageKey = `meids:n8n-session:${tenantId}:${userId}:${twinId}`'), "embedded n8n sessions are isolated by tenant, user, and twin"],
+  [app.includes("sessionId: n8nChatSessionId()"), "embedded n8n chat uses the scoped session id"],
   [backend.includes("function trustedApplicationPrincipal"), "trusted Entra application authentication admits baseline users"],
   [backend.includes("MEIDS_AUTH_ALLOWED_IDPS"), "JIT admission is restricted to configured identity providers"],
   [backend.includes("MEIDS_ENTRA_TENANT_ID"), "JIT admission validates the Entra tenant when the claim is available"],

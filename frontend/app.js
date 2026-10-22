@@ -15818,6 +15818,20 @@ function buildN8nChatMetadata() {
   };
 }
 
+function n8nChatSessionId() {
+  const tenantId = state.authSession?.tenant?.id || "anonymous";
+  const userId = state.authSession?.user?.id || "anonymous";
+  const twinId = state.activeTwin || "unscoped";
+  const storageKey = `meids:n8n-session:${tenantId}:${userId}:${twinId}`;
+  let sessionId = window.localStorage.getItem(storageKey);
+  if (!sessionId) {
+    sessionId = globalThis.crypto?.randomUUID?.()
+      || `meids-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+    window.localStorage.setItem(storageKey, sessionId);
+  }
+  return sessionId;
+}
+
 function renderN8nInteractionContext() {
   const target = $("#n8nInteractionContext");
   if (!target) return;
@@ -15910,6 +15924,7 @@ async function ensureN8nChat() {
       mode: "fullscreen",
       showWelcomeScreen: false,
       loadPreviousSession: true,
+      sessionId: n8nChatSessionId(),
       metadata: buildN8nChatMetadata(),
       initialMessages: [],
       i18n: {
