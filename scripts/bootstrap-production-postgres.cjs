@@ -36,6 +36,46 @@ function migrationChecksums(sql) {
   };
 }
 
+const knownLegacyMigrationChecksums = new Map([
+  ["006_knowledge_persistence_outbox.sql", "87e4fee33c23297393d1f7cc88385fe9b8307394670d003a47b3ef756ca4c0d2"],
+]);
+
+async function verifyKnownLegacyMigration(client, file, checksum) {
+  if (knownLegacyMigrationChecksums.get(file) !== checksum) return false;
+  const expectedColumns = [
+    ["knowledge", "concept", "approved_revision"],
+    ["knowledge", "concept_revision", "blob_uri"],
+    ["knowledge", "concept_revision", "checksum"],
+    ["learning", "increment", "blob_uri"],
+    ["runtime", "outbox_event", "dedupe_key"],
+    ["runtime", "outbox_event", "next_attempt_at"],
+    ["runtime", "outbox_event", "last_error"],
+    ["runtime", "outbox_event", "locked_at"],
+    ["runtime", "outbox_event", "locked_by"],
+  ];
+  for (const [schema, table, column] of expectedColumns) {
+    const result = await client.query(
+      `SELECT 1 FROM information_schema.columns
+       WHERE table_schema = $1 AND table_name = $2 AND column_name = $3`,
+      [schema, table, column],
+    );
+    if (!result.rowCount) return false;
+  }
+  const reviewTable = await client.query("SELECT to_regclass('knowledge.review_action') AS relation");
+  if (!reviewTable.rows[0]?.relation) return false;
+  const expectedIndexes = ["idx_outbox_dedupe_key", "idx_outbox_pending", "idx_review_action_concept"];
+  for (const indexName of expectedIndexes) {
+    const result = await client.query("SELECT 1 FROM pg_indexes WHERE indexname = $1", [indexName]);
+    if (!result.rowCount) return false;
+  }
+  const expectedPolicies = ["source_access", "concept_delta_access", "review_action_read", "review_action_write"];
+  for (const policyName of expectedPolicies) {
+    const result = await client.query("SELECT 1 FROM pg_policies WHERE policyname = $1", [policyName]);
+    if (!result.rowCount) return false;
+  }
+  return true;
+}
+
 function clientConfig(database) {
   return {
     host: required("POSTGRES_ADMIN_HOST"),
@@ -153,7 +193,12 @@ async function applyMigrations() {
       );
       if (existing.rows[0]) {
         const storedChecksum = existing.rows[0].checksum;
-        if (storedChecksum !== checksums.canonical && !checksums.acceptedLegacy.has(storedChecksum)) {
+        const verifiedKnownLegacy = await verifyKnownLegacyMigration(client, file, storedChecksum);
+        if (
+          storedChecksum !== checksums.canonical
+          && !checksums.acceptedLegacy.has(storedChecksum)
+          && !verifiedKnownLegacy
+        ) {
           throw new Error(
             `Applied migration changed: ${file} (stored=${storedChecksum}, canonical=${checksums.canonical})`,
           );
