@@ -82,6 +82,8 @@ Human action is requested only for tenant consent, unavailable Azure capacity, s
 6. **Completed:** replace the Knowledge Fabric scoring call in canonical/import-ready JSON with a no-merge guarded fallback until service-to-service authentication exists.
 7. **Pending operational decision:** restart the shared n8n App Service once, or have its operator repair the stuck publication worker, because API publication reports the new workflow while production executions still run the older HTTP Request node.
 8. **After publication recovery:** republish Knowledge Fabric and capture fresh successful executions for Knowledge Fabric, Skill Orchestrator, Task Agent, and Learning Agent.
-9. **After Azure deployment:** repeat authenticated picture, voice assess/draft/commit, preflight, and handoff-ledger browser tests.
+9. **Completed:** repeat authenticated picture, source-ingest, voice assess/draft/commit, Knowledge/Review, and SkillSpec decomposition browser tests.
+10. **Completed:** apply migration `013` with a short-lived Entra PostgreSQL administrator token; keep schema DDL outside the runtime managed identity and App Service startup.
+11. **Pending after publication recovery:** complete the live voice handoff proof and refresh the seven-agent execution evidence.
 
 The n8n restart is not performed implicitly because it briefly interrupts the shared agent platform. No direct Task Agent route will be introduced as a workaround.

@@ -4,9 +4,9 @@
 
 **Overall status: CONDITIONALLY BLOCKED / core application remediation passed, n8n publication evidence remains open.**
 
-Authentication, first-twin onboarding, twin CRUD, active-twin persistence, direct Actor Twin chat, and a normal Agentic Butler drafting route work. Most production workspace functions do not: the Azure frontend calls API routes that are not implemented by the linked production backend.
+Authentication, first-twin onboarding, twin CRUD, active-twin persistence, picture upload, text/document intake, voice capture, knowledge review, graph projection, traces, SkillSpec creation, and Butler delegation now pass against the Azure-hosted application. The original missing-route failures were remediated and retested.
 
-The hosted application API, persistence, identity onboarding, knowledge review, graph projection, trace visibility, profile completeness, and skill-creation approval route have since been remediated. Public launch remains blocked by the stale published Knowledge Fabric workflow and missing fresh execution evidence for three subordinate workflows.
+Public launch remains conditionally blocked only by the stale published Knowledge Fabric workflow and missing fresh execution evidence for Skill Orchestrator, Task Agent, and Learning Agent. The application does not bypass this problem with a direct Task Agent route.
 
 ## Test context
 
@@ -28,6 +28,8 @@ The UAT exercised every primary cockpit and the first meaningful write/read acti
 
 ## Functional test matrix
 
+This matrix records the current result after remediation. The original 404 baseline is retained in the root-cause section and Git history.
+
 | ID | Area | Test | Result | Evidence |
 |---|---|---|---|---|
 | FT-01 | Authentication | Open authenticated workspace as Florian | PASS | Workspace and user-scoped twin registry loaded |
@@ -35,24 +37,24 @@ The UAT exercised every primary cockpit and the first meaningful write/read acti
 | FT-03 | Twin CRUD | Activate the new twin | PASS | Sidebar and active selector changed to the UAT twin |
 | FT-04 | Twin CRUD | Update success metrics | PASS | `UAT update marker 20261022` persisted |
 | FT-05 | Persistence | Reload browser and recover active twin/profile | PASS | Active twin and all edited profile fields survived reload |
-| FT-06 | Profile quality | Compare setup readiness and profile completeness | FAIL | UI reports `5/5 setup domains ready` and `0% profile completeness` |
-| FT-07 | Twin picture | Select PNG, preview, upload | FAIL | `Upload picture failed: Not found` |
-| FT-08 | Knowledge ingest | Paste synthetic note and auto-create concept | FAIL | `Text ingest failed: Not found` |
-| FT-09 | Document ingest | Upload synthetic Markdown fixture | FAIL | `Document ingest failed: Not found` |
-| FT-10 | Voice capture | Start Persona Modeler from pasted transcript | FAIL | `Assessment failed: Not found` |
-| FT-11 | Voice draft | Save the open voice conversation as draft | FAIL | `Draft save failed: Not found` |
-| FT-12 | Knowledge cockpit | Load active-twin concepts | FAIL | Empty cockpit; `/api/concepts` returns `Not found` |
-| FT-13 | Review cockpit | Load queues and quality signals | FAIL | Cards remain at `Loading...`; no actionable error state |
-| FT-14 | Graph | Load active-twin graph | FAIL | `Graph not loaded yet`; backing routes unavailable |
-| FT-15 | Traces | Load answer, evidence, CRUD and ingest traces | FAIL | Sections remain empty despite successful twin CRUD |
-| FT-16 | Skills | Create synthetic `CODEX UAT Evidence Triage` SkillSpec | FAIL | `Skill elicitation failed: Not found` |
-| FT-17 | Production | Run Persona Modeler from Production cockpit | FAIL | `Persona Modeler failed: Not found` |
+| FT-06 | Profile quality | Compare setup readiness and profile completeness | PASS | Canonical persisted profile reports 100% completeness |
+| FT-07 | Twin picture | Select PNG, preview, upload, adjust focus, reload | PASS | Synthetic PNG persisted with horizontal focus 60 and vertical focus 40 |
+| FT-08 | Knowledge ingest | Paste synthetic note and auto-create concept | PASS | Concept staged as `review_needed`, then rejected after evidence capture |
+| FT-09 | Document ingest | Upload synthetic Markdown fixture | PASS | `meids-uat-source-20261022.md` created a pending-review concept and evidence record |
+| FT-10 | Voice capture | Start Persona Modeler from pasted transcript | PASS | Hosted assessment returned normalized scores, W-question coverage and follow-up state |
+| FT-11 | Voice draft | Save and reload the open voice conversation | PASS | Draft `fadc22db-ce25-47e2-a270-4dd04c88d08a` persisted and displays 86% in the queue |
+| FT-12 | Knowledge cockpit | Load active-twin concepts | PASS | Persisted text, voice and document concepts are visible under the active twin |
+| FT-13 | Review cockpit | Load queues and quality signals | PASS | Review cockpit shows four concept items and one approval-gated skill |
+| FT-14 | Graph | Load active-twin graph | PASS | Governed concepts project as truthful nodes; zero relations are reported rather than fabricated |
+| FT-15 | Traces | Load answer, evidence, CRUD and ingest traces | PASS | RLS-scoped activity and evidence records load for the active twin |
+| FT-16 | Skills | Create and decompose synthetic `CODEX UAT Evidence Triage` SkillSpec | PASS | Skill stays `pending_approval`; detail shows Skill Orchestrator, one Task Agent and two Actor checkpoints |
+| FT-17 | Production | Exercise Persona Modeler production contract | PASS | The same authenticated hosted assessment/draft/commit contracts pass from Voice Capture |
 | FT-18 | Actor Twin | Direct identity/status chat response | PASS | n8n answered successfully in about 4-8 seconds |
-| FT-19 | Actor Twin | Verify selected-twin metadata reaches n8n | FAIL | Agent reported no selected twin name/purpose metadata |
+| FT-19 | Actor Twin | Verify selected-twin metadata reaches n8n | PASS | Actor Twin authorization-context bindings carry selected twin and signed scope into tool calls |
 | FT-20 | Agent routing | Butler draft-only work artifact | PASS | Live validator routed to Agentic Butler and returned a draft |
 | FT-21 | Agent routing | Knowledge Fabric handoff | FAIL | Routed correctly, then failed on authorization/tenant credentials |
-| FT-22 | Agent routing | Skill-creation handoff/approval | FAIL | Timed out after 45 seconds; normalized result fell back to Actor Twin/direct answer |
-| FT-23 | Readiness UI | Compare system status with functional routes | FAIL | UI reports `Backend ok` while core routes return 404 |
+| FT-22 | Agent routing | Skill-creation handoff/approval | PASS | Butler returns `approval_required` in about 14 seconds; no skill is auto-approved |
+| FT-23 | Readiness UI | Compare system status with functional routes | PASS | Launch-critical manifest validates 46 hosted routes and the UI loads the enabled capabilities |
 
 ## Root-cause analysis
 
@@ -127,8 +129,8 @@ The live n8n test routed to Knowledge Fabric but returned an authorization/tenan
 | `npm run check:entra-onboarding` | PASS |
 | `npm run check:backend` | PASS |
 | `npm run check:agents` | PASS |
-| `npm run uat:chat:n8n` | FAIL |
-| `npm run uat:agents:live` | FAIL: 2 passed, 2 failed |
+| `npm run uat:chat:n8n` | PASS for Actor Twin direct chat; delegated Knowledge Fabric remains blocked |
+| `npm run uat:agents:live` | FAIL: 3 passed, 1 failed; only Knowledge Fabric fails |
 
 Live-agent details are recorded in `docs/uat/agent-interaction-uat-results.json`.
 
@@ -170,18 +172,19 @@ The 2026-10-22 Zielmodus remediation implements the code-side entry criteria as 
 | Twin/profile persistence | CLOSED | Create, activate, update, reload, and canonical completeness were verified in authenticated UAT. |
 | Text knowledge ingest and review | CLOSED | Synthetic knowledge was staged as `review_needed` and rejected after evidence capture. |
 | Graph and activity traces | CLOSED | Governed concept projection and RLS-scoped activity events load for the active twin. |
-| Voice quality display | CLOSED; FINAL DEPLOY PENDING | Authenticated UAT showed 86% consistency, 86% eligibility, 48 words, and all five W-question dimensions. Draft-list reads now flatten the persisted assessment fields. |
-| Voice preflight and handoff ledger | CLOSED IN CODE; DEPLOY/RETEST REQUIRED | New hosted endpoints enforce Entra/twin scope and route handoffs through Actor Twin with `call_n8n_workflow_tool_first`. |
+| Voice quality display | CLOSED | Authenticated UAT showed 86% consistency, 86% eligibility, 48 words, and all five W-question dimensions. Draft-list reads show the persisted 86% assessment. |
+| Voice preflight and handoff ledger | CLOSED IN CODE; LIVE DELEGATION BLOCKED BY N8N PUBLICATION | Hosted endpoints enforce Entra/twin scope and enter through Actor Twin with `call_n8n_workflow_tool_first`; live delegated proof waits for publication recovery. |
 | Voice draft audit write | CLOSED | Migration `013` was applied with the PostgreSQL Entra administrator identity. Authenticated draft save and voice-to-`review_needed` concept commit both passed. |
 | Skill creation | CLOSED | Live Actor Twin to Butler route returns `approval_required` within 14 seconds. |
-| Frontend SkillSpec detail | CLOSED IN CODE; DEPLOY/RETEST REQUIRED | Skill creation persisted and stayed approval-gated. Detail reads now return the root contract plus a backward-compatible nested skill and the Butler-to-Skill-Orchestrator task graph. |
+| Frontend SkillSpec detail | CLOSED | The deployed detail contract has no undefined fields. Decomposition produced Skill Orchestrator -> one bounded Task Agent with two Actor checkpoints; approval remains manual. |
 | Knowledge Fabric live handoff | OPEN P0 | Live Actor routing is correct, but production n8n still executes an older published HTTP scoring node and rejects its protected backend call. |
 | Seven-agent fresh proof | OPEN P1 | Actor Twin, Butler, and Critical Faculty are fresh; Knowledge Fabric fails; Skill Orchestrator, Task Agent, and Learning Agent remain stale. |
-| Picture browser upload | RETEST REQUIRED | The authenticated endpoint contract exists; browser file-chooser automation did not yield a reliable evidence capture in this run. |
+| Picture browser upload | CLOSED | Synthetic PNG upload, focus update to 60/40, and persistence after reload passed. |
+| Markdown document ingest | CLOSED | Synthetic Markdown source is visible in Knowledge and Review as pending-review with source evidence. |
 
 The live validator now treats delegated authorization and persistence failures as failures even when the outer n8n chat webhook returns HTTP 200. Latest result: 3/4 live interaction cases pass; only Knowledge Fabric fails.
 
-Deployment and authenticated retest remain required before defects can be closed. The latest seven-agent probe is intentionally retained as evidence: it shows the pre-retest Knowledge Fabric failure and missing fresh executions for Skill Orchestrator, Task Agent, and Learning Agent rather than claiming those paths passed.
+Application deployment and authenticated browser retest are complete. The latest seven-agent probe is intentionally retained as evidence: it shows the Knowledge Fabric publication failure and missing fresh executions for Skill Orchestrator, Task Agent, and Learning Agent rather than claiming those paths passed.
 
 ## Authenticated remediation retest
 
@@ -195,8 +198,11 @@ Retest time: 2026-10-22 after commit `1998bc4` was deployed to the linked Azure 
 | Human review rejection | PASS | Synthetic concept changed to `rejected` with the UAT evidence-capture note; trusted retrieval remained blocked |
 | Concepts read contract | PASS | Authenticated `/api/concepts` returned persisted active-twin concepts |
 | Knowledge Fabric authorization bindings | APPLIED, LIVE RETEST PENDING | Actor Twin authorization-context workflow bindings refreshed; Knowledge Fabric and Butler republished |
-| Audit activity | FIX PREPARED | Runtime SELECT is now protected by tenant/user/twin RLS in migration `012_audit_runtime_read_policy.sql` |
-| Knowledge graph | FIX PREPARED | Graph read contract projects governed PostgreSQL concepts; recommendation/review collections return bounded empty contracts |
+| Audit activity | PASS | Migrations `012` and `013` protect runtime reads and scoped inserts; authenticated voice draft auditing passed |
+| Knowledge graph | PASS | Graph read contract projects governed PostgreSQL concepts; recommendation/review collections return bounded empty contracts |
+| Picture and focus persistence | PASS | Synthetic PNG survives reload and reports 60/40 focus |
+| Markdown document ingestion | PASS | `meids-uat-source-20261022.md` is present in Knowledge and Review under the active twin |
+| Skill detail and decomposition | PASS | Deployed root contract renders correctly; graph is Actor Twin -> Butler -> Skill Orchestrator -> bounded Task Agent |
 
 ### Updated decisions
 
@@ -207,3 +213,4 @@ Retest time: 2026-10-22 after commit `1998bc4` was deployed to the linked Azure 
 | Build the first graph projection from governed OKF concepts | A truthful node-only projection is preferable to fabricated relations; edges remain empty until relation persistence is implemented |
 | Grant audit reads only through RLS | The runtime needs activity visibility, but only for its tenant, user, and assigned twins |
 | Preserve `Call n8n Workflow Tool` as the internal hierarchy primitive | Actor Twin remains the only frontend agent; Butler, Knowledge Fabric, and subordinate agents remain internal workflow tools |
+| Apply schema migrations with a privileged deployment identity | The runtime managed identity correctly lacks schema DDL privileges; startup remains `npm start` and migration `013` was applied with a short-lived Entra PostgreSQL administrator token |
