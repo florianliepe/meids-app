@@ -41,6 +41,8 @@
       requestError.status = response.status;
       requestError.statusText = response.statusText;
       requestError.details = details;
+      requestError.correlationId = response.headers.get("x-correlation-id") || details?.correlation_id || "";
+      if (requestError.correlationId) requestError.message = `${requestError.message} (reference ${requestError.correlationId})`;
       throw requestError;
     }
     return response.json();

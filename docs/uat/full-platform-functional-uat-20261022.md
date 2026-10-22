@@ -163,3 +163,28 @@ The 2026-10-22 Zielmodus remediation implements the code-side entry criteria as 
 - Live Actor Twin authorization-context bindings were refreshed. Knowledge Fabric and Butler canonical workflows were republished; internal delegation remains `Call n8n Workflow Tool` first.
 
 Deployment and authenticated retest remain required before defects can be closed. The latest seven-agent probe is intentionally retained as evidence: it shows the pre-retest Knowledge Fabric failure and missing fresh executions for Skill Orchestrator, Task Agent, and Learning Agent rather than claiming those paths passed.
+
+## Authenticated remediation retest
+
+Retest time: 2026-10-22 after commit `1998bc4` was deployed to the linked Azure backend and Static Web App.
+
+| Scenario | Result | Evidence |
+|---|---|---|
+| Backend and SWA deployment | PASS | Backend, Azure Static Web App, and GitHub Pages workflows completed successfully |
+| Active twin/profile reload | PASS | `Codex Platform UAT 20261022` and persisted profile loaded from PostgreSQL |
+| Text ingestion | PASS | Created concept `d9645089-c2b5-4013-b2d7-707774be5816` with `review_needed` state and two evidence references |
+| Human review rejection | PASS | Synthetic concept changed to `rejected` with the UAT evidence-capture note; trusted retrieval remained blocked |
+| Concepts read contract | PASS | Authenticated `/api/concepts` returned persisted active-twin concepts |
+| Knowledge Fabric authorization bindings | APPLIED, LIVE RETEST PENDING | Actor Twin authorization-context workflow bindings refreshed; Knowledge Fabric and Butler republished |
+| Audit activity | FIX PREPARED | Runtime SELECT is now protected by tenant/user/twin RLS in migration `012_audit_runtime_read_policy.sql` |
+| Knowledge graph | FIX PREPARED | Graph read contract projects governed PostgreSQL concepts; recommendation/review collections return bounded empty contracts |
+
+### Updated decisions
+
+| Decision | Reason |
+|---|---|
+| Keep rejected UAT records visible | Review rejection is an auditable state transition, not destructive deletion |
+| Do not advertise binary document support | PDF, DOCX, and PPTX remain disabled until a dedicated extraction worker exists |
+| Build the first graph projection from governed OKF concepts | A truthful node-only projection is preferable to fabricated relations; edges remain empty until relation persistence is implemented |
+| Grant audit reads only through RLS | The runtime needs activity visibility, but only for its tenant, user, and assigned twins |
+| Preserve `Call n8n Workflow Tool` as the internal hierarchy primitive | Actor Twin remains the only frontend agent; Butler, Knowledge Fabric, and subordinate agents remain internal workflow tools |

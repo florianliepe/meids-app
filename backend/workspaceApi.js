@@ -601,6 +601,52 @@ function createWorkspaceApi(deps) {
     });
   }
 
+  async function graphRead(req, res, url) {
+    const { mapping, pool } = await context(req);
+    const twinId = assertTwin(mapping, url.searchParams.get("twin"));
+    const includeDrafts = String(url.searchParams.get("include_drafts") || "true").toLowerCase() !== "false";
+    const concepts = (await queryConcepts(pool, mapping, twinId))
+      .filter((concept) => includeDrafts || concept.review_state === "approved");
+    const nodes = concepts.map((concept) => ({
+      node_key: `concept:${concept.concept_id}`,
+      node_type: "concept",
+      title: concept.title,
+      summary: concept.summary || concept.description || "",
+      review_state: concept.review_state,
+      confidence: concept.review_state === "approved" ? 1 : 0.65,
+      cluster: concept.type || "knowledge",
+      tags: concept.tags || [],
+      okf_path: concept.path,
+      actor_readiness: concept.review_state === "approved" ? "ready" : "needs-review",
+      actor_readiness_score: concept.review_state === "approved" ? 100 : 60,
+      source_refs: concept.source_refs || [],
+    }));
+    const edges = [];
+    jsonResponse(res, 200, {
+      status: "ready",
+      scope: { tenant_id: mapping.tenant_id, twin_id: twinId },
+      summary: {
+        node_count: nodes.length,
+        edge_count: edges.length,
+        approved_concepts: nodes.filter((node) => node.review_state === "approved").length,
+        pending_review: nodes.filter((node) => node.review_state !== "approved").length,
+        projection: "governed_okf_concepts",
+      },
+      nodes,
+      edges,
+    });
+  }
+
+  async function graphAuxiliary(req, res, url, kind) {
+    const { mapping } = await context(req);
+    const twinId = assertTwin(mapping, url.searchParams.get("twin"));
+    if (kind === "postgres_read") {
+      jsonResponse(res, 200, { status: "ready", tenant_id: mapping.tenant_id, twin_id: twinId, source: "postgresql_rls" });
+      return;
+    }
+    jsonResponse(res, 200, { [kind]: [], total: 0, status: "ready", twin_id: twinId });
+  }
+
   async function stableEmpty(res, kind) {
     const key = kind === "skill_runs" ? "runs" : kind === "skill_refinements" ? "refinements" : kind;
     jsonResponse(res, 200, { [key]: [], total: 0, status: "ready" });
@@ -635,6 +681,10 @@ function createWorkspaceApi(deps) {
     else if (route === "POST /api/voice/concepts/commit") await voiceCommit(req, res);
     else if (route === "GET /api/activity") await activity(req, res, url);
     else if (route === "GET /api/review-dashboard") await reviewDashboard(req, res, url);
+    else if (route === "GET /api/okf/graph") await graphRead(req, res, url);
+    else if (route === "GET /api/okf/graph/recommendation-tasks") await graphAuxiliary(req, res, url, "tasks");
+    else if (route === "GET /api/okf/graph/edge-reviews") await graphAuxiliary(req, res, url, "reviews");
+    else if (route === "GET /api/okf/graph/postgres-read") await graphAuxiliary(req, res, url, "postgres_read");
     else return false;
     return true;
   };

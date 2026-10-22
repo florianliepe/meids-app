@@ -1537,6 +1537,18 @@ function frontendStatusPayload() {
     },
     voice_transcription: health.voice_transcription,
     vector_search: health.vector_search,
+    capabilities: {
+      twins: { status: "ready", persistence: "postgresql" },
+      twin_pictures: { status: "ready", persistence: "postgresql_bounded_data_url" },
+      source_ingest: { status: "ready", formats: ["txt", "md", "json", "csv", "yaml", "yml", "xml"] },
+      binary_document_extraction: { status: "unavailable", reason: "Document extraction worker is not deployed." },
+      knowledge: { status: "ready", persistence: "postgresql_outbox" },
+      voice_concepts: { status: "ready", transcription: health.voice_transcription.status },
+      skills: { status: "ready", routing: "actor_twin_to_butler_workflow_tool" },
+      graph: { status: "ready", source: "governed_okf_concepts" },
+      activity: { status: "ready", source: "tenant_scoped_audit" },
+      agents: { status: "ready", delegation: "call_n8n_workflow_tool_first" },
+    },
   };
 }
 
@@ -2431,6 +2443,9 @@ const handleWorkspaceApi = createWorkspaceApi({
 
 async function routeRequest(req, res) {
   const url = new URL(req.url, "http://localhost");
+  const requestId = String(req.headers["x-correlation-id"] || req.headers["x-request-id"] || crypto.randomUUID());
+  req.meidsRequestId = requestId;
+  res.setHeader("X-Correlation-ID", requestId);
   if (req.method === "OPTIONS") {
     res.writeHead(204, corsHeaders());
     res.end();
@@ -2565,6 +2580,7 @@ async function routeRequest(req, res) {
     jsonResponse(res, error.statusCode || 500, {
       status: "failed",
       error: error.message || "Unhandled backend proxy error",
+      correlation_id: requestId,
     });
   }
 }

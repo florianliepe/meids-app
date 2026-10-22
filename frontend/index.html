@@ -184,7 +184,7 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">Me.IDs</p>
-            <h1 id="pageTitle">Chat</h1>
+            <h1 id="pageTitle">Actor Twin</h1>
           </div>
           <div class="topbar-actions">
             <span id="workspaceMode" class="mode-pill">Workspace</span>
@@ -420,8 +420,8 @@
           <div class="grid two source-capture-grid">
             <article class="panel source-capture-card">
               <h2>Upload Knowledge</h2>
-              <p>Supported: PDF, DOCX, PPTX, Markdown, TXT. Uploads are chunked by source anchor and auto-create multiple OKF concepts when useful.</p>
-              <input id="documentInput" type="file" accept=".pdf,.docx,.pptx,.md,.txt" />
+              <p>Supported now: TXT, Markdown, JSON, CSV, YAML, and XML. PDF, DOCX, and PPTX remain disabled until the extraction worker is deployed.</p>
+              <input id="documentInput" type="file" accept=".txt,.md,.markdown,.json,.csv,.yaml,.yml,.xml" />
               <button id="uploadDocumentBtn">Upload and create concept</button>
             </article>
             <article class="panel source-capture-card">
