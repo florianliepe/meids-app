@@ -174,6 +174,7 @@ The 2026-10-22 Zielmodus remediation implements the code-side entry criteria as 
 | Voice preflight and handoff ledger | CLOSED IN CODE; DEPLOY/RETEST REQUIRED | New hosted endpoints enforce Entra/twin scope and route handoffs through Actor Twin with `call_n8n_workflow_tool_first`. |
 | Voice draft audit write | CLOSED | Migration `013` was applied with the PostgreSQL Entra administrator identity. Authenticated draft save and voice-to-`review_needed` concept commit both passed. |
 | Skill creation | CLOSED | Live Actor Twin to Butler route returns `approval_required` within 14 seconds. |
+| Frontend SkillSpec detail | CLOSED IN CODE; DEPLOY/RETEST REQUIRED | Skill creation persisted and stayed approval-gated. Detail reads now return the root contract plus a backward-compatible nested skill and the Butler-to-Skill-Orchestrator task graph. |
 | Knowledge Fabric live handoff | OPEN P0 | Live Actor routing is correct, but production n8n still executes an older published HTTP scoring node and rejects its protected backend call. |
 | Seven-agent fresh proof | OPEN P1 | Actor Twin, Butler, and Critical Faculty are fresh; Knowledge Fabric fails; Skill Orchestrator, Task Agent, and Learning Agent remain stale. |
 | Picture browser upload | RETEST REQUIRED | The authenticated endpoint contract exists; browser file-chooser automation did not yield a reliable evidence capture in this run. |

@@ -171,6 +171,7 @@ function qualityAssessment(body) {
 }
 
 function skillRecord(row) {
+  const storedSpec = row.spec || {};
   return {
     skill_id: row.skill_id,
     name: row.name,
@@ -180,7 +181,34 @@ function skillRecord(row) {
     version: row.version,
     created_at: row.created_at,
     updated_at: row.updated_at,
-    spec: row.spec || {},
+    spec: {
+      ...storedSpec,
+      name: storedSpec.name || row.name,
+      description: storedSpec.description || row.description,
+      risk_class: storedSpec.risk_class || row.risk_class,
+    },
+  };
+}
+
+function skillDetailRecord(row) {
+  const skill = skillRecord(row);
+  const taskAgents = Array.isArray(skill.spec.task_agents) ? skill.spec.task_agents : [];
+  return {
+    ...skill,
+    skill,
+    folder: skill.spec.folder || "",
+    config: {
+      status: skill.status,
+      actor_agent: { persona_ref: row.twin_id },
+      orchestrator: {
+        mode: "skill_orchestrator",
+        model: "Call n8n Workflow Tool",
+        max_steps: skill.spec.max_steps || 8,
+        actor_checkpoints: skill.spec.actor_checkpoints || ["before_external_side_effect", "before_irreversible_action"],
+      },
+      task_agents: taskAgents,
+    },
+    lint: { valid: true, errors: [] },
   };
 }
 
@@ -396,7 +424,7 @@ function createWorkspaceApi(deps) {
       [mapping.tenant_id, clean(url.searchParams.get("skill_id"), 128)],
     ));
     if (!result.rowCount) throw httpError(404, "Skill not found.");
-    jsonResponse(res, 200, { skill: skillRecord(result.rows[0]) });
+    jsonResponse(res, 200, skillDetailRecord(result.rows[0]));
   }
 
   async function skillElicit(req, res) {
