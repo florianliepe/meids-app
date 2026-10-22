@@ -23,6 +23,19 @@ function decodeJwtClaims(token) {
   }
 }
 
+function migrationChecksums(sql) {
+  const canonicalSql = String(sql).replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+  const checksum = (value) => crypto.createHash("sha256").update(value).digest("hex");
+  return {
+    canonicalSql,
+    canonical: checksum(canonicalSql),
+    acceptedLegacy: new Set([
+      checksum(sql),
+      checksum(canonicalSql.replace(/\n/g, "\r\n")),
+    ]),
+  };
+}
+
 function clientConfig(database) {
   return {
     host: required("POSTGRES_ADMIN_HOST"),
@@ -133,20 +146,30 @@ async function applyMigrations() {
     )`);
     for (const file of files) {
       const sql = await fs.readFile(path.join(directory, file), "utf8");
-      const checksum = crypto.createHash("sha256").update(sql).digest("hex");
+      const checksums = migrationChecksums(sql);
       const existing = await client.query(
         "SELECT checksum FROM public.meids_schema_migration WHERE migration_name = $1",
         [file],
       );
       if (existing.rows[0]) {
-        if (existing.rows[0].checksum !== checksum) throw new Error(`Applied migration changed: ${file}`);
+        const storedChecksum = existing.rows[0].checksum;
+        if (storedChecksum !== checksums.canonical && !checksums.acceptedLegacy.has(storedChecksum)) {
+          throw new Error(`Applied migration changed: ${file}`);
+        }
+        if (storedChecksum !== checksums.canonical) {
+          await client.query(
+            "UPDATE public.meids_schema_migration SET checksum = $2 WHERE migration_name = $1",
+            [file, checksums.canonical],
+          );
+          process.stdout.write(`normalized checksum ${file}\n`);
+        }
         process.stdout.write(`skip ${file}\n`);
         continue;
       }
-      await client.query(sql);
+      await client.query(checksums.canonicalSql);
       await client.query(
         "INSERT INTO public.meids_schema_migration (migration_name, checksum) VALUES ($1, $2)",
-        [file, checksum],
+        [file, checksums.canonical],
       );
       process.stdout.write(`applied ${file}\n`);
     }
