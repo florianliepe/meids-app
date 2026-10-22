@@ -22,6 +22,7 @@ const {
   backfillKnowledgeSearch,
   processOutboxBatch,
 } = require("./knowledgePersistence");
+const { createWorkspaceApi } = require("./workspaceApi");
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = path.resolve(process.env.MEIDS_DATA_DIR || path.join(process.cwd(), ".data"));
@@ -77,7 +78,7 @@ function jsonResponse(res, status, data, headers = {}) {
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": allowedOrigin(),
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
   };
 }
@@ -1965,6 +1966,17 @@ function twinProfileFromBody(body = {}, existing = {}) {
 
 function twinResponseRow(row = {}) {
   const profile = row.profile && typeof row.profile === "object" ? row.profile : {};
+  const completenessFields = [
+    "organization",
+    "role_context",
+    "tone",
+    "purpose",
+    "decision_principles",
+    "escalation_boundaries",
+    "success_metrics",
+    "source_intake_notes",
+  ];
+  const completedFields = completenessFields.filter((field) => String(profile[field] || "").trim()).length;
   return {
     ...profile,
     twin_id: row.twin_id,
@@ -1975,6 +1987,7 @@ function twinResponseRow(row = {}) {
     access_role: row.access_role,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    profile_completeness: completedFields / completenessFields.length,
   };
 }
 
@@ -2403,6 +2416,19 @@ async function handleSession(req, res) {
   jsonResponse(res, 200, sessionFromPrincipal(principal, mapping));
 }
 
+const handleWorkspaceApi = createWorkspaceApi({
+  getPgPool,
+  requireTwinRequestMapping,
+  requireKnowledgeRequestMapping,
+  readBody,
+  readMultipartForm,
+  jsonResponse,
+  stageKnowledge,
+  promoteKnowledge,
+  rejectKnowledge,
+  proxyToN8n,
+});
+
 async function routeRequest(req, res) {
   const url = new URL(req.url, "http://localhost");
   if (req.method === "OPTIONS") {
@@ -2528,6 +2554,7 @@ async function routeRequest(req, res) {
       await handlePostTurnLearning(req, res);
       return;
     }
+    if (await handleWorkspaceApi(req, res, url)) return;
     const resumeMatch = url.pathname.match(/^\/api\/(?:agents\/)?approvals\/([^/]+)\/resume$/);
     if (req.method === "POST" && resumeMatch) {
       await handleResumeApproval(req, res, decodeURIComponent(resumeMatch[1]));

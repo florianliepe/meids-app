@@ -7,16 +7,14 @@
       "webhookId": "5fa227c8-4589-4369-a7ec-7f3a15026134",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
-      "position": [
-        0,
-        0
-      ],
+      "position": [0, 0],
       "parameters": {
         "httpMethod": "POST",
         "path": "meids/agentic-butler/run",
         "responseMode": "responseNode",
         "options": {}
-      }
+      },
+      "notes": "Diagnostic/backend entrypoint only. Actor Twin delegates internally through Call n8n Workflow Tool."
     },
     {
       "id": "meids-agentic-butler-run-contract",
@@ -37,10 +35,7 @@
       "name": "Return JSON",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [
-        800,
-        0
-      ],
+      "position": [800, 0],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ $json }}",
@@ -220,15 +215,7 @@
   ],
   "connections": {
     "Receive request": {
-      "main": [
-        [
-          {
-            "node": "Agentic Butler AI Agent",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{"node": "Agentic Butler AI Agent", "type": "main", "index": 0}]]
     },
     "Agentic Butler AI Agent": {
       "main": [
@@ -254,13 +241,7 @@
     },
     "Contract response normalizer": {
       "main": [
-        [
-          {
-            "node": "Return JSON",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{"node": "Return JSON", "type": "main", "index": 0}]
       ]
     },
     "Receive workflow call": {

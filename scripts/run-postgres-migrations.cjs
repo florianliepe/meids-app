@@ -3,16 +3,69 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const { Pool } = require("pg");
 
-async function main() {
-  const connectionString = String(process.env.DATABASE_URL || "").trim();
-  if (!connectionString) throw new Error("DATABASE_URL is required.");
-  const pool = new Pool({
-    connectionString,
-    ssl: String(process.env.DATABASE_SSL || "true").toLowerCase() === "true"
-      ? { rejectUnauthorized: true }
-      : false,
-    max: 1,
+const POSTGRES_TOKEN_RESOURCE = "https://ossrdbms-aad.database.windows.net";
+
+async function managedIdentityToken() {
+  const endpoint = String(process.env.IDENTITY_ENDPOINT || "").trim();
+  const identityHeader = String(process.env.IDENTITY_HEADER || "").trim();
+  if (!endpoint || !identityHeader) throw new Error("App Service managed identity endpoint is unavailable for PostgreSQL migrations.");
+  const url = new URL(endpoint);
+  url.searchParams.set("resource", POSTGRES_TOKEN_RESOURCE);
+  url.searchParams.set("api-version", "2019-08-01");
+  const clientId = String(process.env.POSTGRES_MANAGED_IDENTITY_CLIENT_ID || "").trim();
+  if (clientId) url.searchParams.set("client_id", clientId);
+  const response = await fetch(url, {
+    headers: { "X-IDENTITY-HEADER": identityHeader, Metadata: "true" },
+    signal: AbortSignal.timeout(10_000),
   });
+  const raw = await response.text();
+  let data = {};
+  try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
+  if (!response.ok || !data.access_token) {
+    throw new Error(data.error_description || data.error || raw || `Managed identity token request returned ${response.status}`);
+  }
+  return data.access_token;
+}
+
+async function poolOptions() {
+  const connectionString = String(process.env.DATABASE_URL || "").trim();
+  const authMode = String(process.env.POSTGRES_AUTH_MODE || "").toLowerCase();
+  const managedIdentity = authMode === "managed_identity";
+  const ssl = String(process.env.DATABASE_SSL || "true").toLowerCase() === "true"
+    ? { rejectUnauthorized: true }
+    : false;
+  if (managedIdentity) {
+    const required = ["DATABASE_HOST", "DATABASE_USER"].filter((name) => !String(process.env[name] || "").trim());
+    if (required.length) throw new Error(`${required.join(", ")} required for managed-identity migrations.`);
+    return {
+      host: process.env.DATABASE_HOST,
+      port: Number(process.env.DATABASE_PORT || 5432),
+      database: process.env.DATABASE_NAME || "meids_prod",
+      user: process.env.DATABASE_USER,
+      password: await managedIdentityToken(),
+      ssl,
+      max: 1,
+    };
+  }
+  if (authMode === "access_token") {
+    const required = ["DATABASE_HOST", "DATABASE_USER", "DATABASE_ACCESS_TOKEN"].filter((name) => !String(process.env[name] || "").trim());
+    if (required.length) throw new Error(`${required.join(", ")} required for access-token migrations.`);
+    return {
+      host: process.env.DATABASE_HOST,
+      port: Number(process.env.DATABASE_PORT || 5432),
+      database: process.env.DATABASE_NAME || "meids_prod",
+      user: process.env.DATABASE_USER,
+      password: process.env.DATABASE_ACCESS_TOKEN,
+      ssl,
+      max: 1,
+    };
+  }
+  if (!connectionString) throw new Error("DATABASE_URL or POSTGRES_AUTH_MODE=managed_identity is required.");
+  return { connectionString, ssl, max: 1 };
+}
+
+async function main() {
+  const pool = new Pool(await poolOptions());
   const directory = path.resolve(__dirname, "..", "backend", "migrations");
   const files = (await fs.readdir(directory)).filter((name) => name.endsWith(".sql")).sort();
   const client = await pool.connect();

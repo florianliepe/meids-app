@@ -46,6 +46,7 @@
     {
       "id": "dee202ef-3a44-4cbb-97d2-08cda7ab595c",
       "name": "Agentic Butler",
+      "notes": "Approval-gate child binding refreshed 2026-10-21 after Butler contract normalizer update.",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
       "position": [
