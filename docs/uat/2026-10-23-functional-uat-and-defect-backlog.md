@@ -35,8 +35,8 @@ Covered paths:
 | UAT-007 | P1 | Uploaded evidence showed no source anchor, hash, consent, sensitivity, or curation method. | Document ingestion stored only a minimal citation and did not expose source metadata. | New uploads store and expose checksum, source anchor, capture details, sensitivity, consent scope, and curation method. | Fixed for new uploads; deployed |
 | UAT-008 | P1 | Approved concepts could retain evidence labelled pending. | Concept promotion did not update linked evidence citation review metadata. | Promotion now marks linked evidence approved with reviewer, time, and note. | Fixed for new/re-reviewed concepts; deployed |
 | UAT-009 | P2 | Embedded Actor Twin answers do not appear in the Trace cockpit. | Embedded n8n chat bypasses the backend trace persistence path and has no post-response callback wired. | Add an n8n post-answer trace branch or a supported chat completion callback that posts the normalized answer trace. | Open |
-| UAT-010 | P2 | Initial page load produces optional-endpoint 404 noise and serial latency. | `refreshAll()` eagerly called legacy and advanced cockpit endpoints even when the active view did not need them. | Core boot now refreshes only the active view. Each cockpit loads its own independent data in parallel through `Promise.allSettled` when opened. | Fixed; deployment verification pending |
-| UAT-011 | P3 | Queued skill submission toast says `completed`. | Frontend success copy assumes every accepted run is synchronous. | Show `Skill run queued` for HTTP 202 and `completed` only after the ledger status changes. | Code fixed; frontend deployment pending in this change set |
+| UAT-010 | P2 | Initial page load produces optional-endpoint 404 noise and serial latency. | `refreshAll()` eagerly called legacy and advanced cockpit endpoints even when the active view did not need them. | Core boot now refreshes only the active view. Each cockpit loads its own independent data in parallel through `Promise.allSettled` when opened. | Fixed and live-tested |
+| UAT-011 | P3 | Queued skill submission toast says `completed`. | Frontend success copy assumes every accepted run is synchronous. | Show `Skill run queued` for HTTP 202 and `completed` only after the ledger status changes. | Fixed and deployed |
 | UAT-012 | P1 | The final skill run remained `queued` although all n8n executions succeeded. | The application role could insert but could not update its own `audit.event` skill-run record; no scoped UPDATE grant or RLS policy existed. | Migration `015_audit_skill_run_update_policy.sql` grants narrowly scoped UPDATE access for the current tenant, current user, `agent.skill_run` resource type, and allowed run actions. | Fixed and live-tested |
 | UAT-013 | P1 | Azure Search outbox embedding failed when extracted source text exceeded the provider's 8,192-token input boundary. | Full source text was sent to the embedding endpoint without a deterministic input bound. | Embedding input is now normalized and bounded to 24,000 characters before the provider call, while the complete source remains in PostgreSQL and Blob Storage. | Fixed and deployed; contract-tested |
 | UAT-014 | P1 | Uploaded audio cannot yet be transcribed in production. | The configured Eraneos AI Gateway model catalogue exposes chat and `text-embedding-3-large`, but no Whisper or other audio-transcription model. | Enable an OpenAI-compatible speech-to-text model in the gateway or provide a separately governed STT endpoint and credential. | Open external dependency |
@@ -91,7 +91,7 @@ Audio upload stays enabled as an intake format, but transcription remains blocke
 
 ## Release recommendation
 
-Core document upload, review, retrieval, and skill lifecycle paths passed controlled production UAT. Public-launch sign-off should still require UAT-009 (answer trace persistence) and a decision on UAT-015 (durable worker). UAT-010 is performance and operability hardening. Audio transcription remains unavailable until UAT-014 is resolved by the gateway owner.
+Core document upload, review, retrieval, and skill lifecycle paths passed controlled production UAT. Public-launch sign-off should still require UAT-009 (answer trace persistence) and a decision on UAT-015 (durable worker). Audio transcription remains unavailable until UAT-014 is resolved by the gateway owner.
 
 ## Final rerun evidence
 
@@ -107,3 +107,4 @@ Core document upload, review, retrieval, and skill lifecycle paths passed contro
 - Knowledge mutation: none
 - Result: `NEEDS REVIEW / PAUSE`, with evidence citation and explicit residual uncertainty
 - Run ledger: `completed`
+- Azure Static Web Apps startup after commit `7bf57f1`: authenticated, Actor Twin chat connected, zero new browser console warnings/errors
