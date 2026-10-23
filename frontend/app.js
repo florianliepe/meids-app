@@ -8603,6 +8603,12 @@ function bindIngest() {
   $("#uploadDocumentBtn").addEventListener("click", async () => {
     const file = $("#documentInput").files[0];
     if (!file) return showIngest("Choose a file first.");
+    const extension = file.name.split(".").pop()?.toLowerCase() || "";
+    if (extension === "pages") return showIngest("Apple Pages files cannot be read reliably. Export this document as PDF or DOCX and upload it again.");
+    if (!["txt", "md", "markdown", "json", "csv", "yaml", "yml", "xml", "pdf", "docx"].includes(extension)) {
+      return showIngest("Supported formats: TXT, Markdown, JSON, CSV, YAML, XML, PDF, and DOCX.");
+    }
+    if (file.size > 10 * 1024 * 1024) return showIngest("This file is larger than the 10 MB upload limit.");
     if (!(await confirmTwinScopedAction(`upload ${file.name}`))) return;
     const form = new FormData();
     form.append("file", file);

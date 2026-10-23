@@ -1,7 +1,7 @@
 const crypto = require("node:crypto");
+const { MAX_DOCUMENT_BYTES, extractDocumentText } = require("./documentExtraction");
 
 const MAX_AVATAR_BYTES = 1_500_000;
-const TEXT_DOCUMENT_EXTENSIONS = new Set(["txt", "md", "markdown", "json", "csv", "yaml", "yml", "xml"]);
 const REVIEW_FROM_UI = {
   "pending-review": "review_needed",
   pending_review: "review_needed",
@@ -247,7 +247,7 @@ function createWorkspaceApi(deps) {
   }
 
   async function picture(req, res, remove = false) {
-    const form = remove ? { fields: await readBody(req), files: {} } : await readMultipartForm(req);
+    const form = remove ? { fields: await readBody(req), files: {} } : await readMultipartForm(req, { maxBytes: MAX_AVATAR_BYTES + 100_000 });
     const { mapping, pool } = await context(req, form.fields);
     const twinId = assertTwin(mapping, form.fields.twin_id);
     let picturePath = "";
@@ -319,23 +319,18 @@ function createWorkspaceApi(deps) {
   }
 
   async function ingestDocument(req, res) {
-    const form = await readMultipartForm(req);
+    const form = await readMultipartForm(req, { maxBytes: MAX_DOCUMENT_BYTES + 100_000 });
     const { mapping, pool } = await context(req, form.fields, true);
     const twinId = assertTwin(mapping, form.fields.twin || form.fields.twin_id);
     const file = form.files.file;
     if (!file) throw httpError(400, "A document file is required.");
-    const extension = file.filename.split(".").pop().toLowerCase();
-    if (!file.type.startsWith("text/") && !TEXT_DOCUMENT_EXTENSIONS.has(extension) && !["application/json", "application/xml"].includes(file.type)) {
-      throw httpError(415, "This production path currently supports text, Markdown, JSON, CSV, YAML, and XML. Binary PDF/DOCX extraction requires the document-extraction worker.");
-    }
-    const text = file.buffer.toString("utf8").replace(/\0/g, "").trim();
-    if (!text) throw httpError(422, "The uploaded document contains no readable text.");
-    const title = clean(file.filename.replace(/\.[^.]+$/, ""), 200) || "Uploaded document";
+    const { filename, extension, text } = await extractDocumentText(file);
+    const title = clean(filename.replace(/\.[^.]+$/, ""), 200) || "Uploaded document";
     const staged = await stageKnowledge(pool, mapping, {
       twin_id: twinId,
-      concept: { title, topic: title, summary: text.slice(0, 2_000), how_to_apply: text.slice(0, 80_000), raw: { type: "Document Upload", source_name: file.filename, media_type: file.type } },
-      source: { type: extension || "document", name: file.filename, size: file.buffer.length, checksum: crypto.createHash("sha256").update(file.buffer).digest("hex") },
-      evidence: [{ citation: { type: "uploaded_document", title: file.filename, media_type: file.type }, confidence: 1 }],
+      concept: { title, topic: title, summary: text.slice(0, 2_000), how_to_apply: text.slice(0, 80_000), raw: { type: "Document Upload", source_name: filename, media_type: file.type } },
+      source: { type: extension || "document", name: filename, size: file.buffer.length, checksum: crypto.createHash("sha256").update(file.buffer).digest("hex") },
+      evidence: [{ citation: { type: "uploaded_document", title: filename, media_type: file.type }, confidence: 1 }],
       change_reason: "Frontend document ingestion",
     });
     jsonResponse(res, 201, { ...staged, concept: { path: staged.concept_id, concept_id: staged.concept_id, title, review_state: REVIEW_TO_UI[staged.review_state] || staged.review_state } });

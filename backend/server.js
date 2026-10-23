@@ -23,6 +23,7 @@ const {
   processOutboxBatch,
 } = require("./knowledgePersistence");
 const { createWorkspaceApi } = require("./workspaceApi");
+const { normalizeUploadFilename } = require("./documentExtraction");
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = path.resolve(process.env.MEIDS_DATA_DIR || path.join(process.cwd(), ".data"));
@@ -101,9 +102,18 @@ async function readBody(req) {
   }
 }
 
-async function readRawBody(req) {
+async function readRawBody(req, maxBytes = 25 * 1024 * 1024) {
   const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
+  let receivedBytes = 0;
+  for await (const chunk of req) {
+    receivedBytes += chunk.length;
+    if (receivedBytes > maxBytes) {
+      const error = new Error(`Upload exceeds the ${Math.ceil(maxBytes / 1024 / 1024)} MB request limit.`);
+      error.statusCode = 413;
+      throw error;
+    }
+    chunks.push(chunk);
+  }
   return Buffer.concat(chunks);
 }
 
@@ -123,7 +133,21 @@ function splitMultipartBuffer(buffer, boundary) {
   return parts;
 }
 
-async function readMultipartForm(req) {
+function decodeMultipartFilename(header) {
+  const encoded = header.match(/(?:^|;)\s*filename\*\s*=\s*(?:"([^"]*)"|([^;\r\n]*))/i);
+  if (encoded) {
+    const raw = String(encoded[1] ?? encoded[2] ?? "").trim();
+    const value = raw.match(/^[^']*'[^']*'(.*)$/)?.[1] ?? raw;
+    try {
+      return normalizeUploadFilename(decodeURIComponent(value));
+    } catch (error) {
+      return normalizeUploadFilename(value);
+    }
+  }
+  return normalizeUploadFilename(header.match(/(?:^|;)\s*filename\s*=\s*"([^"]*)"/i)?.[1] || "");
+}
+
+async function readMultipartForm(req, options = {}) {
   const contentType = String(req.headers["content-type"] || "");
   const boundary = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.[1] || contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.[2];
   if (!boundary) {
@@ -131,7 +155,7 @@ async function readMultipartForm(req) {
     error.statusCode = 400;
     throw error;
   }
-  const body = await readRawBody(req);
+  const body = await readRawBody(req, options.maxBytes);
   const fields = {};
   const files = {};
   for (const part of splitMultipartBuffer(body, boundary)) {
@@ -142,7 +166,7 @@ async function readMultipartForm(req) {
     if (payload.subarray(payload.length - 2).toString() === "\r\n") payload = payload.subarray(0, payload.length - 2);
     const name = header.match(/name="([^"]+)"/i)?.[1];
     if (!name) continue;
-    const filename = header.match(/filename="([^"]*)"/i)?.[1] || "";
+    const filename = decodeMultipartFilename(header);
     const type = header.match(/content-type:\s*([^\r\n]+)/i)?.[1]?.trim() || "application/octet-stream";
     if (filename) {
       files[name] = { filename, type, buffer: payload };
@@ -2719,6 +2743,14 @@ async function routeRequest(req, res) {
     }
     jsonResponse(res, 404, { status: "failed", error: "Not found" });
   } catch (error) {
+    console.error(JSON.stringify({
+      event: "request_failed",
+      request_id: requestId,
+      method: req.method,
+      path: url.pathname,
+      status_code: error.statusCode || 500,
+      error: error.message || "Unhandled backend proxy error",
+    }));
     jsonResponse(res, error.statusCode || 500, {
       status: "failed",
       error: error.message || "Unhandled backend proxy error",
@@ -2778,4 +2810,5 @@ module.exports = {
   buildTraceRecord,
   buildApprovalRecord,
   routeRequest,
+  decodeMultipartFilename,
 };
