@@ -398,6 +398,14 @@ async function azureSearchRequest(path, options = {}, config = azureSearchConfig
   return data;
 }
 
+const MAX_EMBEDDING_INPUT_CHARACTERS = 24_000;
+
+function boundedEmbeddingInput(text) {
+  const value = String(text || "");
+  if (value.length <= MAX_EMBEDDING_INPUT_CHARACTERS) return value;
+  return value.slice(0, MAX_EMBEDDING_INPUT_CHARACTERS);
+}
+
 async function azureOpenAiEmbedding(text, config = azureSearchConfigFromEnv()) {
   if (!config.embeddingConfigured) {
     const error = new Error(`Azure OpenAI embeddings are not configured: ${config.embeddingMissing.join(", ")}`);
@@ -420,7 +428,7 @@ async function azureOpenAiEmbedding(text, config = azureSearchConfigFromEnv()) {
       ...authHeaders,
     },
     body: JSON.stringify({
-      input: String(text || ""),
+      input: boundedEmbeddingInput(text),
       ...(isGateway ? { model: config.embeddingDeployment, dimensions: config.embeddingDimensions } : {}),
     }),
   });
@@ -635,6 +643,7 @@ module.exports = {
   azureSearchConfigFromEnv,
   statusFromConfig,
   managedIdentityAccessToken,
+  boundedEmbeddingInput,
   deterministicVectorFromText,
   vectorDocumentFromOkf,
   buildActorTwinFilter,

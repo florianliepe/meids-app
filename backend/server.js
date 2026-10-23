@@ -2548,6 +2548,18 @@ const handleWorkspaceApi = createWorkspaceApi({
   proxyToN8n,
   transcribeAudio: transcribeAudioWithOpenAiCompatibleGateway,
   transcriptionConfig: openAiTranscriptionConfig,
+  issueKnowledgeAccessToken(mapping, twinId) {
+    return signKnowledgeAccessToken({
+      tenant_id: mapping.tenant_id,
+      user_id: mapping.user_id,
+      active_twin_id: twinId,
+      allowed_twin_ids: mapping.allowed_twin_ids || [],
+      group_ids: mapping.group_ids || [],
+      roles: mapping.roles || [],
+      visibility_scopes: ["private", "twin_shared", "team_shared", "org_shared"],
+      knowledge_scope: "active_twin",
+    }, { ttlSeconds: 300 });
+  },
 });
 
 async function routeRequest(req, res) {

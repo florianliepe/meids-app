@@ -1,0 +1,14 @@
+MEIDS-UAT-20261023 synthetic evidence note
+
+Scenario: A release recommendation relies on an eight-month-old operational report and an unverified verbal statement. The change affects production access and cannot be reversed within the maintenance window.
+
+Expected application: Pause the release. The accountable decision owner is the release lead. The evidence owner must obtain a current operational report and verify the verbal statement independently. The reviewer records the conflict and sets a review date. Work resumes only after the gap is closed or the decision owner explicitly accepts the residual risk.
+
+Quality checks:
+- Topic: evidence escalation for release decisions.
+- Why: prevent decisions based on stale or incomplete evidence.
+- How: identify owner, verify two independent signals, pause, assign evidence work, review.
+- Who: release lead, evidence owner, independent reviewer.
+- And then: either close the gap and resume or record explicit residual-risk acceptance.
+
+UAT marker: MEIDS-UAT-20261023-EVIDENCE

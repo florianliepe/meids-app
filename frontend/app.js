@@ -20731,10 +20731,13 @@ async function runSelectedSkill() {
       twin: state.activeTwin,
       actor: "local-user",
     });
+    if (result.status === "queued") {
+      [10_000, 30_000, 75_000].forEach((delay) => setTimeout(() => void safeRefreshSkillRuns(), delay));
+    }
     $("#skillResult").textContent = formatSkillRunResult(result);
     await safeRefreshReviewDashboard();
     await safeRefreshSkillRuns();
-    showToast("Skill run completed", result.run_id || state.selectedSkillId, "success");
+    showToast(result.status === "queued" ? "Skill run queued" : "Skill run completed", result.run_id || state.selectedSkillId, "success");
   } catch (error) {
     $("#skillResult").textContent = `Skill run failed: ${error.message}`;
     showToast("Skill run failed", error.message, "error");
@@ -23854,7 +23857,10 @@ function conceptSourceRefs(concept) {
     concept.source_anchor,
     concept.source_deep_link,
   ].filter(Boolean);
-  return Array.from(new Set(refs.map((ref) => String(ref))));
+  return Array.from(new Set(refs.map((ref) => {
+    if (!ref || typeof ref !== "object") return String(ref);
+    return String(ref.path || ref.source_anchor || ref.title || ref.source_name || ref.evidence_id || "");
+  }).filter(Boolean)));
 }
 
 function knowledgeEvidenceState(concept) {

@@ -298,6 +298,17 @@ async function promoteKnowledge(pool, mapping, body = {}) {
        VALUES ($1, $2, $3, 'approve', $4, $5)`,
       [mapping.tenant_id, conceptId, revision, mapping.user_id, cleanText(body.rationale, 5_000) || null],
     );
+    await client.query(
+      `UPDATE knowledge.evidence
+       SET citation = citation || jsonb_build_object(
+         'review_state', 'approved',
+         'reviewed_by', $2::text,
+         'reviewed_at', now()::text,
+         'review_note', COALESCE($3::text, '')
+       )
+       WHERE concept_id = $1`,
+      [conceptId, mapping.user_id, cleanText(body.rationale, 5_000) || null],
+    );
     const document = {
       vector_doc_id: concept.search_document_id,
       concept_id: conceptId,

@@ -91,7 +91,19 @@ function conceptRecord(row) {
     review_state: REVIEW_TO_UI[row.review_state] || row.review_state,
     visibility_scope: row.visibility_scope,
     source_anchor: citations[0]?.path || citations[0]?.title || content.raw?.source_name || "",
+    reviewed_by: row.reviewed_by || "",
+    reviewed_at: row.reviewed_at || "",
+    review_note: row.review_note || "",
+    sensitivity: content.raw?.sensitivity || citations[0]?.sensitivity || "",
+    consent_scope: content.raw?.consent_scope || citations[0]?.consent_scope || "",
+    provenance_hash: content.raw?.provenance_hash || citations[0]?.sha256 || "",
+    curation_method: content.raw?.curation_method || citations[0]?.curation_method || "",
+    source_anchor_detail: content.raw?.source_anchor_detail || {},
     source_refs: citations,
+    evidence_review_states: citations.map((citation) => {
+      const reviewState = citation && typeof citation === "object" ? citation.review_state : "";
+      return REVIEW_TO_UI[reviewState] || reviewState || "pending-review";
+    }),
     tags: Array.isArray(content.tags) ? content.tags : [],
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -100,6 +112,9 @@ function conceptRecord(row) {
       visibility_scope: row.visibility_scope,
       content,
       evidence_count: Number(row.evidence_count || citations.length || 0),
+      reviewed_by: row.reviewed_by || "",
+      reviewed_at: row.reviewed_at || "",
+      review_note: row.review_note || "",
     },
   };
 }
@@ -109,7 +124,10 @@ async function queryConcepts(pool, mapping, twinId, conceptId = "") {
     const result = await client.query(
       `SELECT concept.*, revision.content, revision.revision,
         COALESCE(evidence_data.citations, '[]'::jsonb) AS citations,
-        COALESCE(evidence_data.evidence_count, 0) AS evidence_count
+        COALESCE(evidence_data.evidence_count, 0) AS evidence_count,
+        review_data.actor_user_id AS reviewed_by,
+        review_data.created_at AS reviewed_at,
+        review_data.rationale AS review_note
        FROM knowledge.concept concept
        JOIN knowledge.concept_revision revision
          ON revision.concept_id = concept.concept_id AND revision.revision = concept.current_revision
@@ -118,6 +136,12 @@ async function queryConcepts(pool, mapping, twinId, conceptId = "") {
            count(*)::int AS evidence_count
          FROM knowledge.evidence evidence WHERE evidence.concept_id = concept.concept_id
        ) evidence_data ON true
+       LEFT JOIN LATERAL (
+         SELECT review.actor_user_id, review.created_at, review.rationale
+         FROM knowledge.review_action review
+         WHERE review.concept_id = concept.concept_id AND review.revision = concept.current_revision
+         ORDER BY review.created_at DESC LIMIT 1
+       ) review_data ON true
        WHERE concept.tenant_id = $1 AND concept.twin_id = $2
          AND ($3::text = '' OR concept.concept_id::text = $3)
        ORDER BY concept.updated_at DESC`,
@@ -240,7 +264,36 @@ function createWorkspaceApi(deps) {
     proxyToN8n,
     transcribeAudio,
     transcriptionConfig,
+    issueKnowledgeAccessToken,
   } = deps;
+
+  function actorChatRequest(envelope, mapping, twinId, message, suppliedSessionId = "") {
+    const knowledgeAccessToken = issueKnowledgeAccessToken(mapping, twinId);
+    return {
+      ...envelope,
+      action: "sendMessage",
+      sessionId: clean(suppliedSessionId, 256) || envelope.request_id,
+      chatInput: clean(message, 20_000),
+      metadata: {
+        source: "meids-intellectual-twin",
+        interface: "backend_agent_handoff",
+        interfaceContract: "meids.actor_twin.embedded_chat.v1",
+        identity: {
+          tenantId: mapping.tenant_id,
+          userId: mapping.user_id,
+          activeTwinId: twinId,
+          allowedTwinIds: mapping.allowed_twin_ids || [],
+        },
+        authorization: {
+          contract: "meids.knowledge-access.v1",
+          knowledgeAccessToken,
+          knowledgeScope: "active_twin",
+          handling: "opaque_backend_credential_do_not_prompt_or_log",
+        },
+        orchestrationEnvelope: envelope,
+      },
+    };
+  }
 
   async function context(req, body = {}, knowledge = false) {
     const mapping = knowledge
@@ -329,11 +382,23 @@ function createWorkspaceApi(deps) {
     if (!file) throw httpError(400, "A document file is required.");
     const { filename, extension, text } = await extractDocumentText(file);
     const title = clean(filename.replace(/\.[^.]+$/, ""), 200) || "Uploaded document";
+    const checksum = crypto.createHash("sha256").update(file.buffer).digest("hex");
+    const capturedAt = new Date().toISOString();
     const staged = await stageKnowledge(pool, mapping, {
       twin_id: twinId,
-      concept: { title, topic: title, summary: text.slice(0, 2_000), how_to_apply: text.slice(0, 80_000), raw: { type: "Document Upload", source_name: filename, media_type: file.type } },
-      source: { type: extension || "document", name: filename, size: file.buffer.length, checksum: crypto.createHash("sha256").update(file.buffer).digest("hex") },
-      evidence: [{ citation: { type: "uploaded_document", title: filename, media_type: file.type }, confidence: 1 }],
+      concept: { title, topic: title, summary: text.slice(0, 2_000), how_to_apply: text.slice(0, 80_000), raw: {
+        type: "Document Upload", source_name: filename, media_type: file.type,
+        sensitivity: "internal", consent_scope: "authorized_upload",
+        provenance_hash: checksum, curation_method: "direct_document_upload",
+        source_anchor_detail: { filename, extension, media_type: file.type, size_bytes: file.buffer.length, captured_at: capturedAt },
+      } },
+      source: { type: extension || "document", name: filename, size: file.buffer.length, checksum },
+      evidence: [{ citation: {
+        type: "uploaded_document", title: filename, path: filename, media_type: file.type,
+        size_bytes: file.buffer.length, sha256: checksum, captured_at: capturedAt,
+        sensitivity: "internal", consent_scope: "authorized_upload", curation_method: "direct_document_upload",
+        review_state: "pending-review",
+      }, confidence: 1 }],
       change_reason: "Frontend document ingestion",
     });
     jsonResponse(res, 201, { ...staged, concept: { path: staged.concept_id, concept_id: staged.concept_id, title, review_state: REVIEW_TO_UI[staged.review_state] || staged.review_state } });
@@ -354,7 +419,15 @@ function createWorkspaceApi(deps) {
     if (!concept) throw httpError(404, "Concept not found.");
     jsonResponse(res, 200, {
       path: concept.path,
-      metadata: { title: concept.title, type: concept.type, review_state: concept.review_state, visibility_scope: concept.visibility_scope, tags: concept.tags, evidence_count: concept.metadata.evidence_count },
+      metadata: {
+        title: concept.title, type: concept.type, review_state: concept.review_state,
+        visibility_scope: concept.visibility_scope, tags: concept.tags,
+        evidence_count: concept.metadata.evidence_count, reviewed_by: concept.reviewed_by,
+        reviewed_at: concept.reviewed_at, review_note: concept.review_note,
+        source_anchor: concept.source_anchor, sensitivity: concept.sensitivity,
+        consent_scope: concept.consent_scope, provenance_hash: concept.provenance_hash,
+        curation_method: concept.curation_method, source_anchor_detail: concept.source_anchor_detail,
+      },
       content: concept.metadata.content,
       linked_evidence: concept.source_refs,
     });
@@ -501,8 +574,82 @@ function createWorkspaceApi(deps) {
       input: { message: clean(body.manual_request, 20_000), skill_id: skillId, skill_spec: skill.spec, source_inputs: body },
       context: { active_twin_id: skill.twin_id, allowed_twin_ids: mapping.allowed_twin_ids, routing_policy: "call_n8n_workflow_tool_first", target_capability: "agentic_butler" },
     };
-    const response = await proxyToN8n("actor_twin", envelope);
-    jsonResponse(res, 200, { status: response.status || "completed", run_id: requestId, skill_id: skillId, skill_name: skill.name, result: response.output || response, orchestration: { entry_agent: "actor_twin", delegation: "Call n8n Workflow Tool" } });
+    const manualRequest = envelope.input.message || "Run the approved skill with the supplied context.";
+    const knowledgeContext = clean(body.knowledge_context, 20_000);
+    const skillPrompt = [
+      `Execute the approved skill "${skill.name}" through Agentic Butler using the Call n8n Workflow Tool.`,
+      "This is approved-skill execution: call Agentic Butler first and let it use Skill Orchestrator/Task Agent as configured.",
+      "Treat all supplied knowledge as read-only. If Knowledge Fabric is needed, operation must be retrieve. Do not stage, update, or create knowledge unless the user's manual request explicitly asks for a write.",
+      `Manual request: ${manualRequest}`,
+      knowledgeContext ? `Approved knowledge context: ${knowledgeContext}` : "",
+      `Approved SkillSpec: ${JSON.stringify(skill.spec || {})}`,
+    ].filter(Boolean).join("\n\n");
+    const request = actorChatRequest(envelope, mapping, skill.twin_id, skillPrompt, body.session_id);
+    const queued = {
+      status: "queued", run_id: requestId, skill_id: skillId, skill_name: skill.name,
+      twin: skill.twin_id, summary: "Approved skill run queued for Actor Twin orchestration.",
+      review_state: "unreviewed", inputs: body, created_at: new Date().toISOString(),
+      orchestration: { entry_agent: "actor_twin", delegation: "Call n8n Workflow Tool", target: "agentic_butler" },
+    };
+    await withContext(pool, mapping, (client) => audit(client, mapping, "skill.run.queued", "agent.skill_run", requestId, queued));
+    jsonResponse(res, 202, queued);
+
+    const persistRunResult = (action, details) => withContext(pool, mapping, async (client) => {
+      const updated = await client.query(
+        `UPDATE audit.event SET action = $3, details = $4::jsonb
+         WHERE tenant_id = $1 AND resource_id = $2 AND resource_type = 'agent.skill_run'
+           AND actor_user_id = $5`,
+        [mapping.tenant_id, requestId, action, JSON.stringify(details), mapping.user_id],
+      );
+      if (updated.rowCount !== 1) throw new Error(`Skill run ledger update did not match ${requestId}.`);
+    });
+
+    void (async () => {
+      try {
+        const response = await proxyToN8n("actor_twin", request);
+        const output = response.output || response;
+        const completed = {
+          ...queued,
+          status: response.status || "completed",
+          summary: clean(typeof output === "string" ? output : response.message || "Skill run completed.", 1_000),
+          result: output,
+          completed_at: new Date().toISOString(),
+        };
+        await persistRunResult("skill.run", completed);
+      } catch (error) {
+        const failed = {
+          ...queued, status: "failed", review_state: "needs_rework",
+          summary: clean(error.message, 1_000), completed_at: new Date().toISOString(),
+        };
+        try {
+          await persistRunResult("skill.run.failed", failed);
+        } catch (persistError) {
+          console.error(JSON.stringify({
+            event: "skill_run_ledger_update",
+            status: "failed",
+            run_id: requestId,
+            execution_error: error.message || String(error),
+            persistence_error: persistError.message || String(persistError),
+          }));
+        }
+      }
+    })();
+  }
+
+  async function skillRuns(req, res, url) {
+    const { mapping, pool } = await context(req);
+    const limit = Math.min(100, Number(url.searchParams.get("limit")) || 20);
+    const result = await withContext(pool, mapping, (client) => client.query(
+      `SELECT resource_id, action, details, created_at FROM audit.event
+       WHERE tenant_id = $1 AND actor_user_id = $2 AND action IN ('skill.run.queued', 'skill.run', 'skill.run.failed')
+       ORDER BY created_at DESC LIMIT $3`,
+      [mapping.tenant_id, mapping.user_id, limit],
+    ));
+    jsonResponse(res, 200, {
+      status: "ready",
+      total: result.rowCount,
+      runs: result.rows.map((row) => ({ run_id: row.resource_id, ...row.details, created_at: row.details.created_at || row.created_at })),
+    });
   }
 
   async function voiceCriteria(res) {
@@ -626,7 +773,9 @@ function createWorkspaceApi(deps) {
         side_effect_policy: "prepare_only",
       },
     };
-    const delegated = await proxyToN8n("actor_twin", envelope);
+    const delegated = await proxyToN8n("actor_twin", actorChatRequest(
+      envelope, mapping, twinId, envelope.input.query, body.session_id,
+    ));
     const payloadHash = crypto.createHash("sha256").update(JSON.stringify(envelope.input)).digest("hex");
     await withContext(pool, mapping, (client) => audit(client, mapping, "voice.agent_handoff", "runtime.voice_handoff", requestId, {
       twin_id: twinId,
@@ -860,7 +1009,7 @@ function createWorkspaceApi(deps) {
     else if (route === "POST /api/skills/approval") await skillMutate(req, res, "approval");
     else if (route === "POST /api/skills/archive") await skillMutate(req, res, "archive");
     else if (route === "POST /api/skills/run") await skillRun(req, res);
-    else if (route === "GET /api/skills/runs") await stableEmpty(res, "skill_runs");
+    else if (route === "GET /api/skills/runs") await skillRuns(req, res, url);
     else if (route === "GET /api/skills/refinements") await stableEmpty(res, "skill_refinements");
     else if (route === "GET /api/skills/telemetry") await stableEmpty(res, "telemetry");
     else if (route === "GET /api/voice/concepts/criteria") await voiceCriteria(res);

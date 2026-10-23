@@ -101,6 +101,11 @@ if (!Array.isArray(doc.allowed_user_ids) || doc.acl_version !== "v1") fail("Vect
 if (!Array.isArray(doc.content_vector) || doc.content_vector.length !== 1536) fail("Vector document fallback vector dimensions failed");
 const deterministicVector = adapter.deterministicVectorFromText("Test concept text.", 1536);
 if (!Array.isArray(deterministicVector) || deterministicVector.length !== 1536) fail("Deterministic vector helper dimensions failed");
+const oversizedEmbeddingInput = "x".repeat(30_000);
+if (adapter.boundedEmbeddingInput(oversizedEmbeddingInput).length !== 24_000) {
+  fail("Embedding input must stay below the provider token boundary");
+}
+if (adapter.boundedEmbeddingInput("short") !== "short") fail("Short embedding input must remain unchanged");
 const status = adapter.statusFromConfig({
   configured: true,
   embeddingConfigured: true,

@@ -7,6 +7,10 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, "contracts", "backen
 const source = ["backend/server.js", "backend/workspaceApi.js"]
   .map((file) => fs.readFileSync(path.join(root, file), "utf8"))
   .join("\n");
+const auditUpdateMigration = fs.readFileSync(
+  path.join(root, "backend", "migrations", "015_audit_skill_run_update_policy.sql"),
+  "utf8",
+);
 
 const missing = manifest.routes.filter((route) => {
   const [method, pathname] = route.split(" ");
@@ -38,6 +42,19 @@ if (REVIEW_FROM_UI["pending-review"] !== "review_needed" || REVIEW_FROM_UI["need
 }
 if (!source.includes("routing_policy: \"call_n8n_workflow_tool_first\"")) {
   throw new Error("Interactive skill execution must preserve the Call n8n Workflow Tool hierarchy policy.");
+}
+for (const required of [
+  'action: "sendMessage"',
+  'sessionId:',
+  'chatInput:',
+  'knowledgeAccessToken',
+  'action IN (\'skill.run.queued\', \'skill.run\', \'skill.run.failed\')',
+  'call Agentic Butler first',
+]) {
+  if (!source.includes(required)) throw new Error(`Backend-driven Actor Twin calls or skill-run history missing ${required}.`);
+}
+for (const required of ["FOR UPDATE", "actor_user_id = app_security.setting('app.user_id')", "resource_type = 'agent.skill_run'", "GRANT UPDATE ON audit.event"]) {
+  if (!auditUpdateMigration.includes(required)) throw new Error(`Skill-run ledger migration missing ${required}.`);
 }
 
 process.stdout.write(`Launch-critical API contract valid: ${manifest.routes.length} routes.\n`);
