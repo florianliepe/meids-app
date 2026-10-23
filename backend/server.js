@@ -185,7 +185,7 @@ function openAiTranscriptionConfig() {
     process.env.ERANEOS_AI_GATEWAY_BASE_URL ||
     "https://api.openai.com/v1",
   ).trim().replace(/\/+$/, "");
-  const model = String(process.env.OPENAI_TRANSCRIPTION_MODEL || process.env.ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODEL || "gpt-4o-mini-transcribe").trim();
+  const model = String(process.env.OPENAI_TRANSCRIPTION_MODEL || process.env.ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODEL || "").trim();
   return {
     apiKey,
     baseUrl,
@@ -194,7 +194,7 @@ function openAiTranscriptionConfig() {
     missing: [
       ...(!apiKey ? ["OPENAI_API_KEY or ERANEOS_AI_GATEWAY_API_KEY"] : []),
       ...(!baseUrl ? ["OPENAI_BASE_URL or ERANEOS_AI_GATEWAY_BASE_URL"] : []),
-      ...(!model ? ["OPENAI_TRANSCRIPTION_MODEL"] : []),
+      ...(!model ? ["OPENAI_TRANSCRIPTION_MODEL or ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODEL"] : []),
     ],
   };
 }
@@ -225,7 +225,10 @@ async function transcribeAudioWithOpenAiCompatibleGateway(file) {
   }
   if (!response.ok) {
     const detail = data.error?.message || data.message || data.raw || response.statusText;
-    const error = new Error(`Transcription provider failed: ${detail}`);
+    const modelHint = /invalid model|model.*not.*found|unknown model/i.test(String(detail || ""))
+      ? " The configured gateway does not expose this speech-to-text model. Select an advertised transcription model or configure a governed STT endpoint."
+      : "";
+    const error = new Error(`Transcription provider failed: ${detail}.${modelHint}`.replace(/\.\./g, "."));
     error.statusCode = response.status;
     throw error;
   }
@@ -1071,6 +1074,50 @@ async function handleManualTrace(req, res) {
   jsonResponse(res, 200, { status: "stored", trace });
 }
 
+function boundedTraceText(value, max = 20_000) {
+  if (value == null) return "";
+  return String(typeof value === "string" ? value : JSON.stringify(value)).trim().slice(0, max);
+}
+
+async function handlePostAnswerTrace(req, res) {
+  const body = await readBody(req);
+  const mapping = await requireKnowledgeRequestMapping(req, body);
+  const supplied = body.trace && typeof body.trace === "object" ? body.trace : {};
+  const twinId = cleanTwinId(supplied.twin_id || supplied.active_twin_id || mapping.active_twin_id);
+  if (!twinId || !mapping.allowed_twin_ids.includes(twinId)) {
+    const error = new Error("Post-answer trace must target an assigned twin.");
+    error.statusCode = 403;
+    throw error;
+  }
+  const traceId = boundedTraceText(supplied.trace_id, 256) || makeId("trace");
+  const record = {
+    timestamp: new Date().toISOString(),
+    trace_id: traceId,
+    trace_chain_id: boundedTraceText(supplied.trace_chain_id, 256) || traceId,
+    request_id: boundedTraceText(supplied.request_id, 256),
+    actor_trace_id: traceId,
+    agent_id: "actor_twin",
+    target_agent: "actor_twin",
+    route_decision: boundedTraceText(supplied.route_decision, 120) || "answer_completed",
+    status: "completed",
+    runtime: "n8n_post_answer",
+    source: "n8n_actor_twin",
+    tenant_id: mapping.tenant_id,
+    user_id: mapping.user_id,
+    twin_id: twinId,
+    input_summary: boundedTraceText(supplied.input_summary),
+    output_summary: boundedTraceText(supplied.output_summary),
+    grounding: supplied.grounding && typeof supplied.grounding === "object" ? supplied.grounding : {},
+    trace_learning_recommended: supplied.trace_learning_recommended !== false,
+  };
+  await appendTrace(record);
+  jsonResponse(res, 201, {
+    status: "stored",
+    trace_id: traceId,
+    post_turn_learning: postTurnLearningEnabled() ? "queued" : "disabled",
+  });
+}
+
 async function handleManualApproval(req, res) {
   const body = await readBody(req);
   const record = {
@@ -1487,6 +1534,9 @@ function backendHealthPayload() {
       base_url_configured: Boolean(transcription.baseUrl),
       model: transcription.model,
       missing: transcription.missing,
+      reason: transcription.configured
+        ? "An explicit speech-to-text model is configured. Provider support is verified on first transcription request."
+        : "A gateway key alone does not enable speech-to-text. Configure an explicit transcription model exposed by the provider.",
     },
     vector_search: azureSearchStatusFromConfig(azureSearchConfigFromEnv()),
     agents: Object.fromEntries(Object.values(AGENTS).map((agent) => [
@@ -1694,7 +1744,7 @@ function sessionFromPrincipal(principal, mapping = null) {
     visibility_scopes: ["private", "twin_shared", "team_shared", "org_shared"],
     knowledge_scope: "active_twin",
   };
-  const accessTokenTtlSeconds = 300;
+  const accessTokenTtlSeconds = Math.max(300, Math.min(Number(process.env.MEIDS_KNOWLEDGE_ACCESS_TOKEN_TTL_SECONDS || 3600), 28_800));
   const knowledgeAccessToken = signKnowledgeAccessToken(accessClaims, { ttlSeconds: accessTokenTtlSeconds });
   return {
     status: "authenticated",
@@ -2558,7 +2608,7 @@ const handleWorkspaceApi = createWorkspaceApi({
       roles: mapping.roles || [],
       visibility_scopes: ["private", "twin_shared", "team_shared", "org_shared"],
       knowledge_scope: "active_twin",
-    }, { ttlSeconds: 300 });
+    }, { ttlSeconds: Math.max(300, Math.min(Number(process.env.MEIDS_KNOWLEDGE_ACCESS_TOKEN_TTL_SECONDS || 3600), 28_800)) });
   },
 });
 
@@ -2640,6 +2690,10 @@ async function routeRequest(req, res) {
     }
     if (req.method === "POST" && ["/api/agents/traces", "/api/traces"].includes(url.pathname)) {
       await handleManualTrace(req, res);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/agents/post-answer") {
+      await handlePostAnswerTrace(req, res);
       return;
     }
     if (req.method === "GET" && ["/api/agents/approvals", "/api/approvals"].includes(url.pathname)) {

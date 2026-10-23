@@ -20,6 +20,8 @@ const claims = {
 const token = signKnowledgeAccessToken(claims, { secret });
 assert.ok(token.split(".").length === 3, "signed access token must use compact JWT shape");
 assert.deepEqual(verifyKnowledgeAccessToken(token, { secret }), claims);
+const tokenClaims = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
+assert.equal(tokenClaims.exp - tokenClaims.iat, 3600, "default scoped knowledge token should survive a normal chat session");
 
 const ownFilter = buildKnowledgeSecurityFilter(claims);
 assert.match(ownFilter, /organization_id eq 'eraneos'/);

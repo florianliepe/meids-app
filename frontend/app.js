@@ -11041,10 +11041,10 @@ async function refreshAll() {
   renderWorkspaceIntro();
   $("#guardrailPolicySelect").value = status.guardrail_policy || "advisory";
   const voiceProxyUrl = configuredVoiceTranscriptionUrl();
-  state.openAIConfigured = Boolean(status.openai_configured || voiceProxyUrl);
+  state.openAIConfigured = Boolean(status.voice_transcription?.status === "configured" || voiceProxyUrl);
   $("#voiceReadiness").textContent = state.openAIConfigured
     ? (voiceProxyUrl ? "Ready: hosted speech-to-text proxy is configured." : "Ready: backend speech-to-text is configured.")
-    : "Needs backend setup: configure OPENAI_API_KEY, ERANEOS_AI_GATEWAY_API_KEY, or a hosted voiceTranscriptionUrl before sending recordings for transcription.";
+    : (status.voice_transcription?.reason || "Needs backend setup: configure a governed speech-to-text endpoint and an explicit supported transcription model.");
   $("#voiceReadiness").className = `readiness ${state.openAIConfigured ? "ready" : "missing"}`;
   const activeView = document.querySelector(".nav-item.active")?.dataset.view || "chat";
   await refreshViewData(activeView);
@@ -15990,11 +15990,23 @@ function buildN8nChatMetadata() {
       ...retrievalFlags,
     },
     routingHints: {
-      answerDirectFirst: true,
+      answerDirectFirst: false,
+      evidenceFirst: true,
+      directAnswerOnlyWhen: [
+        "greeting, navigation help, capability explanation, or clearly generic knowledge",
+        "the answer makes no claim about this user, twin, organization, process, decision, experience, preference, or stored source",
+      ],
       useKnowledgeFabricWhen: [
         "knowledge retrieval needs OKF, vector cache, graph, evidence, or source ingestion",
         "the user asks to remember, ingest, update, classify, review, or connect knowledge",
+        "the answer concerns the active twin's identity, biography, role, expertise, preferences, decisions, processes, relationships, or prior work",
       ],
+      groundingContract: {
+        reviewedKnowledgeOnly: true,
+        statuses: ["grounded", "partial", "not_found"],
+        noEvidenceBehavior: "Say that reviewed knowledge is unavailable, name the missing evidence, and ask one targeted follow-up. Never invent a personal or organizational fact.",
+        separateFactsFromInferences: true,
+      },
       useAgenticButlerWhen: [
         "the user asks for a work artifact, approved skill execution, planning, drafting, synthesis, or workflow support",
         "the user asks to create or refine a new skill, task agent, or agent behavior proposal",
@@ -16065,15 +16077,16 @@ async function refreshN8nChatAuthorizationContext() {
   await loadAuthSession();
   applyAuthState();
   if (!runtimeConfig.n8nChatEnabled) return;
-  reloadN8nChatContext();
+  renderN8nInteractionContext();
 }
 
 function scheduleN8nChatContextReload() {
   if (!runtimeConfig.n8nChatEnabled || !state.n8nChatLoaded) return;
   if (state.n8nContextReloadTimer) clearTimeout(state.n8nContextReloadTimer);
   state.n8nContextReloadTimer = setTimeout(() => {
-    reloadN8nChatContext();
-    showToast("n8n context refreshed", "Actor Twin chat reloaded with the current interaction setup.", "success");
+    renderN8nInteractionContext();
+    const status = $("#n8nChatStatus");
+    if (status) status.textContent = "Interaction setup changed. Apply it when you are ready to reconnect; the visible conversation is preserved.";
   }, 700);
 }
 
@@ -16084,7 +16097,11 @@ function scheduleN8nAuthorizationRefresh() {
   const delay = Math.max(30_000, expiresAt - Date.now() - 30_000);
   state.n8nAuthRefreshTimer = setTimeout(async () => {
     await loadAuthSession();
-    reloadN8nChatContext();
+    applyAuthState();
+    renderN8nInteractionContext();
+    const status = $("#n8nChatStatus");
+    if (status) status.textContent = "Authorization refreshed. Apply the current context before the next knowledge request; the visible answer remains in place.";
+    showToast("Actor Twin authorization refreshed", "Use Apply context and reconnect before the next knowledge request. The current conversation was not cleared.", "success");
   }, delay);
 }
 

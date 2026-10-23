@@ -1,7 +1,8 @@
 const crypto = require("node:crypto");
 
 const ACCESS_TOKEN_VERSION = 1;
-const DEFAULT_TOKEN_TTL_SECONDS = 300;
+const DEFAULT_TOKEN_TTL_SECONDS = 3600;
+const MAX_TOKEN_TTL_SECONDS = 8 * 60 * 60;
 const ALLOWED_VISIBILITY_SCOPES = new Set([
   "private",
   "twin_shared",
@@ -27,7 +28,7 @@ function signKnowledgeAccessToken(claims, options = {}) {
   const secret = String(options.secret || signingKeyFromEnv(options.env)).trim();
   if (!secret) return "";
   const now = Math.floor(Date.now() / 1000);
-  const ttl = Math.max(60, Math.min(Number(options.ttlSeconds || DEFAULT_TOKEN_TTL_SECONDS), 900));
+  const ttl = Math.max(60, Math.min(Number(options.ttlSeconds || DEFAULT_TOKEN_TTL_SECONDS), MAX_TOKEN_TTL_SECONDS));
   const header = base64UrlJson({ alg: "HS256", typ: "JWT", kid: "meids-knowledge-v1" });
   const payload = base64UrlJson({
     v: ACCESS_TOKEN_VERSION,
