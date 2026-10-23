@@ -33,8 +33,8 @@ const checks = [
   [backend.includes('["user", "employee"].includes(role) ? "viewer" : role'), "Me.IDs User and Employee app roles map to viewer"],
   [backend.includes("identity.user_application_role"), "global application roles are read independently from twin access"],
   [applicationRoleMigration.includes("role IN ('user', 'editor', 'admin', 'owner')"), "application role schema uses the approved role set"],
-  [backend.includes("Only an owner can grant or revoke the owner role."), "owner escalation is owner-only"],
-  [backend.includes("The final application owner cannot be removed."), "the final owner is protected"],
+  [backend.includes("The owner role is governed in Microsoft Entra and cannot be changed in the Admin Cockpit."), "owner escalation is Entra-only"],
+  [backend.includes("if (targetIsOwner) nextRoles.push(\"owner\")"), "the Entra-governed owner role is preserved by application role edits"],
   [backend.includes('? (mapping.allowed_twin_ids || [])'), "mapped users without twins do not inherit an environment fallback twin"],
 ];
 

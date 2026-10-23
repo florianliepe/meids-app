@@ -1676,9 +1676,9 @@ function meidsRolesFromPrincipal(principal = {}) {
 
 function permissionsFromRoles(roles = []) {
   const set = new Set(roles.map((role) => String(role).toLowerCase()));
-  const admin = set.has("admin");
-  const owner = admin || set.has("owner");
-  const editor = owner || set.has("editor");
+  const owner = set.has("owner");
+  const admin = owner || set.has("admin");
+  const editor = admin || set.has("editor");
   const reviewer = editor || set.has("reviewer");
   return {
     can_chat: true,
@@ -1688,7 +1688,10 @@ function permissionsFromRoles(roles = []) {
     can_create_skill: editor,
     can_approve_skill_activation: owner,
     can_admin_agents: admin,
-    can_manage_users: owner,
+    can_manage_users: admin,
+    can_access_admin_cockpit: admin,
+    can_manage_admins: owner,
+    can_manage_owners: false,
   };
 }
 
@@ -1841,6 +1844,11 @@ async function ensureJitAuthorizationMapping(pool, principal) {
         INSERT INTO identity.user_application_role (tenant_id, user_id, role, granted_by)
         VALUES ($1, $2, 'owner', 'bootstrap-owner')
         ON CONFLICT (tenant_id, user_id, role) DO NOTHING
+      `, [tenantId, resolvedUserId]);
+    } else {
+      await client.query(`
+        DELETE FROM identity.user_application_role
+        WHERE tenant_id = $1 AND user_id = $2 AND role = 'owner'
       `, [tenantId, resolvedUserId]);
     }
     const groupMappings = [
@@ -2122,19 +2130,148 @@ async function handleAdminUsersList(req, res) {
       app_user.email,
       app_user.display_name,
       app_user.status,
+      app_user.active_twin_id,
       app_user.created_at,
+      app_user.updated_at AS last_seen_at,
       COALESCE((
         SELECT array_agg(role_row.role ORDER BY role_row.role)
         FROM identity.user_application_role role_row
         WHERE role_row.tenant_id = app_user.tenant_id AND role_row.user_id = app_user.user_id
       ), ARRAY['user']::text[]) AS roles,
-      (SELECT count(*)::int FROM twin.user_twin_access twin_access
-       WHERE twin_access.tenant_id = app_user.tenant_id AND twin_access.user_id = app_user.user_id) AS twin_count
+      COALESCE((
+        SELECT jsonb_agg(jsonb_build_object(
+          'twin_id', twin_access.twin_id,
+          'display_name', twin_row.display_name,
+          'status', twin_row.status,
+          'access_role', twin_access.access_role
+        ) ORDER BY twin_row.display_name, twin_access.twin_id)
+        FROM twin.user_twin_access twin_access
+        JOIN twin.twin twin_row
+          ON twin_row.tenant_id = twin_access.tenant_id
+          AND twin_row.twin_id = twin_access.twin_id
+        WHERE twin_access.tenant_id = app_user.tenant_id
+          AND twin_access.user_id = app_user.user_id
+      ), '[]'::jsonb) AS twins
     FROM identity.app_user app_user
     WHERE app_user.tenant_id = $1
     ORDER BY app_user.display_name, app_user.email
   `, [mapping.tenant_id]);
-  jsonResponse(res, 200, { users: result.rows });
+  const users = result.rows.map((user) => ({
+    ...user,
+    identity_type: String(user.email || "").toLowerCase().endsWith("@eraneos.com") ? "employee" : "guest",
+    twin_count: Array.isArray(user.twins) ? user.twins.length : 0,
+    authorization_status: user.status !== "active"
+      ? "disabled"
+      : Array.isArray(user.twins) && user.twins.length
+        ? "provisioned"
+        : "onboarding",
+    owner_managed_in_entra: Array.isArray(user.roles) && user.roles.includes("owner"),
+  }));
+  jsonResponse(res, 200, { users, role_policy: adminRolePolicy(mapping) });
+}
+
+function adminRolePolicy(mapping = {}) {
+  const actorRoles = new Set((mapping.roles || []).map((role) => String(role).toLowerCase()));
+  return {
+    assignable_roles: actorRoles.has("owner") ? ["user", "editor", "admin"] : ["user", "editor"],
+    owner_role_source: "microsoft_entra",
+    owner_role_mutable: false,
+  };
+}
+
+async function withAdminContext(mapping, callback) {
+  const client = await (await getPgPool()).connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [mapping.tenant_id]);
+    await client.query("SELECT set_config('app.user_id', $1, true)", [mapping.user_id]);
+    await client.query("SELECT set_config('app.allowed_twin_ids', $1, true)", [(mapping.allowed_twin_ids || []).join(",")]);
+    await client.query("SELECT set_config('app.group_ids', $1, true)", [(mapping.group_ids || []).join(",")]);
+    await client.query("SELECT set_config('app.roles', $1, true)", [(mapping.roles || []).join(",")]);
+    const result = await callback(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function handleAdminOverview(req, res) {
+  const mapping = await requireApplicationManager(req);
+  const metrics = await withAdminContext(mapping, async (client) => {
+    const [users, twins, knowledge, learning, outbox, traces, approvals] = await Promise.all([
+      client.query(`SELECT count(*)::int AS total,
+        count(*) FILTER (WHERE status = 'active')::int AS active,
+        count(*) FILTER (WHERE updated_at >= now() - interval '30 days')::int AS active_30d
+        FROM identity.app_user WHERE tenant_id = $1`, [mapping.tenant_id]),
+      client.query(`SELECT count(*)::int AS total,
+        count(*) FILTER (WHERE status = 'active')::int AS active,
+        count(*) FILTER (WHERE status = 'draft')::int AS draft,
+        count(*) FILTER (WHERE status = 'archived')::int AS archived
+        FROM twin.twin WHERE tenant_id = $1`, [mapping.tenant_id]),
+      client.query(`SELECT count(*)::int AS total,
+        count(*) FILTER (WHERE review_state IN ('review_needed', 'updated'))::int AS review_needed,
+        count(*) FILTER (WHERE review_state = 'approved')::int AS approved,
+        count(*) FILTER (WHERE review_state = 'rejected')::int AS rejected
+        FROM knowledge.concept WHERE tenant_id = $1`, [mapping.tenant_id]),
+      client.query(`SELECT count(*)::int AS total,
+        count(*) FILTER (WHERE review_state IN ('review_needed', 'updated'))::int AS review_needed
+        FROM learning.increment WHERE tenant_id = $1`, [mapping.tenant_id]),
+      client.query(`SELECT count(*) FILTER (WHERE status IN ('pending', 'processing'))::int AS pending,
+        count(*) FILTER (WHERE status IN ('failed', 'dead_letter'))::int AS failed,
+        COALESCE(max(EXTRACT(EPOCH FROM (now() - created_at))) FILTER (WHERE status IN ('pending', 'processing')), 0)::int AS oldest_pending_seconds
+        FROM runtime.outbox_event WHERE tenant_id = $1`, [mapping.tenant_id]),
+      client.query(`SELECT count(*)::int AS total,
+        count(*) FILTER (WHERE created_at >= now() - interval '24 hours')::int AS last_24h,
+        count(*) FILTER (WHERE created_at >= now() - interval '24 hours' AND lower(status) IN ('failed', 'error'))::int AS failed_24h,
+        count(DISTINCT agent_id) FILTER (WHERE created_at >= now() - interval '24 hours')::int AS agents_24h
+        FROM public.agent_traces`),
+      client.query(`SELECT count(*) FILTER (WHERE status = 'pending_human_approval')::int AS pending
+        FROM public.agent_approval_queue`),
+    ]);
+    return {
+      users: users.rows[0],
+      twins: twins.rows[0],
+      knowledge: knowledge.rows[0],
+      learning: learning.rows[0],
+      outbox: outbox.rows[0],
+      traces: traces.rows[0],
+      approvals: approvals.rows[0],
+    };
+  });
+  const health = await backendReadinessPayload();
+  jsonResponse(res, 200, {
+    status: "ok",
+    generated_at: new Date().toISOString(),
+    metrics,
+    health,
+    usage_coverage: {
+      source: "backend_agent_traces",
+      level: "partial",
+      note: "Embedded n8n chat token totals require normalized post-turn telemetry and are not inferred from prompt content.",
+    },
+    access_requests: {
+      source: "microsoft_entra_entitlement_management",
+      embedded: false,
+      note: "Pre-admission requests remain governed in Microsoft Entra My Access.",
+    },
+  });
+}
+
+async function handleAdminAudit(req, res, url) {
+  const mapping = await requireApplicationManager(req);
+  const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit") || 100), 250));
+  const result = await withAdminContext(mapping, (client) => client.query(`
+    SELECT event_id, actor_user_id, action, resource_type, resource_id, details, created_at
+    FROM audit.event
+    WHERE tenant_id = $1
+    ORDER BY created_at DESC
+    LIMIT $2
+  `, [mapping.tenant_id, limit]));
+  jsonResponse(res, 200, { events: result.rows });
 }
 
 async function handleAdminUserRoles(req, res) {
@@ -2170,28 +2307,25 @@ async function handleAdminUserRoles(req, res) {
       WHERE tenant_id = $1 AND user_id = $2
     `, [mapping.tenant_id, targetUserId]);
     const existingRoles = existing.rows.map((row) => row.role);
-    const changesOwner = existingRoles.includes("owner") !== requestedRoles.includes("owner");
-    if (changesOwner && !actorRoles.has("owner")) {
-      const error = new Error("Only an owner can grant or revoke the owner role.");
+    const targetIsOwner = existingRoles.includes("owner");
+    if (requestedRoles.includes("owner") && !targetIsOwner) {
+      const error = new Error("The owner role is governed in Microsoft Entra and cannot be changed in the Admin Cockpit.");
       error.statusCode = 403;
       throw error;
     }
-    if (existingRoles.includes("owner") && !requestedRoles.includes("owner")) {
-      const otherOwners = await client.query(`
-        SELECT count(*)::int AS count FROM identity.user_application_role
-        WHERE tenant_id = $1 AND role = 'owner' AND user_id <> $2
-      `, [mapping.tenant_id, targetUserId]);
-      if (otherOwners.rows[0].count < 1) {
-        const error = new Error("The final application owner cannot be removed.");
-        error.statusCode = 409;
-        throw error;
-      }
+    const changesAdmin = existingRoles.includes("admin") !== requestedRoles.includes("admin");
+    if (changesAdmin && !actorRoles.has("owner")) {
+      const error = new Error("Only an owner can grant or revoke the admin role.");
+      error.statusCode = 403;
+      throw error;
     }
+    const nextRoles = requestedRoles.filter((role) => role !== "owner");
+    if (targetIsOwner) nextRoles.push("owner");
     await client.query(`
       DELETE FROM identity.user_application_role
       WHERE tenant_id = $1 AND user_id = $2
     `, [mapping.tenant_id, targetUserId]);
-    for (const role of requestedRoles) {
+    for (const role of nextRoles) {
       await client.query(`
         INSERT INTO identity.user_application_role (tenant_id, user_id, role, granted_by)
         VALUES ($1, $2, $3, $4)
@@ -2200,9 +2334,9 @@ async function handleAdminUserRoles(req, res) {
     await client.query(`
       INSERT INTO audit.event (tenant_id, actor_user_id, action, resource_type, resource_id, details)
       VALUES ($1, $2, 'application_roles_updated', 'app_user', $3, $4::jsonb)
-    `, [mapping.tenant_id, mapping.user_id, targetUserId, JSON.stringify({ before: existingRoles, after: requestedRoles })]);
+    `, [mapping.tenant_id, mapping.user_id, targetUserId, JSON.stringify({ before: existingRoles, after: nextRoles, owner_source: targetIsOwner ? "microsoft_entra" : null })]);
     await client.query("COMMIT");
-    jsonResponse(res, 200, { status: "updated", user_id: targetUserId, roles: requestedRoles });
+    jsonResponse(res, 200, { status: "updated", user_id: targetUserId, roles: nextRoles });
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -2471,6 +2605,14 @@ async function routeRequest(req, res) {
     }
     if (req.method === "GET" && url.pathname === "/api/admin/users") {
       await handleAdminUsersList(req, res);
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/admin/overview") {
+      await handleAdminOverview(req, res);
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/admin/audit") {
+      await handleAdminAudit(req, res, url);
       return;
     }
     if (req.method === "POST" && url.pathname === "/api/admin/users/roles") {

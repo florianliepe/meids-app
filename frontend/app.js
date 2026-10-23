@@ -355,6 +355,15 @@ function canCreateTwin() {
   return !authEnabled() || authenticatedSession();
 }
 
+function canAccessAdminCockpit() {
+  if (!authEnabled()) return false;
+  const roles = new Set((state.authSession?.roles || []).map((role) => String(role).toLowerCase()));
+  return Boolean(
+    authenticatedSession()
+    && (state.authSession?.permissions?.can_access_admin_cockpit || roles.has("admin") || roles.has("owner"))
+  );
+}
+
 function canAccessView(viewId) {
   return canEnterWorkspace() || (viewId === "twins" && canCreateTwin());
 }
@@ -421,6 +430,9 @@ function applyAuthState() {
   }
   const createTwin = $("#landingCreateTwinBtn");
   if (createTwin) createTwin.disabled = !canCreateTwin();
+  [$("#adminCockpitBtn"), $("#landingAdminCockpitBtn")].forEach((button) => {
+    if (button) button.hidden = !canAccessAdminCockpit();
+  });
   $$(".nav-item, #twinSelect").forEach((item) => {
     item.disabled = enabled && !canEnterWorkspace();
   });
@@ -641,6 +653,11 @@ function bindLanding() {
     landing.classList.add("dismissed");
     showView("twins");
     $("#twinDisplayName")?.focus();
+  });
+  [$("#adminCockpitBtn"), $("#landingAdminCockpitBtn")].forEach((button) => {
+    button?.addEventListener("click", () => {
+      if (canAccessAdminCockpit()) window.location.href = "admin/";
+    });
   });
   $$("[data-landing-route]").forEach((button) => {
     button.addEventListener("click", () => {

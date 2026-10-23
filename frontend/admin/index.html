@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Me.IDs Admin Cockpit</title>
+    <link rel="icon" type="image/svg+xml" href="../assets/intellectual-twin-mark.svg" />
+    <link rel="stylesheet" href="admin.css?v=20261023-admin-mvp" />
+  </head>
+  <body>
+    <header class="admin-header">
+      <a class="brand" href="../" aria-label="Back to Me.IDs workspace">
+        <img src="../assets/intellectual-twin-mark.svg" alt="" />
+        <span><strong>Me.IDs</strong><small>Platform administration</small></span>
+      </a>
+      <div class="header-actions">
+        <span id="sessionLabel" class="session-label">Checking authorization</span>
+        <a class="button secondary" href="../">Workspace</a>
+        <button id="refreshBtn" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="accessGate" class="access-gate" aria-live="polite">
+        <p class="eyebrow">Admin Cockpit</p>
+        <h1>Verifying platform access</h1>
+        <p>The cockpit opens after Microsoft identity and application role checks complete.</p>
+      </section>
+
+      <div id="adminContent" hidden>
+        <section class="page-intro">
+          <div>
+            <p class="eyebrow">Platform control</p>
+            <h1>Admin Cockpit</h1>
+            <p>Identity, governance, agent operations, and platform health in one controlled view.</p>
+          </div>
+          <div class="freshness">
+            <span>Snapshot</span>
+            <strong id="snapshotTime">-</strong>
+          </div>
+        </section>
+
+        <section id="metricStrip" class="metric-strip" aria-label="Platform overview"></section>
+
+        <nav class="section-tabs" aria-label="Admin sections">
+          <button class="active" type="button" data-section="overview">Overview</button>
+          <button type="button" data-section="users">Users &amp; access</button>
+          <button type="button" data-section="governance">Governance</button>
+          <button type="button" data-section="operations">Operations</button>
+          <button type="button" data-section="audit">Audit</button>
+        </nav>
+
+        <section id="overview" class="admin-section active">
+          <div class="section-heading">
+            <div><p class="eyebrow">Live posture</p><h2>Platform health</h2></div>
+            <p>Configuration and dependency readiness without secret or content exposure.</p>
+          </div>
+          <div id="healthGrid" class="health-grid"></div>
+          <div class="split-band">
+            <section>
+              <h3>Attention queue</h3>
+              <div id="attentionQueue" class="stack-list"></div>
+            </section>
+            <section>
+              <h3>Access boundary</h3>
+              <p>Microsoft Entra governs admission and platform owners. Me.IDs governs editor, admin, and twin-level rights.</p>
+              <a class="text-link" href="https://myaccess.microsoft.com/" target="_blank" rel="noreferrer">Open Microsoft My Access</a>
+            </section>
+          </div>
+        </section>
+
+        <section id="users" class="admin-section">
+          <div class="section-heading">
+            <div><p class="eyebrow">Authorization</p><h2>Users and twins</h2></div>
+            <label class="search-field">Search <input id="userSearch" type="search" placeholder="Name or email" /></label>
+          </div>
+          <div class="policy-note">
+            <strong>Owner is Entra-governed.</strong>
+            <span>Owner rights cannot be granted or revoked here. Role changes below are written to the Me.IDs audit log.</span>
+          </div>
+          <div class="table-wrap">
+            <table id="usersTable">
+              <thead><tr><th>User</th><th>Status</th><th>Twins</th><th>Application roles</th><th>Last access</th><th></th></tr></thead>
+              <tbody id="usersBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="governance" class="admin-section">
+          <div class="section-heading">
+            <div><p class="eyebrow">Knowledge control</p><h2>Governance queue</h2></div>
+            <p>Aggregated review state only; concept content stays in the governed workspace.</p>
+          </div>
+          <div id="governanceGrid" class="governance-grid"></div>
+        </section>
+
+        <section id="operations" class="admin-section">
+          <div class="section-heading">
+            <div><p class="eyebrow">Runtime</p><h2>Agent operations</h2></div>
+            <p>Trace-backed runtime indicators. Embedded-chat token telemetry remains a separate instrumentation step.</p>
+          </div>
+          <div id="operationsGrid" class="operations-grid"></div>
+          <div class="policy-note neutral">
+            <strong>Telemetry boundary</strong>
+            <span id="usageCoverage">Loading coverage statement.</span>
+          </div>
+        </section>
+
+        <section id="audit" class="admin-section">
+          <div class="section-heading">
+            <div><p class="eyebrow">Accountability</p><h2>Recent audit events</h2></div>
+            <p>Role, review, twin, and governance events for the current tenant.</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>Action</th><th>Resource</th><th>Actor</th><th>Context</th></tr></thead>
+              <tbody id="auditBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <script src="../runtime-config.js"></script>
+    <script src="../api.js"></script>
+    <script src="admin.js?v=20261023-admin-mvp"></script>
+  </body>
+</html>

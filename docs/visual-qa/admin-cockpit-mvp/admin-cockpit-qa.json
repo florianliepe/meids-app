@@ -1,0 +1,34 @@
+{
+  "generated_at": "2026-10-23T10:13:52.201Z",
+  "passed": true,
+  "cases": [
+    {
+      "name": "admin-cockpit-desktop",
+      "width": 1440,
+      "height": 1000,
+      "status": "passed",
+      "failures": [],
+      "dimensions": {
+        "viewport": 1440,
+        "scrollWidth": 1440,
+        "metrics": 6,
+        "health": 8
+      },
+      "screenshot": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\admin-cockpit-mvp\\admin-cockpit-desktop.png"
+    },
+    {
+      "name": "admin-cockpit-mobile",
+      "width": 390,
+      "height": 844,
+      "status": "passed",
+      "failures": [],
+      "dimensions": {
+        "viewport": 390,
+        "scrollWidth": 390,
+        "metrics": 6,
+        "health": 8
+      },
+      "screenshot": "C:\\Users\\e729958\\Downloads\\MeIDs-public-app-sanitized-20260806-01\\meids-app-public\\docs\\visual-qa\\admin-cockpit-mvp\\admin-cockpit-mobile.png"
+    }
+  ]
+}

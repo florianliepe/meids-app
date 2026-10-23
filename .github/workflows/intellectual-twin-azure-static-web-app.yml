@@ -50,7 +50,10 @@ jobs:
           node-version: "24"
 
       - name: Validate frontend JavaScript
-        run: node --check frontend/app.js
+        run: node --check frontend/app.js && node --check frontend/admin/admin.js
+
+      - name: Validate Admin Cockpit contract
+        run: node scripts/validate-admin-cockpit-contract.cjs
 
       - name: Validate n8n contract fixtures
         run: node scripts/validate-n8n-fixtures.cjs
