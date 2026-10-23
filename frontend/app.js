@@ -475,6 +475,22 @@ function normalizeVoiceTranscriptionResult(result = {}) {
   };
 }
 
+const SOURCE_AUDIO_EXTENSIONS = new Set(["mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm"]);
+const MAX_SOURCE_AUDIO_BYTES = 25 * 1024 * 1024;
+
+function sourceAudioExtension(file) {
+  return String(file?.name || "").split(".").pop()?.toLowerCase() || "";
+}
+
+function sourceAudioValidationMessage(file) {
+  if (!file) return "Choose an audio file to begin.";
+  const extension = sourceAudioExtension(file);
+  if (["aif", "aiff", "aac"].includes(extension)) return "AIFF and raw AAC are not supported. Convert the file to M4A or WAV first.";
+  if (!SOURCE_AUDIO_EXTENSIONS.has(extension)) return "Supported formats: MP3, MP4, MPEG, MPGA, M4A, WAV, and WebM.";
+  if (file.size > MAX_SOURCE_AUDIO_BYTES) return "This audio file is larger than the 25 MB transcription limit.";
+  return "";
+}
+
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
@@ -8554,6 +8570,37 @@ function bindTwins() {
 }
 
 function bindIngest() {
+  const sourceAudioInput = $("#sourceAudioInput");
+  const sourceAudioConsent = $("#sourceAudioConsent");
+  const sourceAudioButton = $("#sourceAudioTranscribeBtn");
+  const updateSourceAudioState = () => {
+    const file = sourceAudioInput?.files?.[0];
+    const error = sourceAudioValidationMessage(file);
+    if (sourceAudioButton) sourceAudioButton.disabled = Boolean(error) || !sourceAudioConsent?.checked;
+    if ($("#sourceAudioStatus")) {
+      $("#sourceAudioStatus").textContent = error || (sourceAudioConsent?.checked
+        ? `${file.name} is ready for transcription.`
+        : "Confirm authorization to enable transcription.");
+    }
+  };
+  sourceAudioInput?.addEventListener("change", () => {
+    const file = sourceAudioInput.files?.[0];
+    const preview = $("#sourceAudioPreview");
+    if (preview) {
+      if (preview.dataset.objectUrl) URL.revokeObjectURL(preview.dataset.objectUrl);
+      preview.removeAttribute("src");
+      preview.dataset.objectUrl = "";
+      if (file && !sourceAudioValidationMessage(file)) {
+        const objectUrl = URL.createObjectURL(file);
+        preview.src = objectUrl;
+        preview.dataset.objectUrl = objectUrl;
+      }
+    }
+    updateSourceAudioState();
+  });
+  sourceAudioConsent?.addEventListener("change", updateSourceAudioState);
+  sourceAudioButton?.addEventListener("click", uploadSourceAudio);
+
   $("#textIngestBtn").addEventListener("click", async () => {
     const text = $("#textIngest").value.trim();
     if (!text) return showIngest("Paste text first.");
@@ -9098,38 +9145,93 @@ async function uploadAudio() {
     return;
   }
   if (!(await confirmTwinScopedAction("transcribe and clarify this recording"))) return;
-  const form = new FormData();
-  form.append("file", state.recordedBlob, `voice-${Date.now()}.webm`);
-  form.append("twin", state.activeTwin);
-  form.append("category", $("#voiceConceptCategory").value);
   $("#transcriptBox").textContent = "Transcribing and asking Persona Modeler...";
   setVoiceConversationStatus("pending", "Transcribing and preparing the first Persona Modeler question.");
   try {
-    const result = normalizeVoiceTranscriptionResult(await postForm(voiceTranscriptionEndpoint(), form));
-    state.voiceConceptSession = {
-      transcript: result.transcript || "",
-      category: result.category || $("#voiceConceptCategory").value,
-      evidence: result.evidence || null,
-      replies: [],
-      questionHistory: [],
-      assessment: result.assessment || null,
-      agent: result.agent || null,
-    };
-    $("#transcriptBox").textContent = result.transcript || JSON.stringify(result.raw || result, null, 2);
-    $("#voiceConceptCategory").value = state.voiceConceptSession.category;
-    renderVoiceConceptAssessment();
-    $("#voiceClarifyBtn").disabled = false;
-    $("#voiceDraftBtn").disabled = false;
-    $("#voiceAgentHandoffBtn").disabled = false;
-    $("#voiceCommitBtn").disabled = !state.voiceConceptSession.assessment?.ready;
-    $("#voiceEvidence").innerHTML = result.evidence
-      ? `<strong>Transcript evidence stored:</strong> <code>${escapeHtml(result.evidence.path)}</code>`
-      : "";
-    await safeRefreshActivity();
-    await safeRefreshSyncStatus();
+    const result = await transcribeVoiceSource(state.recordedBlob, {
+      filename: `voice-${Date.now()}.webm`,
+      category: $("#voiceConceptCategory").value,
+      sourceType: "voice_capture",
+    });
+    await initializeVoiceConceptFromTranscription(result, { sourceType: "voice_capture", sourceName: "live-voice-capture" });
   } catch (error) {
     $("#transcriptBox").textContent = `Audio ingest failed: ${error.message}`;
     setVoiceConversationStatus("error", "Audio ingest failed. Keep the recording and try again.");
+  }
+}
+
+async function transcribeVoiceSource(file, { filename, category, sourceType, endpoint = voiceTranscriptionEndpoint() }) {
+  const form = new FormData();
+  form.append("file", file, filename || file.name || `audio-${Date.now()}.webm`);
+  form.append("twin", state.activeTwin);
+  form.append("category", category || "knowledge");
+  form.append("source_type", sourceType || "voice_capture");
+  return normalizeVoiceTranscriptionResult(await postForm(endpoint, form));
+}
+
+async function initializeVoiceConceptFromTranscription(result, { sourceType, sourceName }) {
+  if (!result.transcript) throw new Error("The transcription provider returned no transcript.");
+  state.voiceConceptSession = {
+    transcript: result.transcript,
+    category: result.category || "knowledge",
+    evidence: result.evidence || null,
+    replies: [],
+    questionHistory: [],
+    assessment: result.assessment || null,
+    agent: result.agent || null,
+    sourceType,
+    sourceName,
+  };
+  $("#transcriptBox").textContent = result.transcript;
+  $("#voiceConceptCategory").value = state.voiceConceptSession.category;
+  $("#voicePromotionReviewNote").value = "";
+  $("#voiceClarifyBtn").disabled = false;
+  $("#voiceDraftBtn").disabled = false;
+  $("#voiceAgentHandoffBtn").disabled = false;
+  $("#voiceCommitBtn").disabled = true;
+  $("#voiceEvidence").innerHTML = result.evidence
+    ? `<strong>Transcript evidence prepared:</strong> <code>${escapeHtml(result.evidence.path)}</code><br><span class="muted-inline">The transcript remains untrusted evidence until the interview quality gate and human review are complete.</span>`
+    : "";
+  renderVoiceConceptAssessment();
+  updateVoiceClarificationPrompt();
+  setVoiceConversationStatus("pending", "Transcript ready. Persona Modeler is checking what, how, why, who, and what happens next.");
+  await assessVoiceConcept();
+  await safeRefreshActivity();
+  await safeRefreshSyncStatus();
+}
+
+async function uploadSourceAudio() {
+  const file = $("#sourceAudioInput")?.files?.[0];
+  const validationError = sourceAudioValidationMessage(file);
+  if (validationError) return showIngest(validationError);
+  if (!$("#sourceAudioConsent")?.checked) return showIngest("Confirm that you are authorized to process this recording.");
+  if (!isVoiceTranscriptionConfigured()) return showIngest("Audio transcription is not configured for this environment. The gateway key must stay server-side.");
+  if (!(await confirmTwinScopedAction(`transcribe ${file.name} and start the knowledge interview`))) return;
+
+  const status = $("#sourceAudioStatus");
+  const button = $("#sourceAudioTranscribeBtn");
+  button.disabled = true;
+  status.textContent = `Transcribing ${file.name}...`;
+  showIngest(`Transcribing ${file.name}. No knowledge is saved until the quality gate passes.`);
+  try {
+    const category = $("#sourceAudioCategory").value;
+    const result = await transcribeVoiceSource(file, {
+      filename: file.name,
+      category,
+      sourceType: "audio_document",
+      endpoint: "/api/voice/concepts/transcribe",
+    });
+    $("#voiceConceptCategory").value = category;
+    await initializeVoiceConceptFromTranscription(result, { sourceType: "audio_document", sourceName: file.name });
+    status.textContent = "Transcript ready. Continue the quality interview in Voice Capture.";
+    showIngest(`Transcription complete for ${file.name}. Continue the Persona Modeler interview; saving creates a review-needed OKF.`);
+    showView("voice");
+    $("#voiceConceptAssessment")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (error) {
+    const message = compactError(error.message);
+    status.textContent = `Audio transcription failed: ${message}`;
+    showIngest(`Audio transcription failed: ${message}`);
+    button.disabled = false;
   }
 }
 
@@ -10538,7 +10640,9 @@ async function commitVoiceConcept() {
       replies: state.voiceConceptSession.replies,
       question_history: state.voiceConceptSession.questionHistory || [],
       evidence_path: state.voiceConceptSession.evidence?.path || "",
-      source_label: "voice-concept-conversation",
+      source_type: state.voiceConceptSession.sourceType || "voice_capture",
+      source_name: state.voiceConceptSession.sourceName || "voice-concept-conversation",
+      source_label: state.voiceConceptSession.sourceName || "voice-concept-conversation",
       title_hint: assessment.summary || "",
       promotion_review_note: $("#voicePromotionReviewNote").value.trim(),
       promotion_review_actor: "local-user",

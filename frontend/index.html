@@ -419,12 +419,31 @@
               <span><strong>3</strong>Review later</span>
             </div>
           </article>
-          <div class="grid two source-capture-grid">
+          <div class="grid three source-capture-grid">
             <article class="panel source-capture-card">
               <h2>Upload Knowledge</h2>
               <p>Supported: TXT, Markdown, JSON, CSV, YAML, XML, PDF, and DOCX up to 10 MB. Export Apple Pages files as PDF or DOCX first.</p>
               <input id="documentInput" type="file" accept=".txt,.md,.markdown,.json,.csv,.yaml,.yml,.xml,.pdf,.docx,text/plain,text/markdown,application/json,application/xml,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
               <button id="uploadDocumentBtn">Upload and create concept</button>
+            </article>
+            <article class="panel source-capture-card">
+              <h2>Upload Audio</h2>
+              <p>Supported up to 25 MB: MP3, MP4, MPEG, MPGA, M4A, WAV, and WebM. Apple Voice Memos should be exported as M4A; convert AIFF or AAC to M4A or WAV.</p>
+              <input id="sourceAudioInput" type="file" accept=".mp3,.mp4,.mpeg,.mpga,.m4a,.wav,.webm,audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/webm,video/mp4" />
+              <audio id="sourceAudioPreview" class="source-audio-preview" controls></audio>
+              <label for="sourceAudioCategory">Concept category</label>
+              <select id="sourceAudioCategory">
+                <option value="knowledge">Knowledge</option>
+                <option value="personality">Personality</option>
+                <option value="skill_input">Skill input</option>
+              </select>
+              <label class="source-audio-consent" for="sourceAudioConsent">
+                <input id="sourceAudioConsent" type="checkbox" />
+                <span>I am authorized to process this recording and understand that the transcript becomes reviewable knowledge evidence.</span>
+              </label>
+              <p class="muted-inline">Speaker separation is not automatic. Review names, decisions, and responsibilities during the follow-up interview.</p>
+              <button id="sourceAudioTranscribeBtn" type="button" disabled>Transcribe and clarify</button>
+              <p id="sourceAudioStatus" class="source-audio-status" aria-live="polite">Choose an audio file to begin.</p>
             </article>
             <article class="panel source-capture-card">
               <h2>Paste Knowledge</h2>

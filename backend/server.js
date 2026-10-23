@@ -208,7 +208,7 @@ async function transcribeAudioWithOpenAiCompatibleGateway(file) {
   }
   const form = new FormData();
   form.append("model", config.model);
-  form.append("file", new Blob([file.buffer], { type: file.type || "audio/webm" }), file.filename || "voice.webm");
+  form.append("file", new Blob([file.buffer], { type: file.mediaType || file.type || "audio/webm" }), file.gatewayFilename || "meids-audio.webm");
   const response = await fetch(`${config.baseUrl}/audio/transcriptions`, {
     method: "POST",
     headers: {
@@ -1081,57 +1081,6 @@ async function handleManualApproval(req, res) {
   };
   await storeApproval(record);
   jsonResponse(res, 200, { status: "stored", approval: record });
-}
-
-async function handleVoiceConceptTranscribe(req, res) {
-  const { fields, files } = await readMultipartForm(req);
-  const file = files.file;
-  if (!file?.buffer?.length) {
-    jsonResponse(res, 400, { status: "failed", error: "Audio upload requires a non-empty 'file' field." });
-    return;
-  }
-  const twin = fields.twin || "unknown";
-  const category = fields.category || "knowledge";
-  const transcript = await transcribeAudioWithOpenAiCompatibleGateway(file);
-  const evidenceId = makeId("voice_evidence");
-  const evidenceDir = path.join(DATA_DIR, "voice-evidence", twin);
-  await fs.mkdir(evidenceDir, { recursive: true });
-  const evidencePath = path.join(evidenceDir, `${evidenceId}.json`);
-  const evidence = {
-    evidence_id: evidenceId,
-    twin,
-    category,
-    source_type: "voice_capture",
-    transcription_provider: "openai_compatible_gateway",
-    model: openAiTranscriptionConfig().model,
-    filename: file.filename,
-    content_type: file.type,
-    transcript,
-    created_at: new Date().toISOString(),
-  };
-  await fs.writeFile(evidencePath, JSON.stringify(evidence, null, 2), "utf8");
-  jsonResponse(res, 200, {
-    status: "transcribed",
-    transcript,
-    category,
-    evidence: {
-      evidence_id: evidence.evidence_id,
-      path: path.relative(process.cwd(), evidencePath).replace(/\\/g, "/"),
-      source_type: evidence.source_type,
-      transcription_provider: evidence.transcription_provider,
-    },
-    assessment: {
-      ready: Boolean(transcript && transcript.length >= 40),
-      next_question: transcript && transcript.length >= 40
-        ? ""
-        : "What should the Actor Twin remember from this recording, and when should it use it?",
-      missing: transcript && transcript.length >= 40 ? [] : ["purpose", "usage_context"],
-    },
-    agent: {
-      id: "voice_capture_transcription",
-      mode: "backend_openai_compatible_gateway",
-    },
-  });
 }
 
 async function handleVectorStatus(req, res) {
@@ -2597,6 +2546,8 @@ const handleWorkspaceApi = createWorkspaceApi({
   promoteKnowledge,
   rejectKnowledge,
   proxyToN8n,
+  transcribeAudio: transcribeAudioWithOpenAiCompatibleGateway,
+  transcriptionConfig: openAiTranscriptionConfig,
 });
 
 async function routeRequest(req, res) {
@@ -2685,10 +2636,6 @@ async function routeRequest(req, res) {
     }
     if (req.method === "POST" && ["/api/agents/approvals", "/api/approvals"].includes(url.pathname)) {
       await handleManualApproval(req, res);
-      return;
-    }
-    if (req.method === "POST" && url.pathname === "/api/voice/concepts/transcribe") {
-      await handleVoiceConceptTranscribe(req, res);
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/vector-index/status") {

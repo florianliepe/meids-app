@@ -1,5 +1,6 @@
 const crypto = require("node:crypto");
 const { MAX_DOCUMENT_BYTES, extractDocumentText } = require("./documentExtraction");
+const { MAX_AUDIO_BYTES, validateAudioUpload } = require("./audioUpload");
 
 const MAX_AVATAR_BYTES = 1_500_000;
 const REVIEW_FROM_UI = {
@@ -237,6 +238,8 @@ function createWorkspaceApi(deps) {
     promoteKnowledge,
     rejectKnowledge,
     proxyToN8n,
+    transcribeAudio,
+    transcriptionConfig,
   } = deps;
 
   async function context(req, body = {}, knowledge = false) {
@@ -517,6 +520,54 @@ function createWorkspaceApi(deps) {
     });
   }
 
+  async function voiceTranscribe(req, res) {
+    const form = await readMultipartForm(req, { maxBytes: MAX_AUDIO_BYTES + 100_000 });
+    const { mapping, pool } = await context(req, form.fields, true);
+    const twinId = assertTwin(mapping, form.fields.twin || form.fields.twin_id);
+    const file = form.files.file;
+    const validated = validateAudioUpload(file);
+    const sourceType = clean(form.fields.source_type, 50) === "audio_document" ? "audio_document" : "voice_capture";
+    const category = clean(form.fields.category || "knowledge", 100);
+    const transcript = clean(await transcribeAudio({
+      ...file,
+      mediaType: validated.mediaType,
+      gatewayFilename: validated.gatewayFilename,
+    }), 50_000);
+    if (!transcript) throw httpError(422, "The transcription provider returned no readable transcript.");
+
+    const evidenceId = `voice_evidence_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+    const audioHash = crypto.createHash("sha256").update(file.buffer).digest("hex");
+    const transcriptHash = crypto.createHash("sha256").update(transcript).digest("hex");
+    await withContext(pool, mapping, (client) => audit(client, mapping, "voice.transcribe", "runtime.voice_evidence", evidenceId, {
+      twin_id: twinId,
+      category,
+      source_type: sourceType,
+      filename: validated.filename,
+      media_type: validated.mediaType,
+      size_bytes: validated.size,
+      audio_sha256: audioHash,
+      transcript_sha256: transcriptHash,
+      transcription_provider: "openai_compatible_gateway",
+      model: transcriptionConfig().model,
+    }));
+
+    jsonResponse(res, 200, {
+      status: "transcribed",
+      transcript,
+      category,
+      evidence: {
+        evidence_id: evidenceId,
+        path: `voice-transcription:${evidenceId}`,
+        source_type: sourceType,
+        filename: validated.filename,
+        media_type: validated.mediaType,
+        transcription_provider: "openai_compatible_gateway",
+      },
+      assessment: qualityAssessment({ transcript, category, replies: [] }),
+      agent: { id: "knowledge_retrieval_agent", mode: "circular_interview" },
+    });
+  }
+
   async function voiceAssess(req, res) {
     const body = await readBody(req);
     await context(req, body, true);
@@ -657,6 +708,8 @@ function createWorkspaceApi(deps) {
     const twinId = assertTwin(mapping, body.twin || body.twin_id);
     const assessment = qualityAssessment(body);
     if (!assessment.ready) throw httpError(409, "The circular interview quality gate is not met yet.");
+    const sourceType = clean(body.source_type, 50) === "audio_document" ? "audio_document_transcript" : "voice_transcript";
+    const sourceLabel = clean(body.source_name || body.source_label || "voice-concept-conversation", 200);
     const staged = await stageKnowledge(pool, mapping, {
       twin_id: twinId,
       concept: {
@@ -668,11 +721,11 @@ function createWorkspaceApi(deps) {
         what_else_to_know: clean((body.replies || []).slice(2).join("\n\n"), 40_000),
         implications_and_results: clean((body.replies || []).at(-1) || "", 20_000),
         summary: assessment.summary,
-        raw: { type: "Voice Concept", category: body.category, assessment },
+        raw: { type: sourceType === "audio_document_transcript" ? "Audio Document Concept" : "Voice Concept", category: body.category, assessment },
       },
-      source: { type: "voice_transcript", label: clean(body.source_label || "voice-concept-conversation", 200) },
-      evidence: [{ citation: { type: "voice_transcript", title: assessment.summary, conversation_turns: (body.replies || []).length + 1 }, confidence: assessment.eligibility_score }],
-      change_reason: "Guided voice capture quality gate passed",
+      source: { type: sourceType, label: sourceLabel },
+      evidence: [{ citation: { type: sourceType, title: assessment.summary, source_name: sourceLabel, evidence_path: clean(body.evidence_path, 500), conversation_turns: (body.replies || []).length + 1 }, confidence: assessment.eligibility_score }],
+      change_reason: `${sourceType === "audio_document_transcript" ? "Uploaded audio" : "Guided voice capture"} quality gate passed`,
     });
     jsonResponse(res, 201, {
       status: "staged",
@@ -812,6 +865,7 @@ function createWorkspaceApi(deps) {
     else if (route === "GET /api/skills/telemetry") await stableEmpty(res, "telemetry");
     else if (route === "GET /api/voice/concepts/criteria") await voiceCriteria(res);
     else if (route === "GET /api/voice/concepts/preflight") await voicePreflight(req, res, url);
+    else if (route === "POST /api/voice/concepts/transcribe") await voiceTranscribe(req, res);
     else if (route === "POST /api/voice/concepts/assess") await voiceAssess(req, res);
     else if (route === "POST /api/voice/concepts/draft") await voiceDraft(req, res);
     else if (route === "GET /api/voice/concepts/drafts") await voiceDrafts(req, res, url);
