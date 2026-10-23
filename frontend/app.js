@@ -775,6 +775,44 @@ function showView(viewId) {
     renderChatSkillMode();
     void ensureN8nChat();
   }
+  void refreshViewData(viewId);
+}
+
+async function refreshViewData(viewId) {
+  const refreshersByView = {
+    chat: [safeRefreshSkills, safeRefreshBackendAgentRuntimeState],
+    voice: [
+      safeRefreshVoiceCriteria,
+      safeRefreshVoiceConceptUatSamples,
+      safeRefreshVoiceConceptDrafts,
+      safeRefreshVoiceConceptPreflight,
+      safeRefreshVoiceConceptUatReports,
+      safeRefreshVoiceConceptRealCoverage,
+      safeRefreshVoiceConceptReadinessGates,
+      safeRefreshVoiceTranscriptHandoffs,
+    ],
+    twins: [safeRefreshTwins, safeRefreshPersonaDrafts],
+    skills: [safeRefreshSkills, safeRefreshSkillRuns, safeRefreshSkillRefinements, safeRefreshSkillTelemetry],
+    concepts: [refreshConcepts],
+    dashboard: [refreshConcepts, safeRefreshReviewDashboard],
+    graph: [safeRefreshGraph],
+    activity: [safeRefreshActivity, safeRefreshTraceExportStatus],
+    quality: [
+      safeRefreshProductionStatus,
+      safeRefreshDeepHealth,
+      safeRefreshVectorIndexStatus,
+      safeRefreshSyncStatus,
+      safeRefreshMcpStatus,
+      safeRefreshSmokeChecklist,
+      safeRefreshMigrationManifest,
+      safeRefreshAgentOperatingModel,
+      safeRefreshN8nAgentContracts,
+      safeRefreshAgentInstructions,
+    ],
+  };
+  const refreshers = refreshersByView[viewId] || [];
+  await Promise.allSettled(refreshers.map((refresh) => refresh()));
+  if (viewId === "chat") renderChatLatestAgentTraces();
 }
 
 function renderWorkspaceMode(viewId) {
@@ -11008,36 +11046,8 @@ async function refreshAll() {
     ? (voiceProxyUrl ? "Ready: hosted speech-to-text proxy is configured." : "Ready: backend speech-to-text is configured.")
     : "Needs backend setup: configure OPENAI_API_KEY, ERANEOS_AI_GATEWAY_API_KEY, or a hosted voiceTranscriptionUrl before sending recordings for transcription.";
   $("#voiceReadiness").className = `readiness ${state.openAIConfigured ? "ready" : "missing"}`;
-  await safeRefreshVoiceCriteria();
-  await safeRefreshVoiceConceptUatSamples();
-  await safeRefreshVoiceConceptDrafts();
-  await safeRefreshVoiceConceptPreflight();
-  await safeRefreshVoiceConceptUatReports();
-  await safeRefreshVoiceConceptRealCoverage();
-  await safeRefreshVoiceConceptReadinessGates();
-  await safeRefreshVoiceTranscriptHandoffs();
-  await refreshConcepts();
-  await safeRefreshGraph();
-  await safeRefreshProductionStatus();
-  await safeRefreshReviewDashboard();
-  await safeRefreshActivity();
-  await safeRefreshPersonaDrafts();
-  await safeRefreshDeepHealth();
-  await safeRefreshVectorIndexStatus();
-  await safeRefreshSyncStatus();
-  await safeRefreshMcpStatus();
-  await safeRefreshSmokeChecklist();
-  await safeRefreshMigrationManifest();
-  await safeRefreshTraceExportStatus();
-  await safeRefreshAgentOperatingModel();
-  await safeRefreshN8nAgentContracts();
-  await safeRefreshAgentInstructions();
-  await safeRefreshSkills();
-  await safeRefreshSkillRuns();
-  await safeRefreshSkillRefinements();
-  await safeRefreshSkillTelemetry();
-  await safeRefreshBackendAgentRuntimeState();
-  renderChatLatestAgentTraces();
+  const activeView = document.querySelector(".nav-item.active")?.dataset.view || "chat";
+  await refreshViewData(activeView);
 }
 
 function refreshStaticPagesWorkspace() {

@@ -43,6 +43,17 @@ if (REVIEW_FROM_UI["pending-review"] !== "review_needed" || REVIEW_FROM_UI["need
 if (!source.includes("routing_policy: \"call_n8n_workflow_tool_first\"")) {
   throw new Error("Interactive skill execution must preserve the Call n8n Workflow Tool hierarchy policy.");
 }
+const frontendSource = fs.readFileSync(path.join(root, "frontend", "app.js"), "utf8");
+for (const required of [
+  "async function refreshViewData(viewId)",
+  "await Promise.allSettled(refreshers.map((refresh) => refresh()))",
+  'const activeView = document.querySelector(".nav-item.active")?.dataset.view || "chat"',
+]) {
+  if (!frontendSource.includes(required)) throw new Error(`View-scoped frontend refresh contract missing ${required}.`);
+}
+if (frontendSource.includes("await safeRefreshVoiceConceptUatSamples();\n  await safeRefreshVoiceConceptDrafts();")) {
+  throw new Error("Core frontend boot must not eagerly refresh optional voice cockpit endpoints.");
+}
 for (const required of [
   'action: "sendMessage"',
   'sessionId:',
