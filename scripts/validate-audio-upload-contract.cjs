@@ -40,7 +40,7 @@ function main() {
   const html = fs.readFileSync(path.join(root, "frontend", "index.html"), "utf8");
 
   assert.match(workspaceApi, /POST \/api\/voice\/concepts\/transcribe/);
-  assert.match(workspaceApi, /context\(req, form\.fields, true\)/);
+  assert.match(workspaceApi, /voiceTranscribe[\s\S]*context\(req, \{\}, true\)[\s\S]*readMultipartForm/);
   assert.match(workspaceApi, /assertTwin\(mapping, form\.fields\.twin/);
   assert.match(workspaceApi, /voice\.transcribe/);
   assert.doesNotMatch(server, /async function handleVoiceConceptTranscribe/);

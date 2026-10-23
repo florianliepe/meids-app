@@ -521,8 +521,8 @@ function createWorkspaceApi(deps) {
   }
 
   async function voiceTranscribe(req, res) {
+    const { mapping, pool } = await context(req, {}, true);
     const form = await readMultipartForm(req, { maxBytes: MAX_AUDIO_BYTES + 100_000 });
-    const { mapping, pool } = await context(req, form.fields, true);
     const twinId = assertTwin(mapping, form.fields.twin || form.fields.twin_id);
     const file = form.files.file;
     const validated = validateAudioUpload(file);
