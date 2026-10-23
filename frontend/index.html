@@ -422,9 +422,10 @@
           <div class="grid three source-capture-grid">
             <article class="panel source-capture-card">
               <h2>Upload Knowledge</h2>
-              <p>Supported: TXT, Markdown, JSON, CSV, YAML, XML, PDF, and DOCX up to 10 MB. Export Apple Pages files as PDF or DOCX first.</p>
-              <input id="documentInput" type="file" accept=".txt,.md,.markdown,.json,.csv,.yaml,.yml,.xml,.pdf,.docx,text/plain,text/markdown,application/json,application/xml,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
-              <button id="uploadDocumentBtn">Upload and create concept</button>
+              <p>Select mixed documents up to 25 MB each and 100 MB per batch. Supported: TXT, Markdown, JSON, CSV, YAML, XML, PDF, DOCX, and PPTX. Export Apple Pages or Keynote files first.</p>
+              <input id="documentInput" type="file" multiple accept=".txt,.md,.markdown,.json,.csv,.yaml,.yml,.xml,.pdf,.docx,.pptx,text/plain,text/markdown,application/json,application/xml,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+              <button id="uploadDocumentBtn">Upload selected files</button>
+              <div id="documentBatchStatus" class="document-batch-status" aria-live="polite">Choose one or more documents.</div>
             </article>
             <article class="panel source-capture-card">
               <h2>Upload Audio</h2>

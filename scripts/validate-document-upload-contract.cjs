@@ -22,6 +22,19 @@ async function createDocx() {
   return zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
 }
 
+async function createPptx() {
+  const zip = new JSZip();
+  zip.file("ppt/slides/slide1.xml", `<?xml version="1.0" encoding="UTF-8"?>
+    <p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+      <p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>Mac PowerPoint decision flow</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld>
+    </p:sld>`);
+  zip.file("ppt/notesSlides/notesSlide1.xml", `<?xml version="1.0" encoding="UTF-8"?>
+    <p:notes xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+      <p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>Escalate when evidence is incomplete</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld>
+    </p:notes>`);
+  return zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+}
+
 function createPdf(text) {
   const escaped = text.replace(/([\\()])/g, "\\$1");
   const stream = `BT /F1 12 Tf 72 720 Td (${escaped}) Tj ET`;
@@ -63,16 +76,36 @@ async function main() {
   const pdf = await extractDocumentText({ filename: "Entscheidung.pdf", type: "application/pdf", buffer: createPdf("Mac PDF upload works") });
   assert.match(pdf.text, /Mac PDF upload works/);
 
+  const pptx = await extractDocumentText({ filename: "Entscheidungslogik Mac.pptx", type: "application/vnd.openxmlformats-officedocument.presentationml.presentation", buffer: await createPptx() });
+  assert.match(pptx.text, /\[Slide 1\][\s\S]*Mac PowerPoint decision flow/);
+  assert.match(pptx.text, /\[Notes 1\][\s\S]*Escalate when evidence is incomplete/);
+
   await assert.rejects(
     () => extractDocumentText({ filename: "Workshop.pages", type: "application/octet-stream", buffer: Buffer.from("pages") }),
     (error) => error.statusCode === 415 && /Export.*PDF or DOCX/.test(error.message),
   );
   await assert.rejects(
-    () => extractDocumentText({ filename: "oversized.txt", type: "text/plain", buffer: Buffer.alloc(10 * 1024 * 1024 + 1) }),
+    () => extractDocumentText({ filename: "Workshop.key", type: "application/octet-stream", buffer: Buffer.from("keynote") }),
+    (error) => error.statusCode === 415 && /PPTX|\.pptx/.test(error.message),
+  );
+  await assert.rejects(
+    () => extractDocumentText({ filename: "Legacy.ppt", type: "application/vnd.ms-powerpoint", buffer: Buffer.from("ppt") }),
+    (error) => error.statusCode === 415 && /PPTX|\.pptx/.test(error.message),
+  );
+  await assert.rejects(
+    () => extractDocumentText({ filename: "oversized.txt", type: "text/plain", buffer: Buffer.alloc(25 * 1024 * 1024 + 1) }),
     (error) => error.statusCode === 413,
   );
 
-  process.stdout.write("Document upload contract valid: Safari filename, UTF-16 text, PDF, DOCX, Pages guidance, and size limit.\n");
+  const workspaceApi = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "backend", "workspaceApi.js"), "utf8");
+  const frontend = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "frontend", "app.js"), "utf8");
+  const html = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "frontend", "index.html"), "utf8");
+  assert.match(workspaceApi, /ingestDocument[\s\S]*context\(req, \{\}, true\)[\s\S]*readMultipartForm/);
+  assert.match(frontend, /MAX_DOCUMENT_BATCH_BYTES = 100 \* 1024 \* 1024/);
+  assert.match(frontend, /for \(const \[index, file\] of files\.entries\(\)\)/);
+  assert.match(html, /id="documentInput" type="file" multiple/);
+
+  process.stdout.write("Document upload contract valid: Safari filename, UTF-16 text, PDF, DOCX, PPTX slides/notes, macOS export guidance, scoped parsing, and sequential 100 MB batches.\n");
 }
 
 main().catch((error) => {

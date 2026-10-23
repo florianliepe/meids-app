@@ -28364,6 +28364,23 @@ body.cockpit-mode .workspace-signal {
   min-height: 20px;
 }
 
+.document-batch-status {
+  color: var(--muted);
+  display: grid;
+  gap: 6px;
+  line-height: 1.4;
+  margin-top: 10px;
+  min-height: 20px;
+}
+
+.document-batch-status .batch-success {
+  color: var(--success, #1f6f54);
+}
+
+.document-batch-status .batch-error {
+  color: var(--danger, #a33b32);
+}
+
 .knowledge-fabric-ingest-contract {
   align-items: start;
   display: grid;

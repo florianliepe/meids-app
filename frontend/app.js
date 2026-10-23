@@ -477,6 +477,9 @@ function normalizeVoiceTranscriptionResult(result = {}) {
 
 const SOURCE_AUDIO_EXTENSIONS = new Set(["mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm"]);
 const MAX_SOURCE_AUDIO_BYTES = 25 * 1024 * 1024;
+const DOCUMENT_UPLOAD_EXTENSIONS = new Set(["txt", "md", "markdown", "json", "csv", "yaml", "yml", "xml", "pdf", "docx", "pptx"]);
+const MAX_DOCUMENT_UPLOAD_BYTES = 25 * 1024 * 1024;
+const MAX_DOCUMENT_BATCH_BYTES = 100 * 1024 * 1024;
 
 function sourceAudioExtension(file) {
   return String(file?.name || "").split(".").pop()?.toLowerCase() || "";
@@ -488,6 +491,19 @@ function sourceAudioValidationMessage(file) {
   if (["aif", "aiff", "aac"].includes(extension)) return "AIFF and raw AAC are not supported. Convert the file to M4A or WAV first.";
   if (!SOURCE_AUDIO_EXTENSIONS.has(extension)) return "Supported formats: MP3, MP4, MPEG, MPGA, M4A, WAV, and WebM.";
   if (file.size > MAX_SOURCE_AUDIO_BYTES) return "This audio file is larger than the 25 MB transcription limit.";
+  return "";
+}
+
+function documentUploadExtension(file) {
+  return String(file?.name || "").split(".").pop()?.toLowerCase() || "";
+}
+
+function documentUploadValidationMessage(file) {
+  const extension = documentUploadExtension(file);
+  if (["pages", "key"].includes(extension)) return `${file.name}: export Apple ${extension === "key" ? "Keynote" : "Pages"} files as ${extension === "key" ? "PPTX or PDF" : "PDF or DOCX"} first.`;
+  if (extension === "ppt") return `${file.name}: save legacy PowerPoint files as PPTX first.`;
+  if (!DOCUMENT_UPLOAD_EXTENSIONS.has(extension)) return `${file.name}: unsupported format.`;
+  if (file.size > MAX_DOCUMENT_UPLOAD_BYTES) return `${file.name}: larger than the 25 MB per-file limit.`;
   return "";
 }
 
@@ -8601,6 +8617,19 @@ function bindIngest() {
   sourceAudioConsent?.addEventListener("change", updateSourceAudioState);
   sourceAudioButton?.addEventListener("click", uploadSourceAudio);
 
+  const documentInput = $("#documentInput");
+  documentInput?.addEventListener("change", () => {
+    const files = Array.from(documentInput.files || []);
+    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+    const errors = files.map(documentUploadValidationMessage).filter(Boolean);
+    const status = $("#documentBatchStatus");
+    if (!status) return;
+    if (!files.length) status.textContent = "Choose one or more documents.";
+    else if (totalBytes > MAX_DOCUMENT_BATCH_BYTES) status.textContent = `Batch is ${formatFileSize(totalBytes)}; the maximum is 100 MB.`;
+    else if (errors.length) status.textContent = errors.join(" ");
+    else status.textContent = `${files.length} file${files.length === 1 ? "" : "s"} selected · ${formatFileSize(totalBytes)} · uploaded sequentially.`;
+  });
+
   $("#textIngestBtn").addEventListener("click", async () => {
     const text = $("#textIngest").value.trim();
     if (!text) return showIngest("Paste text first.");
@@ -8648,59 +8677,83 @@ function bindIngest() {
   });
 
   $("#uploadDocumentBtn").addEventListener("click", async () => {
-    const file = $("#documentInput").files[0];
-    if (!file) return showIngest("Choose a file first.");
-    const extension = file.name.split(".").pop()?.toLowerCase() || "";
-    if (extension === "pages") return showIngest("Apple Pages files cannot be read reliably. Export this document as PDF or DOCX and upload it again.");
-    if (!["txt", "md", "markdown", "json", "csv", "yaml", "yml", "xml", "pdf", "docx"].includes(extension)) {
-      return showIngest("Supported formats: TXT, Markdown, JSON, CSV, YAML, XML, PDF, and DOCX.");
-    }
-    if (file.size > 10 * 1024 * 1024) return showIngest("This file is larger than the 10 MB upload limit.");
-    if (!(await confirmTwinScopedAction(`upload ${file.name}`))) return;
-    const form = new FormData();
-    form.append("file", file);
-    form.append("twin", state.activeTwin);
-    showIngest(`Uploading ${file.name}...`);
-    try {
-      if (staticPagesMode) {
-        let content = "";
-        if (/^(text\/|application\/json|application\/xml|text\/markdown)/i.test(file.type || "") || /\.(txt|md|markdown|json|csv|yaml|yml)$/i.test(file.name)) {
-          content = await file.text();
-        }
-        const result = createStaticConceptFromSource({
-          title: file.name.replace(/\.[^.]+$/, ""),
-          description: content || `Uploaded file metadata staged locally: ${file.name} (${file.type || "unknown type"}, ${file.size} bytes).`,
-          type: "Document Upload",
-          sourceType: file.name.split(".").pop() || "document",
-          sourceName: file.name,
-          content,
-        });
-        showIngest(formatIngestResult(result));
-        persistLocalKnowledgeFabricIngest(result, {
-          sourceType: file.name.split(".").pop() || "document",
-          sourceName: file.name,
-          fallbackTitle: file.name,
-        });
-        $("#documentInput").value = "";
-        refreshConcepts();
-        safeRefreshActivity();
-        showToast("Document staged locally", "Pending OKF concept created in this browser.", "success");
-        return;
+    const files = Array.from($("#documentInput").files || []);
+    if (!files.length) return showIngest("Choose one or more files first.");
+    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+    const validationErrors = files.map(documentUploadValidationMessage).filter(Boolean);
+    if (totalBytes > MAX_DOCUMENT_BATCH_BYTES) validationErrors.push(`The selected batch is ${formatFileSize(totalBytes)}; the maximum is 100 MB.`);
+    if (validationErrors.length) return showDocumentBatchStatus(validationErrors.map((message) => ({ name: message, status: "error" })));
+    if (!(await confirmTwinScopedAction(`upload ${files.length} document${files.length === 1 ? "" : "s"} (${formatFileSize(totalBytes)})`))) return;
+
+    const button = $("#uploadDocumentBtn");
+    button.disabled = true;
+    const outcomes = [];
+    showIngest(`Uploading ${files.length} document${files.length === 1 ? "" : "s"} sequentially...`);
+    for (const [index, file] of files.entries()) {
+      outcomes.push({ name: file.name, status: "pending", detail: `Uploading ${index + 1} of ${files.length}` });
+      showDocumentBatchStatus(outcomes);
+      try {
+        const result = await uploadDocumentFile(file);
+        outcomes[outcomes.length - 1] = { name: file.name, status: "success", detail: result.concept?.review_state || "pending-review" };
+      } catch (error) {
+        outcomes[outcomes.length - 1] = { name: file.name, status: "error", detail: compactError(error.message) };
       }
-      const result = await postForm("/api/ingest/document", form);
-      showIngest(formatIngestResult(result));
-      persistLocalKnowledgeFabricIngest(result, {
-        sourceType: file.name.split(".").pop() || "document",
-        sourceName: file.name,
-        fallbackTitle: file.name,
-      });
-      $("#documentInput").value = "";
+      showDocumentBatchStatus(outcomes);
+    }
+    const succeeded = outcomes.filter((item) => item.status === "success").length;
+    const failed = outcomes.length - succeeded;
+    showIngest(`Batch complete: ${succeeded} staged for review, ${failed} failed. Each file was isolated in its own request.`);
+    if (!failed) $("#documentInput").value = "";
+    button.disabled = false;
+    try {
       await refreshConcepts();
       await safeRefreshActivity();
     } catch (error) {
-      showIngest(`Document ingest failed: ${error.message}`);
+      console.warn("Document batch refresh failed", error);
     }
+    showToast("Document batch complete", `${succeeded} staged · ${failed} failed`, failed ? "warning" : "success");
   });
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function showDocumentBatchStatus(items) {
+  const status = $("#documentBatchStatus");
+  if (!status) return;
+  status.innerHTML = items.map((item) => {
+    const className = item.status === "success" ? "batch-success" : item.status === "error" ? "batch-error" : "";
+    return `<span class="${className}"><strong>${escapeHtml(item.name)}</strong>${item.detail ? ` · ${escapeHtml(item.detail)}` : ""}</span>`;
+  }).join("");
+}
+
+async function uploadDocumentFile(file) {
+  let result;
+  if (staticPagesMode) {
+    let content = "";
+    if (/^(text\/|application\/json|application\/xml|text\/markdown)/i.test(file.type || "") || /\.(txt|md|markdown|json|csv|yaml|yml)$/i.test(file.name)) content = await file.text();
+    result = createStaticConceptFromSource({
+      title: file.name.replace(/\.[^.]+$/, ""),
+      description: content || `Uploaded file metadata staged locally: ${file.name} (${file.type || "unknown type"}, ${file.size} bytes).`,
+      type: "Document Upload",
+      sourceType: documentUploadExtension(file) || "document",
+      sourceName: file.name,
+      content,
+    });
+  } else {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("twin", state.activeTwin);
+    result = await postForm("/api/ingest/document", form);
+  }
+  persistLocalKnowledgeFabricIngest(result, {
+    sourceType: documentUploadExtension(file) || "document",
+    sourceName: file.name,
+    fallbackTitle: file.name,
+  });
+  return result;
 }
 
 function bindVoice() {
