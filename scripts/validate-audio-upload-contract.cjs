@@ -40,6 +40,9 @@ function main() {
   const html = fs.readFileSync(path.join(root, "frontend", "index.html"), "utf8");
 
   assert.match(workspaceApi, /POST \/api\/voice\/concepts\/transcribe/);
+  assert.match(workspaceApi, /GET \/api\/voice\/concepts\/ui-uat-samples/);
+  assert.match(workspaceApi, /GET \/api\/voice\/concepts\/real-coverage/);
+  assert.match(workspaceApi, /async function voiceRealCoverage[\s\S]*assertTwin\(mapping, url\.searchParams\.get\("twin"\)\)/);
   assert.match(workspaceApi, /voiceTranscribe[\s\S]*context\(req, \{\}, true\)[\s\S]*readMultipartForm/);
   assert.match(workspaceApi, /assertTwin\(mapping, form\.fields\.twin/);
   assert.match(workspaceApi, /voice\.transcribe/);

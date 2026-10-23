@@ -667,6 +667,64 @@ function createWorkspaceApi(deps) {
     });
   }
 
+  async function voiceUatSamples(req, res) {
+    await context(req, {}, true);
+    jsonResponse(res, 200, {
+      status: "ready",
+      samples: [
+        {
+          category: "knowledge",
+          label: "Process knowledge example",
+          initial_transcript: "The handover is a controlled decision point. The responsible consultant first checks the evidence, then records unresolved assumptions and asks the accountable owner to confirm them because later delivery depends on an explicit basis. The project team is informed before the approved result becomes the next work package and any exception is logged for review.",
+          suggested_clarification: "An experienced colleague also checks whether the evidence is current and pauses the handover when ownership or expected impact is unclear.",
+          expected_question: "What exception or failure mode would an experienced colleague know to watch for?",
+        },
+        {
+          category: "personality",
+          label: "Working preference example",
+          initial_transcript: "I prefer decisions to begin with a concise evidence summary and a clear statement of uncertainty. I first compare the available options, then ask the responsible people for missing context because silent assumptions create avoidable risk. The team should know who decides, who advises, and what will happen after the decision is recorded.",
+          suggested_clarification: "This preference changes in an emergency, when I accept a reversible interim decision but require the assumptions and follow-up review to be documented.",
+          expected_question: "What exception or failure mode would an experienced colleague know to watch for?",
+        },
+        {
+          category: "skill_input",
+          label: "Skill input example",
+          initial_transcript: "The skill prepares a review-ready recommendation. It receives the question and evidence scope, validates required sources, then structures options, risks, owners, and expected outcomes. The requesting user remains responsible for approval because the skill must not execute an external side effect. After approval, the result is stored with its evidence and trace for later learning.",
+          suggested_clarification: "If evidence conflicts or the impact is high, the skill must call Critical Faculty and return a pause recommendation instead of presenting a confident conclusion.",
+          expected_question: "What exception or failure mode would an experienced colleague know to watch for?",
+        },
+      ],
+    });
+  }
+
+  async function voiceRealCoverage(req, res, url) {
+    const { mapping, pool } = await context(req, {}, true);
+    const twinId = assertTwin(mapping, url.searchParams.get("twin"));
+    const concepts = await queryConcepts(pool, mapping, twinId);
+    const required = [
+      { category: "knowledge", label: "Knowledge" },
+      { category: "personality", label: "Personality" },
+      { category: "skill_input", label: "Skill input" },
+    ];
+    const voiceConcepts = concepts.filter((concept) => ["Voice Concept", "Audio Document Concept"].includes(concept.type));
+    const coverage = required.map((item) => {
+      const matches = voiceConcepts.filter((concept) => clean(concept.metadata?.content?.raw?.category, 100) === item.category);
+      return {
+        ...item,
+        covered: matches.length > 0,
+        count: matches.length,
+        latest_path: matches[0]?.path || "",
+      };
+    });
+    const missing = coverage.filter((item) => !item.covered).map((item) => item.category);
+    jsonResponse(res, 200, {
+      status: missing.length ? "incomplete" : "complete",
+      twin_id: twinId,
+      coverage,
+      missing_categories: missing,
+    });
+  }
+
   async function voiceTranscribe(req, res) {
     const { mapping, pool } = await context(req, {}, true);
     const form = await readMultipartForm(req, { maxBytes: MAX_AUDIO_BYTES + 100_000 });
@@ -1013,6 +1071,8 @@ function createWorkspaceApi(deps) {
     else if (route === "GET /api/skills/refinements") await stableEmpty(res, "skill_refinements");
     else if (route === "GET /api/skills/telemetry") await stableEmpty(res, "telemetry");
     else if (route === "GET /api/voice/concepts/criteria") await voiceCriteria(res);
+    else if (route === "GET /api/voice/concepts/ui-uat-samples") await voiceUatSamples(req, res);
+    else if (route === "GET /api/voice/concepts/real-coverage") await voiceRealCoverage(req, res, url);
     else if (route === "GET /api/voice/concepts/preflight") await voicePreflight(req, res, url);
     else if (route === "POST /api/voice/concepts/transcribe") await voiceTranscribe(req, res);
     else if (route === "POST /api/voice/concepts/assess") await voiceAssess(req, res);
