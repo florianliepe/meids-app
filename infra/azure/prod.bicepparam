@@ -41,6 +41,8 @@ param foundationParameters = {
   n8nApiBaseUrl: 'https://eraneos-agentic-platform.azurewebsites.net'
   containerStartupTimeLimitSeconds: 300
   enableKeyVaultPurgeProtection: true
+  eraneosAiGatewayTranscriptionModel: 'gemini-3.8-flash'
+  eraneosAiGatewayTranscriptionMode: 'chat_completions_audio'
   allowStorageSharedKeyAccess: false
   deployDiagnostics: true
 }

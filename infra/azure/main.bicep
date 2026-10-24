@@ -49,6 +49,17 @@ param azureOpenAiEmbeddingDeployment string = ''
 ])
 param azureOpenAiAuthMode string = 'managed_identity'
 param azureOpenAiEmbeddingDimensions int = 1536
+@description('OpenAI-compatible Eraneos AI Gateway base URL.')
+param eraneosAiGatewayBaseUrl string = 'https://ai-gateway.eraneos.com/v1'
+@description('Key Vault secret containing the Eraneos AI Gateway key.')
+param eraneosAiGatewayApiKeySecretName string = 'meids-eraneos-llm-gateway-api-key'
+@description('Gateway model used for audio-input transcription. Leave empty to disable voice transcription.')
+param eraneosAiGatewayTranscriptionModel string = ''
+@allowed([
+  'audio_transcriptions'
+  'chat_completions_audio'
+])
+param eraneosAiGatewayTranscriptionMode string = 'chat_completions_audio'
 param allowedFrontendOrigins string
 param actorTwinWebhookUrl string
 param knowledgeFabricWebhookUrl string
@@ -271,6 +282,10 @@ resource backendAppSettings 'Microsoft.Web/sites/config@2023-12-01' = {
     AZURE_OPENAI_EMBEDDING_DEPLOYMENT: azureOpenAiEmbeddingDeployment
     AZURE_OPENAI_EMBEDDING_DIMENSIONS: string(azureOpenAiEmbeddingDimensions)
     AZURE_OPENAI_API_VERSION: '2024-02-01'
+    ERANEOS_AI_GATEWAY_BASE_URL: eraneosAiGatewayBaseUrl
+    ERANEOS_AI_GATEWAY_API_KEY: empty(eraneosAiGatewayApiKeySecretName) ? '' : '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=${eraneosAiGatewayApiKeySecretName})'
+    ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODEL: eraneosAiGatewayTranscriptionModel
+    ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODE: eraneosAiGatewayTranscriptionMode
     MEIDS_ALLOW_DETERMINISTIC_VECTORS: environment == 'uat' ? 'true' : 'false'
     MEIDS_ENFORCE_KNOWLEDGE_AUTH: string(enableKnowledgeAuthorization)
     MEIDS_AUTH_CONTEXT_SIGNING_KEY: enableKnowledgeAuthorization ? '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=${knowledgeAuthorizationSigningSecretName})' : ''

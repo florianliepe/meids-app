@@ -1,6 +1,6 @@
 # Actor Twin Grounding and Answer Durability
 
-Date: 2026-10-23
+Date: 2026-10-24
 
 ## Objective
 
@@ -32,7 +32,9 @@ Azure App Service Easy Auth excludes only `/api/agents/post-answer` from platfor
 
 ## Speech-to-text boundary
 
-The application reports voice transcription as ready only when an explicit transcription model is configured. A gateway API key or chat model is insufficient. The Eraneos AI Gateway catalogue checked on 2026-10-23 exposed no speech-to-text model, so direct audio transcription remains blocked until a governed STT model or endpoint is enabled. Pasted transcripts continue through the same Persona Modeler and review-needed knowledge flow.
+The primary transcription path is the Eraneos AI Gateway with `gemini-3.8-flash` in `chat_completions_audio` mode. The backend sends base64 audio as an OpenAI-compatible `input_audio` block, disables model reasoning, requests verbatim same-language transcription, rejects truncated output, and keeps the gateway credential server-side in Key Vault. A synthetic WAV probe on 2026-10-24 confirmed successful audio-token processing and transcript output.
+
+The direct OpenAI `/audio/transcriptions` path remains available only as a separately configured fallback. It is not selected while the governed Eraneos model is configured. Pasted transcripts continue through the same Persona Modeler and review-needed knowledge flow if a provider call fails.
 
 ## Acceptance gates
 
@@ -41,4 +43,5 @@ The application reports voice transcription as ready only when an explicit trans
 - The answer remains visible after token refresh and setup changes.
 - The n8n execution contains `Persist post-answer trace` and `Preserve Actor answer`.
 - The backend trace is scoped to the authenticated user's assigned twin.
-- Voice readiness is blocked when no explicit supported STT model exists.
+- Voice readiness reports the configured provider, model, and transport mode.
+- A real audio probe completes before production readiness is accepted.

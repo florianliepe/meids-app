@@ -178,25 +178,112 @@ async function readMultipartForm(req, options = {}) {
 }
 
 function openAiTranscriptionConfig() {
-  const apiKey = String(process.env.OPENAI_API_KEY || process.env.ERANEOS_AI_GATEWAY_API_KEY || "").trim();
-  const baseUrl = String(
-    process.env.OPENAI_BASE_URL ||
-    process.env.OPENAI_API_BASE_URL ||
-    process.env.ERANEOS_AI_GATEWAY_BASE_URL ||
-    "https://api.openai.com/v1",
+  const gatewayModel = String(process.env.ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODEL || "").trim();
+  const useGateway = Boolean(gatewayModel);
+  const apiKey = String(useGateway ? process.env.ERANEOS_AI_GATEWAY_API_KEY || "" : process.env.OPENAI_API_KEY || "").trim();
+  const baseUrl = String(useGateway
+    ? process.env.ERANEOS_AI_GATEWAY_BASE_URL || "https://ai-gateway.eraneos.com/v1"
+    : process.env.OPENAI_BASE_URL || process.env.OPENAI_API_BASE_URL || "https://api.openai.com/v1"
   ).trim().replace(/\/+$/, "");
-  const model = String(process.env.OPENAI_TRANSCRIPTION_MODEL || process.env.ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODEL || "").trim();
+  const model = gatewayModel || String(process.env.OPENAI_TRANSCRIPTION_MODEL || "").trim();
+  const mode = String(useGateway
+    ? process.env.ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODE || "chat_completions_audio"
+    : process.env.OPENAI_TRANSCRIPTION_MODE || "audio_transcriptions"
+  ).trim().toLowerCase();
+  const supportedModes = new Set(["audio_transcriptions", "chat_completions_audio"]);
   return {
     apiKey,
     baseUrl,
     model,
-    configured: Boolean(apiKey && baseUrl && model),
+    mode,
+    provider: useGateway ? "eraneos_ai_gateway" : "openai",
+    configured: Boolean(apiKey && baseUrl && model && supportedModes.has(mode)),
     missing: [
-      ...(!apiKey ? ["OPENAI_API_KEY or ERANEOS_AI_GATEWAY_API_KEY"] : []),
-      ...(!baseUrl ? ["OPENAI_BASE_URL or ERANEOS_AI_GATEWAY_BASE_URL"] : []),
-      ...(!model ? ["OPENAI_TRANSCRIPTION_MODEL or ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODEL"] : []),
+      ...(!apiKey ? [useGateway ? "ERANEOS_AI_GATEWAY_API_KEY" : "OPENAI_API_KEY"] : []),
+      ...(!baseUrl ? [useGateway ? "ERANEOS_AI_GATEWAY_BASE_URL" : "OPENAI_BASE_URL"] : []),
+      ...(!model ? ["ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODEL or OPENAI_TRANSCRIPTION_MODEL"] : []),
+      ...(!supportedModes.has(mode) ? ["supported transcription mode"] : []),
     ],
   };
+}
+
+function parseGatewayResponse(response, text) {
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { raw: text };
+  }
+  if (!response.ok) {
+    const detail = data.error?.message || data.message || data.raw || response.statusText;
+    const modelHint = /invalid model|model.*not.*found|unknown model/i.test(String(detail || ""))
+      ? " The configured gateway does not expose this speech-to-text model. Select an advertised audio-input model or configure a governed STT endpoint."
+      : "";
+    const error = new Error(`Transcription provider failed: ${detail}.${modelHint}`.replace(/\.\./g, "."));
+    error.statusCode = response.status;
+    throw error;
+  }
+  return data;
+}
+
+function gatewayAudioFormat(file) {
+  const extension = String(file.gatewayFilename || file.filename || "").toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
+  if (["mpeg", "mpga"].includes(extension)) return "mp3";
+  return extension || (String(file.mediaType || file.type).includes("wav") ? "wav" : "webm");
+}
+
+function chatCompletionText(data) {
+  const content = data.choices?.[0]?.message?.content;
+  if (typeof content === "string") return content.trim();
+  if (Array.isArray(content)) {
+    return content.map((part) => typeof part === "string" ? part : part?.text || "").join("\n").trim();
+  }
+  return String(data.output_text || data.text || data.transcript || "").trim();
+}
+
+async function transcribeAudioWithChatCompletion(file, config) {
+  const maxTokens = Math.max(1_000, Math.min(Number(process.env.TRANSCRIPTION_MAX_OUTPUT_TOKENS || 16_384), 65_536));
+  const timeoutMs = Math.max(30_000, Math.min(Number(process.env.TRANSCRIPTION_TIMEOUT_MS || 180_000), 600_000));
+  const response = await fetch(`${config.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: config.model,
+      temperature: 0,
+      max_tokens: maxTokens,
+      reasoning_effort: "none",
+      messages: [
+        {
+          role: "system",
+          content: "You are a deterministic speech-to-text engine. Preserve the spoken language, wording, speaker changes, and meaningful punctuation. Do not summarize, translate, answer, or add commentary. Output transcript text only.",
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Transcribe this audio verbatim in its spoken language. Return transcript text only." },
+            {
+              type: "input_audio",
+              input_audio: {
+                data: file.buffer.toString("base64"),
+                format: gatewayAudioFormat(file),
+              },
+            },
+          ],
+        },
+      ],
+    }),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  const data = parseGatewayResponse(response, await response.text());
+  if (["length", "max_tokens"].includes(String(data.choices?.[0]?.finish_reason || "").toLowerCase())) {
+    const error = new Error("Transcription output was truncated. Split the recording into smaller files and try again.");
+    error.statusCode = 422;
+    throw error;
+  }
+  return chatCompletionText(data);
 }
 
 async function transcribeAudioWithOpenAiCompatibleGateway(file) {
@@ -205,6 +292,9 @@ async function transcribeAudioWithOpenAiCompatibleGateway(file) {
     const error = new Error(`Voice transcription backend is not configured: ${config.missing.join(", ")}`);
     error.statusCode = 503;
     throw error;
+  }
+  if (config.mode === "chat_completions_audio") {
+    return transcribeAudioWithChatCompletion(file, config);
   }
   const form = new FormData();
   form.append("model", config.model);
@@ -217,21 +307,7 @@ async function transcribeAudioWithOpenAiCompatibleGateway(file) {
     body: form,
   });
   const text = await response.text();
-  let data = {};
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    data = { raw: text };
-  }
-  if (!response.ok) {
-    const detail = data.error?.message || data.message || data.raw || response.statusText;
-    const modelHint = /invalid model|model.*not.*found|unknown model/i.test(String(detail || ""))
-      ? " The configured gateway does not expose this speech-to-text model. Select an advertised transcription model or configure a governed STT endpoint."
-      : "";
-    const error = new Error(`Transcription provider failed: ${detail}.${modelHint}`.replace(/\.\./g, "."));
-    error.statusCode = response.status;
-    throw error;
-  }
+  const data = parseGatewayResponse(response, text);
   return String(data.text || data.transcript || data.output_text || "").trim();
 }
 
@@ -1530,12 +1606,13 @@ function backendHealthPayload() {
     },
     voice_transcription: {
       status: transcription.configured ? "configured" : "blocked",
-      provider: "openai_compatible_gateway",
+      provider: transcription.provider,
       base_url_configured: Boolean(transcription.baseUrl),
       model: transcription.model,
+      mode: transcription.mode,
       missing: transcription.missing,
       reason: transcription.configured
-        ? "An explicit speech-to-text model is configured. Provider support is verified on first transcription request."
+        ? "An explicit audio-input model and transcription transport are configured. Provider support is verified on each transcription request."
         : "A gateway key alone does not enable speech-to-text. Configure an explicit transcription model exposed by the provider.",
     },
     vector_search: azureSearchStatusFromConfig(azureSearchConfigFromEnv()),

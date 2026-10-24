@@ -752,7 +752,8 @@ function createWorkspaceApi(deps) {
       size_bytes: validated.size,
       audio_sha256: audioHash,
       transcript_sha256: transcriptHash,
-      transcription_provider: "openai_compatible_gateway",
+      transcription_provider: transcriptionConfig().provider,
+      transcription_transport: transcriptionConfig().mode,
       model: transcriptionConfig().model,
     }));
 
@@ -766,7 +767,8 @@ function createWorkspaceApi(deps) {
         source_type: sourceType,
         filename: validated.filename,
         media_type: validated.mediaType,
-        transcription_provider: "openai_compatible_gateway",
+        transcription_provider: transcriptionConfig().provider,
+        transcription_transport: transcriptionConfig().mode,
       },
       assessment: qualityAssessment({ transcript, category, replies: [] }),
       agent: { id: "knowledge_retrieval_agent", mode: "circular_interview" },

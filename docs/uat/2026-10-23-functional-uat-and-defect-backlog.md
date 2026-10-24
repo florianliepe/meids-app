@@ -39,11 +39,11 @@ Covered paths:
 | UAT-011 | P3 | Queued skill submission toast says `completed`. | Frontend success copy assumes every accepted run is synchronous. | Show `Skill run queued` for HTTP 202 and `completed` only after the ledger status changes. | Fixed and deployed |
 | UAT-012 | P1 | The final skill run remained `queued` although all n8n executions succeeded. | The application role could insert but could not update its own `audit.event` skill-run record; no scoped UPDATE grant or RLS policy existed. | Migration `015_audit_skill_run_update_policy.sql` grants narrowly scoped UPDATE access for the current tenant, current user, `agent.skill_run` resource type, and allowed run actions. | Fixed and live-tested |
 | UAT-013 | P1 | Azure Search outbox embedding failed when extracted source text exceeded the provider's 8,192-token input boundary. | Full source text was sent to the embedding endpoint without a deterministic input bound. | Embedding input is now normalized and bounded to 24,000 characters before the provider call, while the complete source remains in PostgreSQL and Blob Storage. | Fixed and deployed; contract-tested |
-| UAT-014 | P1 | Uploaded audio cannot yet be transcribed in production. | The authenticated Eraneos AI Gateway catalogue exposes 32 models but no Whisper, transcription, speech, or audio-input model. The backend defaulted to an unadvertised `gpt-4o-mini-transcribe` and the UI treated configuration presence as provider readiness. | Removed the implicit model default, require an explicit supported STT model, and report the boundary truthfully. Enable a governed STT model/endpoint to restore audio transcription; pasted transcripts remain available. | Application defect fixed; provider capability open |
+| UAT-014 | P1 | Uploaded audio could not be transcribed in production. | The `/v1/models` response did not advertise input modalities, while the portal catalogue exposed Gemini audio-input capability through chat completions rather than `/audio/transcriptions`. | Added `chat_completions_audio` transport and selected `gemini-3.8-flash` through the server-side Eraneos Gateway credential. A synthetic WAV probe returned a correct transcript with audio-token accounting. | Fixed; Azure deployment and UI UAT pending |
 | UAT-015 | P2 | A queued run can still be lost if the backend process is recycled between returning `202` and completing the detached promise. | The current queue is represented durably in the ledger, but execution is still launched in-process rather than claimed by a durable worker. | Move queued skill execution to a transactional outbox/worker with leases, retries, and idempotent completion. | Open hardening |
 | UAT-016 | P0 | Actor Twin generated a plausible self-description instead of grounding it in reviewed knowledge. | Actor instructions explicitly allowed direct self-description and frontend metadata set `answerDirectFirst=true`. | Replaced this with an evidence-first routing contract: all personal, twin, organizational, decision, process, and experience claims require Knowledge Fabric retrieval; missing evidence returns `not_found`. | Fixed and live-tested |
 | UAT-017 | P0 | A completed chat answer appeared briefly and then disappeared. | Five-minute token refresh and interaction-setting changes destroyed and recreated the embedded chat DOM. Simple Memory did not guarantee that the widget would reconstruct the transcript. | Token lifetime is one hour by default. Token and setting changes no longer reload chat automatically; reconnect is explicit so the visible answer is preserved. | Fixed and live-tested |
-| UAT-018 | P1 | Voice Capture showed `Ready` although the configured model was rejected by the provider. | Readiness checked only for key/base/model strings and supplied an unverified default model. | Readiness now requires an explicit model, and provider model errors explain the missing capability without discarding the recording. | Fixed; provider capability open |
+| UAT-018 | P1 | Voice Capture showed `Ready` although the configured model was rejected by the provider. | Readiness checked only for key/base/model strings and supplied an unverified default model. | Readiness now requires an explicit model and transport mode, exposes both in health status, and uses the live-probed Gateway configuration. | Fixed; Azure deployment and UI UAT pending |
 | UAT-019 | P2 | Opening Voice Capture emitted two 404 warnings and left example/coverage controls without data. | The production frontend called `ui-uat-samples` and `real-coverage`, but the PostgreSQL workspace API did not expose those routes. | Added authenticated sample and twin-scoped real-coverage endpoints and pinned them in the audio-upload contract test. | Fixed and live-tested |
 
 ## Passed acceptance evidence
@@ -89,9 +89,9 @@ The application role may update only its own tenant/user skill-run audit rows an
 
 The search embedding request receives a deterministic bounded representation. PostgreSQL and Blob Storage remain the sources of truth for full content. This prevents provider-limit failures without silently truncating the governed source record.
 
-### D-08: Do not substitute a chat model for speech-to-text
+### D-08: Use governed multimodal transcription before an external fallback
 
-Audio upload stays enabled as an intake format, but transcription remains blocked until the governed gateway exposes a supported transcription model. The application must not send audio to an unapproved endpoint or place a provider key in the browser.
+Audio stays inside the Eraneos AI Gateway boundary. A chat-capable model may be used for speech-to-text only when its catalogue marks audio input and a live synthetic probe confirms the exact transport contract. Provider keys remain in Key Vault and never enter the browser. Direct OpenAI transcription is a dormant fallback, activated only by explicit server configuration.
 
 ### D-09: Personal claims are retrieval-first
 
@@ -107,7 +107,7 @@ The n8n workflow writes the answer trace after the Actor completes and restores 
 
 ## Release recommendation
 
-Core document upload, review, retrieval, and skill lifecycle paths passed controlled production UAT. Public-launch sign-off should still require UAT-009 (answer trace persistence) and a decision on UAT-015 (durable worker). Audio transcription remains unavailable until UAT-014 is resolved by the gateway owner.
+Core document upload, review, retrieval, skill lifecycle, answer trace, and Actor grounding paths passed controlled production UAT. Public-launch sign-off still requires a decision on UAT-015 (durable worker) and a final authenticated browser recording test after the Gateway audio configuration is deployed.
 
 ## Final rerun evidence
 
