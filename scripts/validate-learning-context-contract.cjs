@@ -88,6 +88,13 @@ if (!switchBlock.includes("reloadN8nChatContext();")) {
 if ((activateBlock.match(/reloadN8nChatContext\(\);/g) || []).length < 2) {
   fail("Static and backend twin activation must recreate n8n chat with the new twin metadata.");
 }
+for (const marker of ["installN8nChatBusyGuard", ".chat-message-typing", "input.disabled = busy"]) {
+  if (!frontend.includes(marker)) fail(`Embedded n8n chat busy guard is missing ${marker}.`);
+}
+const actorTraceBody = nodeByName(actor, "Persist post-answer trace")?.parameters?.jsonBody || "";
+if (!actorTraceBody.includes("learningSignal") || !actorTraceBody.includes("trace_learning_recommended: learningSignal")) {
+  fail("Actor Twin must queue detached learning only for reusable-event signals.");
+}
 
 console.log(JSON.stringify({
   status: "passed",
@@ -98,5 +105,7 @@ console.log(JSON.stringify({
     "learning_to_knowledge_fabric_preserves_auth_and_twin_scope",
     "duplicate_scoring_uses_user_scoped_backend_auth_with_guarded_fallback",
     "twin_switch_recreates_embedded_chat_context",
+    "chat_busy_guard_prevents_dropped_concurrent_turns",
+    "post_turn_learning_is_filtered_to_reusable_events",
   ],
 }, null, 2));

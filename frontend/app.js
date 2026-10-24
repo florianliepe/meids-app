@@ -16081,6 +16081,25 @@ function reloadN8nChatContext() {
   void ensureN8nChat();
 }
 
+function installN8nChatBusyGuard(mount) {
+  if (!mount || mount.dataset.busyGuardInstalled === "true") return;
+  mount.dataset.busyGuardInstalled = "true";
+  const sync = () => {
+    const busy = Boolean(mount.querySelector(".chat-message-typing"));
+    const input = mount.querySelector("textarea[data-test-id='chat-input']");
+    if (!input) return;
+    if (!input.dataset.readyPlaceholder) {
+      input.dataset.readyPlaceholder = input.placeholder || "Ask the Actor Twin...";
+    }
+    input.disabled = busy;
+    input.setAttribute("aria-busy", String(busy));
+    input.placeholder = busy ? "Actor Twin is working..." : input.dataset.readyPlaceholder;
+  };
+  const observer = new MutationObserver(sync);
+  observer.observe(mount, { childList: true, subtree: true });
+  sync();
+}
+
 async function refreshN8nChatAuthorizationContext() {
   await loadAuthSession();
   applyAuthState();
@@ -16150,6 +16169,7 @@ async function ensureN8nChat() {
         },
       },
     });
+    installN8nChatBusyGuard(mount);
     state.n8nChatLoaded = true;
     scheduleN8nAuthorizationRefresh();
     if (status) status.textContent = "n8n agent connected.";

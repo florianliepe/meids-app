@@ -47,6 +47,8 @@ return [{ json: {
   trace,
 } }];`;
 
+const postAnswerTraceBody = "={{ (() => { const trigger = $('When chat message received').first().json; const input = String(trigger.chatInput || ''); const output = String($('Actor Twin AI Agent1').first().json.output || $('Actor Twin AI Agent1').first().json.text || ''); const learningSignal = /\\b(learn|lesson|retrospective|after[- ]action|uat|test|incident|failure|failed|error|remember|retain|knowledge increment|tacit|interview|decision review)\\b/i.test(input + ' ' + output); return JSON.stringify({ knowledge_access_token: trigger.metadata?.authorization?.knowledgeAccessToken || '', trace: { trace_id: 'n8n_exec_' + $execution.id, trace_chain_id: 'n8n_exec_' + $execution.id, request_id: (trigger.sessionId || 'chat') + ':' + $execution.id, twin_id: trigger.metadata?.identity?.activeTwinId || '', input_summary: input, output_summary: output, route_decision: 'answer_completed', grounding: { policy: 'reviewed_evidence_first' }, trace_learning_recommended: learningSignal } }); })() }}";
+
 function schema(definitions) {
   return definitions.map(({ name, type }) => ({
     id: name,
@@ -97,6 +99,9 @@ function patchActor(workflow) {
     attemptToConvertTypes: false,
     convertFieldsToString: false,
   };
+  const traceNode = nodeByName(workflow, "Persist post-answer trace");
+  if (!traceNode) throw new Error(`${workflow.name} is missing Persist post-answer trace.`);
+  traceNode.parameters.jsonBody = postAnswerTraceBody;
   return workflow;
 }
 
