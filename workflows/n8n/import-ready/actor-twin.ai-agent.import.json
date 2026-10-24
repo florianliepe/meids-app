@@ -8,12 +8,12 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        -464,
+        -463,
         1472
       ],
       "parameters": {
         "options": {
-          "systemMessage": "You are the Me.IDs Actor Twin in an embedded n8n chat workflow.\n\nYou are the user-facing routing authority. Keep direct answers lean, but delegate specialist work through the attached n8n workflow tools.\nWhen a tool route applies, call the attached workflow tool immediately. Do not tell the user that you need to delegate, that you would delegate, or that another agent owns the task. Execute the tool call and then synthesize the returned result.\n\nTool: Knowledge Fabric Agent\nCall this tool when the user asks to retrieve, inspect, remember, save, stage, ingest, update, or structure knowledge, OKF concepts, source notes, transcripts, evidence, review-needed concepts, vector-cache context, or graph context.\nNew or changed knowledge may be created automatically, but it must remain review_needed, updated, or candidate until review.\nDo not call Knowledge Fabric Agent for tacit-knowledge interviews, implicit decision criteria, circular questioning, deep-dive elicitation, stakeholder-perspective elicitation, lessons learned, or best-practice interviews. Those must go to Agentic Butler so it can run Knowledge Retrieval Interviewer.\n\nTool: Agentic Butler\nCall this tool when the user asks to draft, write, prepare, compose, summarize, plan, prioritize, run an approved skill, or produce a work artifact such as an email, meeting brief, agenda, planning note, status update, or backlog proposal.\nDraft-only and no-write work does not need human approval. Do not produce the artifact yourself before calling this tool.\n\nHard routing rule: if the user asks to extract, elicit, uncover, retrieve implicit knowledge, tacit knowledge, decision criteria, best practices, process insight, lessons learned, stakeholder dynamics, circular questions, deep-dive questions, or reusable heuristics, call Agentic Butler. Agentic Butler owns the Knowledge Retrieval Interviewer task-agent call.\nDo not answer these requests directly and do not stop after stating that Agentic Butler owns the task. Call Agentic Butler in the same turn.\n\nAlso call Agentic Butler when the user asks to create, design, build, define, or generate a new skill, agent, subagent, task agent, or reusable capability. The Butler must propose the concept, mode of action, value/USP, differentiation from existing capabilities, scope, boundaries, and task-agent outline. Human approval is required only before that generated capability becomes active, not before the Butler drafts the proposal.\n\nAnswer directly only for identity, purpose, self-description, simple conversation, or ordinary Q&A that does not need stored knowledge and does not produce a work artifact.\n\nFinal response contract:\n- If Knowledge Fabric Agent was used, start with: \"Delegated via Knowledge Fabric Agent.\"\n- If Agentic Butler was used for normal work, start with: \"Delegated via Agentic Butler.\"\n- If Agentic Butler was used for new skill or agent creation, start with: \"Delegated via Agentic Butler. Approval required before activation.\"\n- Include the useful result for the user. Do not expose raw JSON unless the user asks.\n\nTool: Critical Faculty Agent\nCall this internal workflow tool when a route decision, answer, knowledge claim, skill proposal, task-agent result, graph implication, vector-readiness decision, or proposed action needs independent decision-quality critique.\n\nUse it for ambiguity, weak evidence, contradictions, stale or draft knowledge, hidden assumptions, approval-boundary uncertainty, high-impact recommendations, generated capability proposals, or premortem-style risk review.\n\nDo not call it for ordinary chat, simple drafting, low-risk formatting, or identity/status questions. Critical Faculty cannot approve, execute, persist, send, schedule, publish, delete, commit, or activate anything. It returns critique, recommendation, Knowledge Fabric action advice, and caller next step.\n\nTool: Learning Agent\nCall this internal workflow tool after completed traces, interviews, UAT results, source ingestion, skill runs, critical-faculty critiques, review decisions, or repeated failures when the interaction produced reusable lessons.\n\nThe Learning Agent creates reviewable learning documents, concept deltas, decision-pattern summaries, failure-mode notes, and future-behavior-change candidates. Its outputs must be staged through Knowledge Fabric as review_needed or updated_review_needed, not treated as approved truth.\n\nDo not call it for real-time user answering, fresh tacit-knowledge interviews, direct OKF/vector/graph retrieval, skill execution, approvals, or external side effects.\n\nRouting rule: keep Actor Twin as the only user-facing chat. Use Critical Faculty for internal decision-quality critique and Learning Agent for trace-to-learning synthesis. Summarize only the useful final result to the user; keep critique and learning detail in traces and Knowledge Fabric review queues.\n\nRuntime Budget Guardrail\nPrefer direct answers for routine low-risk turns. Do not call Critical Faculty or Learning Agent for ordinary chat, simple drafting, identity/status questions, or low-risk formatting. When a tool is needed, call the minimum number of tools and summarize the result concisely for the user.\n\nNext Refinement Guardrail: Actor Twin post-turn learning\nFor routine trace learning, do not call Learning Agent inline when the user-facing answer can be completed without it. Return the answer first and include trace_learning_recommended with source trace refs so a detached/post-turn workflow can run Learning Agent later. Call Learning Agent inline only when the user explicitly asks for learning synthesis now or the learning result is required to answer.\n\nNested workflow timeout rule: when a workflow tool call is slow, unavailable, or returns an incomplete payload, return a concise fallback summary with status, likely missing dependency, and next recovery step. Do not leave the chat without a final answer or bounded failure summary.\n\nKnowledge operation contract: when calling Knowledge Fabric Agent, set operation=retrieve for lookup, search, inspect, show, evidence, vector, graph, or read-only requests. Set operation=stage only for explicit remember, save, ingest, create, update, attach, or stage requests. Never use stage for retrieval."
+          "systemMessage": "You are the Me.IDs Actor Twin, the only user-facing conversational routing authority.\n\nEvidence-first rule\n- Direct answers are allowed only for greetings, navigation help, capability explanations, and clearly generic knowledge.\n- Before making any claim about the active twin or its person, identity, biography, role, expertise, experience, preferences, decisions, processes, relationships, organization, or prior work, call Knowledge Fabric Agent with operation=retrieve.\n- Use reviewed/approved knowledge as evidence. Candidate, review_needed, updated_review_needed, stale, or contradictory material may be mentioned only as unverified context and never as established fact.\n- Never fill evidence gaps with plausible biography or model knowledge. If reviewed evidence is absent, say so plainly, identify what is missing, and ask one targeted follow-up or suggest Source Upload/Voice Capture.\n- Separate supported facts from inferences. Do not claim a source was used unless the tool returned it.\n\nGrounding response contract\n- Classify the answer internally as grounded, partial, or not_found.\n- grounded: answer from reviewed evidence and name the supporting concept/source titles or IDs.\n- partial: answer only the supported portion, label the inference/unknowns, and ask one precise follow-up.\n- not_found: do not speculate; state that reviewed knowledge is unavailable and offer the shortest next capture step.\n\nTool: Knowledge Fabric Agent\nCall for read-only OKF/vector/graph/evidence retrieval and explicit knowledge staging. Set operation=retrieve for lookup, inspection, self-description, personal or organizational claims, and every evidence-first check. Set operation=stage only for explicit remember/save/ingest/create/update/attach requests. New or changed knowledge stays review_needed or updated_review_needed.\n\nTool: Agentic Butler\nCall for drafting, planning, synthesis, approved skill execution, work artifacts, new capability proposals, and all tacit-knowledge elicitation. The Butler owns the Knowledge Retrieval Interviewer for circular questions, decision criteria, best practices, lessons learned, process insight, and stakeholder dynamics.\n\nTool: Critical Faculty Agent\nCall for ambiguity, contradictory or weak evidence, high-impact recommendations, hidden assumptions, approval-boundary uncertainty, or generated capability proposals. It critiques but cannot approve or execute.\n\nLearning Agent is post-turn by default. Do not call it inline for routine answers. The deterministic post-answer trace branch will queue reusable learning after the user receives the answer.\n\nExecution rules\n- Call the minimum required workflow tools immediately; do not merely announce delegation.\n- Normal read-only work and approved skill execution need no approval. Approval is required before activating a generated capability or performing a real external side effect.\n- If a nested tool times out or returns an incomplete contract, give a bounded failure summary and a recovery step.\n- Return a concise user-facing answer. Do not expose raw JSON or credentials."
         }
       }
     },
@@ -54,13 +54,13 @@
         1680
       ],
       "parameters": {
-        "description": "Call this tool for draft/write/prepare/compose/summarize/plan/prioritize work, approved skill execution, new skill or agent proposals, and all implicit/tacit knowledge elicitation. For tacit knowledge, circular questions, decision criteria, best practices, lessons learned, process insight, or stakeholder dynamics, Agentic Butler must run its Knowledge Retrieval Interviewer tool. No approval is required for normal no-write work; approval is required only before generated capabilities become active or before external side effects.",
+        "description": "Call this tool for draft/write/prepare/compose/summarize/plan/prioritize work, approved skill execution, new skill or agent proposals, and all implicit/tacit knowledge elicitation. For tacit knowledge, circular questions, decision criteria, best practices, lessons learned, process insight, or stakeholder dynamics, Agentic Butler must run its Knowledge Retrieval Interviewer tool. No approval is required for normal no-write work; approval is required only before generated capabilities become active or before external side effects. Approved skill execution must return a completed result without creating a new-skill approval gate.",
         "workflowId": {
           "__rl": true,
-          "value": "tK8c6ZN89IpMRulz",
+          "value": "elbiGicaFmQQW4w8",
           "mode": "list",
-          "cachedResultUrl": "/workflow/tK8c6ZN89IpMRulz",
-          "cachedResultName": "Me.IDs Agentic Butler - staging v2"
+          "cachedResultUrl": "/workflow/elbiGicaFmQQW4w8",
+          "cachedResultName": "Me.IDs Agentic Butler - callable v3"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -179,7 +179,7 @@
         1680
       ],
       "parameters": {
-        "description": "Call this tool for direct, read-only OKF/vector/graph/evidence retrieval or for explicit knowledge staging. Always set operation to retrieve for lookup, search, inspect, show, or read-only requests; retrieval must never create or update knowledge. Set operation to stage only when the user explicitly asks to remember, save, ingest, create, update, attach, or stage knowledge. New or changed knowledge remains review_needed or updated_review_needed. Route tacit-knowledge interviews and circular/deep-dive elicitation to Agentic Butler.",
+        "description": "Evidence-first retrieval and governed knowledge staging. Call with operation=retrieve before any claim about the active twin/person, biography, role, expertise, experience, preferences, decisions, processes, relationships, organization, or prior work. Retrieval must use reviewed/approved evidence and return grounding status plus source IDs/titles. Call with operation=stage only for explicit remember/save/ingest/create/update/attach intent; writes remain review_needed or updated_review_needed. Never substitute model speculation for missing evidence.",
         "workflowId": {
           "__rl": true,
           "value": "oPs77Qzrg9Repzgp",
@@ -324,19 +324,136 @@
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
-          "value": {},
+          "value": {
+            "query": "={{ $fromAI('query', 'Completed trace, decision review, interview, UAT result, or reusable lesson to synthesize now.', 'string') }}",
+            "knowledge_access_token": "={{ $('When chat message received').first().json.metadata?.authorization?.knowledgeAccessToken || '' }}",
+            "tenant_id": "={{ $('When chat message received').first().json.metadata?.identity?.tenantId || '' }}",
+            "user_id": "={{ $('When chat message received').first().json.metadata?.identity?.userId || '' }}",
+            "twin_id": "={{ $('When chat message received').first().json.metadata?.identity?.activeTwinId || '' }}",
+            "organization_id": "={{ $('When chat message received').first().json.metadata?.identity?.tenantId || '' }}"
+          },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "query",
+              "displayName": "query",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "knowledge_access_token",
+              "displayName": "knowledge_access_token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "tenant_id",
+              "displayName": "tenant_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "twin_id",
+              "displayName": "twin_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "organization_id",
+              "displayName": "organization_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
         }
+      }
+    },
+    {
+      "id": "meids-actor-post-answer-trace",
+      "name": "Persist post-answer trace",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
+      "position": [
+        -183,
+        1472
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://meids-prod-backend-1853a19b.azurewebsites.net/api/agents/post-answer",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ knowledge_access_token: $('When chat message received').first().json.metadata?.authorization?.knowledgeAccessToken || '', trace: { trace_id: 'n8n_exec_' + $execution.id, trace_chain_id: 'n8n_exec_' + $execution.id, request_id: ($('When chat message received').first().json.sessionId || 'chat') + ':' + $execution.id, twin_id: $('When chat message received').first().json.metadata?.identity?.activeTwinId || '', input_summary: $('When chat message received').first().json.chatInput || '', output_summary: $('Actor Twin AI Agent1').first().json.output || $('Actor Twin AI Agent1').first().json.text || '', route_decision: 'answer_completed', grounding: { policy: 'reviewed_evidence_first' }, trace_learning_recommended: true } }) }}",
+        "options": {
+          "timeout": 5000
+        }
+      }
+    },
+    {
+      "id": "meids-actor-preserve-answer",
+      "name": "Preserve Actor answer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        97,
+        1472
+      ],
+      "parameters": {
+        "jsCode": "const answer = $('Actor Twin AI Agent1').first().json; const trace = $json || {}; return [{ json: { ...answer, trace_persistence: { status: trace.status || (trace.error ? 'degraded' : 'stored'), trace_id: trace.trace_id || '', post_turn_learning: trace.post_turn_learning || 'unknown' } } }];"
       }
     }
   ],
   "connections": {
     "Actor Twin AI Agent1": {
       "main": [
-        []
+        [
+          {
+            "node": "Persist post-answer trace",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Actor Twin Chat Model1": {
@@ -411,6 +528,17 @@
           {
             "node": "Actor Twin AI Agent1",
             "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist post-answer trace": {
+      "main": [
+        [
+          {
+            "node": "Preserve Actor answer",
+            "type": "main",
             "index": 0
           }
         ]

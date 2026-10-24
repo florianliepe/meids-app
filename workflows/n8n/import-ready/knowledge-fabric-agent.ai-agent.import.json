@@ -8,8 +8,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        0,
-        0
+        -768,
+        336
       ],
       "parameters": {
         "httpMethod": "POST",
@@ -38,8 +38,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1504,
-        0
+        1456,
+        -96
       ],
       "parameters": {
         "respondWith": "json",
@@ -53,8 +53,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.3,
       "position": [
-        288,
-        224
+        464,
+        208
       ],
       "parameters": {
         "model": {
@@ -80,8 +80,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        368,
-        -16
+        464,
+        0
       ],
       "parameters": {
         "promptType": "define",
@@ -98,15 +98,14 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [
-        0,
-        192
+        -752,
+        144
       ],
       "parameters": {
         "workflowInputs": {
           "values": [
             {
-              "name": "operation",
-              "type": "string"
+              "name": "operation"
             },
             {
               "name": "query"
@@ -127,22 +126,38 @@
               "name": "organization_id"
             }
           ]
-        },
-        "inputSource": "workflowInputs"
+        }
       }
     },
     {
       "id": "e4c0429d-7641-4250-aeb8-1f9ca644d868",
       "name": "Score duplicate and merge evidence",
-      "notes": "Guarded fallback until n8n has a service-to-service Entra credential for the protected production duplicate-check API. Never infers a merge without score evidence.",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "notes": "Authenticated duplicate/merge scoring through the hosted backend. Uses the caller's scoped knowledge token; failures continue only into the guarded no-merge fallback in Attach duplicate score evidence.",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
       "position": [
-        256,
-        -144
+        96,
+        288
       ],
       "parameters": {
-        "jsCode": "return items.map((item) => ({ json: { ...item.json, source: 'guarded_fallback', error: 'Protected duplicate scoring requires a service-to-service Entra credential for n8n; no merge decision is permitted.' } }));"
+        "method": "POST",
+        "url": "https://meids-prod-backend-1853a19b.azurewebsites.net/api/knowledge/duplicate-check",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ candidate: $json.candidate, twin_id: $json.twin_id, organization_id: $json.organization_id, source_policy: $json.source_policy, top: $json.top, knowledge_access_token: $json.knowledge_access_token }) }}",
+        "options": {
+          "timeout": 12000
+        }
       }
     },
     {
@@ -152,8 +167,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        640,
-        0
+        272,
+        288
       ],
       "parameters": {
         "jsCode": "function getTriggerInput() {\n  try { return $('Receive workflow call').first().json; } catch (error) {}\n  try { return $('Receive request').first().json; } catch (error) {}\n  return {};\n}\nconst original = getTriggerInput();\nconst input = original.body ?? original;\nconst { authorization, knowledge_access_token, ...safeInput } = input;\nconst safeMetadata = { ...(safeInput.metadata || {}) };\ndelete safeMetadata.authorization;\nconst safeNestedInput = safeInput.input && typeof safeInput.input === 'object' ? { ...safeInput.input } : safeInput.input;\nif (safeNestedInput && typeof safeNestedInput === 'object') {\n  delete safeNestedInput.content_vector;\n  delete safeNestedInput.query_vector;\n}\nconst scoringAvailable = Boolean($json.duplicate_check && !$json.error);\nconst scoreEvidence = scoringAvailable ? $json : {\n  status: 'degraded',\n  duplicate_check: {\n    status: 'insufficient_evidence',\n    classification: 'insufficient_evidence',\n    decision: 'create_review_needed_only',\n    reason: 'Hosted duplicate scoring was unavailable; no merge decision is permitted.'\n  },\n  vector_similarity: null,\n  lexical_overlap: null,\n  graph_proximity: null,\n  scope_compatible: null,\n  merge_candidates: []\n};\nreturn [{ json: {\n  ...safeInput,\n  input: safeNestedInput,\n  metadata: safeMetadata,\n  duplicate_score_evidence: scoreEvidence,\n  duplicate_check_boundary: {\n    status: scoreEvidence.duplicate_check.status,\n    source: scoringAvailable ? 'backend_duplicate_check' : 'guarded_fallback',\n    endpoint: '/api/knowledge/duplicate-check'\n  }\n} }];"
@@ -165,8 +180,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        144,
-        0
+        -96,
+        288
       ],
       "parameters": {
         "jsCode": "const envelope = $json.body || $json; const context = envelope.context || {}; const rawInput = envelope.input || envelope.candidate || envelope.concept || envelope; const input = typeof rawInput === 'string' ? { text: rawInput } : (rawInput && typeof rawInput === 'object' ? rawInput : {}); const text = input.text || input.summary || input.query || input.chatInput || envelope.query || envelope.chatInput || ''; const candidate = { ...input, text, twin_id: input.twin_id || context.twin_id || envelope.twin_id || envelope.twin || '', organization_id: input.organization_id || context.organization_id || envelope.organization_id || 'default', query_vector: input.query_vector || input.content_vector || envelope.query_vector || envelope.content_vector }; const token = envelope.metadata?.authorization?.knowledgeAccessToken || envelope.authorization?.knowledgeAccessToken || envelope.knowledge_access_token || ''; return [{ json: { candidate, twin_id: candidate.twin_id, organization_id: candidate.organization_id, source_policy: envelope.source_policy || context.source_policy || input.source_policy || 'selected_pending', top: envelope.top || context.top || input.top || 8, knowledge_access_token: token, _auth_diagnostic: { present: Boolean(token), length: token.length, segments: token ? token.split('.').length : 0 } } }];"
@@ -222,8 +237,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -520,
-        140
+        -528,
+        144
       ],
       "parameters": {
         "jsCode": "const input = $json.body ?? $json;\nconst query = String(input.query || input.input?.query || input.input?.text || input.chatInput || '').trim();\nconst requested = String(input.operation || input.intent || input.context?.route_decision?.decision || '').trim().toLowerCase();\nconst readOnly = /\\b(read[- ]?only|retrieve|search|find|lookup|show|inspect|what do we know|existing knowledge|evidence lookup)\\b/i.test(query);\nconst writeIntent = /\\b(remember|save|store|stage|ingest|capture|create|update|add|attach)\\b/i.test(query);\nconst operation = requested.includes('retrieve') || requested === 'read' || readOnly\n  ? 'retrieve'\n  : requested.includes('stage') || requested.includes('ingest') || requested.includes('create') || requested.includes('update') || writeIntent\n    ? 'stage'\n    : 'retrieve';\nreturn [{ json: { ...input, query, operation, knowledge_operation: operation } }];"
@@ -235,8 +250,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        -280,
-        140
+        -288,
+        144
       ],
       "parameters": {
         "rules": {
@@ -246,7 +261,8 @@
                 "options": {
                   "caseSensitive": true,
                   "leftValue": "",
-                  "typeValidation": "strict"
+                  "typeValidation": "strict",
+                  "version": 2
                 },
                 "conditions": [
                   {
@@ -255,7 +271,8 @@
                     "operator": {
                       "type": "string",
                       "operation": "equals"
-                    }
+                    },
+                    "id": "220ae5a1-1a64-40fc-a765-fb76395219a6"
                   }
                 ],
                 "combinator": "and"
@@ -275,8 +292,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        0,
-        -80
+        -80,
+        -96
       ],
       "parameters": {
         "method": "POST",
@@ -304,8 +321,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        260,
-        -80
+        112,
+        -96
       ],
       "parameters": {
         "jsCode": "const input = $('Determine knowledge operation').first().json;\nconst buckets = Array.isArray($json.results) ? $json.results : [];\nconst matches = buckets.flatMap((bucket) => (Array.isArray(bucket.value) ? bucket.value.map((item) => ({ ...item, index: bucket.index })) : []));\nconst executionId = typeof $execution !== 'undefined' && $execution.id ? $execution.id : Date.now();\nreturn [{ json: {\n  envelope_version: input.envelope_version || '0.1.0',\n  request_id: input.request_id || 'req_' + executionId,\n  agent_id: 'knowledge_fabric_agent',\n  status: 'completed',\n  operation: 'retrieve',\n  output: {\n    summary: matches.length ? 'Retrieved ' + matches.length + ' scoped knowledge matches.' : 'No matching approved knowledge found.',\n    read_only: true,\n    retrieval_mode: $json.retrieval_mode || 'unknown',\n    source_policy: $json.source_policy || 'approved_only',\n    matches,\n    created_candidates: [],\n    review_state: 'unchanged'\n  },\n  trace: {\n    stored: false,\n    trace_id: 'n8n_exec_' + executionId,\n    used_agents: ['knowledge_fabric_agent_retrieval'],\n    target_agent: 'knowledge_fabric_agent',\n    route_decision: 'retrieve_knowledge',\n    handoff_status: 'handoff_completed'\n  }\n} }];"
@@ -476,7 +493,8 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
   "staticData": null
 }

@@ -324,9 +324,77 @@
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
-          "value": {},
+          "value": {
+            "query": "={{ $fromAI('query', 'Completed trace, decision review, interview, UAT result, or reusable lesson to synthesize now.', 'string') }}",
+            "knowledge_access_token": "={{ $('When chat message received').first().json.metadata?.authorization?.knowledgeAccessToken || '' }}",
+            "tenant_id": "={{ $('When chat message received').first().json.metadata?.identity?.tenantId || '' }}",
+            "user_id": "={{ $('When chat message received').first().json.metadata?.identity?.userId || '' }}",
+            "twin_id": "={{ $('When chat message received').first().json.metadata?.identity?.activeTwinId || '' }}",
+            "organization_id": "={{ $('When chat message received').first().json.metadata?.identity?.tenantId || '' }}"
+          },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "query",
+              "displayName": "query",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "knowledge_access_token",
+              "displayName": "knowledge_access_token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "tenant_id",
+              "displayName": "tenant_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "twin_id",
+              "displayName": "twin_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "organization_id",
+              "displayName": "organization_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
         }
@@ -337,11 +405,11 @@
       "name": "Persist post-answer trace",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
       "position": [
         -183,
         1472
       ],
-      "onError": "continueRegularOutput",
       "parameters": {
         "method": "POST",
         "url": "https://meids-prod-backend-1853a19b.azurewebsites.net/api/agents/post-answer",
@@ -484,7 +552,5 @@
     "timeSavedMode": "fixed",
     "callerPolicy": "workflowsFromSameOwner"
   },
-  "staticData": null,
-  "id": "eKI3qM7nyCNn9r1q",
-  "active": true
+  "staticData": null
 }

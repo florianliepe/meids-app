@@ -8591,6 +8591,7 @@ function bindTwinSwitch() {
       state.selectedTwinId = twin;
       await refreshAll();
       await refreshN8nChatAuthorizationContext();
+      reloadN8nChatContext();
     } catch (error) {
       setOutputStatus("#twinResult", "error", "Could not activate twin", error.message);
       renderTwinOptions();
@@ -12571,6 +12572,7 @@ async function activateSelectedTwin() {
       writeStaticTwinStore(state.twins, state.activeTwin, state.twinActivity);
       $("#twinResult").textContent = JSON.stringify({ status: "activated_local", active_twin: state.activeTwin }, null, 2);
       await refreshStaticPagesWorkspace();
+      reloadN8nChatContext();
       showToast("Active twin switched locally", state.activeTwin, "success");
       return;
     }
@@ -12580,6 +12582,7 @@ async function activateSelectedTwin() {
     $("#twinResult").textContent = JSON.stringify(result, null, 2);
     await safeRefreshTwins();
     await refreshN8nChatAuthorizationContext();
+    reloadN8nChatContext();
     showToast("Active twin switched", state.selectedTwinId, "success");
   } catch (error) {
     $("#twinResult").textContent = `Activate twin failed: ${error.message}`;
