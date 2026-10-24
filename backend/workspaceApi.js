@@ -119,6 +119,49 @@ function conceptRecord(row) {
   };
 }
 
+function graphConceptId(nodeKey) {
+  const match = clean(nodeKey, 256).match(/^concept:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i);
+  return match?.[1] || "";
+}
+
+function conceptGraphNode(concept) {
+  return {
+    node_key: `concept:${concept.concept_id}`,
+    node_type: "concept",
+    title: concept.title,
+    summary: concept.summary || concept.description || "",
+    review_state: concept.review_state,
+    confidence: concept.review_state === "approved" ? 1 : 0.65,
+    cluster: concept.type || "knowledge",
+    tags: concept.tags || [],
+    okf_path: concept.path,
+    actor_readiness: concept.review_state === "approved" ? "ready" : "needs-review",
+    actor_readiness_score: concept.review_state === "approved" ? 100 : 60,
+    source_refs: concept.source_refs || [],
+  };
+}
+
+function graphConceptEvidence(concept) {
+  const evidence = (concept.source_refs || []).map((source) => ({
+    ...source,
+    title: source.title || source.source_name || concept.title,
+    path: source.path || source.evidence_path || source.source_anchor || concept.source_anchor || "",
+    evidence_path: source.evidence_path || source.path || source.source_anchor || concept.source_anchor || "",
+    excerpt: source.excerpt || source.summary || concept.summary || concept.description || "",
+    review_state: source.review_state || "pending-review",
+  }));
+  if (!evidence.length && concept.source_anchor) {
+    evidence.push({
+      title: concept.title,
+      path: concept.source_anchor,
+      evidence_path: concept.source_anchor,
+      excerpt: concept.summary || concept.description || "",
+      review_state: concept.review_state,
+    });
+  }
+  return evidence;
+}
+
 async function queryConcepts(pool, mapping, twinId, conceptId = "") {
   return withContext(pool, mapping, async (client) => {
     const result = await client.query(
@@ -1006,20 +1049,7 @@ function createWorkspaceApi(deps) {
     const includeDrafts = String(url.searchParams.get("include_drafts") || "true").toLowerCase() !== "false";
     const concepts = (await queryConcepts(pool, mapping, twinId))
       .filter((concept) => includeDrafts || concept.review_state === "approved");
-    const nodes = concepts.map((concept) => ({
-      node_key: `concept:${concept.concept_id}`,
-      node_type: "concept",
-      title: concept.title,
-      summary: concept.summary || concept.description || "",
-      review_state: concept.review_state,
-      confidence: concept.review_state === "approved" ? 1 : 0.65,
-      cluster: concept.type || "knowledge",
-      tags: concept.tags || [],
-      okf_path: concept.path,
-      actor_readiness: concept.review_state === "approved" ? "ready" : "needs-review",
-      actor_readiness_score: concept.review_state === "approved" ? 100 : 60,
-      source_refs: concept.source_refs || [],
-    }));
+    const nodes = concepts.map(conceptGraphNode);
     const edges = [];
     jsonResponse(res, 200, {
       status: "ready",
@@ -1033,6 +1063,30 @@ function createWorkspaceApi(deps) {
       },
       nodes,
       edges,
+    });
+  }
+
+  async function graphNodeDetail(req, res, url) {
+    const { mapping, pool } = await context(req);
+    const twinId = assertTwin(mapping, url.searchParams.get("twin"));
+    const includeDrafts = String(url.searchParams.get("include_drafts") || "true").toLowerCase() !== "false";
+    const nodeKey = clean(url.searchParams.get("node_key"), 256);
+    const conceptId = graphConceptId(nodeKey);
+    if (!conceptId) throw httpError(400, "A valid concept node_key is required.");
+
+    const [concept] = await queryConcepts(pool, mapping, twinId, conceptId);
+    if (!concept || (!includeDrafts && concept.review_state !== "approved")) {
+      throw httpError(404, "Graph node not found.");
+    }
+
+    const node = conceptGraphNode(concept);
+    jsonResponse(res, 200, {
+      status: "ready",
+      scope: { tenant_id: mapping.tenant_id, twin_id: twinId },
+      node,
+      edges: [],
+      neighbors: [],
+      evidence: graphConceptEvidence(concept),
     });
   }
 
@@ -1087,6 +1141,7 @@ function createWorkspaceApi(deps) {
     else if (route === "GET /api/activity") await activity(req, res, url);
     else if (route === "GET /api/review-dashboard") await reviewDashboard(req, res, url);
     else if (route === "GET /api/okf/graph") await graphRead(req, res, url);
+    else if (route === "GET /api/okf/graph/node") await graphNodeDetail(req, res, url);
     else if (route === "GET /api/okf/graph/recommendation-tasks") await graphAuxiliary(req, res, url, "tasks");
     else if (route === "GET /api/okf/graph/edge-reviews") await graphAuxiliary(req, res, url, "reviews");
     else if (route === "GET /api/okf/graph/postgres-read") await graphAuxiliary(req, res, url, "postgres_read");
@@ -1095,4 +1150,12 @@ function createWorkspaceApi(deps) {
   };
 }
 
-module.exports = { createWorkspaceApi, qualityAssessment, REVIEW_FROM_UI, REVIEW_TO_UI };
+module.exports = {
+  createWorkspaceApi,
+  qualityAssessment,
+  graphConceptId,
+  conceptGraphNode,
+  graphConceptEvidence,
+  REVIEW_FROM_UI,
+  REVIEW_TO_UI,
+};

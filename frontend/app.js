@@ -5365,7 +5365,12 @@ async function openGraphNode(nodeKey) {
     state.okfGraphNodeDetail = detail;
     renderGraphNodeDetail();
   } catch (error) {
-    $("#graphNodeDetail").innerHTML = `<p class="warning-copy">Node detail failed: ${escapeHtml(compactError(error.message))}</p>`;
+    state.okfGraphNodeDetail = buildStaticGraphNodeDetail(nodeKey);
+    renderGraphNodeDetail();
+    const detailPanel = $("#graphNodeDetail");
+    if (detailPanel && state.okfGraphNodeDetail?.node) {
+      detailPanel.insertAdjacentHTML("afterbegin", `<p class="warning-copy">Live detail is temporarily unavailable. Showing the loaded graph snapshot. ${escapeHtml(compactError(error.message))}</p>`);
+    }
   }
 }
 
