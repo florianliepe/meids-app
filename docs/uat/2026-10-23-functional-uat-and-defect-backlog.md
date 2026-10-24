@@ -45,6 +45,7 @@ Covered paths:
 | UAT-017 | P0 | A completed chat answer appeared briefly and then disappeared. | Five-minute token refresh and interaction-setting changes destroyed and recreated the embedded chat DOM. Simple Memory did not guarantee that the widget would reconstruct the transcript. | Token lifetime is one hour by default. Token and setting changes no longer reload chat automatically; reconnect is explicit so the visible answer is preserved. | Fixed and live-tested |
 | UAT-018 | P1 | Voice Capture showed `Ready` although the configured model was rejected by the provider. | Readiness checked only for key/base/model strings and supplied an unverified default model. | Readiness now requires an explicit model and transport mode, exposes both in health status, and uses the live-probed Gateway configuration. | Fixed and live-tested |
 | UAT-019 | P2 | Opening Voice Capture emitted two 404 warnings and left example/coverage controls without data. | The production frontend called `ui-uat-samples` and `real-coverage`, but the PostgreSQL workspace API did not expose those routes. | Added authenticated sample and twin-scoped real-coverage endpoints and pinned them in the audio-upload contract test. | Fixed and live-tested |
+| UAT-020 | P1 | Selecting an ingested knowledge node displayed `Node detail failed: Not found`, although the node was present in the graph. | The frontend called `GET /api/okf/graph/node`, but the PostgreSQL workspace API implemented only the graph collection route. | Added the missing twin-scoped, RLS-backed node-detail route using the same projection as the graph overview. Added normalized evidence output and a frontend snapshot fallback for rolling-deployment skew. | Fixed and live-tested |
 
 ## Passed acceptance evidence
 
@@ -60,6 +61,7 @@ Covered paths:
 - Butler classified the call as an approved completed skill run with `approval.required=false`, so normal execution no longer encounters the creation approval gate.
 - On 2026-10-24, the authenticated Azure frontend uploaded a synthetic WAV through Source Upload. The Eraneos AI Gateway `gemini-3.8-flash` model returned `Dies ist ein MEIDs Audiotranskription Test`, Voice Capture reported backend speech-to-text as configured, and the Persona Modeler opened the expected clarification flow with review-gated transcript evidence.
 - Backend and frontend deployments for commit `602243f` completed successfully. The production credential remained a Key Vault reference; no API key was sent to the browser.
+- On 2026-10-24, commit `8e5311e` deployed the graph node-detail contract. Authenticated Azure UAT opened an approved concept and returned its content, evidence, governance state, and Actor-readiness data with no 404 and no snapshot fallback.
 
 ## Decision log
 
