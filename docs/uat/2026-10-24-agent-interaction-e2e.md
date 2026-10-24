@@ -93,4 +93,5 @@ Data policy: synthetic data only; generated knowledge remains `review_needed`
 - `npm run check:agents`: passed.
 - `npm run check:backend`: passed, including 50 hosted API route contracts.
 - Azure frontend and backend deployment workflows for the preceding context fixes: passed.
+- Live post-answer filter probe `uat_post_answer_filter_20261024`: HTTP 201 with `post_turn_learning=not_recommended`.
 - `npm test` is not defined in this repository; the repository-specific check suites above are the authoritative validation commands.

@@ -27,6 +27,11 @@
     "http_backed_duplicate_scoring": "passed",
     "ordinary_turn_learning_filter": "passed"
   },
+  "post_answer_filter_probe": {
+    "trace_id": "uat_post_answer_filter_20261024",
+    "http_status": 201,
+    "post_turn_learning": "not_recommended"
+  },
   "residuals": [
     "Stale pre-deployment browser sessions require reconnect to acquire signed knowledge context.",
     "Synthetic review records created before contract hardening require human rejection.",
