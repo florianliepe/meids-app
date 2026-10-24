@@ -169,8 +169,8 @@ function validateWorkflow(agent, workflow, workflowPath) {
     validateEmbeddedActor(workflow, workflowPath);
     return;
   }
-  if (!Array.isArray(workflow.nodes) || workflow.nodes.length < 5) {
-    fail(`${rel(workflowPath)} must include webhook, AI Agent, model, adapter, and response nodes`);
+  if (!Array.isArray(workflow.nodes) || workflow.nodes.length < 4) {
+    fail(`${rel(workflowPath)} must include a trigger, AI Agent, model, and response adapter`);
   }
 
   const receive = nodeByName(workflow, "Receive request");
@@ -180,7 +180,10 @@ function validateWorkflow(agent, workflow, workflowPath) {
   const response = nodeByName(workflow, agent.responseNode);
   const returnJson = nodeByName(workflow, "Return JSON");
 
-  if (!receive || receive.type !== "n8n-nodes-base.webhook") fail(`${rel(workflowPath)} missing Receive request webhook`);
+  const callableOnly = !receive && agent.agent_id !== "actor_twin";
+  if (!callableOnly && (!receive || receive.type !== "n8n-nodes-base.webhook")) {
+    fail(`${rel(workflowPath)} missing Receive request webhook`);
+  }
   if (agent.agent_id !== "actor_twin") {
     if (!workflowCall || workflowCall.type !== "n8n-nodes-base.executeWorkflowTrigger") {
       fail(`${rel(workflowPath)} missing Receive workflow call Execute Workflow Trigger`);
@@ -189,9 +192,11 @@ function validateWorkflow(agent, workflow, workflowPath) {
   if (!ai || !String(ai.type || "").includes("langchain.agent")) fail(`${rel(workflowPath)} missing ${agent.aiNode}`);
   if (!model || !String(model.type || "").includes("lmChat")) fail(`${rel(workflowPath)} missing ${agent.modelNode}`);
   if (!response || response.type !== "n8n-nodes-base.code") fail(`${rel(workflowPath)} missing response adapter code node`);
-  if (!returnJson || returnJson.type !== "n8n-nodes-base.respondToWebhook") fail(`${rel(workflowPath)} missing Return JSON node`);
+  if (!callableOnly && (!returnJson || returnJson.type !== "n8n-nodes-base.respondToWebhook")) {
+    fail(`${rel(workflowPath)} missing Return JSON node`);
+  }
 
-  if (!hasAcceptedInputPath(workflow, agent, "Receive request")) {
+  if (receive && !hasAcceptedInputPath(workflow, agent, "Receive request")) {
     fail(`${rel(workflowPath)} must route Receive request to ${agent.aiNode}`);
   }
   if (agent.agent_id !== "actor_twin" && !hasAcceptedInputPath(workflow, agent, "Receive workflow call")) {
@@ -200,7 +205,9 @@ function validateWorkflow(agent, workflow, workflowPath) {
   if (!hasMainPath(workflow, agent.aiNode, agent.responseNode)) {
     fail(`${rel(workflowPath)} must route ${agent.aiNode} to ${agent.responseNode}`);
   }
-  if (!hasAcceptedResponsePath(workflow, agent)) {
+  const callableResponse = callableOnly
+    && (workflow.connections?.[agent.responseNode]?.main || []).every((group) => !group || group.length === 0);
+  if (!callableResponse && !hasAcceptedResponsePath(workflow, agent)) {
     fail(`${rel(workflowPath)} must route ${agent.responseNode} to Return JSON`);
   }
   if (!hasAiModelConnection(workflow, agent.modelNode, agent.aiNode)) {
@@ -212,7 +219,7 @@ function validateWorkflow(agent, workflow, workflowPath) {
   if (!response.parameters?.jsCode?.includes("trace_id")) fail(`${rel(workflowPath)} response adapter must preserve trace_id`);
   if (!response.parameters?.jsCode?.includes("agent_id")) fail(`${rel(workflowPath)} response adapter must preserve agent_id`);
   if (agent.agent_id === "knowledge_fabric_agent") {
-    for (const inputNode of ["Receive request", "Receive workflow call"]) {
+    for (const inputNode of receive ? ["Receive request", "Receive workflow call"] : ["Receive workflow call"]) {
       if (!hasKnowledgeFabricRetrievalPath(workflow, inputNode)) {
         fail(`${rel(workflowPath)} must expose a read-only retrieval path from ${inputNode}`);
       }

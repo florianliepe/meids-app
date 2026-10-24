@@ -137,7 +137,7 @@ for (const workflowFile of workflowFiles) {
     if (!/input\.input\?\.message \|\| input\.query \|\| input\.message/.test(raw)) {
       fail(`${path.relative(root, workflowFile)} must inspect the top-level workflow-tool query for explicit skill creation intent.`);
     }
-    if (!/const isCreateSkill = explicitCreation \|\|/.test(raw)) {
+    if (!/const isCreateSkill = (?:!approvedSkillExecution && \()?explicitCreation \|\|/.test(raw)) {
       fail(`${path.relative(root, workflowFile)} must gate an explicit user request to create a skill even when Actor routing metadata is incomplete.`);
     }
     if (!/status: approvalRequired \? 'approval_required' : 'completed'/.test(raw)) {

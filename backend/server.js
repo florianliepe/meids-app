@@ -1202,7 +1202,9 @@ async function handlePostAnswerTrace(req, res) {
   jsonResponse(res, 201, {
     status: "stored",
     trace_id: traceId,
-    post_turn_learning: postTurnLearningEnabled() ? "queued" : "disabled",
+    post_turn_learning: record.trace_learning_recommended
+      ? (postTurnLearningEnabled() ? "queued" : "disabled")
+      : "not_recommended",
   });
 }
 

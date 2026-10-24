@@ -1,0 +1,36 @@
+{
+  "status": "passed_with_residuals",
+  "date": "2026-10-24",
+  "test_twin": "codex-platform-uat-20261022",
+  "knowledge_fabric_workflow": {
+    "previous_id": "oPs77Qzrg9Repzgp",
+    "active_v4_id": "dUkrCHpkLmqmFc7I",
+    "roll_forward_reason": "Integrated executions remained pinned to a stale published snapshot."
+  },
+  "executions": {
+    "grounded_skill_actor": "34698",
+    "grounded_skill_retrieval": "34699",
+    "critical_faculty": "34690",
+    "knowledge_retrieval_interviewer": "34684",
+    "learning_agent_v4": "34712",
+    "knowledge_fabric_v4_learning": "34713",
+    "ordinary_retrieval_after_filter": "34739"
+  },
+  "checks": {
+    "grounded_fail_closed": "passed",
+    "no_fabricated_skill_evidence": "passed",
+    "busy_guard": "passed",
+    "identity_and_twin_context": "passed",
+    "detached_learning": "passed",
+    "structured_learning_persistence": "passed",
+    "trace_evidence_preserved": "passed",
+    "http_backed_duplicate_scoring": "passed",
+    "ordinary_turn_learning_filter": "passed"
+  },
+  "residuals": [
+    "Stale pre-deployment browser sessions require reconnect to acquire signed knowledge context.",
+    "Synthetic review records created before contract hardening require human rejection.",
+    "Learning Agent latency remains high but is detached from the foreground response.",
+    "Knowledge Fabric v3 remains active temporarily as rollback."
+  ]
+}

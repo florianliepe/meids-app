@@ -1,0 +1,9 @@
+{
+  "status": "applied",
+  "reason": "n8n integrated subworkflow executions remained pinned to the previous Knowledge Fabric snapshot after publish and lifecycle refresh",
+  "old_knowledge_workflow_id": "oPs77Qzrg9Repzgp",
+  "new_knowledge_workflow_id": "dUkrCHpkLmqmFc7I",
+  "actor_twin_workflow_id": "eKI3qM7nyCNn9r1q",
+  "learning_agent_workflow_id": "zX0s3hOByJ4HWQye",
+  "rollback": "Rebind Actor Twin and Learning Agent to old_knowledge_workflow_id; the v3 workflow remains active."
+}

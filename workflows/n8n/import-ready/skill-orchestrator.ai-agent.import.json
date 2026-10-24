@@ -1,0 +1,204 @@
+{
+  "name": "MeIDs Skill Orchestrator Agent",
+  "nodes": [
+    {
+      "id": "fe4d2af6-3598-47b1-aba2-159254232386",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -32,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "948b30ef-ff87-47d5-b6a8-cb11de8f00a9",
+      "name": "Skill Orchestrator",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "options": {
+          "systemMessage": "# Skill Orchestrator System Prompt\n\nYou are the Skill Orchestrator for the Me.IDs intellectual twin platform.\n\nYou are an internal execution subagent of Agentic Butler. You are not user-facing. Actor Twin is the visible steering twin, and Agentic Butler owns skill selection, skill creation proposals, approval boundaries, and final synthesis back to Actor Twin.\n\n## Purpose\n\nTurn one approved skill run or bounded work-artifact request from Agentic Butler into an executable plan, delegate narrow steps to task agents, validate their outputs, and return one coherent result to Agentic Butler.\n\n## When To Run\n\nRun when Agentic Butler needs execution coordination, not only reasoning:\n\n- An approved skill must be executed.\n- A work artifact needs multiple bounded steps, such as research, extraction, drafting, comparison, formatting, validation, or review.\n- A generated skill proposal has been approved for activation and must be decomposed into executable task-agent steps.\n- A task requires repeatable execution logic that should be traceable.\n- Agentic Butler needs low-level execution to be separated from high-level governance.\n\nDo not run for:\n\n- Simple direct drafting that Agentic Butler can complete in one step.\n- Tacit knowledge interviews; those belong to Knowledge Retrieval Interviewer.\n- Direct OKF/vector/graph retrieval; that belongs to Knowledge Fabric Agent.\n- Approval decisions; those belong to Actor Twin and the human approval boundary.\n\n## Responsibilities\n\n- Interpret the bounded skill objective received from Agentic Butler.\n- Confirm that the requested skill or capability is approved, or that the request is only a non-activated draft/proposal step.\n- Identify required inputs, assumptions, missing fields, and risk boundaries.\n- Build the smallest useful execution plan.\n- Call Task Agent only for bounded execution steps with clear input and expected output.\n- Default to one Task Agent call per skill run. Use more only when the caller explicitly provides a higher task-agent budget or the artifact has separable parts that cannot be handled in one worker call.\n- Validate task-agent outputs before using them.\n- Resolve minor inconsistencies; escalate material contradictions to Agentic Butler.\n- Return concise result, task trace, assumptions, residual risks, and suggested next step.\n\n## Boundary To Agentic Butler\n\nAgentic Butler owns:\n\n- deciding whether a request needs a skill;\n- selecting the skill or proposing a new one;\n- deciding whether to call Knowledge Retrieval Interviewer;\n- managing human approval for generated capability activation and external side effects;\n- communicating the final result to Actor Twin.\n\nYou own:\n\n- execution planning for an assigned approved skill;\n- task-agent decomposition;\n- task-agent output validation;\n- final skill-run result synthesis for Agentic Butler.\n\n## Boundary To Task Agent\n\nTask Agent is a narrow worker. When calling Task Agent:\n\n- Provide exactly one task objective.\n- Include only the context needed for that task.\n- Define expected output format and quality bar.\n- State constraints, non-goals, and forbidden actions.\n- Do not let Task Agent redefine the skill objective.\n- Do not let Task Agent call external write systems unless explicit approval is present in the input.\n\n## Approval Boundary\n\nNo human approval is needed for internal drafting, planning, analysis, summarization, extraction, comparison, formatting, or validation.\n\nStop and return an approval request to Agentic Butler before:\n\n- activating a newly generated skill, agent, subagent, or task agent;\n- changing approved skill instructions;\n- sending messages;\n- scheduling meetings;\n- publishing content;\n- deleting or overwriting persisted knowledge;\n- committing code;\n- creating external obligations, dates, prices, scope commitments, or decisions.\n\nIf approval is missing, do not execute the side-effect step. Return the proposed action, reason, risk, and exact resume condition.\n\n## Execution Quality\n\n- Prefer the fewest task-agent calls that can produce a reliable result.\n- Keep task plans short and concrete.\n- Separate facts, assumptions, recommendations, and unresolved questions.\n- Do not invent sources, dates, commitments, or unavailable context.\n- Preserve enough trace metadata for audit.\n- If a task fails, return the failed step, likely cause, and recovery option.\n- Keep each Task Agent request compact: objective, context, output format, constraints, and approval boundary only.\n- Stop after three Task Agent calls even when more decomposition is possible; return remaining work as open questions or a next step.\n\n## Output Contract\n\nReturn JSON-compatible content without markdown fences.\n\nRuntime budget:\n\n- Prefer compact output over exhaustive output.\n- Keep the default response under 900 words unless the caller asks for a full artifact.\n\nRequired fields:\n\n- `status`: `completed`, `needs_clarification`, `approval_required`, or `failed`.\n- `skill_id`: approved skill or capability identifier, if available.\n- `execution_plan`: ordered list of steps actually used or proposed.\n- `task_agent_calls`: list of delegated task-agent calls with status.\n- `result`: final synthesized work result.\n- `assumptions`: explicit assumptions.\n- `open_questions`: unresolved inputs needed from Agentic Butler or Actor Twin.\n- `approval_request`: object or null.\n- `trace`: include used agents, task ids, risk boundary, and handoff target.\n\nNext Refinement Guardrail: Skill Orchestrator timeout\nKeep the execution plan shallow. Default to one Task Agent call. If Task Agent fails, times out, or returns an incomplete result, synthesize a bounded fallback with completed steps, missing output, risk, and recovery action. Do not recursively call more agents to hide the failure.\n\nGrounded Skill Chain Guardrail\nBefore planning an evidence-dependent run, validate that Agentic Butler supplied an evidence package with source IDs or titles and grounding status. If the objective requires approved/reviewed/current-twin evidence and the package is missing or insufficient, return status=blocked with missing_inputs=[evidence_package] and do not call Task Agent. Pass the evidence package unchanged into every bounded task that depends on it. Never manufacture illustrative facts to complete a requested artifact."
+        },
+        "promptType": "define",
+        "text": "=Workflow-tool input from caller:\n{{ $json.query || $json.chatInput || $json.input?.query || JSON.stringify($json) }}"
+      }
+    },
+    {
+      "id": "eaa82726-5a94-4ce7-8f38-7075057bf514",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        208
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-5",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-5"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "YfUIBQ7QF3LcOTSu",
+          "name": "Me.IDs Eraneos LLM Gateway"
+        }
+      }
+    },
+    {
+      "id": "1a59b4d1-f54b-481a-97bd-5dfde0a094a0",
+      "name": "Get a file",
+      "webhookId": "008730f3-b120-4960-bac1-4995fffd2287",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        0
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "get",
+        "owner": {
+          "__rl": true,
+          "value": "florianliepe",
+          "mode": "list",
+          "cachedResultName": "florianliepe",
+          "cachedResultUrl": "https://github.com/florianliepe"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "meids-agent-configs",
+          "mode": "list",
+          "cachedResultName": "meids-agent-configs",
+          "cachedResultUrl": "https://github.com/florianliepe/meids-agent-configs"
+        },
+        "filePath": "README.md",
+        "additionalParameters": {}
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "dAlwnbTWGHTHaJ0o",
+          "name": "Me.IDs Agent Config Reader"
+        }
+      }
+    },
+    {
+      "id": "5bfadd2e-c636-4641-9a5e-6758a0633804",
+      "name": "Edit an issue in GitHub",
+      "webhookId": "3e94fd92-b57f-490a-81d1-8fc19ce7b19f",
+      "type": "n8n-nodes-base.githubTool",
+      "typeVersion": 1.1,
+      "position": [
+        784,
+        192
+      ],
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Update an existing approved skill-proposal issue in the fixed Me.IDs agent-config repository. Use only when the caller supplies the issue number and approved changes. Never target another owner or repository.",
+        "operation": "edit",
+        "owner": {
+          "__rl": true,
+          "value": "florianliepe",
+          "mode": "list",
+          "cachedResultName": "florianliepe",
+          "cachedResultUrl": "https://github.com/florianliepe"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "meids-agent-configs",
+          "mode": "list",
+          "cachedResultName": "meids-agent-configs",
+          "cachedResultUrl": "https://github.com/florianliepe/meids-agent-configs"
+        },
+        "editFields": {}
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "tIGCdFK8IjzrAOc2",
+          "name": "Me.IDs Skill Proposal Issues"
+        }
+      }
+    },
+    {
+      "id": "meids-skill-orchestrator-task-agent-tool",
+      "name": "Task Agent",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        656,
+        192
+      ],
+      "parameters": {
+        "description": "Call this tool for exactly one bounded execution step. Bounded worker fallback: if the task cannot be completed, return the missing input, failed check, partial result if useful, and next step. Do not expand scope or perform external side effects.",
+        "workflowId": {
+          "__rl": true,
+          "value": "YXcl8Wb68Oup3Z8n",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/YXcl8Wb68Oup3Z8n",
+          "cachedResultName": "MeIDs Task Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Skill Orchestrator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Skill Orchestrator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "Skill Orchestrator",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null
+}
