@@ -5,6 +5,7 @@ const root = path.resolve(__dirname, "..");
 const actor = JSON.parse(fs.readFileSync(path.join(root, "workflows", "n8n", "actor-twin.workflow.json"), "utf8"));
 const learning = JSON.parse(fs.readFileSync(path.join(root, "workflows", "n8n", "learning-agent.workflow.json"), "utf8"));
 const frontend = fs.readFileSync(path.join(root, "frontend", "app.js"), "utf8");
+const backend = fs.readFileSync(path.join(root, "backend", "server.js"), "utf8");
 
 function fail(message) {
   console.error(message);
@@ -59,6 +60,15 @@ const code = normalizer.parameters?.jsCode || "";
 for (const marker of ["knowledge_access_token", "trace.twin_id", "post_turn_learning", "identity.activeTwinId"]) {
   if (!code.includes(marker)) fail(`Learning context normalizer is missing ${marker}.`);
 }
+for (const marker of [
+  "source_interaction_summary",
+  "_learning_context: learningContext",
+  "knowledge_access_token: learningContext.knowledge_access_token",
+  "input_summary: inputSummary",
+  "output_summary: outputSummary",
+]) {
+  if (!backend.includes(marker)) fail(`Post-turn backend dispatch is missing ${marker}.`);
+}
 for (const field of ["knowledge_access_token", "tenant_id", "user_id", "twin_id", "organization_id"]) {
   const expression = knowledgeTool.parameters?.workflowInputs?.value?.[field] || "";
   if (!expression.includes("Normalize learning context")) {
@@ -84,6 +94,7 @@ console.log(JSON.stringify({
   checks: [
     "actor_learning_tool_propagates_identity_context",
     "inline_and_post_turn_inputs_are_normalized",
+    "post_turn_dispatch_contains_trace_content_and_transient_auth",
     "learning_to_knowledge_fabric_preserves_auth_and_twin_scope",
     "duplicate_scoring_uses_user_scoped_backend_auth_with_guarded_fallback",
     "twin_switch_recreates_embedded_chat_context",

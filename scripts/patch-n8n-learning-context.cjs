@@ -30,6 +30,7 @@ const query = String(
   root.query
   || root.chatInput
   || nestedInput.query
+  || root.source_interaction_summary
   || trace.output_summary
   || trace.input_summary
   || ''

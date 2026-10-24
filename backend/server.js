@@ -715,14 +715,17 @@ async function upsertPostgresTrace(record) {
   );
 }
 
-async function appendTrace(record) {
+async function appendTrace(record, learningContext = {}) {
   if (postgresEnabled()) {
     await upsertPostgresTrace(record);
   } else {
     await ensureDataDir();
     await fs.appendFile(TRACE_FILE, `${JSON.stringify(record)}\n`, "utf8");
   }
-  queuePostTurnLearning(record);
+  queuePostTurnLearning({
+    ...record,
+    _learning_context: learningContext,
+  });
 }
 
 async function postgresManagedIdentityAccessToken() {
@@ -1186,7 +1189,16 @@ async function handlePostAnswerTrace(req, res) {
     grounding: supplied.grounding && typeof supplied.grounding === "object" ? supplied.grounding : {},
     trace_learning_recommended: supplied.trace_learning_recommended !== false,
   };
-  await appendTrace(record);
+  await appendTrace(record, {
+    knowledge_access_token: body.knowledge_access_token
+      || body.auth_context?.knowledge_access_token
+      || body.metadata?.authorization?.knowledgeAccessToken
+      || "",
+    tenant_id: mapping.tenant_id,
+    user_id: mapping.user_id,
+    twin_id: twinId,
+    organization_id: mapping.tenant_id,
+  });
   jsonResponse(res, 201, {
     status: "stored",
     trace_id: traceId,
@@ -1514,14 +1526,30 @@ function postTurnLearningPayloadFromTrace(record = {}) {
   if (!recommendation) return null;
   const response = record.response || {};
   const output = response.output || record.output || {};
+  const trace = record.trace && typeof record.trace === "object" ? record.trace : {};
+  const learningContext = record._learning_context && typeof record._learning_context === "object"
+    ? record._learning_context
+    : {};
+  const inputSummary = record.input_summary || trace.input_summary || "";
+  const outputSummary = record.output_summary || trace.output_summary || output.summary || output.answer || "";
+  const interactionSummary = recommendation.summary
+    || [inputSummary && `User input: ${inputSummary}`, outputSummary && `Actor output: ${outputSummary}`]
+      .filter(Boolean)
+      .join("\n");
   return {
     request_id: record.request_id || response.request_id || makeId("learn"),
     trace_id: record.trace_id || response.trace?.trace_id || "",
     trace_chain_id: record.trace_chain_id || response.trace?.trace_chain_id || "",
     source_agent_id: record.agent_id || response.agent_id || "",
     source_type: "agent_trace",
-    source_interaction_summary: recommendation.summary || output.summary || output.answer || "",
+    query: interactionSummary,
+    source_interaction_summary: interactionSummary,
     trace_learning_recommended: recommendation,
+    knowledge_access_token: learningContext.knowledge_access_token || "",
+    tenant_id: learningContext.tenant_id || record.tenant_id || "",
+    user_id: learningContext.user_id || record.user_id || "",
+    twin_id: learningContext.twin_id || record.twin_id || "",
+    organization_id: learningContext.organization_id || record.tenant_id || "",
     source_trace: {
       agent_id: record.agent_id || "",
       target_agent: record.target_agent || "",
@@ -1529,6 +1557,8 @@ function postTurnLearningPayloadFromTrace(record = {}) {
       status: record.status || "",
       handoff_status: record.handoff_status || "",
       approval_required: Boolean(record.approval_required),
+      input_summary: inputSummary,
+      output_summary: outputSummary,
     },
     target_review_state: recommendation.review_state || "review_needed",
   };
