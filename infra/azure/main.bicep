@@ -55,11 +55,17 @@ param eraneosAiGatewayBaseUrl string = 'https://ai-gateway.eraneos.com/v1'
 param eraneosAiGatewayApiKeySecretName string = 'meids-eraneos-llm-gateway-api-key'
 @description('Gateway model used for audio-input transcription. Leave empty to disable voice transcription.')
 param eraneosAiGatewayTranscriptionModel string = ''
+@description('Comma-separated fallback audio-input models used only when the primary returns an empty or content-filtered response.')
+param eraneosAiGatewayTranscriptionFallbackModels string = ''
 @allowed([
   'audio_transcriptions'
   'chat_completions_audio'
 ])
 param eraneosAiGatewayTranscriptionMode string = 'chat_completions_audio'
+@description('Maximum duration for one upstream audio transcription request. Long recordings run asynchronously, but the provider call remains bounded.')
+@minValue(30000)
+@maxValue(600000)
+param transcriptionTimeoutMs int = 360000
 param allowedFrontendOrigins string
 param actorTwinWebhookUrl string
 param knowledgeFabricWebhookUrl string
@@ -285,7 +291,9 @@ resource backendAppSettings 'Microsoft.Web/sites/config@2023-12-01' = {
     ERANEOS_AI_GATEWAY_BASE_URL: eraneosAiGatewayBaseUrl
     ERANEOS_AI_GATEWAY_API_KEY: empty(eraneosAiGatewayApiKeySecretName) ? '' : '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=${eraneosAiGatewayApiKeySecretName})'
     ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODEL: eraneosAiGatewayTranscriptionModel
+    ERANEOS_AI_GATEWAY_TRANSCRIPTION_FALLBACK_MODELS: eraneosAiGatewayTranscriptionFallbackModels
     ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODE: eraneosAiGatewayTranscriptionMode
+    TRANSCRIPTION_TIMEOUT_MS: string(transcriptionTimeoutMs)
     MEIDS_ALLOW_DETERMINISTIC_VECTORS: environment == 'uat' ? 'true' : 'false'
     MEIDS_ENFORCE_KNOWLEDGE_AUTH: string(enableKnowledgeAuthorization)
     MEIDS_AUTH_CONTEXT_SIGNING_KEY: enableKnowledgeAuthorization ? '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=${knowledgeAuthorizationSigningSecretName})' : ''

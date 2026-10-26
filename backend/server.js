@@ -191,10 +191,16 @@ function openAiTranscriptionConfig() {
     : process.env.OPENAI_TRANSCRIPTION_MODE || "audio_transcriptions"
   ).trim().toLowerCase();
   const supportedModes = new Set(["audio_transcriptions", "chat_completions_audio"]);
+  const fallbackModels = String(useGateway ? process.env.ERANEOS_AI_GATEWAY_TRANSCRIPTION_FALLBACK_MODELS || "" : "")
+    .split(",")
+    .map((candidate) => candidate.trim())
+    .filter((candidate, index, candidates) => candidate && candidate !== model && candidates.indexOf(candidate) === index)
+    .slice(0, 2);
   return {
     apiKey,
     baseUrl,
     model,
+    fallbackModels,
     mode,
     provider: useGateway ? "eraneos_ai_gateway" : "openai",
     configured: Boolean(apiKey && baseUrl && model && supportedModes.has(mode)),
@@ -241,7 +247,7 @@ function chatCompletionText(data) {
   return String(data.output_text || data.text || data.transcript || "").trim();
 }
 
-async function transcribeAudioWithChatCompletion(file, config) {
+async function transcribeAudioWithChatCompletion(file, config, model = config.model) {
   const maxTokens = Math.max(1_000, Math.min(Number(process.env.TRANSCRIPTION_MAX_OUTPUT_TOKENS || 16_384), 65_536));
   const timeoutMs = Math.max(30_000, Math.min(Number(process.env.TRANSCRIPTION_TIMEOUT_MS || 180_000), 600_000));
   const response = await fetch(`${config.baseUrl}/chat/completions`, {
@@ -251,7 +257,7 @@ async function transcribeAudioWithChatCompletion(file, config) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: config.model,
+      model,
       temperature: 0,
       max_tokens: maxTokens,
       reasoning_effort: "none",
@@ -283,7 +289,18 @@ async function transcribeAudioWithChatCompletion(file, config) {
     error.statusCode = 422;
     throw error;
   }
-  return chatCompletionText(data);
+  const transcript = chatCompletionText(data);
+  if (!transcript) {
+    const finishReason = String(data.choices?.[0]?.finish_reason || "unknown").toLowerCase();
+    const error = new Error(finishReason === "content_filter"
+      ? `The transcription model ${model} blocked the audio response. A configured fallback model may retry it.`
+      : `The transcription model ${model} returned no readable transcript (finish reason: ${finishReason}).`);
+    error.statusCode = 422;
+    error.fallbackEligible = true;
+    error.finishReason = finishReason;
+    throw error;
+  }
+  return transcript;
 }
 
 async function transcribeAudioWithOpenAiCompatibleGateway(file) {
@@ -294,7 +311,34 @@ async function transcribeAudioWithOpenAiCompatibleGateway(file) {
     throw error;
   }
   if (config.mode === "chat_completions_audio") {
-    return transcribeAudioWithChatCompletion(file, config);
+    const models = [config.model, ...config.fallbackModels];
+    let lastError;
+    for (const [index, model] of models.entries()) {
+      try {
+        const transcript = await transcribeAudioWithChatCompletion(file, config, model);
+        if (index > 0) {
+          console.warn(JSON.stringify({
+            event: "voice_transcription_model_fallback",
+            status: "completed",
+            primary_model: config.model,
+            selected_model: model,
+          }));
+        }
+        return transcript;
+      } catch (error) {
+        lastError = error;
+        const fallbackModel = models[index + 1];
+        if (!error.fallbackEligible || !fallbackModel) throw error;
+        console.warn(JSON.stringify({
+          event: "voice_transcription_model_fallback",
+          status: "retrying",
+          rejected_model: model,
+          finish_reason: error.finishReason || "unknown",
+          fallback_model: fallbackModel,
+        }));
+      }
+    }
+    throw lastError;
   }
   const form = new FormData();
   form.append("model", config.model);

@@ -54,10 +54,13 @@ function main() {
   assert.match(workspaceApi, /transcription_provider: transcriptionConfig\(\)\.provider/);
   assert.match(workspaceApi, /transcription_transport: transcriptionConfig\(\)\.mode/);
   assert.match(server, /ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODE/);
+  assert.match(server, /ERANEOS_AI_GATEWAY_TRANSCRIPTION_FALLBACK_MODELS/);
   assert.match(server, /chat_completions_audio/);
   assert.match(server, /type: "input_audio"/);
   assert.match(server, /reasoning_effort: "none"/);
   assert.match(server, /Transcription output was truncated/);
+  assert.match(server, /finishReason === "content_filter"/);
+  assert.match(server, /voice_transcription_model_fallback/);
   assert.doesNotMatch(server, /async function handleVoiceConceptTranscribe/);
   assert.match(frontend, /sourceType: "audio_document"/);
   assert.match(frontend, /transcriptions\/status\?job=/);
