@@ -10913,7 +10913,8 @@ async function closeVoiceConceptSession() {
 }
 
 async function loadSelectedVoiceConceptDraft(selectedPath = "") {
-  const path = selectedPath || $("#voiceDraftSelect")?.value || "";
+  const explicitPath = typeof selectedPath === "string" ? selectedPath : "";
+  const path = explicitPath || $("#voiceDraftSelect")?.value || "";
   if (!path) {
     setVoiceConversationStatus("pending", "Choose a voice concept draft to resume.");
     return;
