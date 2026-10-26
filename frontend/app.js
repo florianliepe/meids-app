@@ -10919,7 +10919,13 @@ async function loadSelectedVoiceConceptDraft(selectedPath = "") {
     return;
   }
   try {
-    const draft = await postJson("/api/voice/concepts/drafts/detail", { path });
+    const listedDraft = (state.voiceConceptDrafts || []).find((candidate) => candidate.path === path);
+    const detailResult = listedDraft || await postJson("/api/voice/concepts/drafts/detail", {
+      path,
+      twin: state.activeTwin,
+    });
+    const draft = detailResult?.draft || detailResult;
+    if (!draft?.transcript) throw new Error("Voice concept draft has no transcript.");
     state.voiceConceptSession = {
       transcript: draft.transcript || "",
       category: draft.category || "knowledge",
