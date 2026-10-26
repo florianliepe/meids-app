@@ -10919,7 +10919,14 @@ async function loadSelectedVoiceConceptDraft(selectedPath = "") {
     return;
   }
   try {
-    const listedDraft = (state.voiceConceptDrafts || []).find((candidate) => candidate.path === path);
+    let listedDraft = (state.voiceConceptDrafts || []).find((candidate) => candidate.path === path);
+    if (!listedDraft) {
+      const refreshed = await getJson(`/api/voice/concepts/drafts?twin=${encodeURIComponent(state.activeTwin)}&limit=20`);
+      state.voiceConceptDrafts = refreshed.drafts || [];
+      listedDraft = state.voiceConceptDrafts.find((candidate) => candidate.path === path);
+      renderVoiceConceptDraftSelect();
+      renderVoiceDraftQueue();
+    }
     const detailResult = listedDraft || await postJson("/api/voice/concepts/drafts/detail", {
       path,
       twin: state.activeTwin,

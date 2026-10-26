@@ -69,6 +69,7 @@ function main() {
   assert.match(frontend, /safeRefreshSyncStatus\(\{ includeArchive: false \}\)/);
   assert.match(frontend, /Draft closed safely/);
   assert.match(frontend, /state\.voiceConceptDrafts[\s\S]*find\(\(candidate\) => candidate\.path === path\)/);
+  assert.match(frontend, /refreshed = await getJson\(`\/api\/voice\/concepts\/drafts\?twin=/);
   assert.match(frontend, /const draft = detailResult\?\.draft \|\| detailResult/);
   assert.match(frontend, /await assessVoiceConcept\(\)/);
   assert.match(frontend, /source_type: state\.voiceConceptSession\.sourceType/);
