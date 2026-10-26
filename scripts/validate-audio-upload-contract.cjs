@@ -65,10 +65,15 @@ function main() {
   assert.match(frontend, /sourceType: "audio_document"/);
   assert.match(frontend, /transcriptions\/status\?job=/);
   assert.match(frontend, /Transcription is running in the backend/);
+  assert.match(frontend, /async function closeVoiceConceptSession/);
+  assert.match(frontend, /safeRefreshSyncStatus\(\{ includeArchive: false \}\)/);
+  assert.match(frontend, /Draft closed safely/);
   assert.match(frontend, /await assessVoiceConcept\(\)/);
   assert.match(frontend, /source_type: state\.voiceConceptSession\.sourceType/);
   assert.match(html, /id="sourceAudioConsent"/);
   assert.match(html, /id="sourceAudioTranscribeBtn"/);
+  assert.match(html, /id="voiceCloseBtn"/);
+  assert.match(html, /id="voiceCompletionHint"/);
 
   process.stdout.write("Audio upload contract valid: M4A/macOS support, format and size gates, scoped transcription, consent, and shared quality flow.\n");
 }

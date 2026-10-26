@@ -8811,6 +8811,7 @@ function bindVoice() {
   $("#voiceDraftBtn").addEventListener("click", saveVoiceConceptDraft);
   $("#voiceAgentHandoffBtn").addEventListener("click", prepareVoiceAgentHandoff);
   $("#voiceCommitBtn").addEventListener("click", commitVoiceConcept);
+  $("#voiceCloseBtn").addEventListener("click", closeVoiceConceptSession);
   $("#voiceLoadDraftBtn").addEventListener("click", loadSelectedVoiceConceptDraft);
   $("#voiceRefreshDraftsBtn").addEventListener("click", safeRefreshVoiceConceptDrafts);
   $("#voiceDraftQueue").addEventListener("click", handleVoiceDraftQueueClick);
@@ -9303,6 +9304,7 @@ async function initializeVoiceConceptFromTranscription(result, { sourceType, sou
   $("#voiceDraftBtn").disabled = false;
   $("#voiceAgentHandoffBtn").disabled = false;
   $("#voiceCommitBtn").disabled = true;
+  $("#voiceCloseBtn").disabled = false;
   $("#voiceEvidence").innerHTML = result.evidence
     ? `<strong>Transcript evidence prepared:</strong> <code>${escapeHtml(result.evidence.path)}</code><br><span class="muted-inline">The transcript remains untrusted evidence until the interview quality gate and human review are complete.</span>`
     : "";
@@ -9311,7 +9313,7 @@ async function initializeVoiceConceptFromTranscription(result, { sourceType, sou
   setVoiceConversationStatus("pending", "Transcript ready. Persona Modeler is checking what, how, why, who, and what happens next.");
   await assessVoiceConcept();
   await safeRefreshActivity();
-  await safeRefreshSyncStatus();
+  await safeRefreshSyncStatus({ includeArchive: false });
 }
 
 async function uploadSourceAudio() {
@@ -10774,6 +10776,9 @@ async function commitVoiceConcept() {
     $("#voiceDraftBtn").disabled = true;
     $("#voiceAgentHandoffBtn").disabled = true;
     state.voiceConceptSession.saved = true;
+    state.voiceConceptSession.draftSaved = false;
+    $("#voiceCloseBtn").disabled = false;
+    $("#voiceCloseBtn").textContent = "Close";
     const savedConcept = result.concept
       ? {
           ...result.concept,
@@ -10850,16 +10855,61 @@ async function saveVoiceConceptDraft() {
       <span class="muted-inline">Continue the conversation later, then save as a concept when ready.</span>
     `;
     state.voiceConceptSession.evidence = result.evidence || state.voiceConceptSession.evidence;
+    state.voiceConceptSession.draftSaved = true;
+    state.voiceConceptSession.draftPath = result.draft?.path || "";
     $("#voiceAgentHandoffBtn").disabled = false;
+    $("#voiceCloseBtn").disabled = false;
+    $("#voiceCloseBtn").textContent = "Finish later";
+    $("#voiceCompletionHint").textContent = "Draft saved. Finish later now, or continue until the concept quality gate is met.";
     setVoiceConversationStatus("draft", "Draft saved. Continue the interview later before committing it as knowledge.");
     await safeRefreshVoiceConceptDrafts();
     await safeRefreshActivity();
-    await safeRefreshSyncStatus();
+    await safeRefreshSyncStatus({ includeArchive: false });
     await safeRefreshVoiceConceptPreflight();
   } catch (error) {
     $("#voiceEvidence").innerHTML = `<span class="warning-copy">Draft save failed: ${escapeHtml(compactError(error.message))}</span>`;
     setVoiceConversationStatus("error", "Draft save failed. The current conversation remains open.");
   }
+}
+
+async function closeVoiceConceptSession() {
+  const session = state.voiceConceptSession;
+  if (!session?.transcript) return;
+  if (!session.saved && !session.draftSaved) {
+    const confirmed = await requestDecision({
+      eyebrow: "Voice Capture",
+      title: "Close without saving?",
+      body: "This conversation has not been saved as a draft or concept. Closing it will discard the current transcript and clarifications.",
+      confirmLabel: "Close without saving",
+      cancelLabel: "Keep editing",
+      danger: true,
+    });
+    if (!confirmed) return;
+  }
+  const wasSaved = Boolean(session.saved);
+  const wasDraft = Boolean(session.draftSaved);
+  state.voiceConceptSession = null;
+  state.voiceConceptCommitInProgress = false;
+  $("#transcriptBox").textContent = "No transcript yet.";
+  $("#voiceConceptAssessment").innerHTML = "";
+  $("#voiceClarificationInput").value = "";
+  $("#voicePromotionReviewNote").value = "";
+  $("#voiceEvidence").innerHTML = "";
+  $("#voiceClarifyBtn").disabled = true;
+  $("#voiceDraftBtn").disabled = true;
+  $("#voiceAgentHandoffBtn").disabled = true;
+  $("#voiceCommitBtn").disabled = true;
+  $("#voiceCloseBtn").disabled = true;
+  $("#voiceCloseBtn").textContent = "Close";
+  $("#voiceCompletionHint").textContent = "Start a recording or transcript to create a reviewable concept.";
+  renderVoiceTranscriptSyncStatus();
+  updateVoiceClarificationPrompt();
+  setVoiceConversationStatus("ready", wasSaved
+    ? "Concept closed. It remains available in Knowledge and Review."
+    : wasDraft
+      ? "Draft closed safely. Load it from Resume draft when you want to continue."
+      : "Conversation closed without saving.");
+  if (wasDraft) await safeRefreshVoiceConceptDrafts();
 }
 
 async function loadSelectedVoiceConceptDraft(selectedPath = "") {
@@ -10880,6 +10930,8 @@ async function loadSelectedVoiceConceptDraft(selectedPath = "") {
       conversationFingerprint: draft.conversation_fingerprint || "",
       assessment: draft.assessment || null,
       agent: { agent_mode: draft.metadata?.agent_mode || "draft-resume", n8n_ready: true },
+      draftSaved: true,
+      draftPath: draft.path || "",
     };
     $("#voiceConceptCategory").value = state.voiceConceptSession.category;
     $("#transcriptBox").textContent = state.voiceConceptSession.transcript || "Draft has no transcript.";
@@ -10891,6 +10943,9 @@ async function loadSelectedVoiceConceptDraft(selectedPath = "") {
     $("#voiceDraftBtn").disabled = false;
     $("#voiceAgentHandoffBtn").disabled = false;
     $("#voiceCommitBtn").disabled = !state.voiceConceptSession.assessment?.ready;
+    $("#voiceCloseBtn").disabled = false;
+    $("#voiceCloseBtn").textContent = "Finish later";
+    $("#voiceCompletionHint").textContent = "This draft is saved. Finish later safely, or continue the interview.";
     const criteria = draft.criteria?.version
       ? `<br><span class="muted-inline">Criteria: ${escapeHtml(draft.criteria.version)} · ${escapeHtml(draft.criteria.approval_state || "unknown")}</span>`
       : "";
@@ -10929,6 +10984,17 @@ function renderVoiceConceptAssessment() {
       : "Ready to save. The concept meets the active consistency and eligibility gate."
     : `Needs clarification. ${missing.length ? `Open dimensions: ${missing.join(", ")}.` : "Answer the next question to improve readiness."}`;
   setVoiceConversationStatus(assessment.ready ? "ready" : "pending", statusMessage);
+  const completionHint = $("#voiceCompletionHint");
+  if (completionHint) {
+    completionHint.textContent = saved
+      ? "Concept saved. Close this conversation when you are finished."
+      : session.draftSaved
+        ? "Draft saved. Finish later safely, or continue until the quality gate is met."
+        : assessment.ready
+          ? "Quality gate met. Save the concept, save a draft, or close without saving."
+          : "Save a draft to finish later, or answer the next question to unlock Save concept.";
+  }
+  $("#voiceCloseBtn").disabled = false;
   target.innerHTML = `
     <div class="voice-score-grid">
       <span class="${assessment.ready ? "ready" : "pending"}">${assessment.ready ? "Ready" : "Needs clarification"}</span>
@@ -24767,15 +24833,15 @@ function createStaticSkillDraft(description, nameHint = "") {
   };
 }
 
-async function refreshSyncStatus() {
+async function refreshSyncStatus({ includeArchive = true } = {}) {
   const filters = syncFilterPayload();
   const params = new URLSearchParams({ limit: "100" });
   if (filters.exclude_actions.length) params.set("exclude_actions", filters.exclude_actions.join(","));
   if (filters.exclude_actors.length) params.set("exclude_actors", filters.exclude_actors.join(","));
-  const [result, archive] = await Promise.all([
-    getJson(`/api/sync/status?${params.toString()}`),
-    refreshSyncArchiveBundle(),
-  ]);
+  const result = await getJson(`/api/sync/status?${params.toString()}`);
+  const archive = includeArchive
+    ? await refreshSyncArchiveBundle()
+    : { status: state.syncArchiveStatus || null, manifests: state.syncArchiveManifests || [] };
   state.syncStatus = result;
   state.syncArchiveStatus = archive.status;
   state.syncArchiveManifests = archive.manifests;
@@ -24786,9 +24852,9 @@ async function refreshSyncStatus() {
   renderQualityCockpit();
 }
 
-async function safeRefreshSyncStatus() {
+async function safeRefreshSyncStatus(options = {}) {
   try {
-    await refreshSyncStatus();
+    await refreshSyncStatus(options);
   } catch (error) {
     $("#syncStatus").textContent = "Sync endpoint unavailable. Restart the local MVP server.";
     $("#syncDetailPanel").innerHTML = "";

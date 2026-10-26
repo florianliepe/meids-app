@@ -397,7 +397,9 @@
                 <button id="voiceDraftBtn" class="secondary" type="button" disabled>Save draft</button>
                 <button id="voiceAgentHandoffBtn" class="secondary" type="button" disabled>Prepare for agent</button>
                 <button id="voiceCommitBtn" type="button" disabled>Save concept</button>
+                <button id="voiceCloseBtn" class="secondary" type="button" disabled>Close</button>
               </div>
+              <p id="voiceCompletionHint" class="muted-inline">Start a recording or transcript to create a reviewable concept.</p>
               <div id="voiceEvidence" class="evidence-box"></div>
               <div id="voiceTranscriptSyncStatus" class="evidence-box"></div>
               <div id="voiceAgentHandoffLedger" class="activity-list"></div>
@@ -1729,7 +1731,7 @@
       if (!window.__MEIDS_FILE_PROTOCOL__) {
         document.write('<script src="' + window.__MEIDS_ASSET_URL__("runtime-config.js?v=20261020-public-launch-auth") + '"><\/script>');
         document.write('<script src="' + window.__MEIDS_ASSET_URL__("api.js?v=20261020-public-launch-auth") + '"><\/script>');
-        document.write('<script src="' + window.__MEIDS_ASSET_URL__("app.js?v=20261026-async-audio") + '"><\/script>');
+        document.write('<script src="' + window.__MEIDS_ASSET_URL__("app.js?v=20261026-voice-finish") + '"><\/script>');
       }
     </script>
   </body>
