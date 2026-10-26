@@ -46,6 +46,7 @@ Covered paths:
 | UAT-018 | P1 | Voice Capture showed `Ready` although the configured model was rejected by the provider. | Readiness checked only for key/base/model strings and supplied an unverified default model. | Readiness now requires an explicit model and transport mode, exposes both in health status, and uses the live-probed Gateway configuration. | Fixed and live-tested |
 | UAT-019 | P2 | Opening Voice Capture emitted two 404 warnings and left example/coverage controls without data. | The production frontend called `ui-uat-samples` and `real-coverage`, but the PostgreSQL workspace API did not expose those routes. | Added authenticated sample and twin-scoped real-coverage endpoints and pinned them in the audio-upload contract test. | Fixed and live-tested |
 | UAT-020 | P1 | Selecting an ingested knowledge node displayed `Node detail failed: Not found`, although the node was present in the graph. | The frontend called `GET /api/okf/graph/node`, but the PostgreSQL workspace API implemented only the graph collection route. | Added the missing twin-scoped, RLS-backed node-detail route using the same projection as the graph overview. Added normalized evidence output and a frontend snapshot fallback for rolling-deployment skew. | Fixed and live-tested |
+| UAT-021 | P0 | A 2:19 Voice Capture recording ended with `Audio ingest failed: Backend call failure`, although speech-to-text was configured. | The App Service completed the provider request successfully in 95.762 seconds, after the Azure Static Web Apps linked-backend request boundary had already closed the browser connection. | Voice uploads now return `202 queued`; an append-only, user/twin-scoped PostgreSQL ledger records processing, completion, or failure, and the frontend polls a scoped status endpoint before starting the Persona Modeler flow. | Fixed; contract-tested, live rerun pending deployment |
 
 ## Passed acceptance evidence
 
@@ -108,6 +109,10 @@ Authorization refresh and setup changes update local state without destroying th
 ### D-11: Persist traces after the answer without changing it
 
 The n8n workflow writes the answer trace after the Actor completes and restores the Actor output as the terminal workflow item. Trace failure is observable but cannot replace the user-facing response.
+
+### D-12: Decouple long audio transcription from the frontend request boundary
+
+The authenticated upload request validates ownership, format, size, and twin scope, then returns a job ID immediately. Provider processing continues in the App Service and writes append-only job events under PostgreSQL RLS. The browser polls only its own twin-scoped job. This prevents Azure Static Web Apps proxy timeouts from being reported as provider failures. A job that survives neither completion nor failure for 12 minutes is shown as expired and can be retried; moving audio bytes to a durable queue remains a separate resilience improvement for process-recycle recovery.
 
 ## Release recommendation
 

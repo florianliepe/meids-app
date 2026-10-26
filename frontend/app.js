@@ -9263,7 +9263,24 @@ async function transcribeVoiceSource(file, { filename, category, sourceType, end
   form.append("twin", state.activeTwin);
   form.append("category", category || "knowledge");
   form.append("source_type", sourceType || "voice_capture");
-  return normalizeVoiceTranscriptionResult(await postForm(endpoint, form));
+  const accepted = await postForm(endpoint, form);
+  if (!accepted.job_id || !["queued", "processing"].includes(accepted.status)) {
+    return normalizeVoiceTranscriptionResult(accepted);
+  }
+  const statusEndpoint = `/api/voice/concepts/transcriptions/status?job=${encodeURIComponent(accepted.job_id)}&twin=${encodeURIComponent(state.activeTwin)}`;
+  const deadline = Date.now() + 12 * 60_000;
+  while (Date.now() < deadline) {
+    const job = await getJson(statusEndpoint);
+    if (job.status === "transcribed") return normalizeVoiceTranscriptionResult(job);
+    if (job.status === "failed") throw new Error(job.error || "Audio transcription failed in the backend.");
+    const startedAt = Date.parse(accepted.created_at || "");
+    const elapsedSeconds = Math.max(0, Math.round((Date.now() - (Number.isFinite(startedAt) ? startedAt : Date.now())) / 1_000));
+    const progress = `Transcription is running in the backend (${elapsedSeconds}s). You can keep this page open.`;
+    if ($("#transcriptBox")) $("#transcriptBox").textContent = progress;
+    if ($("#sourceAudioStatus")) $("#sourceAudioStatus").textContent = progress;
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+  }
+  throw new Error("The transcription job exceeded 12 minutes. Keep the recording and retry; no knowledge was saved.");
 }
 
 async function initializeVoiceConceptFromTranscription(result, { sourceType, sourceName }) {

@@ -40,12 +40,17 @@ function main() {
   const html = fs.readFileSync(path.join(root, "frontend", "index.html"), "utf8");
 
   assert.match(workspaceApi, /POST \/api\/voice\/concepts\/transcribe/);
+  assert.match(workspaceApi, /GET \/api\/voice\/concepts\/transcriptions\/status/);
+  assert.match(workspaceApi, /voice\.transcription\.queued/);
+  assert.match(workspaceApi, /voice\.transcription\.completed/);
+  assert.match(workspaceApi, /jsonResponse\(res, 202, queued\)/);
   assert.match(workspaceApi, /GET \/api\/voice\/concepts\/ui-uat-samples/);
   assert.match(workspaceApi, /GET \/api\/voice\/concepts\/real-coverage/);
   assert.match(workspaceApi, /async function voiceRealCoverage[\s\S]*assertTwin\(mapping, url\.searchParams\.get\("twin"\)\)/);
   assert.match(workspaceApi, /voiceTranscribe[\s\S]*context\(req, \{\}, true\)[\s\S]*readMultipartForm/);
   assert.match(workspaceApi, /assertTwin\(mapping, form\.fields\.twin/);
-  assert.match(workspaceApi, /voice\.transcribe/);
+  assert.match(workspaceApi, /voice\.transcription\.processing/);
+  assert.match(workspaceApi, /voice\.transcription\.failed/);
   assert.match(workspaceApi, /transcription_provider: transcriptionConfig\(\)\.provider/);
   assert.match(workspaceApi, /transcription_transport: transcriptionConfig\(\)\.mode/);
   assert.match(server, /ERANEOS_AI_GATEWAY_TRANSCRIPTION_MODE/);
@@ -55,6 +60,8 @@ function main() {
   assert.match(server, /Transcription output was truncated/);
   assert.doesNotMatch(server, /async function handleVoiceConceptTranscribe/);
   assert.match(frontend, /sourceType: "audio_document"/);
+  assert.match(frontend, /transcriptions\/status\?job=/);
+  assert.match(frontend, /Transcription is running in the backend/);
   assert.match(frontend, /await assessVoiceConcept\(\)/);
   assert.match(frontend, /source_type: state\.voiceConceptSession\.sourceType/);
   assert.match(html, /id="sourceAudioConsent"/);

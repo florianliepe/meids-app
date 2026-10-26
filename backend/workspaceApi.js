@@ -776,17 +776,11 @@ function createWorkspaceApi(deps) {
     const validated = validateAudioUpload(file);
     const sourceType = clean(form.fields.source_type, 50) === "audio_document" ? "audio_document" : "voice_capture";
     const category = clean(form.fields.category || "knowledge", 100);
-    const transcript = clean(await transcribeAudio({
-      ...file,
-      mediaType: validated.mediaType,
-      gatewayFilename: validated.gatewayFilename,
-    }), 50_000);
-    if (!transcript) throw httpError(422, "The transcription provider returned no readable transcript.");
-
-    const evidenceId = `voice_evidence_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+    const jobId = `voice-transcription-${Date.now().toString(36)}-${crypto.randomBytes(4).toString("hex")}`;
     const audioHash = crypto.createHash("sha256").update(file.buffer).digest("hex");
-    const transcriptHash = crypto.createHash("sha256").update(transcript).digest("hex");
-    await withContext(pool, mapping, (client) => audit(client, mapping, "voice.transcribe", "runtime.voice_evidence", evidenceId, {
+    const queued = {
+      status: "queued",
+      job_id: jobId,
       twin_id: twinId,
       category,
       source_type: sourceType,
@@ -794,28 +788,107 @@ function createWorkspaceApi(deps) {
       media_type: validated.mediaType,
       size_bytes: validated.size,
       audio_sha256: audioHash,
-      transcript_sha256: transcriptHash,
       transcription_provider: transcriptionConfig().provider,
       transcription_transport: transcriptionConfig().mode,
       model: transcriptionConfig().model,
-    }));
+      created_at: new Date().toISOString(),
+    };
+    await withContext(pool, mapping, (client) => audit(
+      client,
+      mapping,
+      "voice.transcription.queued",
+      "runtime.voice_transcription_job",
+      jobId,
+      queued,
+    ));
 
-    jsonResponse(res, 200, {
-      status: "transcribed",
-      transcript,
-      category,
-      evidence: {
-        evidence_id: evidenceId,
-        path: `voice-transcription:${evidenceId}`,
-        source_type: sourceType,
-        filename: validated.filename,
-        media_type: validated.mediaType,
-        transcription_provider: transcriptionConfig().provider,
-        transcription_transport: transcriptionConfig().mode,
-      },
-      assessment: qualityAssessment({ transcript, category, replies: [] }),
-      agent: { id: "knowledge_retrieval_agent", mode: "circular_interview" },
-    });
+    jsonResponse(res, 202, queued);
+
+    void (async () => {
+      const startedAt = Date.now();
+      try {
+        await withContext(pool, mapping, (client) => audit(client, mapping, "voice.transcription.processing", "runtime.voice_transcription_job", jobId, {
+          ...queued,
+          status: "processing",
+          started_at: new Date(startedAt).toISOString(),
+        }));
+        const transcript = clean(await transcribeAudio({
+          ...file,
+          mediaType: validated.mediaType,
+          gatewayFilename: validated.gatewayFilename,
+        }), 50_000);
+        if (!transcript) throw httpError(422, "The transcription provider returned no readable transcript.");
+
+        const evidenceId = `voice_evidence_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+        const transcriptHash = crypto.createHash("sha256").update(transcript).digest("hex");
+        const result = {
+          status: "transcribed",
+          job_id: jobId,
+          transcript,
+          category,
+          evidence: {
+            evidence_id: evidenceId,
+            path: `voice-transcription:${evidenceId}`,
+            source_type: sourceType,
+            filename: validated.filename,
+            media_type: validated.mediaType,
+            transcription_provider: transcriptionConfig().provider,
+            transcription_transport: transcriptionConfig().mode,
+          },
+          assessment: qualityAssessment({ transcript, category, replies: [] }),
+          agent: { id: "knowledge_retrieval_agent", mode: "circular_interview" },
+        };
+        await withContext(pool, mapping, (client) => audit(client, mapping, "voice.transcription.completed", "runtime.voice_transcription_job", jobId, {
+          ...queued,
+          ...result,
+          transcript_sha256: transcriptHash,
+          completed_at: new Date().toISOString(),
+          duration_ms: Date.now() - startedAt,
+        }));
+        console.log(JSON.stringify({ event: "voice_transcription_job", status: "completed", job_id: jobId, duration_ms: Date.now() - startedAt }));
+      } catch (error) {
+        const failed = {
+          ...queued,
+          status: "failed",
+          error: clean(error.message || "Audio transcription failed.", 1_000),
+          failed_at: new Date().toISOString(),
+          duration_ms: Date.now() - startedAt,
+        };
+        try {
+          await withContext(pool, mapping, (client) => audit(client, mapping, "voice.transcription.failed", "runtime.voice_transcription_job", jobId, failed));
+        } catch (persistError) {
+          console.error(JSON.stringify({ event: "voice_transcription_job_ledger", status: "failed", job_id: jobId, error: persistError.message || String(persistError) }));
+        }
+        console.error(JSON.stringify({ event: "voice_transcription_job", status: "failed", job_id: jobId, duration_ms: Date.now() - startedAt, error: failed.error }));
+      }
+    })();
+  }
+
+  async function voiceTranscriptionStatus(req, res, url) {
+    const { mapping, pool } = await context(req, {}, true);
+    const twinId = assertTwin(mapping, url.searchParams.get("twin"));
+    const jobId = clean(url.searchParams.get("job"), 128);
+    if (!jobId) throw httpError(400, "Transcription job ID is required.");
+    const result = await withContext(pool, mapping, (client) => client.query(
+      `SELECT action, details, created_at FROM audit.event
+       WHERE tenant_id = $1 AND actor_user_id = $2
+         AND resource_type = 'runtime.voice_transcription_job' AND resource_id = $3
+         AND details->>'twin_id' = $4
+       ORDER BY created_at DESC LIMIT 1`,
+      [mapping.tenant_id, mapping.user_id, jobId, twinId],
+    ));
+    if (!result.rowCount) throw httpError(404, "Transcription job not found.");
+    const job = result.rows[0].details || {};
+    const createdAt = Date.parse(job.created_at || result.rows[0].created_at || "");
+    if (["queued", "processing"].includes(job.status) && Number.isFinite(createdAt) && Date.now() - createdAt > 12 * 60_000) {
+      jsonResponse(res, 200, {
+        ...job,
+        status: "failed",
+        error: "The transcription job expired before completion. The recording is still available in this browser; retry the upload.",
+      });
+      return;
+    }
+    jsonResponse(res, 200, job);
   }
 
   async function voiceAssess(req, res) {
@@ -1131,6 +1204,7 @@ function createWorkspaceApi(deps) {
     else if (route === "GET /api/voice/concepts/real-coverage") await voiceRealCoverage(req, res, url);
     else if (route === "GET /api/voice/concepts/preflight") await voicePreflight(req, res, url);
     else if (route === "POST /api/voice/concepts/transcribe") await voiceTranscribe(req, res);
+    else if (route === "GET /api/voice/concepts/transcriptions/status") await voiceTranscriptionStatus(req, res, url);
     else if (route === "POST /api/voice/concepts/assess") await voiceAssess(req, res);
     else if (route === "POST /api/voice/concepts/draft") await voiceDraft(req, res);
     else if (route === "GET /api/voice/concepts/drafts") await voiceDrafts(req, res, url);
