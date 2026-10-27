@@ -1760,8 +1760,15 @@ async function backendReadinessPayload() {
 
   try {
     const pool = await getPgPool();
-    await pool.query("SELECT 1");
+    const database = await pool.query("SELECT to_regclass('knowledge.graph_edge') AS graph_edge");
     health.storage.database_status = "ready";
+    health.storage.graph_persistence = database.rows[0]?.graph_edge ? "ready" : "migration_required";
+    try {
+      const statusPath = path.join(process.env.TEMP || "/tmp", "meids-migration-status.json");
+      const migrationStatus = JSON.parse(await fs.readFile(statusPath, "utf8"));
+      health.storage.migration_status = migrationStatus.status;
+      health.storage.migration_checked_at = migrationStatus.checked_at;
+    } catch {}
     return health;
   } catch (error) {
     health.status = "degraded";
