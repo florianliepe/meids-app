@@ -105,6 +105,8 @@ function conceptRecord(row) {
       return REVIEW_TO_UI[reviewState] || reviewState || "pending-review";
     }),
     tags: Array.isArray(content.tags) ? content.tags : [],
+    canonical_key: row.canonical_key || "",
+    relations: Array.isArray(content.relations) ? content.relations : [],
     created_at: row.created_at,
     updated_at: row.updated_at,
     metadata: {
@@ -138,7 +140,177 @@ function conceptGraphNode(concept) {
     actor_readiness: concept.review_state === "approved" ? "ready" : "needs-review",
     actor_readiness_score: concept.review_state === "approved" ? 100 : 60,
     source_refs: concept.source_refs || [],
+    canonical_key: concept.canonical_key || "",
   };
+}
+
+const GRAPH_STOP_WORDS = new Set([
+  "about", "after", "also", "and", "are", "aus", "bei", "das", "dem", "den", "der", "die", "ein", "eine", "for",
+  "from", "für", "ist", "mit", "oder", "the", "this", "und", "von", "was", "werden", "wie", "with", "zur", "zum",
+]);
+
+function graphTokens(...values) {
+  return values
+    .flatMap((value) => String(value || "").toLowerCase().normalize("NFKD").split(/[^a-z0-9]+/))
+    .filter((token) => token.length >= 3 && !GRAPH_STOP_WORDS.has(token));
+}
+
+function graphEvidenceKeys(concept = {}) {
+  return new Set((concept.source_refs || []).flatMap((source) => [
+    source?.sha256,
+    source?.checksum,
+    source?.evidence_path,
+    source?.path,
+    source?.source_anchor,
+  ]).map((value) => clean(value, 500).toLowerCase()).filter(Boolean));
+}
+
+function graphEdgeKey(source, target, relationType, provenance = "derived") {
+  const endpoints = ["similar_to", "contradicts"].includes(relationType) ? [source, target].sort() : [source, target];
+  const digest = crypto.createHash("sha256").update(`${endpoints.join("|")}|${relationType}|${provenance}`).digest("hex").slice(0, 20);
+  return `edge:${digest}`;
+}
+
+function graphRelationTarget(relation = {}) {
+  if (typeof relation === "string") return relation;
+  return relation.target_concept_id || relation.target || relation.to || relation.concept_id || relation.concept_ref || "";
+}
+
+function graphRelationType(relation = {}) {
+  const value = typeof relation === "object" ? relation.relation_type || relation.relation || relation.type : "";
+  return ["supports", "contradicts", "requires", "similar_to", "causes", "evidence_for", "uses_skill", "derived_from"].includes(value)
+    ? value
+    : "similar_to";
+}
+
+function deriveGraphEdges(concepts = [], reviews = []) {
+  const byRef = new Map();
+  for (const concept of concepts) {
+    const nodeKey = `concept:${concept.concept_id}`;
+    [concept.concept_id, nodeKey, concept.path, concept.canonical_key, concept.title]
+      .map((value) => clean(value, 500).toLowerCase())
+      .filter(Boolean)
+      .forEach((value) => byRef.set(value, nodeKey));
+  }
+
+  const edges = new Map();
+  const addEdge = (edge) => {
+    if (!edge.source || !edge.target || edge.source === edge.target) return;
+    const symmetric = ["similar_to", "contradicts"].includes(edge.relation_type);
+    const normalized = symmetric && edge.source > edge.target ? { ...edge, source: edge.target, target: edge.source } : edge;
+    const key = normalized.edge_key || graphEdgeKey(normalized.source, normalized.target, normalized.relation_type, normalized.provenance);
+    const current = edges.get(key);
+    if (!current || Number(normalized.confidence || 0) > Number(current.confidence || 0)) edges.set(key, { ...normalized, edge_key: key });
+  };
+
+  for (const concept of concepts) {
+    const source = `concept:${concept.concept_id}`;
+    for (const relation of concept.relations || []) {
+      const targetRef = clean(graphRelationTarget(relation), 500).toLowerCase();
+      const target = byRef.get(targetRef);
+      if (!target) continue;
+      const relationType = graphRelationType(relation);
+      const requestedState = typeof relation === "object" ? clean(relation.review_state, 50) : "";
+      const approved = ["approved", "accepted"].includes(requestedState);
+      addEdge({
+        edge_key: typeof relation === "object" ? clean(relation.edge_key, 256) : "",
+        source,
+        target,
+        relation_type: relationType,
+        edge_type: relationType,
+        edge_class: "explicit",
+        review_state: approved ? "approved" : "candidate",
+        confidence: Number.isFinite(Number(relation?.confidence)) ? Number(relation.confidence) : 0.8,
+        evidence_refs: Array.isArray(relation?.evidence_refs) ? relation.evidence_refs : [],
+        rationale: clean(relation?.rationale || "Declared in the OKF concept relation metadata.", 2_000),
+        provenance: "okf-declared",
+      });
+    }
+  }
+
+  const candidateDegree = new Map();
+  for (let leftIndex = 0; leftIndex < concepts.length; leftIndex += 1) {
+    const left = concepts[leftIndex];
+    const leftNode = `concept:${left.concept_id}`;
+    const leftEvidence = graphEvidenceKeys(left);
+    const leftTags = new Set((left.tags || []).map((tag) => clean(tag, 100).toLowerCase()).filter(Boolean));
+    const leftTokens = new Set(graphTokens(left.title, left.summary, left.description));
+    for (let rightIndex = leftIndex + 1; rightIndex < concepts.length; rightIndex += 1) {
+      const right = concepts[rightIndex];
+      const rightNode = `concept:${right.concept_id}`;
+      const rightEvidence = graphEvidenceKeys(right);
+      const sharedEvidence = [...leftEvidence].filter((value) => rightEvidence.has(value));
+      if (sharedEvidence.length) {
+        addEdge({
+          source: leftNode,
+          target: rightNode,
+          relation_type: "similar_to",
+          edge_type: "similar_to",
+          edge_class: "inferred",
+          review_state: "candidate",
+          confidence: 0.88,
+          evidence_refs: sharedEvidence,
+          rationale: "Both concepts cite the same governed evidence anchor.",
+          provenance: "shared-evidence",
+        });
+        continue;
+      }
+
+      const rightTags = new Set((right.tags || []).map((tag) => clean(tag, 100).toLowerCase()).filter(Boolean));
+      const sharedTags = [...leftTags].filter((tag) => rightTags.has(tag));
+      if (sharedTags.length) {
+        addEdge({
+          source: leftNode,
+          target: rightNode,
+          relation_type: "similar_to",
+          edge_type: "similar_to",
+          edge_class: "candidate",
+          review_state: "candidate",
+          confidence: Math.min(0.82, 0.64 + sharedTags.length * 0.06),
+          evidence_refs: [],
+          rationale: `Shared OKF tags: ${sharedTags.slice(0, 5).join(", ")}.`,
+          provenance: "shared-tags",
+        });
+        continue;
+      }
+
+      const rightTokens = new Set(graphTokens(right.title, right.summary, right.description));
+      const sharedTokens = [...leftTokens].filter((token) => rightTokens.has(token));
+      const unionSize = new Set([...leftTokens, ...rightTokens]).size;
+      const similarity = unionSize ? sharedTokens.length / unionSize : 0;
+      const leftDegree = candidateDegree.get(leftNode) || 0;
+      const rightDegree = candidateDegree.get(rightNode) || 0;
+      if (sharedTokens.length >= 2 && similarity >= 0.16 && leftDegree < 3 && rightDegree < 3) {
+        addEdge({
+          source: leftNode,
+          target: rightNode,
+          relation_type: "similar_to",
+          edge_type: "similar_to",
+          edge_class: "candidate",
+          review_state: "candidate",
+          confidence: Number(Math.min(0.74, 0.5 + similarity).toFixed(3)),
+          evidence_refs: [],
+          rationale: `Bounded lexical overlap: ${sharedTokens.slice(0, 6).join(", ")}.`,
+          provenance: "lexical-overlap",
+        });
+        candidateDegree.set(leftNode, leftDegree + 1);
+        candidateDegree.set(rightNode, rightDegree + 1);
+      }
+    }
+  }
+
+  const reviewByEdge = new Map(reviews.map((review) => [review.edge_key, review]));
+  return [...edges.values()].map((edge) => {
+    const review = reviewByEdge.get(edge.edge_key);
+    if (!review) return edge;
+    const reviewState = review.decision === "accepted" ? "approved" : review.decision;
+    return {
+      ...edge,
+      review_state: reviewState,
+      edge_class: reviewState === "approved" && edge.edge_class === "candidate" ? "inferred" : edge.edge_class,
+      review,
+    };
+  });
 }
 
 function graphConceptEvidence(concept) {
@@ -1210,7 +1382,8 @@ function createWorkspaceApi(deps) {
     const concepts = (await queryConcepts(pool, mapping, twinId))
       .filter((concept) => includeDrafts || concept.review_state === "approved");
     const nodes = concepts.map(conceptGraphNode);
-    const edges = [];
+    const reviews = await queryGraphEdgeReviews(pool, mapping, twinId, 500);
+    const edges = deriveGraphEdges(concepts, reviews);
     jsonResponse(res, 200, {
       status: "ready",
       scope: { tenant_id: mapping.tenant_id, twin_id: twinId },
@@ -1219,6 +1392,9 @@ function createWorkspaceApi(deps) {
         edge_count: edges.length,
         approved_concepts: nodes.filter((node) => node.review_state === "approved").length,
         pending_review: nodes.filter((node) => node.review_state !== "approved").length,
+        explicit_edges: edges.filter((edge) => edge.edge_class === "explicit").length,
+        inferred_edges: edges.filter((edge) => edge.edge_class === "inferred").length,
+        candidate_edges: edges.filter((edge) => String(edge.edge_class).includes("candidate") || edge.review_state === "candidate").length,
         projection: "governed_okf_concepts",
       },
       nodes,
@@ -1240,21 +1416,83 @@ function createWorkspaceApi(deps) {
     }
 
     const node = conceptGraphNode(concept);
+    const concepts = (await queryConcepts(pool, mapping, twinId))
+      .filter((item) => includeDrafts || item.review_state === "approved");
+    const reviews = await queryGraphEdgeReviews(pool, mapping, twinId, 500);
+    const graphEdges = deriveGraphEdges(concepts, reviews);
+    const edges = graphEdges.filter((edge) => edge.source === node.node_key || edge.target === node.node_key);
+    const neighborKeys = new Set(edges.map((edge) => edge.source === node.node_key ? edge.target : edge.source));
     jsonResponse(res, 200, {
       status: "ready",
       scope: { tenant_id: mapping.tenant_id, twin_id: twinId },
       node,
-      edges: [],
-      neighbors: [],
+      edges,
+      neighbors: concepts.map(conceptGraphNode).filter((item) => neighborKeys.has(item.node_key)),
       evidence: graphConceptEvidence(concept),
     });
   }
 
+  async function queryGraphEdgeReviews(pool, mapping, twinId, limit = 300) {
+    const result = await withContext(pool, mapping, (client) => client.query(
+      `SELECT DISTINCT ON (resource_id)
+         resource_id AS edge_key,
+         details->>'decision' AS decision,
+         details->>'note' AS note,
+         actor_user_id AS reviewed_by,
+         created_at AS reviewed_at
+       FROM audit.event
+       WHERE tenant_id = $1
+         AND resource_type = 'knowledge.graph_edge'
+         AND action = 'graph.edge.review'
+         AND details->>'twin_id' = $2
+       ORDER BY resource_id, created_at DESC
+       LIMIT $3`,
+      [mapping.tenant_id, twinId, Math.min(500, Number(limit) || 300)],
+    ));
+    return result.rows;
+  }
+
+  async function graphEdgeReview(req, res) {
+    const body = await readBody(req);
+    const { mapping, pool } = await context(req, body, true);
+    const twinId = assertTwin(mapping, body.twin || body.twin_id);
+    const edgeKey = clean(body.edge_key, 256);
+    const decision = clean(body.decision, 50);
+    if (!edgeKey) throw httpError(400, "Graph edge key is required.");
+    if (!["accepted", "rejected", "needs-rework"].includes(decision)) {
+      throw httpError(400, "Graph edge decision must be accepted, rejected, or needs-rework.");
+    }
+    const concepts = await queryConcepts(pool, mapping, twinId);
+    const currentReviews = await queryGraphEdgeReviews(pool, mapping, twinId, 500);
+    const edge = deriveGraphEdges(concepts, currentReviews).find((item) => item.edge_key === edgeKey);
+    if (!edge) throw httpError(404, "Graph edge not found in the active twin projection.");
+    const reviewedAt = new Date().toISOString();
+    await withContext(pool, mapping, (client) => audit(client, mapping, "graph.edge.review", "knowledge.graph_edge", edgeKey, {
+      twin_id: twinId,
+      decision,
+      note: clean(body.note, 2_000),
+      source: edge.source,
+      target: edge.target,
+      relation_type: edge.relation_type,
+      confidence: edge.confidence,
+      reviewed_at: reviewedAt,
+    }));
+    jsonResponse(res, 200, {
+      status: "reviewed",
+      review: { edge_key: edgeKey, decision, note: clean(body.note, 2_000), reviewed_by: mapping.user_id, reviewed_at: reviewedAt },
+    });
+  }
+
   async function graphAuxiliary(req, res, url, kind) {
-    const { mapping } = await context(req);
+    const { mapping, pool } = await context(req);
     const twinId = assertTwin(mapping, url.searchParams.get("twin"));
     if (kind === "postgres_read") {
       jsonResponse(res, 200, { status: "ready", tenant_id: mapping.tenant_id, twin_id: twinId, source: "postgresql_rls" });
+      return;
+    }
+    if (kind === "reviews") {
+      const reviews = await queryGraphEdgeReviews(pool, mapping, twinId, url.searchParams.get("limit"));
+      jsonResponse(res, 200, { reviews, total: reviews.length, status: "ready", twin_id: twinId });
       return;
     }
     jsonResponse(res, 200, { [kind]: [], total: 0, status: "ready", twin_id: twinId });
@@ -1307,6 +1545,7 @@ function createWorkspaceApi(deps) {
     else if (route === "GET /api/okf/graph/node") await graphNodeDetail(req, res, url);
     else if (route === "GET /api/okf/graph/recommendation-tasks") await graphAuxiliary(req, res, url, "tasks");
     else if (route === "GET /api/okf/graph/edge-reviews") await graphAuxiliary(req, res, url, "reviews");
+    else if (route === "POST /api/okf/graph/edge-review") await graphEdgeReview(req, res);
     else if (route === "GET /api/okf/graph/postgres-read") await graphAuxiliary(req, res, url, "postgres_read");
     else return false;
     return true;
@@ -1319,6 +1558,7 @@ module.exports = {
   graphConceptId,
   conceptGraphNode,
   graphConceptEvidence,
+  deriveGraphEdges,
   REVIEW_FROM_UI,
   REVIEW_TO_UI,
 };

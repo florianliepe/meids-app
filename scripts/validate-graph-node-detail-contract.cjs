@@ -5,6 +5,7 @@ const {
   graphConceptId,
   conceptGraphNode,
   graphConceptEvidence,
+  deriveGraphEdges,
 } = require("../backend/workspaceApi");
 
 const root = path.join(__dirname, "..");
@@ -37,7 +38,50 @@ assert.equal(evidence.length, 1);
 assert.equal(evidence[0].path, "blob://source/document.pdf");
 assert.equal(evidence[0].review_state, "approved");
 
+const relatedConcept = {
+  concept_id: "9af2cd49-f6df-4a52-b1f0-8dd2cb8dc3cb",
+  path: "9af2cd49-f6df-4a52-b1f0-8dd2cb8dc3cb",
+  title: "HR department operating model",
+  summary: "Foundations and operating practices for HR departments.",
+  description: "Foundations and operating practices for HR departments.",
+  review_state: "pending-review",
+  type: "OKF Concept",
+  tags: ["hr"],
+  source_refs: [{ sha256: "shared-source-hash", evidence_path: "blob://source/shared.pdf" }],
+  relations: [],
+};
+const sourceConcept = {
+  ...concept,
+  source_refs: [{ sha256: "shared-source-hash", evidence_path: "blob://source/shared.pdf" }],
+};
+const projectedEdges = deriveGraphEdges([sourceConcept, relatedConcept]);
+assert.equal(projectedEdges.length, 1);
+assert.equal(projectedEdges[0].relation_type, "similar_to");
+assert.equal(projectedEdges[0].edge_class, "inferred");
+assert.equal(projectedEdges[0].review_state, "candidate");
+assert.match(projectedEdges[0].rationale, /same governed evidence anchor/i);
+
+const reviewedEdges = deriveGraphEdges([sourceConcept, relatedConcept], [{
+  edge_key: projectedEdges[0].edge_key,
+  decision: "accepted",
+  note: "Confirmed during UAT.",
+}]);
+assert.equal(reviewedEdges[0].review_state, "approved");
+assert.equal(reviewedEdges[0].edge_class, "inferred");
+
+const explicitSource = {
+  ...concept,
+  relations: [{ target_concept_id: relatedConcept.concept_id, relation_type: "supports", confidence: 0.91 }],
+};
+const explicitEdges = deriveGraphEdges([explicitSource, { ...relatedConcept, tags: [], source_refs: [] }]);
+const explicitEdge = explicitEdges.find((edge) => edge.relation_type === "supports" && edge.edge_class === "explicit");
+assert.ok(explicitEdge);
+assert.equal(explicitEdge.source, `concept:${conceptId}`);
+assert.equal(explicitEdge.target, `concept:${relatedConcept.concept_id}`);
+
 assert.match(workspaceApi, /GET \/api\/okf\/graph\/node/);
+assert.match(workspaceApi, /POST \/api\/okf\/graph\/edge-review/);
+assert.doesNotMatch(workspaceApi, /const edges = \[\];/);
 assert.match(workspaceApi, /graphNodeDetail[\s\S]*queryConcepts\(pool, mapping, twinId, conceptId\)/);
 assert.match(workspaceApi, /graphNodeDetail[\s\S]*assertTwin\(mapping, url\.searchParams\.get\("twin"\)\)/);
 assert.match(frontend, /Live detail is temporarily unavailable\. Showing the loaded graph snapshot\./);
