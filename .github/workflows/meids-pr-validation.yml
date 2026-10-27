@@ -1,0 +1,75 @@
+name: Me.IDs pull request validation
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meids-pr-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Validate diff hygiene
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$BASE_SHA" ]; then
+            git diff --check "$BASE_SHA" "$GITHUB_SHA"
+          else
+            git diff --check HEAD^ HEAD
+          fi
+
+      - name: Validate build identity
+        run: node --test scripts/test-build-info.cjs
+
+      - name: Validate frontend JavaScript
+        run: node --check frontend/api.js && node --check frontend/app.js && node --check frontend/admin/admin.js
+
+      - name: Validate backend contracts
+        run: npm run check:backend
+
+      - name: Validate agent contracts
+        run: npm run check:agents
+
+      - name: Validate API parity
+        run: npm run check:api-parity
+
+      - name: Validate knowledge access
+        run: npm run check:knowledge-access
+
+      - name: Validate Entra onboarding
+        run: npm run check:entra-onboarding
+
+      - name: Validate Admin Cockpit
+        run: npm run check:admin-cockpit
+
+      - name: Validate graph contracts
+        run: |
+          node scripts/validate-postgres-graph-schema.cjs
+          node scripts/validate-graph-promotions.cjs
+          node scripts/validate-graph-persistence-contract.cjs
+          node scripts/test-graph-persistence.cjs
+
+      - name: Smoke-build static frontend
+        run: node scripts/build-pages-static.cjs --output dist-pr-validation --clean --smoke
