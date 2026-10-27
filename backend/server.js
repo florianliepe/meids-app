@@ -1290,9 +1290,9 @@ async function handleVectorRebuild(req, res) {
   const dryRun = body.dry_run === true || body.dryRun === true || !config.configured;
   const request = {
     operation: body.operation || "upsert",
-    organization_id: accessContext?.tenant_id || body.organization_id || "default",
+    organization_id: accessContext?.tenant_id || body.organization_id || "",
     user_id: accessContext?.user_id || body.user_id || "",
-    twin_id: body.twin_id || body.twin || accessContext?.active_twin_id || "unknown",
+    twin_id: body.twin_id || body.twin || accessContext?.active_twin_id || "",
     source_policy: body.source_policy || (body.mode === "approved" ? "approved_only" : "selected_pending"),
     repo_name: body.repo_name || "",
     commit_sha: body.commit_sha || "",
@@ -1300,6 +1300,13 @@ async function handleVectorRebuild(req, res) {
     allow_deterministic_vectors: body.allow_deterministic_vectors === true || body.allowDeterministicVectors === true,
     documents: Array.isArray(body.documents) ? body.documents : [],
   };
+  if (!request.organization_id || !request.twin_id) {
+    jsonResponse(res, 400, {
+      status: "failed",
+      error: "Vector rebuild requires authenticated tenant/twin scope or explicit organization_id and twin_id.",
+    });
+    return;
+  }
   if (!request.documents.length) {
     jsonResponse(res, 400, {
       status: "failed",

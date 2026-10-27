@@ -1,5 +1,10 @@
 # Knowledge graph functional audit - 2026-10-27
 
+> Hardening follow-up: durable PostgreSQL graph projection, revision-bound
+> review invalidation and semantic proposal governance were implemented after
+> this audit. See `docs/uat/knowledge-graph-hardening-test-report-20261027.md`
+> and migration `backend/migrations/016_durable_knowledge_graph.sql`.
+
 ## Scope
 
 This audit covers governed OKF creation, PostgreSQL persistence, the transactional outbox, Blob and Azure AI Search projection, runtime graph creation, graph review, and n8n agent routing. Production data was inspected read-only. New automated checks use synthetic fixtures and do not approve knowledge or graph relations.

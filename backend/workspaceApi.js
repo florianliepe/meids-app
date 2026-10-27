@@ -1,6 +1,11 @@
 const crypto = require("node:crypto");
 const { MAX_DOCUMENT_BYTES, extractDocumentText } = require("./documentExtraction");
 const { MAX_AUDIO_BYTES, validateAudioUpload } = require("./audioUpload");
+const {
+  persistGraphProjection,
+  latestEdgeReviews,
+  persistEdgeReview,
+} = require("./graphPersistence");
 
 const MAX_AVATAR_BYTES = 1_500_000;
 const REVIEW_FROM_UI = {
@@ -185,8 +190,10 @@ function graphRelationType(relation = {}) {
 
 function deriveGraphEdges(concepts = [], reviews = []) {
   const byRef = new Map();
+  const revisionByNode = new Map();
   for (const concept of concepts) {
     const nodeKey = `concept:${concept.concept_id}`;
+    revisionByNode.set(nodeKey, Number(concept.revision || 1));
     [concept.concept_id, nodeKey, concept.path, concept.canonical_key, concept.title]
       .map((value) => clean(value, 500).toLowerCase())
       .filter(Boolean)
@@ -227,6 +234,29 @@ function deriveGraphEdges(concepts = [], reviews = []) {
       });
     }
     for (const evidence of concept.source_refs || []) {
+      if (evidence?.type === "semantic_relation_proposal") {
+        const target = byRef.get(clean(evidence.target_concept_id || evidence.concept_id, 500).toLowerCase());
+        const evidenceRefs = Array.isArray(evidence.evidence_refs) ? evidence.evidence_refs.filter(Boolean).slice(0, 20) : [];
+        const rationale = clean(evidence.rationale || evidence.inference_reason, 2_000);
+        if (!target || target === source || !evidenceRefs.length || !rationale) continue;
+        const relationType = graphRelationType(evidence);
+        const confidence = Math.min(0.85, Math.max(0, Number(evidence.confidence) || 0.5));
+        addEdge({
+          source,
+          target,
+          relation_type: relationType,
+          edge_type: relationType,
+          edge_class: "candidate",
+          review_state: "candidate",
+          confidence: Number(confidence.toFixed(3)),
+          evidence_refs: evidenceRefs,
+          rationale,
+          provenance: "semantic-relation-proposer",
+          score_evidence: evidence.score_evidence && typeof evidence.score_evidence === "object" ? evidence.score_evidence : {},
+          model_provenance: evidence.model_provenance && typeof evidence.model_provenance === "object" ? evidence.model_provenance : {},
+        });
+        continue;
+      }
       if (evidence?.type !== "merge_candidate_score") continue;
       const target = byRef.get(clean(evidence.concept_id, 500).toLowerCase());
       if (!target || target === source) continue;
@@ -337,11 +367,23 @@ function deriveGraphEdges(concepts = [], reviews = []) {
 
   const reviewByEdge = new Map(reviews.map((review) => [review.edge_key, review]));
   return [...edges.values()].map((edge) => {
+    const revisionedEdge = {
+      ...edge,
+      source_revision: revisionByNode.get(edge.source) || 1,
+      target_revision: revisionByNode.get(edge.target) || 1,
+    };
     const review = reviewByEdge.get(edge.edge_key);
-    if (!review) return edge;
+    if (!review) return revisionedEdge;
+    const reviewMatchesRevision = (
+      (!Number(review.source_revision) || Number(review.source_revision) === revisionedEdge.source_revision)
+      && (!Number(review.target_revision) || Number(review.target_revision) === revisionedEdge.target_revision)
+    );
+    if (!reviewMatchesRevision) {
+      return { ...revisionedEdge, review_state: "candidate", review_invalidated: "concept_revision_changed" };
+    }
     const reviewState = review.decision === "accepted" ? "approved" : review.decision;
     return {
-      ...edge,
+      ...revisionedEdge,
       review_state: reviewState,
       edge_class: reviewState === "approved" && edge.edge_class === "candidate" ? "inferred" : edge.edge_class,
       review,
@@ -1420,9 +1462,22 @@ function createWorkspaceApi(deps) {
     const nodes = concepts.map(conceptGraphNode);
     const reviews = await queryGraphEdgeReviews(pool, mapping, twinId, 500);
     const edges = deriveGraphEdges(concepts, reviews);
+    const persistence = await withContext(pool, mapping, (client) => persistGraphProjection(
+      client,
+      mapping,
+      twinId,
+      nodes,
+      edges,
+      {
+        embedding_provider: process.env.MEIDS_EMBEDDING_PROVIDER || "",
+        embedding_model: process.env.ERANEOS_AI_GATEWAY_EMBEDDING_MODEL || process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || "",
+        embedding_dimensions: Number(process.env.AZURE_OPENAI_EMBEDDING_DIMENSIONS || 0) || null,
+      },
+    )).catch((error) => ({ status: "degraded", persisted: false, error: clean(error.message, 500) }));
     jsonResponse(res, 200, {
       status: "ready",
       scope: { tenant_id: mapping.tenant_id, twin_id: twinId },
+      persistence,
       summary: {
         node_count: nodes.length,
         edge_count: edges.length,
@@ -1469,6 +1524,8 @@ function createWorkspaceApi(deps) {
   }
 
   async function queryGraphEdgeReviews(pool, mapping, twinId, limit = 300) {
+    const durable = await withContext(pool, mapping, (client) => latestEdgeReviews(client, mapping, twinId, limit));
+    if (durable !== null) return durable;
     const result = await withContext(pool, mapping, (client) => client.query(
       `SELECT DISTINCT ON (resource_id)
          resource_id AS edge_key,
@@ -1498,21 +1555,39 @@ function createWorkspaceApi(deps) {
     if (!["accepted", "rejected", "needs-rework"].includes(decision)) {
       throw httpError(400, "Graph edge decision must be accepted, rejected, or needs-rework.");
     }
+    const canReview = await withContext(pool, mapping, (client) => client.query(
+      `SELECT 1
+       FROM twin.user_twin_access
+       WHERE tenant_id = $1 AND twin_id = $2 AND user_id = $3
+         AND access_role IN ('owner', 'reviewer')
+       LIMIT 1`,
+      [mapping.tenant_id, twinId, mapping.user_id],
+    ));
+    const applicationRoles = new Set((mapping.roles || []).map((role) => String(role).toLowerCase()));
+    if (!canReview.rowCount && !applicationRoles.has("owner") && !applicationRoles.has("admin")) {
+      throw httpError(403, "Owner, admin, or reviewer authorization is required to review graph relations.");
+    }
     const concepts = await queryConcepts(pool, mapping, twinId);
     const currentReviews = await queryGraphEdgeReviews(pool, mapping, twinId, 500);
     const edge = deriveGraphEdges(concepts, currentReviews).find((item) => item.edge_key === edgeKey);
     if (!edge) throw httpError(404, "Graph edge not found in the active twin projection.");
     const reviewedAt = new Date().toISOString();
-    await withContext(pool, mapping, (client) => audit(client, mapping, "graph.edge.review", "knowledge.graph_edge", edgeKey, {
-      twin_id: twinId,
-      decision,
-      note: clean(body.note, 2_000),
-      source: edge.source,
-      target: edge.target,
-      relation_type: edge.relation_type,
-      confidence: edge.confidence,
-      reviewed_at: reviewedAt,
-    }));
+    await withContext(pool, mapping, async (client) => {
+      await persistGraphProjection(client, mapping, twinId, concepts.map(conceptGraphNode), deriveGraphEdges(concepts, currentReviews), {});
+      await persistEdgeReview(client, mapping, twinId, edge, decision, clean(body.note, 2_000));
+      await audit(client, mapping, "graph.edge.review", "knowledge.graph_edge", edgeKey, {
+        twin_id: twinId,
+        decision,
+        note: clean(body.note, 2_000),
+        source: edge.source,
+        target: edge.target,
+        relation_type: edge.relation_type,
+        confidence: edge.confidence,
+        source_revision: edge.source_revision,
+        target_revision: edge.target_revision,
+        reviewed_at: reviewedAt,
+      });
+    });
     jsonResponse(res, 200, {
       status: "reviewed",
       review: { edge_key: edgeKey, decision, note: clean(body.note, 2_000), reviewed_by: mapping.user_id, reviewed_at: reviewedAt },
