@@ -10,6 +10,7 @@ const liveActivationScript = path.join(root, "scripts", "write-azure-vector-live
 const readinessAsset = path.join(root, "frontend", "assets", "azure-vector-readiness-status.json");
 const liveActivationAsset = path.join(root, "frontend", "assets", "azure-vector-live-activation-status.json");
 const n8nVectorRefreshNode = path.join(root, "workflows", "n8n", "implementations", "knowledge-fabric-vector-refresh-http-node.json");
+const searchRuntime = fs.readFileSync(path.join(root, "backend", "azureSearch.js"), "utf8");
 const requiredSchemas = ["meids-okf-approved-v1.index.json", "meids-okf-working-v1.index.json"];
 const requiredFields = [
   "id",
@@ -184,6 +185,12 @@ if (liveActivation.activation_evidence?.deterministic_fallback !== false) fail("
 const n8nNode = readJson(n8nVectorRefreshNode);
 if (n8nNode.node?.parameters?.url !== "={{ $env.MEIDS_BACKEND_URL }}/api/vector-index/rebuild") {
   fail("Knowledge Fabric vector refresh node must call backend /api/vector-index/rebuild");
+}
+if (!searchRuntime.includes('query.score_mode === "vector_similarity"')) {
+  fail("Duplicate detection must support pure vector scoring independent from hybrid RRF ranking");
+}
+if (!searchRuntime.includes('retrievalMode = "pure_vector_similarity"')) {
+  fail("Pure vector duplicate scoring mode must be observable in the retrieval response");
 }
 
 console.log("Azure Search contracts validation passed");

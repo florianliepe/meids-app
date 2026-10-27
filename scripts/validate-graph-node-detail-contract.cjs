@@ -80,6 +80,24 @@ assert.ok(explicitEdge);
 assert.equal(explicitEdge.source, `concept:${conceptId}`);
 assert.equal(explicitEdge.target, `concept:${relatedConcept.concept_id}`);
 
+const semanticSource = {
+  ...concept,
+  source_refs: [{
+    type: "merge_candidate_score",
+    concept_id: relatedConcept.concept_id,
+    classification: "near_match",
+    vector_similarity: 0.91,
+    lexical_overlap: 0.22,
+    graph_proximity: 0,
+    scope_compatible: true,
+  }],
+};
+const semanticEdges = deriveGraphEdges([semanticSource, { ...relatedConcept, tags: [], source_refs: [] }]);
+const semanticEdge = semanticEdges.find((edge) => edge.provenance === "semantic-duplicate-check");
+assert.ok(semanticEdge);
+assert.equal(semanticEdge.review_state, "candidate");
+assert.equal(semanticEdge.score_evidence.vector_similarity, 0.91);
+
 assert.match(workspaceApi, /GET \/api\/okf\/graph\/node/);
 assert.match(workspaceApi, /POST \/api\/okf\/graph\/edge-review/);
 assert.doesNotMatch(workspaceApi, /const edges = \[\];/);

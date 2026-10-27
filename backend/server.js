@@ -1410,10 +1410,11 @@ function candidateDuplicateTerms(candidate = {}) {
 }
 
 function classifyDuplicateCandidate({ vectorScore = null, lexicalScore = 0, graphScore = 0, scopeCompatible = false } = {}) {
-  if ((vectorScore !== null && vectorScore >= 0.88 && scopeCompatible) || (lexicalScore >= 0.8 && scopeCompatible)) {
+  const vectorCorroborated = vectorScore !== null && vectorScore >= 0.88 && lexicalScore >= 0.35;
+  if ((vectorCorroborated && scopeCompatible) || (lexicalScore >= 0.8 && scopeCompatible)) {
     return { status: "strong_duplicate", action: "stage_merge_delta_or_reject_duplicate" };
   }
-  if ((vectorScore !== null && vectorScore >= 0.72) || graphScore >= 0.7 || lexicalScore >= 0.5) {
+  if ((vectorScore !== null && vectorScore >= 0.72 && lexicalScore >= 0.15) || graphScore >= 0.7 || lexicalScore >= 0.5) {
     return { status: "near_match", action: "stage_updated_review_needed" };
   }
   if ((vectorScore !== null && vectorScore >= 0.55) || graphScore > 0) {
@@ -1425,7 +1426,10 @@ function classifyDuplicateCandidate({ vectorScore = null, lexicalScore = 0, grap
 function summarizeDuplicateHit(candidate = {}, hit = {}) {
   const candidateTerms = candidateDuplicateTerms(candidate);
   const resultTerms = candidateDuplicateTerms(hit);
-  const vectorScore = normalizeScore(hit["@search.score"] || hit.score || hit.vector_score || hit.similarity);
+  const rawVectorSearchScore = normalizeScore(hit["@search.score"]);
+  const vectorScore = rawVectorSearchScore !== null && rawVectorSearchScore > 0
+    ? normalizeScore(2 - (1 / rawVectorSearchScore))
+    : normalizeScore(hit.score || hit.vector_score || hit.similarity);
   const lexicalScore = lexicalOverlapScore(candidateTerms, resultTerms);
   const graphScore = candidate.graph_cluster_id && hit.graph_cluster_id && candidate.graph_cluster_id === hit.graph_cluster_id
     ? 1
@@ -1443,6 +1447,7 @@ function summarizeDuplicateHit(candidate = {}, hit = {}) {
     graph_cluster_id: hit.graph_cluster_id || "",
     scores: {
       vector_similarity: vectorScore,
+      raw_vector_search_score: rawVectorSearchScore,
       lexical_overlap: lexicalScore,
       graph_proximity: graphScore,
       scope_compatible: scopeCompatible,
@@ -1487,6 +1492,15 @@ async function handleKnowledgeDuplicateCheck(req, res) {
     });
     return;
   }
+  const organizationId = accessContext?.tenant_id || body.organization_id || candidate.organization_id;
+  if (!organizationId) {
+    jsonResponse(res, 400, {
+      status: "failed",
+      duplicate_check: { status: "insufficient_evidence" },
+      error: "Duplicate check requires an authenticated tenant or explicit organization_id.",
+    });
+    return;
+  }
   const retrieval = await searchVectorKnowledge({
     query: queryText,
     query_vector: Array.isArray(candidate.query_vector)
@@ -1499,8 +1513,9 @@ async function handleKnowledgeDuplicateCheck(req, res) {
             ? body.content_vector
             : undefined,
     twin_id: candidate.twin_id || body.twin_id || body.twin || "",
-    organization_id: body.organization_id || candidate.organization_id || "default",
+    organization_id: organizationId,
     source_policy: body.source_policy || "selected_pending",
+    score_mode: "vector_similarity",
     top: Number(body.top || 8),
     include_shared: body.include_shared !== false,
     access_context: accessContext,
@@ -1522,8 +1537,8 @@ async function handleKnowledgeDuplicateCheck(req, res) {
       status,
       score_sources: ["vector_similarity", "lexical_overlap", "graph_proximity", "scope_compatibility"],
       thresholds: {
-        strong_duplicate: "vector >= 0.88 or lexical >= 0.8 with compatible scope",
-        near_match: "vector >= 0.72 or graph >= 0.7 or lexical >= 0.5",
+        strong_duplicate: "vector >= 0.88 and lexical >= 0.35, or lexical >= 0.8, with compatible scope",
+        near_match: "vector >= 0.72 and lexical >= 0.15, or graph >= 0.7, or lexical >= 0.5",
         related_only: "vector >= 0.55 or graph proximity present",
       },
     },
@@ -2978,6 +2993,8 @@ if (require.main === module) {
 
 module.exports = {
   AGENTS,
+  classifyDuplicateCandidate,
+  summarizeDuplicateHit,
   normalizeAgentResponse,
   buildTraceRecord,
   buildApprovalRecord,

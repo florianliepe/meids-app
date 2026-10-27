@@ -569,8 +569,8 @@ async function searchVectorKnowledge(query = {}, config = azureSearchConfigFromE
   const includePending = query.source_policy === "selected_pending";
   const indexes = includePending ? [config.approvedIndex, config.workingIndex] : [config.approvedIndex];
   const queryText = String(query.query || query.text || "").trim();
+  const pureVectorScoring = query.score_mode === "vector_similarity";
   const body = {
-    search: query.query || query.text || "*",
     top: Number(query.top || 5),
     filter: query.access_context
       ? buildKnowledgeSecurityFilter(query.access_context, { includePending })
@@ -582,6 +582,7 @@ async function searchVectorKnowledge(query = {}, config = azureSearchConfigFromE
       }),
     select: "id,organization_id,user_id,twin_id,visibility_scope,knowledge_state,okf_concept_id,okf_type,title,summary,chunk_text,repo_path,evidence_id,graph_node_id,graph_cluster_id,tags",
   };
+  if (!pureVectorScoring) body.search = query.query || query.text || "*";
   let retrievalMode = "keyword_only";
   if (config.embeddingConfigured && queryText) {
     body.vectorQueries = [{
@@ -590,11 +591,15 @@ async function searchVectorKnowledge(query = {}, config = azureSearchConfigFromE
       fields: "content_vector",
       k: Number(query.k || query.top || 5),
     }];
-    body.queryType = "semantic";
-    body.semanticConfiguration = query.semantic_configuration || DEFAULT_SEMANTIC_CONFIGURATION;
-    body.captions = "extractive";
-    body.answers = "extractive";
-    retrievalMode = "hybrid_vector_semantic";
+    if (pureVectorScoring) {
+      retrievalMode = "pure_vector_similarity";
+    } else {
+      body.queryType = "semantic";
+      body.semanticConfiguration = query.semantic_configuration || DEFAULT_SEMANTIC_CONFIGURATION;
+      body.captions = "extractive";
+      body.answers = "extractive";
+      retrievalMode = "hybrid_vector_semantic";
+    }
   }
   if (!body.vectorQueries && Array.isArray(query.query_vector)) {
     body.vectorQueries = [{

@@ -226,6 +226,42 @@ function deriveGraphEdges(concepts = [], reviews = []) {
         provenance: "okf-declared",
       });
     }
+    for (const evidence of concept.source_refs || []) {
+      if (evidence?.type !== "merge_candidate_score") continue;
+      const target = byRef.get(clean(evidence.concept_id, 500).toLowerCase());
+      if (!target || target === source) continue;
+      const vectorScore = Number(evidence.vector_similarity);
+      const lexicalScore = Number(evidence.lexical_overlap);
+      const graphScore = Number(evidence.graph_proximity);
+      const confidence = Math.max(
+        Number.isFinite(vectorScore) ? vectorScore : 0,
+        Number.isFinite(lexicalScore) ? lexicalScore : 0,
+        Number.isFinite(graphScore) ? graphScore : 0,
+      );
+      addEdge({
+        source,
+        target,
+        relation_type: "similar_to",
+        edge_type: "similar_to",
+        edge_class: "candidate",
+        review_state: "candidate",
+        confidence: Number(Math.min(0.99, confidence || 0.5).toFixed(3)),
+        evidence_refs: [evidence.evidence_id || evidence.source || "duplicate-check"],
+        rationale: clean(
+          evidence.observation
+            || `Semantic duplicate-check candidate (${evidence.classification || "unclassified"}); vector ${Number.isFinite(vectorScore) ? vectorScore : "n/a"}, lexical ${Number.isFinite(lexicalScore) ? lexicalScore : "n/a"}, graph ${Number.isFinite(graphScore) ? graphScore : "n/a"}.`,
+          2_000,
+        ),
+        provenance: "semantic-duplicate-check",
+        score_evidence: {
+          classification: clean(evidence.classification, 100),
+          vector_similarity: Number.isFinite(vectorScore) ? vectorScore : null,
+          lexical_overlap: Number.isFinite(lexicalScore) ? lexicalScore : null,
+          graph_proximity: Number.isFinite(graphScore) ? graphScore : null,
+          scope_compatible: evidence.scope_compatible === true,
+        },
+      });
+    }
   }
 
   const candidateDegree = new Map();
