@@ -37,6 +37,30 @@ if (complete.eligibility_score > 1 || complete.consistency_score > 1) {
 if (!Number.isInteger(complete.word_count) || complete.word_count < 45) {
   throw new Error("Voice quality assessment must expose the assessed word count.");
 }
+const consultedPerson = qualityAssessment({
+  transcript: "Hi, ich bin Florian Liepe. Ich bin 39 Jahre alt und habe in Medizinwissenschaften promoviert.",
+  replies: [
+    "This describes who Florian Liepe is, how old he is, and his academic degree.",
+    "People need it because the twin acts on Florian's behalf and should explain his biography.",
+    "Florian can be consulted.",
+    "Nobody else is involved or affected.",
+  ],
+  question_history: [
+    "What exactly do you mean by this topic, and where does its boundary lie?",
+    "Why is it needed, and in which context does that reasoning change?",
+    "Who is involved, responsible, consulted, or affected?",
+    "Who is involved, responsible, consulted, or affected?",
+  ],
+});
+if (!consultedPerson.dimensions.who || !consultedPerson.ready) {
+  throw new Error("A substantive answer to the Who question must close the Who dimension and unlock saving.");
+}
+for (const route of [
+  'GET /api/voice/concepts/agent-handoff',
+  'POST /api/voice/concepts/agent-handoff-review',
+]) {
+  if (!source.includes(`\"${route}\"`)) throw new Error(`Voice handoff route missing: ${route}`);
+}
 if (REVIEW_FROM_UI["pending-review"] !== "review_needed" || REVIEW_FROM_UI["needs-rework"] !== "updated") {
   throw new Error("Frontend and database review states are not mapped correctly.");
 }

@@ -197,14 +197,30 @@ async function queryConcepts(pool, mapping, twinId, conceptId = "") {
 function qualityAssessment(body) {
   const transcript = clean(body.transcript, 50_000);
   const replies = Array.isArray(body.replies) ? body.replies.map((item) => clean(item, 10_000)).filter(Boolean) : [];
+  const questionHistory = Array.isArray(body.question_history)
+    ? body.question_history.map((item) => clean(item, 2_000))
+    : [];
   const combined = [transcript, ...replies].join(" ");
   const words = combined.split(/\s+/).filter(Boolean);
+  const substantiveAnswer = (answer) => {
+    const normalized = clean(answer, 10_000);
+    return normalized.split(/\s+/).filter(Boolean).length >= 3
+      && !/^(answered already|already answered|see above|same as above)$/i.test(normalized);
+  };
+  const answeredQuestion = (pattern) => questionHistory.some((question, index) => (
+    pattern.test(question) && substantiveAnswer(replies[index])
+  ));
   const dimensions = {
-    what: /\b(is|means|consists|includes|refers|what)\b/i.test(combined),
-    how: /\b(first|then|next|after|before|step|process|how)\b/i.test(combined),
-    why: /\b(because|purpose|reason|therefore|why|so that)\b/i.test(combined),
-    who: /\b(owner|responsible|team|customer|stakeholder|who)\b/i.test(combined),
-    what_then: /\b(result|outcome|impact|then|leads to|implication)\b/i.test(combined),
+    what: /\b(is|means|consists|includes|refers|what|ist|bedeutet|umfasst)\b/i.test(combined)
+      || answeredQuestion(/what exactly|what do you mean|was genau|was bedeutet/i),
+    how: /\b(first|then|next|after|before|step|process|how|zuerst|danach|schritt|prozess)\b/i.test(combined)
+      || answeredQuestion(/how do you|step by step|wie (?:wird|wendest|geht)/i),
+    why: /\b(because|purpose|reason|therefore|why|so that|weil|zweck|grund|damit)\b/i.test(combined)
+      || answeredQuestion(/why is|why do|warum|wozu/i),
+    who: /\b(owner|responsible|team|customer|stakeholder|who|consulted|involved|affected|verantwortlich|beteiligt|betroffen|konsultiert)\b/i.test(combined)
+      || answeredQuestion(/who is|who needs|wer ist|wer muss/i),
+    what_then: /\b(result|outcome|impact|then|leads to|implication|ergebnis|auswirkung|folge)\b/i.test(combined)
+      || answeredQuestion(/and then|what happens|was passiert dann|welche folge/i),
   };
   const missing = Object.entries(dimensions).filter(([, present]) => !present).map(([name]) => name);
   const questionByDimension = {
@@ -975,15 +991,86 @@ function createWorkspaceApi(deps) {
     const { mapping, pool } = await context(req, {}, true);
     const limit = Math.min(50, Number(url.searchParams.get("limit")) || 8);
     const result = await withContext(pool, mapping, (client) => client.query(
-      `SELECT resource_id, details, created_at FROM audit.event
-       WHERE tenant_id = $1 AND actor_user_id = $2 AND action = 'voice.agent_handoff'
-       ORDER BY created_at DESC LIMIT $3`,
+      `SELECT prepared.resource_id, prepared.details,
+          prepared.created_at, review.details AS review_details
+       FROM audit.event prepared
+       LEFT JOIN LATERAL (
+         SELECT details FROM audit.event review_event
+         WHERE review_event.tenant_id = prepared.tenant_id
+           AND review_event.actor_user_id = prepared.actor_user_id
+           AND review_event.resource_id = prepared.resource_id
+           AND review_event.action = 'voice.agent_handoff.review'
+         ORDER BY review_event.created_at DESC LIMIT 1
+       ) review ON true
+       WHERE prepared.tenant_id = $1 AND prepared.actor_user_id = $2
+         AND prepared.action = 'voice.agent_handoff'
+       ORDER BY prepared.created_at DESC LIMIT $3`,
       [mapping.tenant_id, mapping.user_id, limit],
     ));
     jsonResponse(res, 200, {
       status: "ready",
-      handoffs: result.rows.map((row) => ({ path: row.resource_id, ...row.details, created_at: row.created_at })),
+      handoffs: result.rows.map((row) => ({
+        path: row.resource_id,
+        ...row.details,
+        ...(row.review_details || {}),
+        created_at: row.created_at,
+      })),
     });
+  }
+
+  async function voiceAgentHandoffDetail(req, res, url) {
+    const { mapping, pool } = await context(req, {}, true);
+    const path = clean(url.searchParams.get("path"), 256);
+    if (!path) throw httpError(400, "Voice handoff path is required.");
+    const result = await withContext(pool, mapping, (client) => client.query(
+      `SELECT action, details, created_at FROM audit.event
+       WHERE tenant_id = $1 AND actor_user_id = $2 AND resource_id = $3
+         AND action IN ('voice.agent_handoff', 'voice.agent_handoff.review')
+       ORDER BY created_at ASC`,
+      [mapping.tenant_id, mapping.user_id, path],
+    ));
+    const prepared = result.rows.find((row) => row.action === "voice.agent_handoff");
+    if (!prepared) throw httpError(404, "Voice transcript handoff not found.");
+    const reviews = result.rows
+      .filter((row) => row.action === "voice.agent_handoff.review")
+      .map((row) => ({ ...row.details, timestamp: row.created_at }));
+    jsonResponse(res, 200, {
+      path,
+      ...prepared.details,
+      ...(reviews[reviews.length - 1] || {}),
+      created_at: prepared.created_at,
+      review_history: reviews,
+    });
+  }
+
+  async function voiceAgentHandoffReview(req, res) {
+    const body = await readBody(req);
+    const { mapping, pool } = await context(req, body, true);
+    const path = clean(body.path, 256);
+    const decision = clean(body.decision, 20).toLowerCase();
+    if (!path) throw httpError(400, "Voice handoff path is required.");
+    if (!['approve', 'reject'].includes(decision)) throw httpError(400, "Decision must be approve or reject.");
+    const approvalState = decision === "approve" ? "approved_for_execution" : "rejected";
+    const handoff = await withContext(pool, mapping, async (client) => {
+      const prepared = await client.query(
+        `SELECT details, created_at FROM audit.event
+         WHERE tenant_id = $1 AND actor_user_id = $2 AND resource_id = $3
+           AND action = 'voice.agent_handoff'
+         ORDER BY created_at DESC LIMIT 1`,
+        [mapping.tenant_id, mapping.user_id, path],
+      );
+      if (!prepared.rowCount) throw httpError(404, "Voice transcript handoff not found.");
+      const reviewedAt = new Date().toISOString();
+      const review = {
+        approval_state: approvalState,
+        reviewed_by: mapping.user_id,
+        reviewed_at: reviewedAt,
+        review_note: clean(body.note, 2_000),
+      };
+      await audit(client, mapping, "voice.agent_handoff.review", "runtime.voice_handoff", path, review);
+      return { path, ...prepared.rows[0].details, ...review, created_at: prepared.rows[0].created_at };
+    });
+    jsonResponse(res, 200, { status: approvalState, handoff });
   }
 
   async function voiceDraft(req, res) {
@@ -1212,6 +1299,8 @@ function createWorkspaceApi(deps) {
     else if (route === "POST /api/voice/concepts/commit") await voiceCommit(req, res);
     else if (route === "POST /api/voice/concepts/agent-handoff") await voiceAgentHandoff(req, res);
     else if (route === "GET /api/voice/concepts/agent-handoffs") await voiceAgentHandoffs(req, res, url);
+    else if (route === "GET /api/voice/concepts/agent-handoff") await voiceAgentHandoffDetail(req, res, url);
+    else if (route === "POST /api/voice/concepts/agent-handoff-review") await voiceAgentHandoffReview(req, res);
     else if (route === "GET /api/activity") await activity(req, res, url);
     else if (route === "GET /api/review-dashboard") await reviewDashboard(req, res, url);
     else if (route === "GET /api/okf/graph") await graphRead(req, res, url);

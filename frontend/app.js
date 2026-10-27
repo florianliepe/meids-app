@@ -10967,6 +10967,7 @@ async function loadSelectedVoiceConceptDraft(selectedPath = "") {
       <strong>Draft loaded:</strong> <code>${escapeHtml(draft.path)}</code>${criteria}
       ${renderVoiceFingerprintMeta(draft.conversation_fingerprint || "", voiceDraftDuplicateMeta(draft.conversation_fingerprint || ""))}
     `;
+    await assessVoiceConcept();
   } catch (error) {
     setVoiceConversationStatus("error", "Draft could not be loaded.");
     $("#voiceEvidence").innerHTML = `<span class="warning-copy">Draft load failed: ${escapeHtml(compactError(error.message))}</span>`;
