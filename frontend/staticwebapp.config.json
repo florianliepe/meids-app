@@ -23,6 +23,11 @@
   },
   "routes": [
     {
+      "route": "/build-info.json",
+      "allowedRoles": ["anonymous", "authenticated"],
+      "headers": { "Cache-Control": "no-store" }
+    },
+    {
       "route": "/login",
       "redirect": "/.auth/login/eraneos?post_login_redirect_uri=/",
       "statusCode": 302

@@ -16,3 +16,6 @@ node_modules/
 infra/azure/*.json
 exports/n8n-live-backups/
 .data/
+
+# Generated only inside deployment artifacts
+backend/build-info.json
