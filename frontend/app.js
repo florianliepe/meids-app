@@ -6544,7 +6544,7 @@ function renderGraphQualityActions(visibleNodes = filteredGraphNodes(), visibleE
   if (selectedNode) {
     const connectedCandidates = graphEdges
       .filter((edge) => edge.source === selectedNode.node_key || edge.target === selectedNode.node_key)
-      .filter((edge) => String(edge.relation_type || edge.edge_type || "").includes("candidate"))
+      .filter((edge) => String(graphEdgeClass(edge)).includes("candidate"))
       .sort((a, b) => graphCandidateRiskScore(b) - graphCandidateRiskScore(a))
       .slice(0, 4);
     target.innerHTML = renderGraphSelectedNodeActions(selectedNode, connectedCandidates, nodeMap);

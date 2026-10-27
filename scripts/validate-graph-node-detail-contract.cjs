@@ -10,6 +10,7 @@ const {
 
 const root = path.join(__dirname, "..");
 const workspaceApi = fs.readFileSync(path.join(root, "backend", "workspaceApi.js"), "utf8");
+const frontendApp = fs.readFileSync(path.join(root, "frontend", "app.js"), "utf8");
 const frontend = fs.readFileSync(path.join(root, "frontend", "app.js"), "utf8");
 const conceptId = "01dad037-c16c-42b4-9883-91908ac0446d";
 
@@ -84,6 +85,11 @@ assert.match(workspaceApi, /POST \/api\/okf\/graph\/edge-review/);
 assert.doesNotMatch(workspaceApi, /const edges = \[\];/);
 assert.match(workspaceApi, /graphNodeDetail[\s\S]*queryConcepts\(pool, mapping, twinId, conceptId\)/);
 assert.match(workspaceApi, /graphNodeDetail[\s\S]*assertTwin\(mapping, url\.searchParams\.get\("twin"\)\)/);
+assert.match(
+  frontendApp,
+  /const connectedCandidates = graphEdges[\s\S]*String\(graphEdgeClass\(edge\)\)\.includes\("candidate"\)/,
+  "Selected-node quality actions must classify candidates through edge_class, not relation_type.",
+);
 assert.match(frontend, /Live detail is temporarily unavailable\. Showing the loaded graph snapshot\./);
 
 console.log("Graph node detail contract validation passed.");
