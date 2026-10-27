@@ -3,6 +3,7 @@ const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { spawn } = require("node:child_process");
 const {
   azureSearchConfigFromEnv,
   statusFromConfig: azureSearchStatusFromConfig,
@@ -2960,9 +2961,53 @@ async function routeRequest(req, res) {
   }
 }
 
+async function writeMigrationStatus(status) {
+  const statusPath = path.join(process.env.TEMP || "/tmp", "meids-migration-status.json");
+  await fs.writeFile(statusPath, JSON.stringify({ ...status, checked_at: new Date().toISOString() }));
+}
+
+function scheduleDatabaseMigrations() {
+  if (String(process.env.MEIDS_AUTO_MIGRATE || "").toLowerCase() !== "true") {
+    writeMigrationStatus({ status: "disabled" }).catch(() => {});
+    return;
+  }
+
+  setTimeout(() => {
+    const migration = spawn(process.execPath, [path.join(process.cwd(), "scripts", "run-postgres-migrations.cjs")], {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let output = "";
+    const collect = (chunk) => { output = (output + chunk.toString()).slice(-4_000); };
+    migration.stdout.on("data", collect);
+    migration.stderr.on("data", collect);
+    const timeout = setTimeout(() => migration.kill("SIGTERM"), 120_000);
+    timeout.unref();
+    migration.on("error", (error) => {
+      clearTimeout(timeout);
+      writeMigrationStatus({ status: "failed", error: error.message }).catch(() => {});
+      console.error(JSON.stringify({ event: "database_migration", status: "failed", error: error.message }));
+    });
+    migration.on("close", (code, signal) => {
+      clearTimeout(timeout);
+      const status = code === 0 ? "applied" : signal ? "timed_out" : "failed";
+      writeMigrationStatus({ status, exit_code: code, signal }).catch(() => {});
+      console[code === 0 ? "log" : "error"](JSON.stringify({
+        event: "database_migration",
+        status,
+        exit_code: code,
+        signal,
+        output,
+      }));
+    });
+  }, 5_000).unref();
+}
+
 if (require.main === module) {
   http.createServer(routeRequest).listen(PORT, () => {
     console.log(`MeIDs agent backend proxy listening on ${PORT}`);
+    scheduleDatabaseMigrations();
     if (String(process.env.AZURE_SEARCH_STARTUP_PROBE || "").toLowerCase() === "true") {
       const config = azureSearchConfigFromEnv();
       getIndexReadiness(config)

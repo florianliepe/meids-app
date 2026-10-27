@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, "..");
 const migration = fs.readFileSync(path.join(root, "backend", "migrations", "016_durable_knowledge_graph.sql"), "utf8");
 const persistence = fs.readFileSync(path.join(root, "backend", "graphPersistence.js"), "utf8");
 const workspace = fs.readFileSync(path.join(root, "backend", "workspaceApi.js"), "utf8");
-const start = fs.readFileSync(path.join(root, "backend", "start.js"), "utf8");
+const server = fs.readFileSync(path.join(root, "backend", "server.js"), "utf8");
 
 for (const marker of [
   "CREATE TABLE IF NOT EXISTS knowledge.graph_node",
@@ -28,8 +28,9 @@ assert.match(persistence, /FROM audit\.event/);
 assert.match(workspace, /persistGraphProjection/);
 assert.match(workspace, /persistEdgeReview/);
 assert.match(workspace, /access_role IN \('owner', 'reviewer'\)/);
-assert.match(start, /MEIDS_AUTO_MIGRATE/);
-assert.match(start, /run-postgres-migrations\.cjs/);
+assert.match(server, /MEIDS_AUTO_MIGRATE/);
+assert.match(server, /scheduleDatabaseMigrations/);
+assert.match(server, /run-postgres-migrations\.cjs/);
 assert.equal(GRAPH_ALGORITHM_VERSION, "graph-projection-v2");
 assert.equal(stableHash({ a: 1 }), stableHash({ a: 1 }));
 assert.notEqual(stableHash({ a: 1 }), stableHash({ a: 2 }));
