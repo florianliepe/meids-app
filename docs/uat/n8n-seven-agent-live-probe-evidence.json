@@ -1,18 +1,13 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-10-22T18:57:12.125Z",
+  "generated_at": "2026-10-27T13:21:55.192Z",
   "scope": "Public-safe n8n live execution evidence for Actor Twin and six workflow-tool subagents. No secrets are stored.",
-  "freshness_since": "2026-10-21T18:57:10.621Z",
-  "status": "partial",
+  "freshness_since": "2026-10-20T00:00:00.000Z",
+  "status": "complete",
   "summary": {
     "workflow_count": 7,
-    "fresh_connected_count": 3,
-    "stale_or_failed_agents": [
-      "knowledge_fabric_agent",
-      "skill_orchestrator",
-      "task_agent",
-      "learning_agent"
-    ]
+    "fresh_connected_count": 7,
+    "stale_or_failed_agents": []
   },
   "probes": [
     {
@@ -21,48 +16,48 @@
       "label": "Actor Twin",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 20,
-      "fresh_sample_size": 20,
+      "fetched_sample_size": 50,
+      "fresh_sample_size": 50,
       "latest_fresh_execution": {
-        "id": "33875",
+        "id": "36033",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-22T18:53:49.671Z",
-        "stopped_at": "2026-10-22T18:54:02.282Z",
-        "duration_ms": 12611
+        "started_at": "2026-10-27T09:35:53.156Z",
+        "stopped_at": "2026-10-27T09:36:05.692Z",
+        "duration_ms": 12536
       },
       "latest_available_execution": {
-        "id": "33875",
+        "id": "36033",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-22T18:53:49.671Z",
-        "stopped_at": "2026-10-22T18:54:02.282Z",
-        "duration_ms": 12611
+        "started_at": "2026-10-27T09:35:53.156Z",
+        "stopped_at": "2026-10-27T09:36:05.692Z",
+        "duration_ms": 12536
       }
     },
     {
-      "id": "7Ci86PxXipwvYpKv",
+      "id": "oPs77Qzrg9Repzgp",
       "agent": "knowledge_fabric_agent",
       "label": "Knowledge Fabric Agent",
-      "status": "fresh_failed",
-      "fresh_success": false,
-      "fetched_sample_size": 20,
-      "fresh_sample_size": 10,
+      "status": "fresh_connected",
+      "fresh_success": true,
+      "fetched_sample_size": 28,
+      "fresh_sample_size": 28,
       "latest_fresh_execution": {
-        "id": "33872",
-        "status": "error",
-        "finished": false,
-        "started_at": "2026-10-22T18:53:37.527Z",
-        "stopped_at": "2026-10-22T18:53:38.292Z",
-        "duration_ms": 765
+        "id": "34711",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-10-24T14:26:07.709Z",
+        "stopped_at": "2026-10-24T14:26:20.795Z",
+        "duration_ms": 13086
       },
       "latest_available_execution": {
-        "id": "33872",
-        "status": "error",
-        "finished": false,
-        "started_at": "2026-10-22T18:53:37.527Z",
-        "stopped_at": "2026-10-22T18:53:38.292Z",
-        "duration_ms": 765
+        "id": "34711",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-10-24T14:26:07.709Z",
+        "stopped_at": "2026-10-24T14:26:20.795Z",
+        "duration_ms": 13086
       }
     },
     {
@@ -71,46 +66,74 @@
       "label": "Agentic Butler",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 20,
-      "fresh_sample_size": 18,
+      "fetched_sample_size": 41,
+      "fresh_sample_size": 41,
       "latest_fresh_execution": {
-        "id": "33876",
+        "id": "34363",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-22T18:53:50.569Z",
-        "stopped_at": "2026-10-22T18:53:51.929Z",
-        "duration_ms": 1360
+        "started_at": "2026-10-23T16:12:21.800Z",
+        "stopped_at": "2026-10-23T16:14:05.123Z",
+        "duration_ms": 103323
       },
       "latest_available_execution": {
-        "id": "33876",
+        "id": "34363",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-22T18:53:50.569Z",
-        "stopped_at": "2026-10-22T18:53:51.929Z",
-        "duration_ms": 1360
+        "started_at": "2026-10-23T16:12:21.800Z",
+        "stopped_at": "2026-10-23T16:14:05.123Z",
+        "duration_ms": 103323
       }
     },
     {
       "id": "8ER9laJuKS6UrQJF",
       "agent": "skill_orchestrator",
       "label": "Skill Orchestrator",
-      "status": "stale_or_missing",
-      "fresh_success": false,
-      "fetched_sample_size": 0,
-      "fresh_sample_size": 0,
-      "latest_fresh_execution": null,
-      "latest_available_execution": null
+      "status": "fresh_connected",
+      "fresh_success": true,
+      "fetched_sample_size": 22,
+      "fresh_sample_size": 22,
+      "latest_fresh_execution": {
+        "id": "34694",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-10-24T14:10:58.785Z",
+        "stopped_at": "2026-10-24T14:11:25.268Z",
+        "duration_ms": 26483
+      },
+      "latest_available_execution": {
+        "id": "34694",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-10-24T14:10:58.785Z",
+        "stopped_at": "2026-10-24T14:11:25.268Z",
+        "duration_ms": 26483
+      }
     },
     {
       "id": "YXcl8Wb68Oup3Z8n",
       "agent": "task_agent",
       "label": "Task Agent",
-      "status": "stale_or_missing",
-      "fresh_success": false,
-      "fetched_sample_size": 0,
-      "fresh_sample_size": 0,
-      "latest_fresh_execution": null,
-      "latest_available_execution": null
+      "status": "fresh_connected",
+      "fresh_success": true,
+      "fetched_sample_size": 23,
+      "fresh_sample_size": 23,
+      "latest_fresh_execution": {
+        "id": "34695",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-10-24T14:11:06.784Z",
+        "stopped_at": "2026-10-24T14:11:15.499Z",
+        "duration_ms": 8715
+      },
+      "latest_available_execution": {
+        "id": "34695",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-10-24T14:11:06.784Z",
+        "stopped_at": "2026-10-24T14:11:15.499Z",
+        "duration_ms": 8715
+      }
     },
     {
       "id": "MH1nWMs8IFyNKN1E",
@@ -118,35 +141,49 @@
       "label": "Critical Faculty Agent",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 20,
-      "fresh_sample_size": 9,
+      "fetched_sample_size": 49,
+      "fresh_sample_size": 49,
       "latest_fresh_execution": {
-        "id": "33877",
+        "id": "34690",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-22T18:53:51.047Z",
-        "stopped_at": "2026-10-22T18:53:51.542Z",
-        "duration_ms": 495
+        "started_at": "2026-10-24T14:09:04.320Z",
+        "stopped_at": "2026-10-24T14:09:21.225Z",
+        "duration_ms": 16905
       },
       "latest_available_execution": {
-        "id": "33877",
+        "id": "34690",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-22T18:53:51.047Z",
-        "stopped_at": "2026-10-22T18:53:51.542Z",
-        "duration_ms": 495
+        "started_at": "2026-10-24T14:09:04.320Z",
+        "stopped_at": "2026-10-24T14:09:21.225Z",
+        "duration_ms": 16905
       }
     },
     {
       "id": "zX0s3hOByJ4HWQye",
       "agent": "learning_agent",
       "label": "Learning Agent",
-      "status": "stale_or_missing",
-      "fresh_success": false,
-      "fetched_sample_size": 0,
-      "fresh_sample_size": 0,
-      "latest_fresh_execution": null,
-      "latest_available_execution": null
+      "status": "fresh_connected",
+      "fresh_success": true,
+      "fetched_sample_size": 18,
+      "fresh_sample_size": 18,
+      "latest_fresh_execution": {
+        "id": "34736",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-10-24T15:41:14.540Z",
+        "stopped_at": "2026-10-24T15:41:56.080Z",
+        "duration_ms": 41540
+      },
+      "latest_available_execution": {
+        "id": "34736",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-10-24T15:41:14.540Z",
+        "stopped_at": "2026-10-24T15:41:56.080Z",
+        "duration_ms": 41540
+      }
     }
   ]
 }
