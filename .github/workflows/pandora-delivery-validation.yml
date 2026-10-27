@@ -1,0 +1,32 @@
+name: Delivery revision validation
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "frontend/staticwebapp.config.json"
+      - "scripts/build-pages-static.cjs"
+      - "scripts/write-build-info.cjs"
+      - "scripts/test-build-info.cjs"
+      - ".github/workflows/*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/test-build-info.cjs
+      - run: npm run check:backend
+      - run: node scripts/build-pages-static.cjs --output dist-pages-check-delivery --clean --smoke
+      - name: Verify emitted frontend revision
+        run: node -e 'const x=require("./dist-pages-check-delivery/build-info.json"); if(!x.available || x.commit!==process.env.GITHUB_SHA || x.runId!==Number(process.env.GITHUB_RUN_ID)) process.exit(1)'

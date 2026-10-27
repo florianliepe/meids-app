@@ -1,3 +1,4 @@
+const { createBuildInfo } = require("../backend/buildInfo");
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -165,6 +166,7 @@ function build() {
   if (args.clean) fs.rmSync(args.output, { recursive: true, force: true });
   fs.mkdirSync(args.output, { recursive: true });
   copyDirectory(frontendDir, args.output);
+  fs.writeFileSync(path.join(args.output, "build-info.json"), `${JSON.stringify(createBuildInfo("frontend"), null, 2)}\n`, "utf8");
 
   const runtimeConfigPath = path.join(args.output, "runtime-config.js");
   const runtimeConfig = runtimeConfigJs();

@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "backend/**"
+      - "scripts/write-build-info.cjs"
+      - "scripts/test-build-info.cjs"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/meids-backend-app-service.yml"
@@ -48,6 +50,11 @@ jobs:
 
       - name: Validate backend contract
         run: npm run check:backend
+
+      - name: Validate and stamp build identity
+        run: |
+          node --test scripts/test-build-info.cjs
+          node scripts/write-build-info.cjs backend
 
       - name: Prepare deploy package
         shell: bash

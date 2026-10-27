@@ -1,3 +1,4 @@
+const { readBuildInfo } = require("./buildInfo");
 const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -2776,6 +2777,11 @@ async function routeRequest(req, res) {
     return;
   }
   try {
+    if (req.method === "GET" && url.pathname === "/api/build-info") {
+      const build = readBuildInfo();
+      jsonResponse(res, build.available ? 200 : 503, build, { "Cache-Control": "no-store" });
+      return;
+    }
     if (req.method === "GET" && url.pathname === "/api/health") {
       const health = await backendReadinessPayload();
       jsonResponse(res, health.status === "ok" ? 200 : 503, health);

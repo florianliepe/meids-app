@@ -13,6 +13,7 @@ on:
       - "prompts/**"
       - "workflows/n8n/**"
       - "scripts/build-pages-static.cjs"
+      - "backend/buildInfo.js"
       - "scripts/pages-smoke-check.cjs"
       - "scripts/validate-n8n-fixtures.cjs"
       - "scripts/validate-n8n-ai-agent-workflows.cjs"
@@ -48,6 +49,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24"
+
+      - name: Validate build identity
+        run: node --test scripts/test-build-info.cjs
 
       - name: Validate frontend JavaScript
         run: node --check frontend/app.js && node --check frontend/admin/admin.js
