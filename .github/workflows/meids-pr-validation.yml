@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   validate:
+    name: Me.IDs pull request validation
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
