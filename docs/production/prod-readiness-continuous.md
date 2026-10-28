@@ -20,6 +20,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | Backend deployed revision | Observed | App Service build `00cdb3145b2507d5f6148fb4456a7f357a206d28`, built 2026-10-27 13:11 UTC |
 | Seven-agent execution history | Connected but stale | All seven workflows have successful historical executions; no execution fell inside the last-24-hour probe window on 2026-10-28 |
 | Frontend unauthenticated probe | Expected auth gate | Azure Static Web App redirects protected API probes to Microsoft sign-in |
+| Production candidate CI | Pass | PR #25, candidate `642bf30fc92e828ddbf9dc3aff42c1ed46376389`, delivery validation run `40705111677` |
 
 ## Prioritized backlog
 
@@ -56,6 +57,13 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 5. Run fresh seven-agent probes and authorization-negative tests.
 6. Promote remaining frontend/auth UX fixes through the Static Web App pipeline.
 7. Close only evidence-backed items above; add every new defect here before release.
+
+## Current promotion candidate
+
+- Pull request: `https://github.com/florianliepe/meids-app/pull/25`
+- Candidate revision: `642bf30fc92e828ddbf9dc3aff42c1ed46376389`
+- CI evidence: delivery validation run `40705111677` passed build identity tests, backend contracts, static build smoke checks, and emitted-revision verification.
+- Promotion is intentionally paused before merge until migration 016 is confirmed applied.
 
 ## Human or privileged gates
 
