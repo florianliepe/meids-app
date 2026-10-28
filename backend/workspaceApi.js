@@ -1,6 +1,7 @@
 const crypto = require("node:crypto");
 const { MAX_DOCUMENT_BYTES, extractDocumentText } = require("./documentExtraction");
 const { MAX_AUDIO_BYTES, validateAudioUpload } = require("./audioUpload");
+const { enqueueRuntimeJob, processRuntimeJobBatch } = require("./runtimeJobs");
 const {
   persistGraphProjection,
   latestEdgeReviews,
@@ -611,6 +612,146 @@ function createWorkspaceApi(deps) {
     return { mapping, pool: await getPgPool() };
   }
 
+  function runtimeMapping(job) {
+    const mapping = job.payload?.mapping || {};
+    if (clean(mapping.tenant_id, 256) !== clean(job.tenant_id, 256)
+      || clean(mapping.user_id, 256) !== clean(job.actor_user_id, 256)
+      || !(mapping.allowed_twin_ids || []).includes(job.twin_id)) {
+      throw new Error(`Runtime job authorization snapshot is invalid for ${job.job_id}.`);
+    }
+    return mapping;
+  }
+
+  async function persistSkillRunResult(pool, mapping, runId, action, details) {
+    await withContext(pool, mapping, async (client) => {
+      const updated = await client.query(
+        `UPDATE audit.event SET action = $3, details = $4::jsonb
+         WHERE tenant_id = $1 AND resource_id = $2 AND resource_type = 'agent.skill_run'
+           AND actor_user_id = $5`,
+        [mapping.tenant_id, runId, action, JSON.stringify(details), mapping.user_id],
+      );
+      if (updated.rowCount !== 1) throw new Error(`Skill run ledger update did not match ${runId}.`);
+    });
+  }
+
+  const runtimeJobHandlers = {
+    skill_execution: {
+      async run(job) {
+        const mapping = runtimeMapping(job);
+        const queued = job.payload.queued || {};
+        const request = structuredClone(job.payload.request || {});
+        request.metadata = request.metadata || {};
+        request.metadata.authorization = {
+          ...(request.metadata.authorization || {}),
+          knowledgeAccessToken: issueKnowledgeAccessToken(mapping, job.twin_id),
+        };
+        const response = await proxyToN8n("actor_twin", request);
+        const output = response.output || response;
+        const completed = {
+          ...queued,
+          status: response.status || "completed",
+          summary: clean(typeof output === "string" ? output : response.message || "Skill run completed.", 1_000),
+          result: output,
+          attempts: Number(job.attempts),
+          completed_at: new Date().toISOString(),
+        };
+        await persistSkillRunResult(await getPgPool(), mapping, job.job_id, "skill.run", completed);
+        return completed;
+      },
+      async onFailure(job, error, failure) {
+        const mapping = runtimeMapping(job);
+        const queued = job.payload.queued || {};
+        const details = {
+          ...queued,
+          status: failure.terminal ? "failed" : "queued",
+          review_state: failure.terminal ? "needs_rework" : queued.review_state,
+          summary: clean(error.message, 1_000),
+          attempts: Number(job.attempts),
+          retry_scheduled: !failure.terminal,
+          completed_at: failure.terminal ? new Date().toISOString() : undefined,
+        };
+        await persistSkillRunResult(
+          await getPgPool(),
+          mapping,
+          job.job_id,
+          failure.terminal ? "skill.run.failed" : "skill.run.queued",
+          details,
+        );
+      },
+    },
+    voice_transcription: {
+      async run(job) {
+        const mapping = runtimeMapping(job);
+        const queued = job.payload.queued || {};
+        if (!job.binary_payload?.length) throw new Error("Queued audio payload is unavailable.");
+        const startedAt = Date.now();
+        const pool = await getPgPool();
+        await withContext(pool, mapping, (client) => audit(client, mapping, "voice.transcription.processing", "runtime.voice_transcription_job", job.job_id, {
+          ...queued,
+          status: "processing",
+          attempt: Number(job.attempts),
+          started_at: new Date(startedAt).toISOString(),
+        }));
+        const transcript = clean(await transcribeAudio({
+          buffer: job.binary_payload,
+          filename: queued.filename,
+          type: queued.media_type,
+          mediaType: queued.media_type,
+          gatewayFilename: queued.gateway_filename,
+        }), 50_000);
+        if (!transcript) throw httpError(422, "The transcription provider returned no readable transcript.");
+
+        const evidenceId = `voice_evidence_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+        const result = {
+          status: "transcribed",
+          job_id: job.job_id,
+          transcript,
+          category: queued.category,
+          evidence: {
+            evidence_id: evidenceId,
+            path: `voice-transcription:${evidenceId}`,
+            source_type: queued.source_type,
+            filename: queued.filename,
+            media_type: queued.media_type,
+            transcription_provider: queued.transcription_provider,
+            transcription_transport: queued.transcription_transport,
+          },
+          assessment: qualityAssessment({ transcript, category: queued.category, replies: [] }),
+          agent: { id: "knowledge_retrieval_agent", mode: "circular_interview" },
+        };
+        await withContext(pool, mapping, (client) => audit(client, mapping, "voice.transcription.completed", "runtime.voice_transcription_job", job.job_id, {
+          ...queued,
+          ...result,
+          transcript_sha256: crypto.createHash("sha256").update(transcript).digest("hex"),
+          attempts: Number(job.attempts),
+          completed_at: new Date().toISOString(),
+          duration_ms: Date.now() - startedAt,
+        }));
+        return result;
+      },
+      async onFailure(job, error, failure) {
+        const mapping = runtimeMapping(job);
+        const queued = job.payload.queued || {};
+        const details = {
+          ...queued,
+          status: failure.terminal ? "failed" : "processing",
+          retrying: !failure.terminal,
+          attempt: Number(job.attempts),
+          error: clean(error.message || "Audio transcription failed.", 1_000),
+          failed_at: failure.terminal ? new Date().toISOString() : undefined,
+        };
+        await withContext(await getPgPool(), mapping, (client) => audit(
+          client,
+          mapping,
+          failure.terminal ? "voice.transcription.failed" : "voice.transcription.processing",
+          "runtime.voice_transcription_job",
+          job.job_id,
+          details,
+        ));
+      },
+    },
+  };
+
   async function picture(req, res, remove = false) {
     const form = remove ? { fields: await readBody(req), files: {} } : await readMultipartForm(req, { maxBytes: MAX_AVATAR_BYTES + 100_000 });
     const { mapping, pool } = await context(req, form.fields);
@@ -900,49 +1041,21 @@ function createWorkspaceApi(deps) {
       review_state: "unreviewed", inputs: body, created_at: new Date().toISOString(),
       orchestration: { entry_agent: "actor_twin", delegation: "Call n8n Workflow Tool", target: "agentic_butler" },
     };
-    await withContext(pool, mapping, (client) => audit(client, mapping, "skill.run.queued", "agent.skill_run", requestId, queued));
-    jsonResponse(res, 202, queued);
-
-    const persistRunResult = (action, details) => withContext(pool, mapping, async (client) => {
-      const updated = await client.query(
-        `UPDATE audit.event SET action = $3, details = $4::jsonb
-         WHERE tenant_id = $1 AND resource_id = $2 AND resource_type = 'agent.skill_run'
-           AND actor_user_id = $5`,
-        [mapping.tenant_id, requestId, action, JSON.stringify(details), mapping.user_id],
-      );
-      if (updated.rowCount !== 1) throw new Error(`Skill run ledger update did not match ${requestId}.`);
+    await withContext(pool, mapping, async (client) => {
+      await audit(client, mapping, "skill.run.queued", "agent.skill_run", requestId, queued);
+      const queuedRequest = structuredClone(request);
+      if (queuedRequest.metadata?.authorization) delete queuedRequest.metadata.authorization.knowledgeAccessToken;
+      await enqueueRuntimeJob(client, {
+        job_id: requestId,
+        idempotency_key: `skill:${mapping.tenant_id}:${mapping.user_id}:${requestId}`,
+        tenant_id: mapping.tenant_id,
+        actor_user_id: mapping.user_id,
+        twin_id: skill.twin_id,
+        job_type: "skill_execution",
+        payload: { mapping, request: queuedRequest, queued },
+      });
     });
-
-    void (async () => {
-      try {
-        const response = await proxyToN8n("actor_twin", request);
-        const output = response.output || response;
-        const completed = {
-          ...queued,
-          status: response.status || "completed",
-          summary: clean(typeof output === "string" ? output : response.message || "Skill run completed.", 1_000),
-          result: output,
-          completed_at: new Date().toISOString(),
-        };
-        await persistRunResult("skill.run", completed);
-      } catch (error) {
-        const failed = {
-          ...queued, status: "failed", review_state: "needs_rework",
-          summary: clean(error.message, 1_000), completed_at: new Date().toISOString(),
-        };
-        try {
-          await persistRunResult("skill.run.failed", failed);
-        } catch (persistError) {
-          console.error(JSON.stringify({
-            event: "skill_run_ledger_update",
-            status: "failed",
-            run_id: requestId,
-            execution_error: error.message || String(error),
-            persistence_error: persistError.message || String(persistError),
-          }));
-        }
-      }
-    })();
+    jsonResponse(res, 202, queued);
   }
 
   async function skillRuns(req, res, url) {
@@ -1057,77 +1170,24 @@ function createWorkspaceApi(deps) {
       transcription_provider: transcriptionConfig().provider,
       transcription_transport: transcriptionConfig().mode,
       model: transcriptionConfig().model,
+      gateway_filename: validated.gatewayFilename,
       created_at: new Date().toISOString(),
     };
-    await withContext(pool, mapping, (client) => audit(
-      client,
-      mapping,
-      "voice.transcription.queued",
-      "runtime.voice_transcription_job",
-      jobId,
-      queued,
-    ));
+    await withContext(pool, mapping, async (client) => {
+      await audit(client, mapping, "voice.transcription.queued", "runtime.voice_transcription_job", jobId, queued);
+      await enqueueRuntimeJob(client, {
+        job_id: jobId,
+        idempotency_key: `voice:${mapping.tenant_id}:${mapping.user_id}:${jobId}`,
+        tenant_id: mapping.tenant_id,
+        actor_user_id: mapping.user_id,
+        twin_id: twinId,
+        job_type: "voice_transcription",
+        payload: { mapping, queued },
+        binary_payload: file.buffer,
+      });
+    });
 
     jsonResponse(res, 202, queued);
-
-    void (async () => {
-      const startedAt = Date.now();
-      try {
-        await withContext(pool, mapping, (client) => audit(client, mapping, "voice.transcription.processing", "runtime.voice_transcription_job", jobId, {
-          ...queued,
-          status: "processing",
-          started_at: new Date(startedAt).toISOString(),
-        }));
-        const transcript = clean(await transcribeAudio({
-          ...file,
-          mediaType: validated.mediaType,
-          gatewayFilename: validated.gatewayFilename,
-        }), 50_000);
-        if (!transcript) throw httpError(422, "The transcription provider returned no readable transcript.");
-
-        const evidenceId = `voice_evidence_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
-        const transcriptHash = crypto.createHash("sha256").update(transcript).digest("hex");
-        const result = {
-          status: "transcribed",
-          job_id: jobId,
-          transcript,
-          category,
-          evidence: {
-            evidence_id: evidenceId,
-            path: `voice-transcription:${evidenceId}`,
-            source_type: sourceType,
-            filename: validated.filename,
-            media_type: validated.mediaType,
-            transcription_provider: transcriptionConfig().provider,
-            transcription_transport: transcriptionConfig().mode,
-          },
-          assessment: qualityAssessment({ transcript, category, replies: [] }),
-          agent: { id: "knowledge_retrieval_agent", mode: "circular_interview" },
-        };
-        await withContext(pool, mapping, (client) => audit(client, mapping, "voice.transcription.completed", "runtime.voice_transcription_job", jobId, {
-          ...queued,
-          ...result,
-          transcript_sha256: transcriptHash,
-          completed_at: new Date().toISOString(),
-          duration_ms: Date.now() - startedAt,
-        }));
-        console.log(JSON.stringify({ event: "voice_transcription_job", status: "completed", job_id: jobId, duration_ms: Date.now() - startedAt }));
-      } catch (error) {
-        const failed = {
-          ...queued,
-          status: "failed",
-          error: clean(error.message || "Audio transcription failed.", 1_000),
-          failed_at: new Date().toISOString(),
-          duration_ms: Date.now() - startedAt,
-        };
-        try {
-          await withContext(pool, mapping, (client) => audit(client, mapping, "voice.transcription.failed", "runtime.voice_transcription_job", jobId, failed));
-        } catch (persistError) {
-          console.error(JSON.stringify({ event: "voice_transcription_job_ledger", status: "failed", job_id: jobId, error: persistError.message || String(persistError) }));
-        }
-        console.error(JSON.stringify({ event: "voice_transcription_job", status: "failed", job_id: jobId, duration_ms: Date.now() - startedAt, error: failed.error }));
-      }
-    })();
   }
 
   async function voiceTranscriptionStatus(req, res, url) {
@@ -1614,7 +1674,7 @@ function createWorkspaceApi(deps) {
     jsonResponse(res, 200, { [key]: [], total: 0, status: "ready" });
   }
 
-  return async function workspaceApi(req, res, url) {
+  const workspaceApi = async function workspaceApi(req, res, url) {
     const route = `${req.method} ${url.pathname}`;
     if (route === "POST /api/twins/picture") await picture(req, res, false);
     else if (route === "DELETE /api/twins/picture") await picture(req, res, true);
@@ -1661,6 +1721,12 @@ function createWorkspaceApi(deps) {
     else return false;
     return true;
   };
+  workspaceApi.processRuntimeJobs = async (options = {}) => processRuntimeJobBatch(
+    await getPgPool(),
+    runtimeJobHandlers,
+    options,
+  );
+  return workspaceApi;
 }
 
 module.exports = {

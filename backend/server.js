@@ -3047,6 +3047,24 @@ if (require.main === module) {
       setTimeout(runWorker, 3_000);
       setInterval(runWorker, intervalMs).unref();
     }
+    if (!["false", "0", "off", "disabled"].includes(String(process.env.MEIDS_RUNTIME_JOB_WORKER_ENABLED || "true").toLowerCase())) {
+      let runtimeWorkerRunning = false;
+      const runtimeIntervalMs = Math.max(2_000, Number(process.env.MEIDS_RUNTIME_JOB_INTERVAL_MS || 5_000));
+      const runRuntimeWorker = async () => {
+        if (runtimeWorkerRunning || !postgresEnabled()) return;
+        runtimeWorkerRunning = true;
+        try {
+          const result = await handleWorkspaceApi.processRuntimeJobs();
+          if (result.claimed) console.log(JSON.stringify({ event: "runtime_background_jobs", ...result }));
+        } catch (error) {
+          console.error(JSON.stringify({ event: "runtime_background_jobs", status: "failed", error: error.message || String(error) }));
+        } finally {
+          runtimeWorkerRunning = false;
+        }
+      };
+      setTimeout(runRuntimeWorker, 2_000);
+      setInterval(runRuntimeWorker, runtimeIntervalMs).unref();
+    }
   });
 }
 
