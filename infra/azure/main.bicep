@@ -297,6 +297,10 @@ resource backendAppSettings 'Microsoft.Web/sites/config@2023-12-01' = {
     MEIDS_ALLOW_DETERMINISTIC_VECTORS: environment == 'uat' ? 'true' : 'false'
     MEIDS_ENFORCE_KNOWLEDGE_AUTH: string(enableKnowledgeAuthorization)
     MEIDS_AUTH_CONTEXT_SIGNING_KEY: enableKnowledgeAuthorization ? '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=${knowledgeAuthorizationSigningSecretName})' : ''
+    MEIDS_RUNTIME_JOB_WORKER_ENABLED: 'true'
+    MEIDS_RUNTIME_JOB_BATCH_SIZE: '4'
+    MEIDS_RUNTIME_JOB_INTERVAL_MS: '5000'
+    MEIDS_RUNTIME_JOB_LEASE_SECONDS: '420'
     N8N_ACTOR_TWIN_WEBHOOK_URL: actorTwinWebhookUrl
     N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL: knowledgeFabricWebhookUrl
     N8N_AGENTIC_BUTLER_WEBHOOK_URL: agenticButlerWebhookUrl
