@@ -59,9 +59,10 @@ function verifyKnowledgeAccessToken(token, options = {}) {
   return normalizeAccessClaims(claims);
 }
 
-function accessError(message, statusCode = 403) {
+function accessError(message, statusCode = 403, code = "blocked_auth_context") {
   const error = new Error(message);
   error.statusCode = statusCode;
+  error.code = code;
   return error;
 }
 
@@ -121,19 +122,25 @@ function buildKnowledgeSecurityFilter(claims, options = {}) {
   const scopeRules = [
     `(visibility_scope eq 'private' and ${searchIn("twin_id", twinIds)} and (owner_user_id eq ${odataLiteral(access.user_id)} or user_id eq ${odataLiteral(access.user_id)} or allowed_user_ids/any(user: user eq ${odataLiteral(access.user_id)})))`,
   ];
+  const candidateRules = [
+    searchIn("twin_id", twinIds),
+    `allowed_user_ids/any(user: user eq ${odataLiteral(access.user_id)})`,
+  ];
   if (access.visibility_scopes.includes("twin_shared")) {
     scopeRules.push(`(visibility_scope eq 'twin_shared' and ${searchIn("twin_id", twinIds)})`);
   }
   if (access.visibility_scopes.includes("team_shared") && access.group_ids.length) {
     scopeRules.push(`(visibility_scope eq 'team_shared' and ${collectionSearchIn("allowed_group_ids", access.group_ids)})`);
+    candidateRules.push("visibility_scope eq 'team_shared'");
   }
   if (access.visibility_scopes.includes("org_shared")) {
     scopeRules.push("visibility_scope eq 'org_shared'");
+    candidateRules.push("visibility_scope eq 'org_shared'");
   }
   return [
     `organization_id eq ${odataLiteral(access.tenant_id)}`,
     stateFilter,
-    `(${searchIn("twin_id", twinIds)} or allowed_user_ids/any(user: user eq ${odataLiteral(access.user_id)}) or visibility_scope eq 'team_shared' or visibility_scope eq 'org_shared')`,
+    `(${candidateRules.join(" or ")})`,
     `(${scopeRules.join(" or ")})`,
   ].join(" and ");
 }

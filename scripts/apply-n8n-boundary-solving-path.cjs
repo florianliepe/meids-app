@@ -146,7 +146,6 @@ function ensureLearningDispatchWebhook(workflow, learningAgentName) {
         responseMode: "onReceived",
         options: {
           responseCode: 202,
-          responseData: "firstEntryJson",
         },
       },
       notes: "Post-turn entrypoint. Use for detached Learning Agent dispatch after Actor Twin has already answered.",

@@ -1,9 +1,9 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-09-07T20:06:52.228Z",
+  "generated_at": "2026-10-28T16:33:47.881Z",
   "scope": "Agent prompt size and n8n execution duration audit. No secrets are stored.",
   "filters": {
-    "since": "2026-09-07T00:00:00.000Z",
+    "since": null,
     "agent": null,
     "limit": 10
   },
@@ -11,50 +11,50 @@
     {
       "agent": "actor_twin",
       "path": "prompts/actor-twin/system.md",
-      "chars": 8447,
-      "approx_tokens": 2112
+      "chars": 8583,
+      "approx_tokens": 2146
     },
     {
       "agent": "knowledge_retrieval_interviewer",
       "path": "prompts/knowledge-retrieval-interviewer/system.md",
-      "chars": 7504,
-      "approx_tokens": 1876
+      "chars": 7628,
+      "approx_tokens": 1907
     },
     {
       "agent": "critical_faculty",
       "path": "prompts/critical-faculty/system.md",
-      "chars": 5472,
-      "approx_tokens": 1368
+      "chars": 5564,
+      "approx_tokens": 1391
     },
     {
       "agent": "skill_orchestrator",
       "path": "prompts/skill-orchestrator/system.md",
-      "chars": 5418,
-      "approx_tokens": 1355
+      "chars": 5533,
+      "approx_tokens": 1384
     },
     {
       "agent": "agentic_butler",
       "path": "prompts/agentic-butler/system.md",
-      "chars": 5346,
-      "approx_tokens": 1337
+      "chars": 5467,
+      "approx_tokens": 1367
     },
     {
       "agent": "learning_agent",
       "path": "prompts/learning-agent/system.md",
-      "chars": 5303,
-      "approx_tokens": 1326
+      "chars": 5397,
+      "approx_tokens": 1350
     },
     {
       "agent": "knowledge_fabric_agent",
       "path": "prompts/knowledge-fabric-agent/system.md",
-      "chars": 4381,
-      "approx_tokens": 1096
+      "chars": 4473,
+      "approx_tokens": 1119
     },
     {
       "agent": "task_agent",
       "path": "prompts/task-agent/system.md",
-      "chars": 2756,
-      "approx_tokens": 689
+      "chars": 2827,
+      "approx_tokens": 707
     }
   ],
   "execution_metrics": [
@@ -62,99 +62,99 @@
       "id": "eKI3qM7nyCNn9r1q",
       "agent": "actor_twin",
       "status": "measured",
-      "filtered_since": "2026-09-07T00:00:00.000Z",
+      "filtered_since": null,
       "fetched_sample_size": 10,
-      "sample_size": 7,
-      "success_count": 7,
+      "sample_size": 10,
+      "success_count": 10,
       "failure_count": 0,
-      "avg_ms": 62885,
-      "p50_ms": 44632,
-      "p90_ms": 186216,
-      "max_ms": 186216
+      "avg_ms": 37570,
+      "p50_ms": 10392,
+      "p90_ms": 102263,
+      "max_ms": 122488
     },
     {
-      "id": "7Ci86PxXipwvYpKv",
+      "id": "dUkrCHpkLmqmFc7I",
       "agent": "knowledge_fabric_agent",
       "status": "measured",
-      "filtered_since": "2026-09-07T00:00:00.000Z",
+      "filtered_since": null,
       "fetched_sample_size": 10,
-      "sample_size": 3,
-      "success_count": 3,
-      "failure_count": 0,
-      "avg_ms": 95474,
-      "p50_ms": 65100,
-      "p90_ms": 170951,
-      "max_ms": 170951
+      "sample_size": 10,
+      "success_count": 9,
+      "failure_count": 1,
+      "avg_ms": 7307,
+      "p50_ms": 1743,
+      "p90_ms": 16121,
+      "max_ms": 41554
     },
     {
-      "id": "KZOqZRUAnVfFEAYJ",
+      "id": "elbiGicaFmQQW4w8",
       "agent": "agentic_butler",
       "status": "measured",
-      "filtered_since": "2026-09-07T00:00:00.000Z",
+      "filtered_since": null,
       "fetched_sample_size": 10,
-      "sample_size": 3,
-      "success_count": 3,
+      "sample_size": 10,
+      "success_count": 10,
       "failure_count": 0,
-      "avg_ms": 34725,
-      "p50_ms": 35039,
-      "p90_ms": 36822,
-      "max_ms": 36822
+      "avg_ms": 76093,
+      "p50_ms": 78375,
+      "p90_ms": 124248,
+      "max_ms": 153460
     },
     {
       "id": "8ER9laJuKS6UrQJF",
       "agent": "skill_orchestrator",
       "status": "measured",
-      "filtered_since": "2026-09-07T00:00:00.000Z",
+      "filtered_since": null,
       "fetched_sample_size": 10,
-      "sample_size": 3,
-      "success_count": 3,
+      "sample_size": 10,
+      "success_count": 10,
       "failure_count": 0,
-      "avg_ms": 25818,
-      "p50_ms": 26433,
-      "p90_ms": 26687,
-      "max_ms": 26687
+      "avg_ms": 46523,
+      "p50_ms": 37924,
+      "p90_ms": 65606,
+      "max_ms": 79608
     },
     {
       "id": "YXcl8Wb68Oup3Z8n",
       "agent": "task_agent",
       "status": "measured",
-      "filtered_since": "2026-09-07T00:00:00.000Z",
+      "filtered_since": null,
       "fetched_sample_size": 10,
-      "sample_size": 3,
-      "success_count": 3,
+      "sample_size": 10,
+      "success_count": 10,
       "failure_count": 0,
-      "avg_ms": 9346,
-      "p50_ms": 10202,
-      "p90_ms": 10883,
-      "max_ms": 10883
+      "avg_ms": 12264,
+      "p50_ms": 13188,
+      "p90_ms": 17327,
+      "max_ms": 18847
     },
     {
       "id": "MH1nWMs8IFyNKN1E",
       "agent": "critical_faculty",
       "status": "measured",
-      "filtered_since": "2026-09-07T00:00:00.000Z",
-      "fetched_sample_size": 6,
-      "sample_size": 4,
-      "success_count": 4,
+      "filtered_since": null,
+      "fetched_sample_size": 10,
+      "sample_size": 10,
+      "success_count": 10,
       "failure_count": 0,
-      "avg_ms": 24024,
-      "p50_ms": 17225,
-      "p90_ms": 34243,
-      "max_ms": 34243
+      "avg_ms": 18981,
+      "p50_ms": 16905,
+      "p90_ms": 25883,
+      "max_ms": 41605
     },
     {
       "id": "zX0s3hOByJ4HWQye",
       "agent": "learning_agent",
       "status": "measured",
-      "filtered_since": "2026-09-07T00:00:00.000Z",
-      "fetched_sample_size": 5,
-      "sample_size": 4,
-      "success_count": 4,
+      "filtered_since": null,
+      "fetched_sample_size": 10,
+      "sample_size": 10,
+      "success_count": 10,
       "failure_count": 0,
-      "avg_ms": 53248,
-      "p50_ms": 11092,
-      "p90_ms": 112932,
-      "max_ms": 112932
+      "avg_ms": 46300,
+      "p50_ms": 35123,
+      "p90_ms": 75117,
+      "max_ms": 163064
     }
   ],
   "recommendations": [

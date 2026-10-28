@@ -5,15 +5,15 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const defaultOutput = path.join(root, "docs", "uat", "agent-runtime-performance-audit.json");
 
-const workflows = [
-  { id: process.env.N8N_ACTOR_TWIN_WORKFLOW_ID || "eKI3qM7nyCNn9r1q", agent: "actor_twin" },
-  { id: process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "oPs77Qzrg9Repzgp", agent: "knowledge_fabric_agent" },
-  { id: process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "KZOqZRUAnVfFEAYJ", agent: "agentic_butler" },
-  { id: process.env.N8N_SKILL_ORCHESTRATOR_WORKFLOW_ID || "8ER9laJuKS6UrQJF", agent: "skill_orchestrator" },
-  { id: process.env.N8N_TASK_AGENT_WORKFLOW_ID || "YXcl8Wb68Oup3Z8n", agent: "task_agent" },
-  { id: process.env.N8N_CRITICAL_FACULTY_WORKFLOW_ID || "MH1nWMs8IFyNKN1E", agent: "critical_faculty" },
-  { id: process.env.N8N_LEARNING_AGENT_WORKFLOW_ID || "zX0s3hOByJ4HWQye", agent: "learning_agent" },
-];
+const fallbackIds = {
+  actor_twin: process.env.N8N_ACTOR_TWIN_WORKFLOW_ID || "eKI3qM7nyCNn9r1q",
+  knowledge_fabric_agent: process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "oPs77Qzrg9Repzgp",
+  agentic_butler: process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "KZOqZRUAnVfFEAYJ",
+  skill_orchestrator: process.env.N8N_SKILL_ORCHESTRATOR_WORKFLOW_ID || "8ER9laJuKS6UrQJF",
+  task_agent: process.env.N8N_TASK_AGENT_WORKFLOW_ID || "YXcl8Wb68Oup3Z8n",
+  critical_faculty: process.env.N8N_CRITICAL_FACULTY_WORKFLOW_ID || "MH1nWMs8IFyNKN1E",
+  learning_agent: process.env.N8N_LEARNING_AGENT_WORKFLOW_ID || "zX0s3hOByJ4HWQye",
+};
 
 function parseArgs(argv) {
   const args = { output: defaultOutput, limit: 10, write: true, since: "", agent: "" };
@@ -89,6 +89,36 @@ async function n8nJson(endpoint) {
   }
 }
 
+function workflowToolTarget(workflow, nodeName) {
+  const node = (workflow?.nodes || []).find((item) => item.name === nodeName && /toolWorkflow$/.test(item.type || ""));
+  const configured = node?.parameters?.workflowId;
+  return String(configured?.value || configured || "").trim();
+}
+
+async function workflowDefinition(id) {
+  if (!id) return null;
+  const result = await n8nJson(`/api/v1/workflows/${encodeURIComponent(id)}`);
+  return result?.error ? null : result;
+}
+
+async function resolveRoutedWorkflows() {
+  const actorId = fallbackIds.actor_twin;
+  const actor = await workflowDefinition(actorId);
+  const butlerId = workflowToolTarget(actor, "Agentic Butler") || fallbackIds.agentic_butler;
+  const butler = await workflowDefinition(butlerId);
+  const skillId = workflowToolTarget(butler, "Skill Orchestrator") || fallbackIds.skill_orchestrator;
+  const skill = await workflowDefinition(skillId);
+  return [
+    { id: actorId, agent: "actor_twin" },
+    { id: workflowToolTarget(actor, "Knowledge Fabric Agent") || fallbackIds.knowledge_fabric_agent, agent: "knowledge_fabric_agent" },
+    { id: butlerId, agent: "agentic_butler" },
+    { id: skillId, agent: "skill_orchestrator" },
+    { id: workflowToolTarget(skill, "Task Agent") || fallbackIds.task_agent, agent: "task_agent" },
+    { id: workflowToolTarget(actor, "Critical Faculty Agent") || fallbackIds.critical_faculty, agent: "critical_faculty" },
+    { id: workflowToolTarget(actor, "Learning Agent") || fallbackIds.learning_agent, agent: "learning_agent" },
+  ];
+}
+
 function durationMs(execution) {
   if (!execution.startedAt || !execution.stoppedAt) return null;
   return new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime();
@@ -101,7 +131,7 @@ function percentile(values, p) {
   return sorted[index];
 }
 
-async function executionMetrics(limit, { since = "", agent = "" } = {}) {
+async function executionMetrics(workflows, limit, { since = "", agent = "" } = {}) {
   const rows = [];
   const selectedWorkflows = agent
     ? workflows.filter((workflow) => workflow.agent === agent)
@@ -156,7 +186,8 @@ function recommendations(promptRows, executionRows) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const prompts = promptMetrics();
-  const executions = await executionMetrics(args.limit, { since: args.since, agent: args.agent });
+  const workflows = await resolveRoutedWorkflows();
+  const executions = await executionMetrics(workflows, args.limit, { since: args.since, agent: args.agent });
   const artifact = {
     schema_version: "0.1.0",
     generated_at: new Date().toISOString(),

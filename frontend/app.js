@@ -16198,11 +16198,33 @@ function installN8nChatBusyGuard(mount) {
   sync();
 }
 
-async function refreshN8nChatAuthorizationContext() {
+async function refreshN8nChatAuthorizationContext({ reconnect = false, reason = "refresh" } = {}) {
   await loadAuthSession();
   applyAuthState();
   if (!runtimeConfig.n8nChatEnabled) return;
   renderN8nInteractionContext();
+  if (reconnect && authenticatedSession()) {
+    reloadN8nChatContext();
+    const status = $("#n8nChatStatus");
+    if (status) status.textContent = reason === "expired"
+      ? "Authorization renewed. Actor Twin reconnected without replaying the previous request."
+      : "Authorization renewed. Actor Twin reconnected with the current scoped context.";
+  }
+}
+
+function blockedN8nAuthContext(value) {
+  const text = typeof value === "string" ? value : JSON.stringify(value || {});
+  return /blocked_auth_context|signed knowledge access token is required|knowledge access token is (?:expired|malformed|invalid)|authentication or a signed knowledge access token is required/i.test(text);
+}
+
+async function recoverN8nAuthContext() {
+  await refreshN8nChatAuthorizationContext({ reconnect: true, reason: "expired" });
+  showToast(
+    "Actor Twin session renewed",
+    "The failed request was not replayed. Submit it again after checking the renewed context.",
+    "success",
+    7000,
+  );
 }
 
 function scheduleN8nChatContextReload() {
@@ -16221,12 +16243,14 @@ function scheduleN8nAuthorizationRefresh() {
   if (!Number.isFinite(expiresAt)) return;
   const delay = Math.max(30_000, expiresAt - Date.now() - 30_000);
   state.n8nAuthRefreshTimer = setTimeout(async () => {
-    await loadAuthSession();
-    applyAuthState();
-    renderN8nInteractionContext();
-    const status = $("#n8nChatStatus");
-    if (status) status.textContent = "Authorization refreshed. Apply the current context before the next knowledge request; the visible answer remains in place.";
-    showToast("Actor Twin authorization refreshed", "Use Apply context and reconnect before the next knowledge request. The current conversation was not cleared.", "success");
+    try {
+      await refreshN8nChatAuthorizationContext({ reconnect: true, reason: "expired" });
+      showToast("Actor Twin authorization refreshed", "The chat reconnected before expiry. No request was replayed.", "success");
+    } catch (error) {
+      const status = $("#n8nChatStatus");
+      if (status) status.textContent = "Authorization refresh failed. Sign in again before sending knowledge requests.";
+      showToast("Actor Twin authorization expired", error.message || "Sign in again to continue.", "error", 0);
+    }
   }, delay);
 }
 
@@ -16314,6 +16338,12 @@ async function askTwinViaN8n(query) {
   });
   const raw = await response.text();
   if (!response.ok) {
+    if (blockedN8nAuthContext(raw)) {
+      await recoverN8nAuthContext();
+      const error = new Error("Actor Twin authorization expired. The session was renewed; submit the request again.");
+      error.code = "blocked_auth_context";
+      throw error;
+    }
     throw new Error(raw || `n8n returned ${response.status}`);
   }
   let data = raw;
@@ -16321,6 +16351,12 @@ async function askTwinViaN8n(query) {
     data = raw ? JSON.parse(raw) : {};
   } catch {
     data = raw;
+  }
+  if (blockedN8nAuthContext(data)) {
+    await recoverN8nAuthContext();
+    const error = new Error("Actor Twin authorization expired. The session was renewed; submit the request again.");
+    error.code = "blocked_auth_context";
+    throw error;
   }
   return {
     answer: extractN8nAnswer(data),

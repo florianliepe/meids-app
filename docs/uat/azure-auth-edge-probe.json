@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-10-28T16:13:25.002Z",
+  "target": "https://meids-prod-backend-1853a19b.azurewebsites.net/api/session",
+  "status": "passed",
+  "expectation": "Azure App Service authentication rejects unauthenticated and forged-principal requests before application authorization.",
+  "scenarios": [
+    {
+      "label": "anonymous",
+      "status": 401,
+      "location": "",
+      "passed": true
+    },
+    {
+      "label": "forged_x_ms_client_principal",
+      "status": 401,
+      "location": "",
+      "passed": true
+    }
+  ]
+}

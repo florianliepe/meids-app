@@ -1,0 +1,48 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-10-28T16:33:03.484Z",
+  "run_id": "launch_gate_20261028T163200",
+  "policy": "Synthetic no-write probes. Requests must not stage, approve, merge, publish, send, schedule, or delete data.",
+  "results": [
+    {
+      "id": "actor_direct",
+      "started_at": "2026-10-28T16:32:00.208Z",
+      "completed_at": "2026-10-28T16:32:03.829Z",
+      "status": "completed",
+      "http_status": 200,
+      "response_preview": "{\"output\":\"Actor Twin routing readiness report (self-assessment, no tools invoked per your no-write request):\\n\\n**Status: Ready**\\n\\n- **Evidence-first retrieval path** — Knowledge Fabric Agent (operation=retrieve) is wired as the mandatory pre-check for any claim about the active twin's identity, biography, role, expertise, experience, preferences, decisions, processes, relationships, or prior work.\\n- **Work/drafting/elicitation path** — Agentic Butler is wired for drafting, planning, synthesis, approved skill execution, and tacit-knowledge interviews (via its Knowledge Retrieval Interviewer for circular questions, decision criteria, lessons learned, process insight, stakeholder dynamics).\\n- **Grounded Skill Chain Guardrail** — enforced: any work artifact requiring approved/current-twin evidence routes through Knowledge Fabric retrieve first, with results passed into Butler; no synthetic facts, metrics, or sources permitted unless explicitly requested as hypothetical.\\n- **Critical Faculty Agent** — available for ambiguity, weak/contradictory evidence, high-impact recommendations, hidden assumptions, or approval-boundary uncertainty; cannot approve or execute.\\n- **Learning Age"
+    },
+    {
+      "id": "knowledge_retrieval",
+      "started_at": "2026-10-28T16:32:03.829Z",
+      "completed_at": "2026-10-28T16:32:15.613Z",
+      "status": "completed",
+      "http_status": 200,
+      "response_preview": "{\"output\":\"Launch probe result: **Scoped reviewed retrieval is reachable.**\\n\\n- The Knowledge Fabric Agent responded successfully in read-only mode (`read_only: true`, `source_policy: approved_only`, `review_state: unchanged`).\\n- No approved knowledge currently matches for the active twin (`matches: []`, `created_candidates: []`) — this reflects an empty/no-match result, not a reachability failure.\\n- No staging, update, merge, approval, or persistence occurred (`trace.stored: false`).\\n\\n**Status: grounded** — the retrieval channel itself is confirmed operational; there is simply no approved knowledge on file yet for this twin. No further action taken per your no-write instruction.\",\"trace_persistence\":{\"status\":\"stored\",\"trace_id\":\"n8n_exec_42102\",\"post_turn_learning\":\"not_recommended\"}}"
+    },
+    {
+      "id": "critical_faculty",
+      "started_at": "2026-10-28T16:32:15.613Z",
+      "completed_at": "2026-10-28T16:32:26.337Z",
+      "status": "completed",
+      "http_status": 200,
+      "response_preview": "{\"output\":\"## Critical Faculty Agent — Critique Summary\\n\\n**Decision reviewed:** \\\"Choose option A because it has lower latency.\\\"\\n\\n**Recommendation: Revise** (not approve as-is)\\n\\n### Key findings\\n- **Underspecified frame:** Options A/B and the decision context (system, users, constraints) aren't defined — can't confirm this is even the right decision to evaluate.\\n- **Single-criterion risk:** Latency alone is insufficient justification. Missing dimensions typically matter too: cost, reliability, maintainability, security, scalability.\\n- **Weak evidence:** \\\"Lower latency\\\" has no magnitude, measurement methodology, or test conditions (e.g., p50/p99, load level) — a 1ms vs. 500ms difference changes everything.\\n- **Hidden assumptions:** That latency is the dominant factor; that test-condition gains generalize to production; that A's other tradeoffs (if any) don't offset the latency win.\\n- **Missing stakeholders:** No engineering/ops, security, finance, or end-user input reflected in the stated rationale.\\n- **Mitigating factor:** Since this is explicitly reversible, the bar for evidence is lower and switching cost is limited — but that doesn't excuse skipping a basic multi-"
+    },
+    {
+      "id": "butler_skill_task_chain",
+      "started_at": "2026-10-28T16:32:26.337Z",
+      "completed_at": "2026-10-28T16:33:02.914Z",
+      "status": "completed",
+      "http_status": 200,
+      "response_preview": "{\"output\":\"**Dry-run complete (no-write, in-memory only).**\\n\\n- **Result:** `true` — \\\"alpha\\\", \\\"beta\\\", \\\"gamma\\\" are in alphabetical order.\\n- **Reasoning:** First-letter comparison under standard lowercase lexicographic ordering: `a < b < g`, so `alpha < beta < gamma`.\\n- **Execution path:** Agentic Butler → Skill Orchestrator → exactly one Task Agent (`cmp-alpha-beta-gamma-001`) performed the comparison.\\n- **Side effects:** None. No GitHub use, no send/schedule/publish/persist/activate actions occurred.\\n- **Approval:** Not required — bounded read-only check, no new capability created.\",\"trace_persistence\":{\"status\":\"stored\",\"trace_id\":\"n8n_exec_42108\",\"post_turn_learning\":\"not_recommended\"}}"
+    },
+    {
+      "id": "learning_agent",
+      "started_at": "2026-10-28T16:33:02.915Z",
+      "completed_at": "2026-10-28T16:33:03.484Z",
+      "status": "completed",
+      "http_status": 200,
+      "response_preview": "{\"message\":\"Workflow was started\"}"
+    }
+  ]
+}
