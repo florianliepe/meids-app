@@ -11,6 +11,7 @@
     "check:entra-onboarding": "node --check frontend/api.js && node --check frontend/app.js && node --check backend/server.js && node scripts/validate-entra-group-onboarding.cjs",
     "check:admin-cockpit": "node --check frontend/admin/admin.js && node --check backend/server.js && node scripts/validate-admin-cockpit-contract.cjs",
     "db:migrate": "node scripts/run-postgres-migrations.cjs",
+    "db:verify:runtime-jobs": "node scripts/verify-runtime-background-jobs.cjs",
     "db:bootstrap:production": "node scripts/bootstrap-production-postgres.cjs",
     "db:seed:production-identity": "node scripts/seed-production-identity.cjs",
     "setup:azure-search": "node scripts/setup-azure-search-indexes.cjs",

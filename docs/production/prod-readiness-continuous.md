@@ -27,7 +27,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | ID | Priority | State | Finding / action | Exit evidence |
 | --- | --- | --- | --- | --- |
 | PROD-001 | P0 | Implemented locally; deployment gated | Replace in-process skill/audio promises with `runtime.background_job`, transactional enqueue, leases, retry backoff, idempotency keys, and payload cleanup. | Migration 016 applied; backend deployed; recycle-during-job UAT completes or retries without losing the job. |
-| PROD-002 | P0 | Open privileged action | Apply migration `017_runtime_background_jobs.sql` after the graph migration and before deploying the worker-aware backend. The current GitHub deployment workflow does not execute migrations. | Migration ledger contains 017 and `runtime.background_job` exists with indexes/grants. |
+| PROD-002 | P0 | Complete | Apply migration `017_runtime_background_jobs.sql` after the graph migration and before deploying the worker-aware backend. | Applied 2026-10-28 14:34 UTC; ledger entry, table, five indexes, runtime CRUD grant, and empty initial queue verified from the App Service private network. |
 | PROD-003 | P0 | Open | Run fresh, non-destructive live probes through Actor Twin and all six workflow-tool subagents. Current 0/7 result means stale, not failed; latest historical run for every workflow succeeded. | Seven fresh successful executions with durations and contract checks. |
 | PROD-004 | P1 | Open | Verify restart/recycle recovery for queued approved-skill and audio jobs. | Synthetic jobs survive one controlled backend slot/process recycle; no production record is changed. |
 | PROD-005 | P1 | Open | Return a graceful `blocked_auth_context` answer for stale embedded-chat sessions while retaining signed knowledge authorization. | Expired/missing token test prompts re-authentication and never weakens access control. |
@@ -63,7 +63,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 - Pull request: `https://github.com/florianliepe/meids-app/pull/25`
 - Candidate revision: `5af2fb98fc0c4cf592033fe3c188503158b74ce9`
 - CI evidence: delivery validation run `40705770372` and Me.IDs PR validation run `40705770349` passed after reconciling the candidate with current `main`.
-- Promotion is intentionally paused before merge until migrations through 017 are confirmed applied.
+- Migration 017 is applied and verified. Promotion may proceed after the final PR checks pass.
 
 ## Human or privileged gates
 
