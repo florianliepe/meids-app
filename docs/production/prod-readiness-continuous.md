@@ -17,7 +17,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | Backend contracts | Pass | `npm run check:backend`; 51 launch-critical routes |
 | Agent contracts | Pass | `npm run check:agents`; routing, grounding, learning, Knowledge Fabric contracts |
 | Vector/Search static readiness | Pass | Azure Search readiness artifacts report active semantic production |
-| Backend deployed revision | Observed | App Service build `00cdb3145b2507d5f6148fb4456a7f357a206d28`, built 2026-10-27 13:11 UTC |
+| Backend deployed revision | Observed | App Service build `a7145204f86d2448ee2ca6249b5ff50ceb699cda`; controlled recycle retained the same deployed revision |
 | Seven-agent execution history | Pass | 7/7 fresh successful workflows, including Actor Twin and six workflow-tool subagents; `docs/uat/n8n-seven-agent-live-probe-evidence.json` |
 | Azure authentication edge | Pass | Anonymous and forged-principal `/api/session` probes both returned 401; `docs/uat/azure-auth-edge-probe.json` |
 | Upload format contracts | Pass; physical device checks pending | M4A, PPTX, macOS filenames/export guidance, 25 MB file and 100 MB batch boundaries passed; `docs/uat/device-upload-launch-matrix.json` |
@@ -65,10 +65,10 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 
 ## Current promotion candidate
 
-- Pull request: `https://github.com/florianliepe/meids-app/pull/25`
-- Candidate revision: `5af2fb98fc0c4cf592033fe3c188503158b74ce9`
-- CI evidence: delivery validation run `40705770372` and Me.IDs PR validation run `40705770349` passed after reconciling the candidate with current `main`.
-- Migration 017 is applied and verified. Promotion may proceed after the final PR checks pass.
+- Pull request: `https://github.com/florianliepe/meids-app/pull/27`
+- Candidate revision: `03d6585cb79a48ae873900944319c24446f069f8`
+- CI evidence: delivery validation run `40727350870` and Me.IDs PR validation run `40727351116` passed.
+- Migration 017 and controlled recovery are verified. Promotion may proceed after the documentation-only candidate update passes the same protected checks.
 
 ## Human or privileged gates
 
