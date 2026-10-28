@@ -17,16 +17,18 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | Backend contracts | Pass | `npm run check:backend`; 51 launch-critical routes |
 | Agent contracts | Pass | `npm run check:agents`; routing, grounding, learning, Knowledge Fabric contracts |
 | Vector/Search static readiness | Pass | Azure Search readiness artifacts report active semantic production |
-| Backend deployed revision | Observed | App Service build `00cdb3145b2507d5f6148fb4456a7f357a206d28`, built 2026-10-27 13:11 UTC |
+| Backend deployed revision | Pass | App Service build `a7145204f86d2448ee2ca6249b5ff50ceb699cda`, run `40707433131`, built 2026-10-28 14:35 UTC; live `/api/build-info` verified |
+| Frontend deployed revision | Pass | Static Web App build `a7145204f86d2448ee2ca6249b5ff50ceb699cda`, run `40707433107`, built 2026-10-28 14:35 UTC; live `/build-info.json` verified in the authenticated browser |
 | Seven-agent execution history | Connected but stale | All seven workflows have successful historical executions; no execution fell inside the last-24-hour probe window on 2026-10-28 |
 | Frontend unauthenticated probe | Expected auth gate | Azure Static Web App redirects protected API probes to Microsoft sign-in |
-| Production candidate CI | Pass | PR #25, candidate `5af2fb98fc0c4cf592033fe3c188503158b74ce9`; delivery and PR validation runs `40705770372` and `40705770349` |
+| Production deployment | Pass | PR #25 merged as `a7145204f86d2448ee2ca6249b5ff50ceb699cda`; frontend and backend Azure pipelines passed; production App Service is `Running` |
+| Runtime-job deployment telemetry | Pass | Application Insights showed no runtime-job, dead-letter, or severity 3+ exception records during the 45-minute post-deployment verification window |
 
 ## Prioritized backlog
 
 | ID | Priority | State | Finding / action | Exit evidence |
 | --- | --- | --- | --- | --- |
-| PROD-001 | P0 | Implemented locally; deployment gated | Replace in-process skill/audio promises with `runtime.background_job`, transactional enqueue, leases, retry backoff, idempotency keys, and payload cleanup. | Migration 016 applied; backend deployed; recycle-during-job UAT completes or retries without losing the job. |
+| PROD-001 | P0 | Deployed; recovery UAT pending | Replace in-process skill/audio promises with `runtime.background_job`, transactional enqueue, leases, retry backoff, idempotency keys, and payload cleanup. | Migration 017 applied; backend deployed; recycle-during-job UAT completes or retries without losing the job. |
 | PROD-002 | P0 | Complete | Apply migration `017_runtime_background_jobs.sql` after the graph migration and before deploying the worker-aware backend. | Applied 2026-10-28 14:34 UTC; ledger entry, table, five indexes, runtime CRUD grant, and empty initial queue verified from the App Service private network. |
 | PROD-003 | P0 | Open | Run fresh, non-destructive live probes through Actor Twin and all six workflow-tool subagents. Current 0/7 result means stale, not failed; latest historical run for every workflow succeeded. | Seven fresh successful executions with durations and contract checks. |
 | PROD-004 | P1 | Open | Verify restart/recycle recovery for queued approved-skill and audio jobs. | Synthetic jobs survive one controlled backend slot/process recycle; no production record is changed. |
@@ -43,7 +45,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 
 | Date | Decision | Reasoning | Consequence |
 | --- | --- | --- | --- |
-| 2026-10-28 | Reuse the existing PostgreSQL-backed runtime boundary for durable jobs. | It preserves tenant/twin context, supports transactional enqueue with the user-visible ledger, and avoids introducing a second queue service during launch hardening. | Migration 016 is a required release gate. Service Bus remains an option when throughput or cross-service fan-out justifies it. |
+| 2026-10-28 | Reuse the existing PostgreSQL-backed runtime boundary for durable jobs. | It preserves tenant/twin context, supports transactional enqueue with the user-visible ledger, and avoids introducing a second queue service during launch hardening. | Migration 017 is a required release gate. Service Bus remains an option when throughput or cross-service fan-out justifies it. |
 | 2026-10-28 | Store queued audio temporarily as `bytea`, then purge it on completion or dead-letter. | The current 25 MB limit is bounded and this closes recycle loss without exposing audio in audit JSON. | Monitor database growth. Move queued binary payloads to private quarantine Blob plus pointer before raising the audio limit or scaling volume. |
 | 2026-10-28 | Keep Actor Twin as the only user-facing agent and preserve `Call n8n Workflow Tool` delegation. | Production hardening must not flatten the intended agent hierarchy. | Backend queues Actor Twin requests; n8n remains responsible for Butler, Skill Orchestrator, Task Agent, Critical Faculty, Learning, and Knowledge Fabric routing. |
 | 2026-10-28 | Do not deploy schema-dependent code before its migration. | A pipeline-only code deployment would turn skill/audio requests into runtime 500s. | Database migration requires explicit privileged confirmation, then normal CI deployment may proceed. |
@@ -58,12 +60,15 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 6. Promote remaining frontend/auth UX fixes through the Static Web App pipeline.
 7. Close only evidence-backed items above; add every new defect here before release.
 
-## Current promotion candidate
+## Current deployed release
 
 - Pull request: `https://github.com/florianliepe/meids-app/pull/25`
-- Candidate revision: `5af2fb98fc0c4cf592033fe3c188503158b74ce9`
-- CI evidence: delivery validation run `40705770372` and Me.IDs PR validation run `40705770349` passed after reconciling the candidate with current `main`.
-- Migration 017 is applied and verified. Promotion may proceed after the final PR checks pass.
+- Deployed revision: `a7145204f86d2448ee2ca6249b5ff50ceb699cda`
+- Database evidence: `017_runtime_background_jobs.sql` applied 2026-10-28 14:34 UTC; ledger, relation, five indexes, runtime grant, and an empty initial queue verified through the App Service private network.
+- Backend evidence: Azure pipeline `40707433131` passed; live `/api/build-info` returned the deployed revision; App Service state is `Running`.
+- Frontend evidence: Azure pipeline `40707433107` passed; live `/build-info.json` returned the same deployed revision.
+- Post-deployment telemetry: no runtime-job/dead-letter messages or severity 3+ exceptions in Application Insights during the 45-minute verification window.
+- No shared n8n restart, workflow mutation, or production knowledge mutation was performed for this release.
 
 ## Human or privileged gates
 
