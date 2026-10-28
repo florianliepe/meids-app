@@ -3,6 +3,7 @@ const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { spawn } = require("node:child_process");
 const {
   azureSearchConfigFromEnv,
   statusFromConfig: azureSearchStatusFromConfig,
@@ -1290,9 +1291,9 @@ async function handleVectorRebuild(req, res) {
   const dryRun = body.dry_run === true || body.dryRun === true || !config.configured;
   const request = {
     operation: body.operation || "upsert",
-    organization_id: accessContext?.tenant_id || body.organization_id || "default",
+    organization_id: accessContext?.tenant_id || body.organization_id || "",
     user_id: accessContext?.user_id || body.user_id || "",
-    twin_id: body.twin_id || body.twin || accessContext?.active_twin_id || "unknown",
+    twin_id: body.twin_id || body.twin || accessContext?.active_twin_id || "",
     source_policy: body.source_policy || (body.mode === "approved" ? "approved_only" : "selected_pending"),
     repo_name: body.repo_name || "",
     commit_sha: body.commit_sha || "",
@@ -1300,6 +1301,13 @@ async function handleVectorRebuild(req, res) {
     allow_deterministic_vectors: body.allow_deterministic_vectors === true || body.allowDeterministicVectors === true,
     documents: Array.isArray(body.documents) ? body.documents : [],
   };
+  if (!request.organization_id || !request.twin_id) {
+    jsonResponse(res, 400, {
+      status: "failed",
+      error: "Vector rebuild requires authenticated tenant/twin scope or explicit organization_id and twin_id.",
+    });
+    return;
+  }
   if (!request.documents.length) {
     jsonResponse(res, 400, {
       status: "failed",
@@ -1410,10 +1418,11 @@ function candidateDuplicateTerms(candidate = {}) {
 }
 
 function classifyDuplicateCandidate({ vectorScore = null, lexicalScore = 0, graphScore = 0, scopeCompatible = false } = {}) {
-  if ((vectorScore !== null && vectorScore >= 0.88 && scopeCompatible) || (lexicalScore >= 0.8 && scopeCompatible)) {
+  const vectorCorroborated = vectorScore !== null && vectorScore >= 0.88 && lexicalScore >= 0.35;
+  if ((vectorCorroborated && scopeCompatible) || (lexicalScore >= 0.8 && scopeCompatible)) {
     return { status: "strong_duplicate", action: "stage_merge_delta_or_reject_duplicate" };
   }
-  if ((vectorScore !== null && vectorScore >= 0.72) || graphScore >= 0.7 || lexicalScore >= 0.5) {
+  if ((vectorScore !== null && vectorScore >= 0.72 && lexicalScore >= 0.15) || graphScore >= 0.7 || lexicalScore >= 0.5) {
     return { status: "near_match", action: "stage_updated_review_needed" };
   }
   if ((vectorScore !== null && vectorScore >= 0.55) || graphScore > 0) {
@@ -1425,7 +1434,10 @@ function classifyDuplicateCandidate({ vectorScore = null, lexicalScore = 0, grap
 function summarizeDuplicateHit(candidate = {}, hit = {}) {
   const candidateTerms = candidateDuplicateTerms(candidate);
   const resultTerms = candidateDuplicateTerms(hit);
-  const vectorScore = normalizeScore(hit["@search.score"] || hit.score || hit.vector_score || hit.similarity);
+  const rawVectorSearchScore = normalizeScore(hit["@search.score"]);
+  const vectorScore = rawVectorSearchScore !== null && rawVectorSearchScore > 0
+    ? normalizeScore(2 - (1 / rawVectorSearchScore))
+    : normalizeScore(hit.score || hit.vector_score || hit.similarity);
   const lexicalScore = lexicalOverlapScore(candidateTerms, resultTerms);
   const graphScore = candidate.graph_cluster_id && hit.graph_cluster_id && candidate.graph_cluster_id === hit.graph_cluster_id
     ? 1
@@ -1443,6 +1455,7 @@ function summarizeDuplicateHit(candidate = {}, hit = {}) {
     graph_cluster_id: hit.graph_cluster_id || "",
     scores: {
       vector_similarity: vectorScore,
+      raw_vector_search_score: rawVectorSearchScore,
       lexical_overlap: lexicalScore,
       graph_proximity: graphScore,
       scope_compatible: scopeCompatible,
@@ -1487,6 +1500,15 @@ async function handleKnowledgeDuplicateCheck(req, res) {
     });
     return;
   }
+  const organizationId = accessContext?.tenant_id || body.organization_id || candidate.organization_id;
+  if (!organizationId) {
+    jsonResponse(res, 400, {
+      status: "failed",
+      duplicate_check: { status: "insufficient_evidence" },
+      error: "Duplicate check requires an authenticated tenant or explicit organization_id.",
+    });
+    return;
+  }
   const retrieval = await searchVectorKnowledge({
     query: queryText,
     query_vector: Array.isArray(candidate.query_vector)
@@ -1499,8 +1521,9 @@ async function handleKnowledgeDuplicateCheck(req, res) {
             ? body.content_vector
             : undefined,
     twin_id: candidate.twin_id || body.twin_id || body.twin || "",
-    organization_id: body.organization_id || candidate.organization_id || "default",
+    organization_id: organizationId,
     source_policy: body.source_policy || "selected_pending",
+    score_mode: "vector_similarity",
     top: Number(body.top || 8),
     include_shared: body.include_shared !== false,
     access_context: accessContext,
@@ -1522,8 +1545,8 @@ async function handleKnowledgeDuplicateCheck(req, res) {
       status,
       score_sources: ["vector_similarity", "lexical_overlap", "graph_proximity", "scope_compatibility"],
       thresholds: {
-        strong_duplicate: "vector >= 0.88 or lexical >= 0.8 with compatible scope",
-        near_match: "vector >= 0.72 or graph >= 0.7 or lexical >= 0.5",
+        strong_duplicate: "vector >= 0.88 and lexical >= 0.35, or lexical >= 0.8, with compatible scope",
+        near_match: "vector >= 0.72 and lexical >= 0.15, or graph >= 0.7, or lexical >= 0.5",
         related_only: "vector >= 0.55 or graph proximity present",
       },
     },
@@ -1738,8 +1761,15 @@ async function backendReadinessPayload() {
 
   try {
     const pool = await getPgPool();
-    await pool.query("SELECT 1");
+    const database = await pool.query("SELECT to_regclass('knowledge.graph_edge') AS graph_edge");
     health.storage.database_status = "ready";
+    health.storage.graph_persistence = database.rows[0]?.graph_edge ? "ready" : "migration_required";
+    try {
+      const statusPath = path.join(process.env.TEMP || "/tmp", "meids-migration-status.json");
+      const migrationStatus = JSON.parse(await fs.readFile(statusPath, "utf8"));
+      health.storage.migration_status = migrationStatus.status;
+      health.storage.migration_checked_at = migrationStatus.checked_at;
+    } catch {}
     return health;
   } catch (error) {
     health.status = "degraded";
@@ -2931,9 +2961,53 @@ async function routeRequest(req, res) {
   }
 }
 
+async function writeMigrationStatus(status) {
+  const statusPath = path.join(process.env.TEMP || "/tmp", "meids-migration-status.json");
+  await fs.writeFile(statusPath, JSON.stringify({ ...status, checked_at: new Date().toISOString() }));
+}
+
+function scheduleDatabaseMigrations() {
+  if (String(process.env.MEIDS_AUTO_MIGRATE || "").toLowerCase() !== "true") {
+    writeMigrationStatus({ status: "disabled" }).catch(() => {});
+    return;
+  }
+
+  setTimeout(() => {
+    const migration = spawn(process.execPath, [path.join(process.cwd(), "scripts", "run-postgres-migrations.cjs")], {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let output = "";
+    const collect = (chunk) => { output = (output + chunk.toString()).slice(-4_000); };
+    migration.stdout.on("data", collect);
+    migration.stderr.on("data", collect);
+    const timeout = setTimeout(() => migration.kill("SIGTERM"), 120_000);
+    timeout.unref();
+    migration.on("error", (error) => {
+      clearTimeout(timeout);
+      writeMigrationStatus({ status: "failed", error: error.message }).catch(() => {});
+      console.error(JSON.stringify({ event: "database_migration", status: "failed", error: error.message }));
+    });
+    migration.on("close", (code, signal) => {
+      clearTimeout(timeout);
+      const status = code === 0 ? "applied" : signal ? "timed_out" : "failed";
+      writeMigrationStatus({ status, exit_code: code, signal }).catch(() => {});
+      console[code === 0 ? "log" : "error"](JSON.stringify({
+        event: "database_migration",
+        status,
+        exit_code: code,
+        signal,
+        output,
+      }));
+    });
+  }, 5_000).unref();
+}
+
 if (require.main === module) {
   http.createServer(routeRequest).listen(PORT, () => {
     console.log(`MeIDs agent backend proxy listening on ${PORT}`);
+    scheduleDatabaseMigrations();
     if (String(process.env.AZURE_SEARCH_STARTUP_PROBE || "").toLowerCase() === "true") {
       const config = azureSearchConfigFromEnv();
       getIndexReadiness(config)
@@ -2996,6 +3070,8 @@ if (require.main === module) {
 
 module.exports = {
   AGENTS,
+  classifyDuplicateCandidate,
+  summarizeDuplicateHit,
   normalizeAgentResponse,
   buildTraceRecord,
   buildApprovalRecord,

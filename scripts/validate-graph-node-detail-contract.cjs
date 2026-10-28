@@ -60,6 +60,8 @@ assert.equal(projectedEdges.length, 1);
 assert.equal(projectedEdges[0].relation_type, "similar_to");
 assert.equal(projectedEdges[0].edge_class, "inferred");
 assert.equal(projectedEdges[0].review_state, "candidate");
+assert.equal(projectedEdges[0].source_revision, 1);
+assert.equal(projectedEdges[0].target_revision, 1);
 assert.match(projectedEdges[0].rationale, /same governed evidence anchor/i);
 
 const reviewedEdges = deriveGraphEdges([sourceConcept, relatedConcept], [{
@@ -70,6 +72,18 @@ const reviewedEdges = deriveGraphEdges([sourceConcept, relatedConcept], [{
 assert.equal(reviewedEdges[0].review_state, "approved");
 assert.equal(reviewedEdges[0].edge_class, "inferred");
 
+const invalidatedReview = deriveGraphEdges(
+  [{ ...sourceConcept, revision: 2 }, { ...relatedConcept, revision: 1 }],
+  [{
+    edge_key: projectedEdges[0].edge_key,
+    decision: "accepted",
+    source_revision: 1,
+    target_revision: 1,
+  }],
+)[0];
+assert.equal(invalidatedReview.review_state, "candidate");
+assert.equal(invalidatedReview.review_invalidated, "concept_revision_changed");
+
 const explicitSource = {
   ...concept,
   relations: [{ target_concept_id: relatedConcept.concept_id, relation_type: "supports", confidence: 0.91 }],
@@ -79,6 +93,50 @@ const explicitEdge = explicitEdges.find((edge) => edge.relation_type === "suppor
 assert.ok(explicitEdge);
 assert.equal(explicitEdge.source, `concept:${conceptId}`);
 assert.equal(explicitEdge.target, `concept:${relatedConcept.concept_id}`);
+
+const semanticSource = {
+  ...concept,
+  source_refs: [{
+    type: "merge_candidate_score",
+    concept_id: relatedConcept.concept_id,
+    classification: "near_match",
+    vector_similarity: 0.91,
+    lexical_overlap: 0.22,
+    graph_proximity: 0,
+    scope_compatible: true,
+  }],
+};
+const semanticEdges = deriveGraphEdges([semanticSource, { ...relatedConcept, tags: [], source_refs: [] }]);
+const semanticEdge = semanticEdges.find((edge) => edge.provenance === "semantic-duplicate-check");
+assert.ok(semanticEdge);
+assert.equal(semanticEdge.review_state, "candidate");
+assert.equal(semanticEdge.score_evidence.vector_similarity, 0.91);
+
+const proposedSource = {
+  ...concept,
+  source_refs: [{
+    type: "semantic_relation_proposal",
+    target_concept_id: relatedConcept.concept_id,
+    relation_type: "requires",
+    confidence: 0.93,
+    evidence_refs: ["source:paragraph-4"],
+    rationale: "The source explicitly identifies the target as a prerequisite.",
+    model_provenance: { model: "test-model", prompt_version: "v1" },
+  }],
+};
+const proposedEdge = deriveGraphEdges([proposedSource, { ...relatedConcept, tags: [], source_refs: [] }])
+  .find((edge) => edge.provenance === "semantic-relation-proposer");
+assert.ok(proposedEdge, "Evidence-backed semantic relation proposal must project a candidate edge.");
+assert.equal(proposedEdge.edge_class, "candidate");
+assert.equal(proposedEdge.review_state, "candidate");
+assert.equal(proposedEdge.relation_type, "requires");
+assert.equal(proposedEdge.confidence, 0.85, "Non-deterministic proposal confidence must be capped.");
+
+const unsupportedProposal = deriveGraphEdges([{
+  ...proposedSource,
+  source_refs: [{ type: "semantic_relation_proposal", target_concept_id: relatedConcept.concept_id, relation_type: "requires", confidence: 0.8 }],
+}, relatedConcept]).find((edge) => edge.provenance === "semantic-relation-proposer");
+assert.equal(unsupportedProposal, undefined, "Semantic proposals without evidence and rationale must fail closed.");
 
 assert.match(workspaceApi, /GET \/api\/okf\/graph\/node/);
 assert.match(workspaceApi, /POST \/api\/okf\/graph\/edge-review/);

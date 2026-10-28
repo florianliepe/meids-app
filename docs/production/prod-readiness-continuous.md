@@ -27,7 +27,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | ID | Priority | State | Finding / action | Exit evidence |
 | --- | --- | --- | --- | --- |
 | PROD-001 | P0 | Implemented locally; deployment gated | Replace in-process skill/audio promises with `runtime.background_job`, transactional enqueue, leases, retry backoff, idempotency keys, and payload cleanup. | Migration 016 applied; backend deployed; recycle-during-job UAT completes or retries without losing the job. |
-| PROD-002 | P0 | Open privileged action | Apply migration `016_runtime_background_jobs.sql` before deploying the worker-aware backend. The current GitHub deployment workflow does not execute migrations. | Migration ledger contains 016 and `runtime.background_job` exists with indexes/grants. |
+| PROD-002 | P0 | Open privileged action | Apply migration `017_runtime_background_jobs.sql` after the graph migration and before deploying the worker-aware backend. The current GitHub deployment workflow does not execute migrations. | Migration ledger contains 017 and `runtime.background_job` exists with indexes/grants. |
 | PROD-003 | P0 | Open | Run fresh, non-destructive live probes through Actor Twin and all six workflow-tool subagents. Current 0/7 result means stale, not failed; latest historical run for every workflow succeeded. | Seven fresh successful executions with durations and contract checks. |
 | PROD-004 | P1 | Open | Verify restart/recycle recovery for queued approved-skill and audio jobs. | Synthetic jobs survive one controlled backend slot/process recycle; no production record is changed. |
 | PROD-005 | P1 | Open | Return a graceful `blocked_auth_context` answer for stale embedded-chat sessions while retaining signed knowledge authorization. | Expired/missing token test prompts re-authentication and never weakens access control. |
@@ -50,7 +50,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 
 ## Release sequence
 
-1. Apply migration 016 with the Entra PostgreSQL administrator path.
+1. Apply migrations through 017 with the Entra PostgreSQL administrator path.
 2. Deploy the backend revision through the protected `main` pipeline.
 3. Verify `/api/build-info`, worker startup logs, table/index state, and no dead letters.
 4. Run controlled synthetic skill and audio jobs; recycle only the Me.IDs backend instance/slot if approved, never the shared n8n App Service.
@@ -63,11 +63,11 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 - Pull request: `https://github.com/florianliepe/meids-app/pull/25`
 - Candidate revision: `642bf30fc92e828ddbf9dc3aff42c1ed46376389`
 - CI evidence: delivery validation run `40705111677` passed build identity tests, backend contracts, static build smoke checks, and emitted-revision verification.
-- Promotion is intentionally paused before merge until migration 016 is confirmed applied.
+- Promotion is intentionally paused before merge until migrations through 017 are confirmed applied.
 
 ## Human or privileged gates
 
-- Entra PostgreSQL administrator execution of migration 016.
+- Entra PostgreSQL administrator execution of migrations through 017.
 - Any Azure App Service restart, slot swap, custom-domain/DNS change, role assignment, or production app-setting change.
 - Any n8n workflow activation/deactivation or credential mutation.
 - Any rejection, deletion, or approval of real user knowledge, learning, twins, or review records.

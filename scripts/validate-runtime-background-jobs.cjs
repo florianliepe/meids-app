@@ -5,7 +5,7 @@ const root = path.resolve(__dirname, "..");
 const runtimeJobs = fs.readFileSync(path.join(root, "backend", "runtimeJobs.js"), "utf8");
 const workspaceApi = fs.readFileSync(path.join(root, "backend", "workspaceApi.js"), "utf8");
 const server = fs.readFileSync(path.join(root, "backend", "server.js"), "utf8");
-const migration = fs.readFileSync(path.join(root, "backend", "migrations", "016_runtime_background_jobs.sql"), "utf8");
+const migration = fs.readFileSync(path.join(root, "backend", "migrations", "017_runtime_background_jobs.sql"), "utf8");
 
 function requireText(source, text, message) {
   if (!source.includes(text)) throw new Error(message || `Missing ${text}`);
