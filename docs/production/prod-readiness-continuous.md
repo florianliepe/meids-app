@@ -20,7 +20,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | Backend deployed revision | Observed | App Service build `00cdb3145b2507d5f6148fb4456a7f357a206d28`, built 2026-10-27 13:11 UTC |
 | Seven-agent execution history | Connected but stale | All seven workflows have successful historical executions; no execution fell inside the last-24-hour probe window on 2026-10-28 |
 | Frontend unauthenticated probe | Expected auth gate | Azure Static Web App redirects protected API probes to Microsoft sign-in |
-| Production candidate CI | Pass | PR #25, candidate `642bf30fc92e828ddbf9dc3aff42c1ed46376389`, delivery validation run `40705111677` |
+| Production candidate CI | Pass | PR #25, candidate `5af2fb98fc0c4cf592033fe3c188503158b74ce9`; delivery and PR validation runs `40705770372` and `40705770349` |
 
 ## Prioritized backlog
 
@@ -61,8 +61,8 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 ## Current promotion candidate
 
 - Pull request: `https://github.com/florianliepe/meids-app/pull/25`
-- Candidate revision: `642bf30fc92e828ddbf9dc3aff42c1ed46376389`
-- CI evidence: delivery validation run `40705111677` passed build identity tests, backend contracts, static build smoke checks, and emitted-revision verification.
+- Candidate revision: `5af2fb98fc0c4cf592033fe3c188503158b74ce9`
+- CI evidence: delivery validation run `40705770372` and Me.IDs PR validation run `40705770349` passed after reconciling the candidate with current `main`.
 - Promotion is intentionally paused before merge until migrations through 017 are confirmed applied.
 
 ## Human or privileged gates
