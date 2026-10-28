@@ -2249,6 +2249,7 @@ async function requireKnowledgeRequestMapping(req, body = {}) {
   }
   const error = new Error("Microsoft Entra authentication or a signed knowledge access token is required.");
   error.statusCode = 401;
+  error.code = "blocked_auth_context";
   throw error;
 }
 
@@ -2732,6 +2733,7 @@ function knowledgeAccessContextFromRequest(req, body = {}) {
   if (knowledgeAuthEnforced()) {
     const error = new Error("A signed knowledge access token is required.");
     error.statusCode = signingKeyFromEnv() ? 401 : 503;
+    error.code = signingKeyFromEnv() ? "blocked_auth_context" : "auth_configuration_error";
     throw error;
   }
   return null;
@@ -2955,6 +2957,7 @@ async function routeRequest(req, res) {
     }));
     jsonResponse(res, error.statusCode || 500, {
       status: "failed",
+      ...(error.code ? { code: error.code } : {}),
       error: error.message || "Unhandled backend proxy error",
       correlation_id: requestId,
     });

@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-10-28T16:29:33.632Z",
+  "scope": "Controlled Me.IDs backend recycle while a synthetic no-write skill job was queued",
+  "service_recycled": "meids-prod-backend-1853a19b",
+  "shared_n8n_restarted": false,
+  "job": {
+    "job_id": "skill-mvsbk1ao-aea0f1",
+    "job_type": "skill_execution",
+    "status": "completed",
+    "attempts": 2,
+    "max_attempts": 5,
+    "created_at": "2026-10-28T16:18:46.034Z",
+    "completed_at": "2026-10-28T16:27:52.176Z",
+    "last_error": null,
+    "binary_payload_purged": true
+  },
+  "agent_executions": {
+    "actor_twin": 42041,
+    "agentic_butler": 42042,
+    "skill_orchestrator": 42043,
+    "task_agent": 42046
+  },
+  "result": "passed",
+  "notes": [
+    "The worker respected the 420-second lease before reclaiming the interrupted job.",
+    "The second attempt completed without a recorded error.",
+    "The queued payload was purged after completion.",
+    "Only the Me.IDs backend App Service was recycled; the shared n8n service was not restarted."
+  ]
+}

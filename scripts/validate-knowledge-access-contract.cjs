@@ -42,6 +42,35 @@ assert.match(overarching, /allowed_user_ids\/any/);
 const pending = buildKnowledgeSecurityFilter(claims, { includePending: true });
 assert.match(pending, /pending-review/);
 
+const secondEmployee = {
+  ...claims,
+  user_id: "employee-b",
+  active_twin_id: "employee-b-twin",
+  allowed_twin_ids: ["employee-b-twin"],
+  group_ids: ["team-delivery"],
+};
+const employeeBFilter = buildKnowledgeSecurityFilter(secondEmployee);
+assert.match(employeeBFilter, /owner_user_id eq 'employee-b'/);
+assert.match(employeeBFilter, /search\.in\(twin_id, 'employee-b-twin', '\|'\)/);
+assert.doesNotMatch(employeeBFilter, /4277841b-d713-47b6-8168-172ac3cde535/);
+assert.doesNotMatch(employeeBFilter, /florian|lucas|team-cargo/);
+
+const guest = {
+  ...claims,
+  user_id: "guest-reviewer",
+  active_twin_id: "guest-twin",
+  allowed_twin_ids: ["guest-twin"],
+  group_ids: ["meids-production-guests"],
+  roles: ["viewer"],
+  visibility_scopes: ["private", "twin_shared"],
+};
+const guestFilter = buildKnowledgeSecurityFilter(guest);
+assert.match(guestFilter, /organization_id eq 'eraneos'/);
+assert.match(guestFilter, /owner_user_id eq 'guest-reviewer'/);
+assert.match(guestFilter, /search\.in\(twin_id, 'guest-twin', '\|'\)/);
+assert.doesNotMatch(guestFilter, /team_shared|org_shared/);
+assert.doesNotMatch(guestFilter, /florian|lucas|employee-b/);
+
 assert.throws(
   () => buildKnowledgeSecurityFilter({ tenant_id: "eraneos", user_id: "user", allowed_twin_ids: [] }),
   /assigned twin claims/,
@@ -57,5 +86,11 @@ assert.throws(
 console.log(JSON.stringify({
   status: "passed",
   contract: "meids.knowledge-access.v1",
-  scenarios: ["user-owned knowledge", "assigned-twin overarching knowledge", "team and organization sharing"],
+  scenarios: [
+    "user-owned knowledge",
+    "assigned-twin overarching knowledge",
+    "team and organization sharing",
+    "second employee isolation",
+    "guest private and twin-shared isolation",
+  ],
 }, null, 2));
