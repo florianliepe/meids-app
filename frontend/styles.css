@@ -13558,6 +13558,591 @@ body.theme-dark .graph-promotion-flow small {
   padding: 0;
 }
 
+/* Graph Explorer v2 is runtime-flagged and intentionally leaves the legacy cockpit intact. */
+.graph-explorer-toolbar,
+.graph-explorer-summary {
+  display: none;
+}
+
+body.graph-explorer-v2 #graph.view.active {
+  max-width: none;
+}
+
+body.graph-explorer-v2 #graph > .cockpit-view-rail {
+  display: none;
+}
+
+body.graph-explorer-v2 .graph-cockpit-panel {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+body.graph-explorer-v2 .graph-cockpit-head {
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 2px 12px;
+}
+
+body.graph-explorer-v2 .graph-cockpit-head p {
+  max-width: 720px;
+}
+
+body.graph-explorer-v2 .graph-cockpit-head h2 {
+  font-size: 36px;
+  letter-spacing: 0;
+  line-height: 1.08;
+}
+
+body.graph-explorer-v2 .graph-cockpit-head > .button-row {
+  display: none;
+}
+
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-cockpit-head > .button-row {
+  display: flex;
+}
+
+body.graph-explorer-v2 .graph-explorer-toolbar {
+  align-items: end;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(240px, 1fr) auto auto;
+  padding: 10px 12px;
+  position: sticky;
+  top: 76px;
+  z-index: 8;
+}
+
+.graph-explorer-search,
+.graph-explorer-control-group {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  min-width: 0;
+}
+
+.graph-explorer-search > span,
+.graph-explorer-control-group > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.graph-explorer-search input {
+  min-width: 0;
+  width: 100%;
+}
+
+.graph-explorer-segmented,
+.graph-explorer-actions {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+}
+
+.graph-explorer-segmented {
+  background: var(--surface-quiet);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 3px;
+}
+
+.graph-explorer-segmented button {
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: var(--muted);
+  min-height: 32px;
+  padding: 6px 9px;
+}
+
+.graph-explorer-segmented button[aria-pressed="true"] {
+  background: var(--surface);
+  box-shadow: 0 1px 4px rgba(25, 30, 26, 0.12);
+  color: var(--ink);
+}
+
+.graph-layer-controls [data-graph-layer="trusted"][aria-pressed="true"] {
+  color: #176f5c;
+}
+
+.graph-layer-controls [data-graph-layer="evidence"][aria-pressed="true"] {
+  color: #3f559f;
+}
+
+.graph-layer-controls [data-graph-layer="candidates"][aria-pressed="true"] {
+  color: #8a5e12;
+}
+
+.graph-explorer-actions {
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+body.graph-explorer-v2 .graph-explorer-summary {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 8px 4px;
+}
+
+.graph-explorer-summary > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.graph-explorer-summary strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.graph-explorer-summary span {
+  font-size: 12px;
+}
+
+.graph-explorer-layer-key {
+  display: flex;
+  gap: 6px;
+}
+
+.graph-explorer-layer-key span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 7px;
+}
+
+body.graph-explorer-v2 #graphPrimaryNodeAction,
+body.graph-explorer-v2 .graph-command-surface,
+body.graph-explorer-v2 #graphPresetSignal,
+body.graph-explorer-v2 .graph-promotion-gate-panel,
+body.graph-explorer-v2 #graphDemoFlow,
+body.graph-explorer-v2 #graphSummary,
+body.graph-explorer-v2 #graphTrustBoundary,
+body.graph-explorer-v2 #graphActorUseLanes,
+body.graph-explorer-v2 #graphExportReadiness,
+body.graph-explorer-v2 #graphRetrievalContract,
+body.graph-explorer-v2 .graph-secondary-section,
+body.graph-explorer-v2 .graph-insight-grid {
+  display: none;
+}
+
+body.graph-explorer-v2 #graph.graph-advanced-open #graphPrimaryNodeAction,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-command-surface,
+body.graph-explorer-v2 #graph.graph-advanced-open #graphPresetSignal,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-promotion-gate-panel,
+body.graph-explorer-v2 #graph.graph-advanced-open #graphDemoFlow,
+body.graph-explorer-v2 #graph.graph-advanced-open #graphSummary,
+body.graph-explorer-v2 #graph.graph-advanced-open #graphTrustBoundary,
+body.graph-explorer-v2 #graph.graph-advanced-open #graphActorUseLanes,
+body.graph-explorer-v2 #graph.graph-advanced-open #graphExportReadiness,
+body.graph-explorer-v2 #graph.graph-advanced-open #graphRetrievalContract,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-secondary-section,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-insight-grid {
+  display: grid;
+}
+
+body.graph-explorer-v2 .graph-workspace {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body.graph-explorer-v2 .graph-detail-panel {
+  display: none;
+}
+
+body.graph-explorer-v2 #graph.graph-has-selection .graph-workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+}
+
+body.graph-explorer-v2 #graph.graph-has-selection .graph-detail-panel {
+  display: block;
+}
+
+body.graph-explorer-v2 .graph-canvas-wrap {
+  min-height: min(760px, calc(100vh - 190px));
+  overflow: hidden;
+}
+
+body.graph-explorer-v2 .graph-canvas {
+  min-height: inherit;
+  padding: 0;
+}
+
+body.graph-explorer-v2 .graph-topology-map {
+  gap: 0;
+  min-height: inherit;
+}
+
+body.graph-explorer-v2 .graph-canvas-commandbar,
+body.graph-explorer-v2 .graph-relation-strip,
+body.graph-explorer-v2 .graph-relation-layer-summary,
+body.graph-explorer-v2 .graph-projection-summary,
+body.graph-explorer-v2 .graph-lane-strip,
+body.graph-explorer-v2 .graph-legend.semantic,
+body.graph-explorer-v2 .graph-semantic-legend,
+body.graph-explorer-v2 .graph-actor-use-map,
+body.graph-explorer-v2 .graph-hover-inspector,
+body.graph-explorer-v2 .graph-active-path-callout,
+body.graph-explorer-v2 .graph-node-rail {
+  display: none;
+}
+
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-canvas-commandbar,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-relation-strip,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-relation-layer-summary,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-projection-summary,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-lane-strip,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-legend.semantic,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-semantic-legend,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-actor-use-map,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-hover-inspector,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-active-path-callout,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-node-rail {
+  display: flex;
+}
+
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-canvas-commandbar,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-projection-summary,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-legend.semantic,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-semantic-legend,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-actor-use-map,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-active-path-callout,
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-node-rail {
+  display: grid;
+}
+
+body.graph-explorer-v2 .graph-topology-shell {
+  --graph-dot-neutral: #e4e6e3;
+  --graph-dot-neutral-stroke: #89918c;
+  --graph-dot-trusted: #dce9e4;
+  --graph-dot-trusted-stroke: #66877d;
+  --graph-dot-evidence: #e1e5e9;
+  --graph-dot-evidence-stroke: #778596;
+  --graph-dot-candidate: #f0e7d6;
+  --graph-dot-candidate-stroke: #a38550;
+  --graph-dot-rework: #f1e1dc;
+  --graph-dot-rework-stroke: #ac6754;
+  --graph-edge-trusted: #78847f;
+  --graph-edge-evidence: #7d8693;
+  --graph-edge-candidate: #9c8358;
+  --graph-edge-danger: #a86659;
+  background: color-mix(in srgb, var(--surface) 97%, var(--accent) 3%);
+  min-height: min(700px, calc(100vh - 230px));
+  padding: 18px;
+}
+
+body.theme-dark.graph-explorer-v2 .graph-topology-shell {
+  --graph-dot-neutral: #353a37;
+  --graph-dot-neutral-stroke: #7f8984;
+  --graph-dot-trusted: #30413b;
+  --graph-dot-trusted-stroke: #7fa99c;
+  --graph-dot-evidence: #343b43;
+  --graph-dot-evidence-stroke: #8997a8;
+  --graph-dot-candidate: #463d2e;
+  --graph-dot-candidate-stroke: #b79a68;
+  --graph-dot-rework: #49352f;
+  --graph-dot-rework-stroke: #c08370;
+  --graph-edge-trusted: #7d8984;
+  --graph-edge-evidence: #818b98;
+  --graph-edge-candidate: #ae9466;
+  --graph-edge-danger: #bd796c;
+}
+
+body.graph-explorer-v2 .graph-topology-shell::after {
+  display: none;
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge {
+  filter: none;
+  opacity: var(--edge-opacity, 0.36);
+  stroke: var(--graph-edge-evidence);
+  stroke-width: var(--edge-width, 0.8px);
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.explicit {
+  stroke: var(--graph-edge-trusted);
+  stroke-width: calc(var(--edge-width, 0.8px) + 0.12px);
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.inferred {
+  stroke: var(--graph-edge-evidence);
+  stroke-dasharray: 5 5;
+  stroke-width: var(--edge-width, 0.75px);
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.candidate,
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.duplicate-candidate {
+  stroke: var(--graph-edge-candidate);
+  stroke-dasharray: 1 5;
+  stroke-width: calc(var(--edge-width, 0.8px) + 0.1px);
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.contradiction-candidate {
+  stroke: var(--graph-edge-danger);
+  stroke-dasharray: 1 4;
+  stroke-width: calc(var(--edge-width, 0.9px) + 0.15px);
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.selected,
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.is-connected {
+  filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--accent) 20%, transparent));
+  opacity: 0.94;
+  stroke-width: 1.9px;
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.active-path {
+  filter: drop-shadow(0 2px 5px color-mix(in srgb, var(--accent) 24%, transparent));
+  stroke-width: 2.2px;
+}
+
+body.graph-explorer-v2 .graph-topology-svg marker path {
+  fill: var(--graph-edge-evidence);
+  opacity: 0.55;
+}
+
+body.graph-explorer-v2 .graph-svg-node circle:not(.graph-node-hit-target) {
+  fill: var(--graph-dot-neutral);
+  stroke: var(--graph-dot-neutral-stroke);
+  stroke-width: 1.2px;
+}
+
+body.graph-explorer-v2 .graph-svg-node.layer-trusted circle:not(.graph-node-hit-target) {
+  fill: var(--graph-dot-trusted);
+  stroke: var(--graph-dot-trusted-stroke);
+}
+
+body.graph-explorer-v2 .graph-svg-node.layer-evidence circle:not(.graph-node-hit-target) {
+  fill: var(--graph-dot-evidence);
+  stroke: var(--graph-dot-evidence-stroke);
+}
+
+body.graph-explorer-v2 .graph-svg-node.layer-candidate circle:not(.graph-node-hit-target) {
+  fill: var(--graph-dot-candidate);
+  stroke: var(--graph-dot-candidate-stroke);
+}
+
+body.graph-explorer-v2 .graph-svg-node.needs-rework circle:not(.graph-node-hit-target),
+body.graph-explorer-v2 .graph-svg-node.rejected circle:not(.graph-node-hit-target) {
+  fill: var(--graph-dot-rework);
+  stroke: var(--graph-dot-rework-stroke);
+}
+
+body.graph-explorer-v2 .graph-svg-node.cluster circle:not(.graph-node-hit-target) {
+  filter: none;
+  stroke-width: 1.8px;
+}
+
+body.graph-explorer-v2 .graph-svg-node .graph-node-glyph {
+  opacity: 0;
+}
+
+body.graph-explorer-v2 .graph-svg-label-wrap rect,
+body.graph-explorer-v2 .graph-svg-label-wrap.quiet-label rect {
+  opacity: 0;
+}
+
+body.graph-explorer-v2 .graph-svg-node .graph-svg-label {
+  font-size: 9px;
+  font-weight: 700;
+  opacity: 0;
+  stroke-width: 3px;
+}
+
+body.graph-explorer-v2 .graph-svg-node.selected circle:not(.graph-node-hit-target),
+body.graph-explorer-v2 .graph-svg-node.active-path circle:not(.graph-node-hit-target) {
+  filter: drop-shadow(0 4px 9px color-mix(in srgb, var(--accent) 26%, transparent));
+  stroke: var(--accent-strong);
+  stroke-width: 2.2px;
+}
+
+body.graph-explorer-v2 .graph-svg-node.selected .graph-svg-label,
+body.graph-explorer-v2 .graph-svg-node.active-path .graph-svg-label {
+  fill: var(--ink);
+  opacity: 1;
+}
+
+body.graph-explorer-v2 .graph-svg-node.selected .graph-svg-label-wrap rect,
+body.graph-explorer-v2 .graph-svg-node.active-path .graph-svg-label-wrap rect,
+body.graph-explorer-v2 .graph-svg-node.is-emphasized .graph-svg-label-wrap rect,
+body.graph-explorer-v2 .graph-svg-node.is-neighbor .graph-svg-label-wrap rect,
+body.graph-explorer-v2 .graph-svg-node:focus-visible .graph-svg-label-wrap rect {
+  fill: color-mix(in srgb, var(--surface) 94%, transparent);
+  opacity: 0.9;
+  stroke: color-mix(in srgb, var(--line) 78%, var(--accent) 22%);
+  stroke-width: 0.7px;
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-node,
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge,
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge-label {
+  transition: opacity 120ms ease, filter 120ms ease;
+}
+
+body.graph-explorer-v2 .graph-topology-svg.has-graph-emphasis .graph-svg-node.is-muted {
+  opacity: 0.18;
+}
+
+body.graph-explorer-v2 .graph-topology-svg.has-graph-emphasis .graph-svg-edge.is-muted,
+body.graph-explorer-v2 .graph-topology-svg.has-graph-emphasis .graph-svg-edge-label.is-muted {
+  opacity: 0.14;
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-node.is-neighbor {
+  opacity: 0.9;
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-node.is-emphasized,
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.is-connected,
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge-label.is-connected {
+  opacity: 1;
+}
+
+body.graph-explorer-v2 .graph-svg-node.is-emphasized circle:not(.graph-node-hit-target) {
+  filter: drop-shadow(0 4px 9px color-mix(in srgb, var(--accent) 28%, transparent));
+  stroke: var(--accent-strong);
+  stroke-width: 2.2px;
+}
+
+body.graph-explorer-v2 .graph-svg-node.is-emphasized .graph-svg-label,
+body.graph-explorer-v2 .graph-svg-node.is-neighbor .graph-svg-label,
+body.graph-explorer-v2 .graph-svg-node:focus-visible .graph-svg-label {
+  fill: var(--ink);
+  opacity: 1;
+}
+
+body.graph-explorer-v2 .graph-svg-node.is-emphasized .graph-svg-label-wrap rect,
+body.graph-explorer-v2 .graph-svg-node.is-neighbor .graph-svg-label-wrap rect,
+body.graph-explorer-v2 .graph-svg-node:focus-visible .graph-svg-label-wrap rect {
+  opacity: 0.96;
+}
+
+body.graph-explorer-v2 .graph-node-hit-target,
+body.graph-explorer-v2 .graph-svg-node.selected .graph-node-hit-target,
+body.graph-explorer-v2 .graph-svg-node:hover .graph-node-hit-target {
+  fill: transparent;
+  filter: none;
+  opacity: 0;
+  pointer-events: all;
+  stroke: transparent;
+  stroke-width: 0;
+}
+
+body.graph-explorer-v2 .graph-svg-node:focus-visible {
+  outline: none;
+}
+
+body.graph-explorer-v2 .graph-svg-node:focus-visible circle:not(.graph-node-hit-target) {
+  filter: drop-shadow(0 0 0 4px color-mix(in srgb, var(--accent) 34%, transparent));
+  stroke: var(--accent-strong);
+  stroke-width: 2.5px;
+}
+
+.graph-explorer-tooltip {
+  background: color-mix(in srgb, var(--surface-strong) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: 7px;
+  box-shadow: 0 12px 32px rgba(25, 30, 26, 0.18);
+  display: grid;
+  gap: 3px;
+  max-width: 320px;
+  padding: 10px 12px;
+  pointer-events: none;
+  position: fixed;
+  z-index: 40;
+}
+
+.graph-explorer-tooltip[hidden] {
+  display: none;
+}
+
+.graph-explorer-tooltip span,
+.graph-explorer-tooltip small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.graph-explorer-tooltip strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.graph-edge-why-label {
+  color: var(--accent-strong);
+  font-size: 11px;
+}
+
+@media (max-width: 1180px) {
+  body.graph-explorer-v2 .graph-explorer-toolbar {
+    grid-template-columns: minmax(220px, 1fr) auto auto;
+  }
+
+  body.graph-explorer-v2 .graph-explorer-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  body.graph-explorer-v2 .graph-cockpit-head h2 {
+    font-size: 30px;
+  }
+
+  body.graph-explorer-v2 .graph-explorer-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+    position: static;
+  }
+
+  .graph-explorer-segmented,
+  .graph-explorer-actions {
+    overflow-x: auto;
+  }
+
+  .graph-explorer-segmented button,
+  .graph-explorer-actions button {
+    flex: 0 0 auto;
+  }
+
+  body.graph-explorer-v2 .graph-explorer-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  body.graph-explorer-v2 #graph.graph-has-selection .graph-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.graph-explorer-v2 .graph-topology-shell,
+  body.graph-explorer-v2 .graph-canvas-wrap {
+    min-height: 520px;
+  }
+
+  body.graph-explorer-v2 .graph-detail-panel {
+    max-height: none;
+    position: static;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.graph-explorer-v2 .graph-topology-svg,
+  body.graph-explorer-v2 .graph-topology-svg .graph-svg-node,
+  body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge,
+  body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge-label,
+  body.graph-explorer-v2 .graph-svg-node circle,
+  body.graph-explorer-v2 .graph-svg-node .graph-svg-label {
+    animation: none !important;
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
+
 .knowledge-browser-panel {
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, transparent), color-mix(in srgb, var(--surface-quiet) 72%, transparent));

@@ -1,6 +1,6 @@
 # Me.IDs Continuous PROD Readiness
 
-Last updated: 2026-10-28
+Last updated: 2026-10-29
 
 This document is the canonical, continuously maintained production-readiness backlog for Me.IDs. Every production fix, live finding, accepted risk, and release gate must be reconciled here. Detailed evidence remains in `docs/uat/` and the focused production runbooks.
 
@@ -32,7 +32,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | PROD-002 | P0 | Complete | Apply migration `017_runtime_background_jobs.sql` after the graph migration and before deploying the worker-aware backend. | Applied 2026-10-28 14:34 UTC; ledger entry, table, five indexes, runtime CRUD grant, and empty initial queue verified from the App Service private network. |
 | PROD-003 | P0 | Complete | Run fresh, non-destructive live probes through Actor Twin and all six workflow-tool subagents. | 7/7 fresh successful executions with durations and contract checks on 2026-10-28. |
 | PROD-004 | P1 | Complete for skill jobs; audio path covered by the same durable worker contract | Verify restart/recycle recovery for queued approved-skill and audio jobs. | Controlled recycle evidence in `docs/uat/runtime-job-recovery-uat.json`; job completed on attempt 2 and purged its payload. |
-| PROD-005 | P1 | Fixed locally; deployment pending | Return a graceful `blocked_auth_context` answer for stale embedded-chat sessions while retaining signed knowledge authorization. | Contract proves renewal, reconnect, friendly error, and no unsafe replay. |
+| PROD-005 | P1 | Complete | Return a graceful `blocked_auth_context` answer for stale embedded-chat sessions while retaining signed knowledge authorization. | Contract proves renewal, reconnect, friendly error, and no unsafe replay; PR #27 deployed successfully to backend and Azure Static Web Apps on 2026-10-28. |
 | PROD-006 | P1 | Open | Complete Knowledge Fabric v4 soak; retire v3 only after callers and fresh executions prove v4 stable. | Caller inventory, fresh success sample, rollback export, v3 deactivated. |
 | PROD-007 | P1 | Open | Add foreground and nested-agent latency/token budgets; keep Learning Agent post-turn. | P50/P95 by agent and chain; timeout/fallback evidence; no foreground wait on normal learning. |
 | PROD-008 | P1 | Automated/edge checks pass; real-user matrix open | Run cross-user authorization UAT for private, twin-shared, group-shared, and owner/admin boundaries. | Employee/guest filter contracts and edge spoofing pass; real sessions for at least two employees and one guest remain required. |
@@ -40,6 +40,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | PROD-010 | P2 | Format contracts pass; physical device validation open | Complete Windows/macOS browser, microphone, M4A, PPTX, and mixed bulk-upload UAT. | Automated matrix is recorded; Windows Chrome plus macOS Safari/Chrome microphone evidence remains required. |
 | PROD-011 | P2 | Open privileged Azure action | Harden frontend deployment: custom domain, workload identity federation, deployment environment protection, and removal of direct worker URLs. | DNS/TLS verified, tokenless deployment, protected environment approval, backend-only API routes. |
 | PROD-012 | P3 | Deferred | Modularize `frontend/app.js`, `frontend/styles.css`, and `backend/server.js` after runtime contracts freeze. | Stable runtime soak followed by bounded module extraction with parity tests. |
+| PROD-013 | P3 | Preview deployed; owner UAT blocked by Entra redirect URI | Evaluate compact Graph Explorer V2 without changing the production runtime. Iteration 2 adds smaller dots, thinner relations, quiet labels and layer-specific neutral colors while the default-disabled flag preserves production. | Register the PR #28 preview callback URI, complete owner UAT, then set the protected `azure-static-web-app` environment variable `MEIDS_GRAPH_UI_V2=true` and merge PR #28. Rollback is the same variable set to `false` plus a workflow rerun. |
 
 ## Decisions
 
@@ -52,6 +53,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | 2026-10-28 | Build Search candidate prefilters from granted visibility scopes. | A narrow prefilter is easier to audit and avoids naming team/org scopes for a private guest token. | The final security clause remains authoritative; the candidate set is now least-privilege too. |
 | 2026-10-28 | Reconnect but never replay after embedded-chat token expiry. | Automatic replay could duplicate a write or tool call. | Users receive a renewed chat context and resubmit intentionally. |
 | 2026-10-28 | Treat the 420-second lease as the recovery boundary after process loss. | Early reclaim could execute the same n8n chain twice. | The controlled recycle passed with attempt 2 after lease expiry; operators should inspect status and lease timestamps before intervening. |
+| 2026-10-29 | Keep Graph Explorer V2 disabled in production and evaluate it only in an Azure pull-request preview. | Frontend refinement must not alter the current launch candidate, API traffic, persistence, or governance behavior. | Promotion and rollback are runtime-flag decisions; current production remains unchanged. |
 
 ## Release sequence
 

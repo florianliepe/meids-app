@@ -53,6 +53,19 @@ function copyDirectory(source, target) {
   fs.cpSync(source, target, { recursive: true });
 }
 
+function rewriteAssetRevision(outputDir) {
+  const revision = env("MEIDS_ASSET_REVISION").replace(/[^A-Za-z0-9._-]/g, "-");
+  if (!revision) return;
+  const indexPath = path.join(outputDir, "index.html");
+  const original = fs.readFileSync(indexPath, "utf8");
+  const revised = ["styles.css", "runtime-config.js", "app.js"].reduce((content, asset) => {
+    const escaped = asset.replace(".", "\\.");
+    return content.replace(new RegExp(`(${escaped}\\?v=)[^"'\\s]+`, "g"), `$1${revision}`);
+  }, original);
+  fs.writeFileSync(indexPath, revised, "utf8");
+  console.log(`Frontend asset revision applied: ${revision}`);
+}
+
 function copyLiveProbePayloads(assetsDir) {
   const source = path.join(root, "contracts", "n8n", "live-probes");
   const target = path.join(assetsDir, "n8n-live-probes");
@@ -103,6 +116,7 @@ function runtimeConfigJs() {
   const apiBaseUrl = env("GH_PAGES_API_BASE_URL") || env("MEIDS_FRONTEND_API_BASE_URL");
   const authEnabled = envFlag("MEIDS_FRONTEND_AUTH_ENABLED") || envFlag("GH_PAGES_AUTH_ENABLED");
   const staticPagesMode = envFlag("MEIDS_FRONTEND_STATIC_MODE", apiBaseUrl === "" && !authEnabled);
+  const graphExplorerV2 = envFlag("MEIDS_GRAPH_UI_V2", false);
 
   function status(value) {
     return value ? "configured" : "awaiting_url";
@@ -142,6 +156,9 @@ function runtimeConfigJs() {
   },
   n8nChatEnabled: ${Boolean(chatUrl || actorUrl)},
   staticPagesMode: ${staticPagesMode},
+  features: {
+    graphExplorerV2: ${graphExplorerV2}
+  },
   auth: {
     enabled: ${authEnabled},
     provider: "azure_static_web_apps_entra_id",
@@ -166,6 +183,7 @@ function build() {
   if (args.clean) fs.rmSync(args.output, { recursive: true, force: true });
   fs.mkdirSync(args.output, { recursive: true });
   copyDirectory(frontendDir, args.output);
+  rewriteAssetRevision(args.output);
   fs.writeFileSync(path.join(args.output, "build-info.json"), `${JSON.stringify(createBuildInfo("frontend"), null, 2)}\n`, "utf8");
 
   const runtimeConfigPath = path.join(args.output, "runtime-config.js");

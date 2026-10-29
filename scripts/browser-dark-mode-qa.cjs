@@ -89,7 +89,8 @@ async function run() {
   const results = [];
   try {
     for (const qaCase of cases) {
-      const page = await browser.newPage({ viewport: { width: qaCase.width, height: qaCase.height } });
+      const context = await browser.newContext({ viewport: { width: qaCase.width, height: qaCase.height } });
+      const page = await context.newPage();
       await page.addInitScript(() => {
         window.localStorage.setItem("intellectualTwin.theme", "dark");
         window.localStorage.setItem("intellectualTwin.landing.dismissed", "true");
@@ -97,6 +98,13 @@ async function run() {
       await page.goto(`http://${host}:${port}/?view=${qaCase.view}`, { waitUntil: "networkidle" });
       await page.waitForSelector(qaCase.main, { timeout: 10000 });
       await page.waitForTimeout(350);
+      if (qaCase.view === "graph") {
+        await page.evaluate(() => {
+          if (window.INTELLECTUAL_TWIN_CONFIG?.staticPagesMode && typeof refreshStaticPagesWorkspace === "function") {
+            refreshStaticPagesWorkspace();
+          }
+        });
+      }
       let interactionMetrics = {};
       if (qaCase.view === "graph") {
         interactionMetrics = await exerciseGraphRelationLayerFilter(page);
@@ -150,7 +158,7 @@ async function run() {
       const contrast = contrastRatio(metrics.contrastSample.foreground, metrics.contrastSample.background);
       const screenshot = path.join(outDir, `${qaCase.name}.png`);
       await page.screenshot({ path: screenshot, fullPage: true });
-      await page.close();
+      await context.close();
       const failures = [];
       if (!metrics.themeDark) failures.push("dark theme was not applied");
       if (!metrics.mainFound) failures.push(`main selector missing: ${qaCase.main}`);
@@ -166,7 +174,7 @@ async function run() {
           failures.push(`candidate layer click did not apply edge-class filter: ${interactionMetrics.edgeClassFilter || "unset"}`);
         }
         if (!interactionMetrics.candidateEdgeFound) failures.push("graph QA could not find the static candidate edge");
-        if (!interactionMetrics.acceptButtonFound) failures.push("graph candidate edge accept action missing");
+        if (!interactionMetrics.acceptButtonFound) failures.push(`graph candidate edge accept action missing: ${JSON.stringify(interactionMetrics.diagnostics || {})}`);
         if (interactionMetrics.acceptButtonFound && !String(interactionMetrics.reviewedStatus || "").includes("reviewed")) {
           failures.push(`graph candidate accept did not update review status: ${interactionMetrics.reviewedStatus || "empty"}`);
         }
@@ -200,10 +208,22 @@ async function run() {
 }
 
 async function exerciseGraphRelationLayerFilter(page) {
-  const node = page.locator("[data-graph-node]").first();
+  const explorerV2 = await page.locator("body.graph-explorer-v2").count().then((count) => count > 0);
+  if (explorerV2) {
+    const candidates = page.locator('#graphExplorerToolbar [data-graph-layer="candidates"]').first();
+    if (await candidates.getAttribute("aria-pressed") !== "true") {
+      await candidates.click({ force: true });
+      await page.waitForTimeout(100);
+    }
+  }
+  const node = page.locator(".graph-svg-node:visible, .graph-node-list-item:visible").first();
   const nodeClicked = await node.count().then((count) => count > 0);
   if (!nodeClicked) return { nodeClicked: false };
   await node.click({ force: true });
+  if (explorerV2) {
+    await page.locator('[data-graph-explorer-action="advanced"]').click({ force: true });
+    await page.waitForTimeout(100);
+  }
   await page.waitForSelector(".graph-relation-layer-summary", { timeout: 10000 }).catch(() => {});
   const relationLayerSummaryFound = await page.locator(".graph-relation-layer-summary").count().then((count) => count > 0);
   const layerButtonCount = await page.locator(".graph-relation-layer-summary button").count();
@@ -217,20 +237,33 @@ async function exerciseGraphRelationLayerFilter(page) {
     document.querySelector(".graph-relation-layer-summary button.active")?.dataset?.graphEdgeClassFilter || "",
   );
   const promotionMetrics = await exerciseGraphPromotionAction(page);
+  if (explorerV2) {
+    await page.locator('[data-graph-explorer-action="advanced"]').click({ force: true });
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(100);
+  }
   return { nodeClicked, relationLayerSummaryFound, layerButtonCount, candidateClicked, edgeClassFilter, ...promotionMetrics };
 }
 
 async function exerciseGraphPromotionAction(page) {
-  const candidateEdge = page.locator('[data-graph-edge="edge:butler-to-contract"]').first();
+  const candidateEdge = page.locator('.graph-svg-edge[data-graph-edge="edge:butler-to-contract"]').first();
   const candidateEdgeFound = await candidateEdge.count().then((count) => count > 0);
   if (!candidateEdgeFound) return { candidateEdgeFound: false };
-  await candidateEdge.click({ force: true });
+  await candidateEdge.evaluate((element) => element.dispatchEvent(new MouseEvent("click", { bubbles: true })));
   await page.waitForSelector('.graph-edge-workbench [data-graph-edge-action="accepted"]', { timeout: 10000 }).catch(() => {});
   const acceptButton = page.locator('.graph-edge-workbench [data-graph-edge-action="accepted"]').first();
   const acceptButtonFound = await acceptButton.count().then((count) => count > 0);
-  if (!acceptButtonFound) return { candidateEdgeFound, acceptButtonFound: false };
+  if (!acceptButtonFound) {
+    const diagnostics = await page.evaluate(() => ({
+      selectedEdgeKey: typeof state === "object" ? state.selectedGraphEdgeKey : "unavailable",
+      edgeClassFilter: typeof state === "object" ? state.graphEdgeClassFilter : "unavailable",
+      candidateLayerPressed: document.querySelector('#graphExplorerToolbar [data-graph-layer="candidates"]')?.getAttribute("aria-pressed") || "missing",
+      workbenchCount: document.querySelectorAll(".graph-edge-workbench").length,
+    }));
+    return { candidateEdgeFound, acceptButtonFound: false, diagnostics };
+  }
   await acceptButton.click({ force: true });
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => String(document.querySelector("#graphStatus")?.textContent || "").includes("reviewed"), null, { timeout: 2500 }).catch(() => {});
   const reviewedStatus = await page.evaluate(() => document.querySelector("#graphStatus")?.textContent || "");
   const recentlyReviewed = await page.locator(".graph-svg-edge.recently-reviewed, .graph-edge-line.selected").count();
   return { candidateEdgeFound, acceptButtonFound, reviewedStatus, recentlyReviewed };

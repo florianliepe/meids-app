@@ -633,6 +633,37 @@
                 </div>
               </details>
             </div>
+            <section id="graphExplorerToolbar" class="graph-explorer-toolbar" aria-label="Knowledge graph explorer controls">
+              <label class="graph-explorer-search" for="graphExplorerSearch">
+                <span>Search</span>
+                <input id="graphExplorerSearch" type="search" placeholder="Find a concept, source, or relation..." autocomplete="off" />
+              </label>
+              <div class="graph-explorer-control-group" aria-label="Local graph depth">
+                <span>Scope</span>
+                <div class="graph-explorer-segmented">
+                  <button type="button" data-graph-depth="0" aria-pressed="true">All</button>
+                  <button type="button" data-graph-depth="1" aria-pressed="false">1 hop</button>
+                  <button type="button" data-graph-depth="2" aria-pressed="false">2 hops</button>
+                </div>
+              </div>
+              <div class="graph-explorer-control-group" aria-label="Knowledge graph layers">
+                <span>Layers</span>
+                <div class="graph-explorer-segmented graph-layer-controls">
+                  <button type="button" data-graph-layer="trusted" aria-pressed="true">Trusted</button>
+                  <button type="button" data-graph-layer="evidence" aria-pressed="true">Evidence</button>
+                  <button type="button" data-graph-layer="candidates" aria-pressed="false">Candidates</button>
+                </div>
+              </div>
+              <div class="graph-explorer-actions" aria-label="Graph view actions">
+                <button class="secondary small" type="button" data-graph-explorer-action="map" aria-pressed="true" title="Show the interactive graph">Map</button>
+                <button class="secondary small" type="button" data-graph-explorer-action="list" aria-pressed="false" title="Show the accessible list">List</button>
+                <button class="secondary small" type="button" data-graph-explorer-action="fit" title="Fit graph to the viewport">Fit</button>
+                <button class="secondary small" type="button" data-graph-explorer-action="refresh" title="Refresh graph data">Refresh</button>
+                <button class="secondary small" type="button" data-graph-explorer-action="advanced" aria-expanded="false">Advanced</button>
+                <button class="secondary small" type="button" data-cockpit-action="openDashboard">Review cockpit</button>
+              </div>
+            </section>
+            <div id="graphExplorerSummary" class="graph-explorer-summary" aria-live="polite"></div>
             <div id="graphPresetSignal" class="graph-preset-signal-wrap" aria-live="polite"></div>
             <section class="graph-promotion-gate-panel" aria-label="Graph relation promotion workflow">
               <div>
