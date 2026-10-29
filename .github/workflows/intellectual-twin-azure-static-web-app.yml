@@ -101,6 +101,8 @@ jobs:
 
       - name: Prepare Azure Static Web Apps artifact
         env:
+          MEIDS_GRAPH_UI_V2: ${{ vars.MEIDS_GRAPH_UI_V2 || 'false' }}
+          MEIDS_ASSET_REVISION: prod-${{ github.sha }}
           MEIDS_FRONTEND_HOST_LABEL: "Azure Static Web Apps"
           MEIDS_FRONTEND_AUTH_ENABLED: "true"
           MEIDS_FRONTEND_STATIC_MODE: "false"

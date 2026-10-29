@@ -70,4 +70,19 @@ No `/api/` literal changed in this iteration. The production feature flag remain
 
 User evidence initially showed the V1 graph after the second preview deployment. The deployed preview runtime flag was `true`, but `index.html` still referenced fixed historical cache keys for `app.js`, `styles.css`, and `runtime-config.js`. A browser that had opened the preview before the update could therefore retain the previous rendering bundle.
 
-The pull-request preview build now rewrites those three asset query strings with `graph-v2-${GITHUB_SHA}`. Each preview commit therefore receives unique asset URLs. The production build does not set this variable and remains unchanged.
+The pull-request preview build now rewrites those three asset query strings with `graph-v2-${GITHUB_SHA}`. Each preview commit therefore receives unique asset URLs.
+
+Production builds use the same revision strategy while reading
+`MEIDS_GRAPH_UI_V2` from the protected GitHub environment. The variable
+defaults to `false`, so merging the implementation cannot activate V2 by
+accident. Promotion and rollback are controlled environment changes followed
+by a normal workflow rerun.
+
+## Owner UAT access blocker
+
+The PR #28 preview is deployed, but Microsoft Entra currently rejects its
+callback because the preview hostname is not registered on application
+`f67c81d3-c863-416b-bf73-d620e8bb0064`. Add this exact Web redirect URI before
+owner UAT:
+
+`https://victorious-flower-0f10a8303-28.westeurope.6.azurestaticapps.net/.auth/login/eraneos/callback`
