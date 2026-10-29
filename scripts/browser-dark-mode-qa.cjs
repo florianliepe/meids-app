@@ -174,7 +174,7 @@ async function run() {
           failures.push(`candidate layer click did not apply edge-class filter: ${interactionMetrics.edgeClassFilter || "unset"}`);
         }
         if (!interactionMetrics.candidateEdgeFound) failures.push("graph QA could not find the static candidate edge");
-        if (!interactionMetrics.acceptButtonFound) failures.push("graph candidate edge accept action missing");
+        if (!interactionMetrics.acceptButtonFound) failures.push(`graph candidate edge accept action missing: ${JSON.stringify(interactionMetrics.diagnostics || {})}`);
         if (interactionMetrics.acceptButtonFound && !String(interactionMetrics.reviewedStatus || "").includes("reviewed")) {
           failures.push(`graph candidate accept did not update review status: ${interactionMetrics.reviewedStatus || "empty"}`);
         }
@@ -209,6 +209,13 @@ async function run() {
 
 async function exerciseGraphRelationLayerFilter(page) {
   const explorerV2 = await page.locator("body.graph-explorer-v2").count().then((count) => count > 0);
+  if (explorerV2) {
+    const candidates = page.locator('#graphExplorerToolbar [data-graph-layer="candidates"]').first();
+    if (await candidates.getAttribute("aria-pressed") !== "true") {
+      await candidates.click({ force: true });
+      await page.waitForTimeout(100);
+    }
+  }
   const node = page.locator(".graph-svg-node:visible, .graph-node-list-item:visible").first();
   const nodeClicked = await node.count().then((count) => count > 0);
   if (!nodeClicked) return { nodeClicked: false };
@@ -239,14 +246,22 @@ async function exerciseGraphRelationLayerFilter(page) {
 }
 
 async function exerciseGraphPromotionAction(page) {
-  const candidateEdge = page.locator('[data-graph-edge="edge:butler-to-contract"]').first();
+  const candidateEdge = page.locator('.graph-svg-edge[data-graph-edge="edge:butler-to-contract"]').first();
   const candidateEdgeFound = await candidateEdge.count().then((count) => count > 0);
   if (!candidateEdgeFound) return { candidateEdgeFound: false };
-  await candidateEdge.click({ force: true });
+  await candidateEdge.evaluate((element) => element.dispatchEvent(new MouseEvent("click", { bubbles: true })));
   await page.waitForSelector('.graph-edge-workbench [data-graph-edge-action="accepted"]', { timeout: 10000 }).catch(() => {});
   const acceptButton = page.locator('.graph-edge-workbench [data-graph-edge-action="accepted"]').first();
   const acceptButtonFound = await acceptButton.count().then((count) => count > 0);
-  if (!acceptButtonFound) return { candidateEdgeFound, acceptButtonFound: false };
+  if (!acceptButtonFound) {
+    const diagnostics = await page.evaluate(() => ({
+      selectedEdgeKey: typeof state === "object" ? state.selectedGraphEdgeKey : "unavailable",
+      edgeClassFilter: typeof state === "object" ? state.graphEdgeClassFilter : "unavailable",
+      candidateLayerPressed: document.querySelector('#graphExplorerToolbar [data-graph-layer="candidates"]')?.getAttribute("aria-pressed") || "missing",
+      workbenchCount: document.querySelectorAll(".graph-edge-workbench").length,
+    }));
+    return { candidateEdgeFound, acceptButtonFound: false, diagnostics };
+  }
   await acceptButton.click({ force: true });
   await page.waitForFunction(() => String(document.querySelector("#graphStatus")?.textContent || "").includes("reviewed"), null, { timeout: 2500 }).catch(() => {});
   const reviewedStatus = await page.evaluate(() => document.querySelector("#graphStatus")?.textContent || "");

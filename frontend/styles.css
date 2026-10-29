@@ -13819,13 +13819,164 @@ body.graph-explorer-v2 #graph.graph-advanced-open .graph-node-rail {
 }
 
 body.graph-explorer-v2 .graph-topology-shell {
+  --graph-dot-neutral: #e4e6e3;
+  --graph-dot-neutral-stroke: #89918c;
+  --graph-dot-trusted: #dce9e4;
+  --graph-dot-trusted-stroke: #66877d;
+  --graph-dot-evidence: #e1e5e9;
+  --graph-dot-evidence-stroke: #778596;
+  --graph-dot-candidate: #f0e7d6;
+  --graph-dot-candidate-stroke: #a38550;
+  --graph-dot-rework: #f1e1dc;
+  --graph-dot-rework-stroke: #ac6754;
+  --graph-edge-trusted: #78847f;
+  --graph-edge-evidence: #7d8693;
+  --graph-edge-candidate: #9c8358;
+  --graph-edge-danger: #a86659;
   background: color-mix(in srgb, var(--surface) 97%, var(--accent) 3%);
   min-height: min(700px, calc(100vh - 230px));
   padding: 18px;
 }
 
+body.theme-dark.graph-explorer-v2 .graph-topology-shell {
+  --graph-dot-neutral: #353a37;
+  --graph-dot-neutral-stroke: #7f8984;
+  --graph-dot-trusted: #30413b;
+  --graph-dot-trusted-stroke: #7fa99c;
+  --graph-dot-evidence: #343b43;
+  --graph-dot-evidence-stroke: #8997a8;
+  --graph-dot-candidate: #463d2e;
+  --graph-dot-candidate-stroke: #b79a68;
+  --graph-dot-rework: #49352f;
+  --graph-dot-rework-stroke: #c08370;
+  --graph-edge-trusted: #7d8984;
+  --graph-edge-evidence: #818b98;
+  --graph-edge-candidate: #ae9466;
+  --graph-edge-danger: #bd796c;
+}
+
 body.graph-explorer-v2 .graph-topology-shell::after {
   display: none;
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge {
+  filter: none;
+  opacity: var(--edge-opacity, 0.36);
+  stroke: var(--graph-edge-evidence);
+  stroke-width: var(--edge-width, 0.8px);
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.explicit {
+  stroke: var(--graph-edge-trusted);
+  stroke-width: calc(var(--edge-width, 0.8px) + 0.12px);
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.inferred {
+  stroke: var(--graph-edge-evidence);
+  stroke-dasharray: 5 5;
+  stroke-width: var(--edge-width, 0.75px);
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.candidate,
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.duplicate-candidate {
+  stroke: var(--graph-edge-candidate);
+  stroke-dasharray: 1 5;
+  stroke-width: calc(var(--edge-width, 0.8px) + 0.1px);
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.contradiction-candidate {
+  stroke: var(--graph-edge-danger);
+  stroke-dasharray: 1 4;
+  stroke-width: calc(var(--edge-width, 0.9px) + 0.15px);
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.selected,
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.is-connected {
+  filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--accent) 20%, transparent));
+  opacity: 0.94;
+  stroke-width: 1.9px;
+}
+
+body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge.active-path {
+  filter: drop-shadow(0 2px 5px color-mix(in srgb, var(--accent) 24%, transparent));
+  stroke-width: 2.2px;
+}
+
+body.graph-explorer-v2 .graph-topology-svg marker path {
+  fill: var(--graph-edge-evidence);
+  opacity: 0.55;
+}
+
+body.graph-explorer-v2 .graph-svg-node circle:not(.graph-node-hit-target) {
+  fill: var(--graph-dot-neutral);
+  stroke: var(--graph-dot-neutral-stroke);
+  stroke-width: 1.2px;
+}
+
+body.graph-explorer-v2 .graph-svg-node.layer-trusted circle:not(.graph-node-hit-target) {
+  fill: var(--graph-dot-trusted);
+  stroke: var(--graph-dot-trusted-stroke);
+}
+
+body.graph-explorer-v2 .graph-svg-node.layer-evidence circle:not(.graph-node-hit-target) {
+  fill: var(--graph-dot-evidence);
+  stroke: var(--graph-dot-evidence-stroke);
+}
+
+body.graph-explorer-v2 .graph-svg-node.layer-candidate circle:not(.graph-node-hit-target) {
+  fill: var(--graph-dot-candidate);
+  stroke: var(--graph-dot-candidate-stroke);
+}
+
+body.graph-explorer-v2 .graph-svg-node.needs-rework circle:not(.graph-node-hit-target),
+body.graph-explorer-v2 .graph-svg-node.rejected circle:not(.graph-node-hit-target) {
+  fill: var(--graph-dot-rework);
+  stroke: var(--graph-dot-rework-stroke);
+}
+
+body.graph-explorer-v2 .graph-svg-node.cluster circle:not(.graph-node-hit-target) {
+  filter: none;
+  stroke-width: 1.8px;
+}
+
+body.graph-explorer-v2 .graph-svg-node .graph-node-glyph {
+  opacity: 0;
+}
+
+body.graph-explorer-v2 .graph-svg-label-wrap rect,
+body.graph-explorer-v2 .graph-svg-label-wrap.quiet-label rect {
+  opacity: 0;
+}
+
+body.graph-explorer-v2 .graph-svg-node .graph-svg-label {
+  font-size: 9px;
+  font-weight: 700;
+  opacity: 0;
+  stroke-width: 3px;
+}
+
+body.graph-explorer-v2 .graph-svg-node.selected circle:not(.graph-node-hit-target),
+body.graph-explorer-v2 .graph-svg-node.active-path circle:not(.graph-node-hit-target) {
+  filter: drop-shadow(0 4px 9px color-mix(in srgb, var(--accent) 26%, transparent));
+  stroke: var(--accent-strong);
+  stroke-width: 2.2px;
+}
+
+body.graph-explorer-v2 .graph-svg-node.selected .graph-svg-label,
+body.graph-explorer-v2 .graph-svg-node.active-path .graph-svg-label {
+  fill: var(--ink);
+  opacity: 1;
+}
+
+body.graph-explorer-v2 .graph-svg-node.selected .graph-svg-label-wrap rect,
+body.graph-explorer-v2 .graph-svg-node.active-path .graph-svg-label-wrap rect,
+body.graph-explorer-v2 .graph-svg-node.is-emphasized .graph-svg-label-wrap rect,
+body.graph-explorer-v2 .graph-svg-node.is-neighbor .graph-svg-label-wrap rect,
+body.graph-explorer-v2 .graph-svg-node:focus-visible .graph-svg-label-wrap rect {
+  fill: color-mix(in srgb, var(--surface) 94%, transparent);
+  opacity: 0.9;
+  stroke: color-mix(in srgb, var(--line) 78%, var(--accent) 22%);
+  stroke-width: 0.7px;
 }
 
 body.graph-explorer-v2 .graph-topology-svg .graph-svg-node,
@@ -13854,9 +14005,9 @@ body.graph-explorer-v2 .graph-topology-svg .graph-svg-edge-label.is-connected {
 }
 
 body.graph-explorer-v2 .graph-svg-node.is-emphasized circle:not(.graph-node-hit-target) {
-  filter: drop-shadow(0 7px 18px color-mix(in srgb, var(--accent) 34%, transparent));
+  filter: drop-shadow(0 4px 9px color-mix(in srgb, var(--accent) 28%, transparent));
   stroke: var(--accent-strong);
-  stroke-width: 4px;
+  stroke-width: 2.2px;
 }
 
 body.graph-explorer-v2 .graph-svg-node.is-emphasized .graph-svg-label,
@@ -13888,9 +14039,9 @@ body.graph-explorer-v2 .graph-svg-node:focus-visible {
 }
 
 body.graph-explorer-v2 .graph-svg-node:focus-visible circle:not(.graph-node-hit-target) {
-  filter: drop-shadow(0 0 0 5px color-mix(in srgb, var(--accent) 32%, transparent));
+  filter: drop-shadow(0 0 0 4px color-mix(in srgb, var(--accent) 34%, transparent));
   stroke: var(--accent-strong);
-  stroke-width: 4px;
+  stroke-width: 2.5px;
 }
 
 .graph-explorer-tooltip {

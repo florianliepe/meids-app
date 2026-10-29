@@ -40,7 +40,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | PROD-010 | P2 | Format contracts pass; physical device validation open | Complete Windows/macOS browser, microphone, M4A, PPTX, and mixed bulk-upload UAT. | Automated matrix is recorded; Windows Chrome plus macOS Safari/Chrome microphone evidence remains required. |
 | PROD-011 | P2 | Open privileged Azure action | Harden frontend deployment: custom domain, workload identity federation, deployment environment protection, and removal of direct worker URLs. | DNS/TLS verified, tokenless deployment, protected environment approval, backend-only API routes. |
 | PROD-012 | P3 | Deferred | Modularize `frontend/app.js`, `frontend/styles.css`, and `backend/server.js` after runtime contracts freeze. | Stable runtime soak followed by bounded module extraction with parity tests. |
-| PROD-013 | P3 | Preview only | Evaluate Graph Explorer V2 without changing the production runtime. The default-disabled flag preserves the current graph and the PR workflow deploys only an isolated Azure preview. | Owner UAT plus `docs/uat/graph-explorer-v2-preview-20261029.md`; promotion requires an explicit later decision. |
+| PROD-013 | P3 | Preview only | Evaluate compact Graph Explorer V2 without changing the production runtime. Iteration 2 adds smaller dots, thinner relations, quiet labels and layer-specific neutral colors while the default-disabled flag preserves production. | Owner UAT plus `docs/uat/graph-explorer-v2-preview-20261029.md` and `docs/uat/graph-explorer-v2-iteration-2-20261029.md`; promotion requires an explicit later decision. |
 
 ## Decisions
 

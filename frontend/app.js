@@ -4973,7 +4973,9 @@ function graphTopology(nodes, edges, densityMode = "balanced", layoutMode = "top
   }[densityMode] || { height: 680, ring: 78, base: 150, labelScale: 1 };
   const height = density.height;
   const center = { x: width / 2, y: height / 2 };
-  const typeOrder = ["cluster", "concept", "evidence", "skill", "task", "node"];
+  const typeOrder = graphExplorerV2Enabled
+    ? ["cluster", "concept", "evidence", "skill", "task", "agent", "node"]
+    : ["cluster", "concept", "evidence", "skill", "task", "node"];
   const groups = graphGroupBy(nodes, (node) => node.node_type || "node");
   const positions = new Map();
   const lanes = [];
@@ -5337,6 +5339,7 @@ function graphEdgeInlineLabel(edge, flags = {}) {
   const edgeClass = graphEdgeClass(edge);
   const review = String(edge.review_state || "unreviewed");
   const confidence = graphEdgeConfidencePercent(edge);
+  if (graphExplorerV2Enabled && !flags.active && !flags.selected) return "";
   const shouldShow =
     flags.active
     || flags.selected
@@ -5397,6 +5400,15 @@ function graphConfidenceBandMeta(key = "unscored") {
 function graphEdgeVisualWeight(edge = {}) {
   const confidence = graphEdgeConfidencePercent(edge);
   const band = graphEdgeConfidenceBandKey(edge);
+  if (graphExplorerV2Enabled) {
+    if (band === "unscored") return { width: "0.65px", opacity: "0.24" };
+    const width = 0.65 + Math.min(100, Math.max(0, confidence)) / 100 * 0.7;
+    const opacity = 0.24 + Math.min(100, Math.max(0, confidence)) / 100 * 0.34;
+    return {
+      width: `${width.toFixed(2)}px`,
+      opacity: opacity.toFixed(2),
+    };
+  }
   if (band === "unscored") return { width: "1.7px", opacity: "0.48" };
   const width = 1.8 + Math.min(100, Math.max(0, confidence)) / 100 * 2.3;
   const opacity = 0.48 + Math.min(100, Math.max(0, confidence)) / 100 * 0.44;
@@ -5407,17 +5419,25 @@ function graphEdgeVisualWeight(edge = {}) {
 }
 
 function renderGraphSvgNode(node, pos, edges, activePath = null, topology = {}) {
-  const selected = state.selectedGraphNodeKey === node.node_key ? " selected" : "";
-  const active = activePath?.nodeKeys?.has(node.node_key) ? " active-path" : "";
+  const isSelected = state.selectedGraphNodeKey === node.node_key;
+  const isActive = Boolean(activePath?.nodeKeys?.has(node.node_key));
+  const selected = isSelected ? " selected" : "";
+  const active = isActive ? " active-path" : "";
   const degree = graphNodeDegree(node, edges);
-  const radius = Math.max(18, Math.min(34, 18 + degree * 2));
+  const radius = graphExplorerV2Enabled
+    ? Math.max(5.5, Math.min(node.node_type === "cluster" ? 14 : 11.5, 5.5 + Math.sqrt(Math.max(0, degree)) * 1.7))
+    : Math.max(18, Math.min(34, 18 + degree * 2));
   const labelPolicy = graphNodeLabelPolicy(node, degree, activePath, topology);
-  const effectiveLabelPolicy = graphExplorerV2Enabled && !labelPolicy.visible
-    ? { className: "quiet-label", maxLength: state.graphDensityMode === "compact" ? 18 : 28, visible: true }
+  const effectiveLabelPolicy = graphExplorerV2Enabled
+    ? {
+        className: isSelected || isActive ? "primary-label" : "quiet-label",
+        maxLength: isSelected || isActive ? 34 : state.graphDensityMode === "compact" ? 18 : 28,
+        visible: true,
+      }
     : labelPolicy;
   const label = truncateGraphLabel(node.title || node.node_key, effectiveLabelPolicy.maxLength);
   const labelWidth = Math.max(68, Math.min(210, label.length * 6.2 + 22));
-  const labelY = radius + 15;
+  const labelY = radius + (graphExplorerV2Enabled ? 12 : 15);
   const labelMarkup = effectiveLabelPolicy.visible
     ? `
       <g class="graph-svg-label-wrap ${escapeHtml(effectiveLabelPolicy.className)}" transform="translate(0 ${labelY})">
@@ -5427,14 +5447,22 @@ function renderGraphSvgNode(node, pos, edges, activePath = null, topology = {}) 
     `
     : "";
   return `
-    <g class="graph-svg-node ${safeGraphClass(node.node_type || "node")} ${safeGraphClass(node.review_state || "unknown")}${selected}${active}" data-graph-node="${escapeHtml(node.node_key)}" tabindex="0" role="button" aria-label="${escapeHtml(`${node.title || node.node_key}, ${node.review_state || "unknown"}, ${degree} relations`)}" transform="translate(${pos.x} ${pos.y})">
-      ${graphExplorerV2Enabled ? `<circle class="graph-node-hit-target" r="${Math.max(24, radius + 8)}"></circle>` : ""}
+    <g class="graph-svg-node layer-${safeGraphClass(graphNodePresentationLayer(node))} ${safeGraphClass(node.node_type || "node")} ${safeGraphClass(node.review_state || "unknown")}${selected}${active}" data-graph-node="${escapeHtml(node.node_key)}" data-graph-presentation-layer="${escapeHtml(graphNodePresentationLayer(node))}" tabindex="0" role="button" aria-label="${escapeHtml(`${node.title || node.node_key}, ${node.review_state || "unknown"}, ${degree} relations`)}" transform="translate(${pos.x} ${pos.y})">
+      ${graphExplorerV2Enabled ? `<circle class="graph-node-hit-target" r="${Math.max(16, Math.min(18, radius + 7))}"></circle>` : ""}
       <circle r="${radius}"></circle>
-      <text y="4">${escapeHtml(graphNodeInitial(node))}</text>
+      <text class="graph-node-glyph" y="4">${escapeHtml(graphNodeInitial(node))}</text>
       ${labelMarkup}
       <title>${escapeHtml(node.title || node.node_key)} · ${escapeHtml(node.review_state || "unknown")} · ${degree} links</title>
     </g>
   `;
+}
+
+function graphNodePresentationLayer(node = {}) {
+  const type = String(node.node_type || "node").toLowerCase();
+  const review = String(node.review_state || "unknown").toLowerCase().replaceAll("_", "-");
+  if (type === "evidence" || type === "source" || type === "document") return "evidence";
+  if (review === "approved" || review === "accepted") return "trusted";
+  return "candidate";
 }
 
 function graphNodeLabelPolicy(node, degree, activePath = null, topology = {}) {

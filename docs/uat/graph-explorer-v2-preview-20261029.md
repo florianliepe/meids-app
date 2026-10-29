@@ -29,6 +29,7 @@ Refine the Me.IDs Knowledge Graph into a lean, Obsidian-inspired explorer while 
 7. SVG nodes have keyboard focus, visible focus treatment, and an invisible enlarged hit target.
 8. Reduced-motion mode removes graph transitions and smooth scrolling.
 9. Minimap rendering is suppressed below 80 visible nodes.
+10. Iteration 2 reduces nodes to degree-scaled dots, thins relation lines, quiets labels at rest, and introduces neutral layer-specific visual treatment. See `graph-explorer-v2-iteration-2-20261029.md`.
 
 ## Decisions
 
@@ -59,7 +60,7 @@ Acceptance status:
 | Network request or payload change | None |
 | Existing graph governance actions | Passed through `Advanced` regression path |
 | Feature default | Disabled |
-| 500-node hover budget | Passed; under 100 ms |
+| 500-node hover budget | Passed; 2.7 ms p95 |
 | Desktop/tablet/mobile overflow | Passed |
 | Keyboard and focus behavior | Passed |
 | Reduced motion | Passed |

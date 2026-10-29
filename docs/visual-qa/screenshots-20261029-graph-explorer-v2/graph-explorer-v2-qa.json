@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-29T18:15:51.823Z",
+  "generated_at": "2026-10-29T20:54:34.219Z",
   "results": [
     {
       "name": "desktop-light",
@@ -7,7 +7,7 @@
       "height": 1000,
       "theme": "light",
       "failures": [],
-      "hoverMs": 0.7,
+      "hoverMs": 0.2,
       "layout": {
         "panelWidth": 749,
         "canvasWidth": 747,
@@ -17,6 +17,18 @@
         "reduceMotion": false,
         "advancedOpen": false,
         "relationLayerDisplay": "none"
+      },
+      "visualContract": {
+        "nodeCount": 4,
+        "maxDotRadius": 7.904163056034262,
+        "minHitDiameter": 32,
+        "maxHitDiameter": 32,
+        "visibleLabelCount": 2,
+        "maxEdgeWidth": 1.41,
+        "layers": [
+          "trusted",
+          "candidate"
+        ]
       },
       "screenshot": "docs/visual-qa/screenshots-20261029-graph-explorer-v2/graph-explorer-v2-desktop-light.png"
     },
@@ -37,6 +49,18 @@
         "advancedOpen": false,
         "relationLayerDisplay": "none"
       },
+      "visualContract": {
+        "nodeCount": 4,
+        "maxDotRadius": 7.904163056034262,
+        "minHitDiameter": 32,
+        "maxHitDiameter": 32,
+        "visibleLabelCount": 2,
+        "maxEdgeWidth": 1.41,
+        "layers": [
+          "trusted",
+          "candidate"
+        ]
+      },
       "screenshot": "docs/visual-qa/screenshots-20261029-graph-explorer-v2/graph-explorer-v2-desktop-dark.png"
     },
     {
@@ -55,6 +79,18 @@
         "reduceMotion": false,
         "advancedOpen": false,
         "relationLayerDisplay": "none"
+      },
+      "visualContract": {
+        "nodeCount": 4,
+        "maxDotRadius": 7.904163056034262,
+        "minHitDiameter": 32,
+        "maxHitDiameter": 32,
+        "visibleLabelCount": 2,
+        "maxEdgeWidth": 1.41,
+        "layers": [
+          "trusted",
+          "candidate"
+        ]
       },
       "screenshot": "docs/visual-qa/screenshots-20261029-graph-explorer-v2/graph-explorer-v2-tablet-light.png"
     },
@@ -75,6 +111,18 @@
         "advancedOpen": false,
         "relationLayerDisplay": "none"
       },
+      "visualContract": {
+        "nodeCount": 4,
+        "maxDotRadius": 7.904163056034262,
+        "minHitDiameter": 32,
+        "maxHitDiameter": 32,
+        "visibleLabelCount": 2,
+        "maxEdgeWidth": 1.41,
+        "layers": [
+          "trusted",
+          "candidate"
+        ]
+      },
       "screenshot": "docs/visual-qa/screenshots-20261029-graph-explorer-v2/graph-explorer-v2-mobile-light.png"
     },
     {
@@ -83,7 +131,7 @@
       "height": 900,
       "theme": "dark",
       "failures": [],
-      "hoverMs": 0.4,
+      "hoverMs": 0.3,
       "layout": {
         "panelWidth": 351,
         "canvasWidth": 349,
@@ -94,6 +142,18 @@
         "advancedOpen": false,
         "relationLayerDisplay": "none"
       },
+      "visualContract": {
+        "nodeCount": 4,
+        "maxDotRadius": 7.904163056034262,
+        "minHitDiameter": 32,
+        "maxHitDiameter": 32,
+        "visibleLabelCount": 2,
+        "maxEdgeWidth": 1.41,
+        "layers": [
+          "trusted",
+          "candidate"
+        ]
+      },
       "screenshot": "docs/visual-qa/screenshots-20261029-graph-explorer-v2/graph-explorer-v2-mobile-dark.png"
     },
     {
@@ -102,56 +162,56 @@
       "benchmarks": [
         {
           "count": 100,
-          "durationMs": 1.1,
+          "durationMs": 1.2,
           "samples": [
-            0.4,
             0.5,
             0.6,
             0.6,
             0.6,
             0.6,
-            0.6,
-            0.6,
             0.7,
             0.7,
             0.7,
-            1.1
+            0.7,
+            0.7,
+            0.7,
+            1.2
           ]
         },
         {
           "count": 500,
-          "durationMs": 2.8,
+          "durationMs": 2.7,
           "samples": [
-            2,
             2.1,
-            2.1,
-            2.1,
-            2.1,
-            2.1,
-            2.1,
-            2.1,
+            2.2,
+            2.2,
+            2.2,
+            2.2,
             2.2,
             2.2,
             2.3,
-            2.8
+            2.4,
+            2.5,
+            2.5,
+            2.7
           ]
         },
         {
           "count": 1000,
-          "durationMs": 4.7,
+          "durationMs": 4.9,
           "samples": [
-            3.9,
-            4,
-            4,
             4.1,
             4.1,
-            4.1,
+            4.2,
+            4.2,
+            4.2,
             4.2,
             4.3,
             4.3,
             4.5,
             4.5,
-            4.7
+            4.6,
+            4.9
           ]
         }
       ]

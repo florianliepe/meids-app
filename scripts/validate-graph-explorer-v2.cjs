@@ -23,6 +23,10 @@ const checks = [
   [styles.includes("body.graph-explorer-v2") && styles.includes("prefers-reduced-motion: reduce"), "feature-scoped or reduced-motion styles are missing"],
   [styles.includes(".graph-node-hit-target"), "large invisible node hit targets are missing"],
   [styles.includes(".graph-svg-node:focus-visible"), "visible keyboard focus styling is missing"],
+  [app.includes("graphNodePresentationLayer") && app.includes("data-graph-presentation-layer"), "presentation-layer classification is missing"],
+  [app.includes('return "evidence"') && app.includes('return "candidate"'), "trusted/evidence/candidate node classification is incomplete"],
+  [app.includes('width: "0.65px"') && styles.includes("--graph-edge-trusted"), "compact edge styling is missing"],
+  [styles.includes(".graph-svg-label-wrap.quiet-label rect") && styles.includes("opacity: 0"), "labels are not quiet at rest"],
 ];
 
 const failures = checks.filter(([passed]) => !passed).map(([, message]) => message);

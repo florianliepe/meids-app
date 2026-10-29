@@ -70,12 +70,35 @@ async function inspectExplorer(page) {
   if (await pressed('[data-graph-layer="evidence"]') !== "true") failures.push("Evidence layer is not enabled by default");
   if (await pressed('[data-graph-layer="candidates"]') !== "false") failures.push("Candidates layer is not opt-in");
 
+  const visualContract = await page.evaluate(() => {
+    const nodes = [...document.querySelectorAll("#graphCanvas .graph-svg-node")];
+    const dots = nodes.map((node) => node.querySelector("circle:not(.graph-node-hit-target)"));
+    const hitTargets = nodes.map((node) => node.querySelector(".graph-node-hit-target"));
+    const labels = nodes.map((node) => node.querySelector(".graph-svg-label")).filter(Boolean);
+    const edges = [...document.querySelectorAll("#graphCanvas .graph-svg-edge:not(.active-path):not(.selected)")];
+    const visibleLabels = labels.filter((label) => Number.parseFloat(getComputedStyle(label).opacity || "0") > 0.5);
+    return {
+      nodeCount: nodes.length,
+      maxDotRadius: Math.max(0, ...dots.map((dot) => Number.parseFloat(dot?.getAttribute("r") || "0"))),
+      minHitDiameter: Math.min(...hitTargets.map((hit) => Number.parseFloat(hit?.getAttribute("r") || "0") * 2)),
+      maxHitDiameter: Math.max(0, ...hitTargets.map((hit) => Number.parseFloat(hit?.getAttribute("r") || "0") * 2)),
+      visibleLabelCount: visibleLabels.length,
+      maxEdgeWidth: Math.max(0, ...edges.map((edge) => Number.parseFloat(getComputedStyle(edge).strokeWidth || "0"))),
+      layers: [...new Set(nodes.map((node) => node.dataset.graphPresentationLayer).filter(Boolean))],
+    };
+  });
+  if (visualContract.maxDotRadius > 14.1) failures.push(`node dots are too large: radius ${visualContract.maxDotRadius}px`);
+  if (visualContract.minHitDiameter < 28 || visualContract.maxHitDiameter > 36.1) failures.push(`invisible hit targets are outside 28-36px: ${visualContract.minHitDiameter}-${visualContract.maxHitDiameter}px`);
+  if (visualContract.visibleLabelCount > Math.max(3, Math.ceil(visualContract.nodeCount * 0.2))) failures.push(`too many labels are visible at rest: ${visualContract.visibleLabelCount}/${visualContract.nodeCount}`);
+  if (visualContract.maxEdgeWidth > 1.7) failures.push(`resting graph edges are too thick: ${visualContract.maxEdgeWidth}px`);
+  if (!visualContract.layers.includes("trusted") || visualContract.layers.length < 2) failures.push(`presentation-layer styling is incomplete: ${visualContract.layers.join(", ")}`);
+
   const node = page.locator("#graphCanvas .graph-svg-node:visible").first();
   await node.focus();
   await page.waitForTimeout(220);
   const focusRing = await node.evaluate((element) => {
     const circle = element.querySelector("circle:not(.graph-node-hit-target)");
-    return document.activeElement === element && Number.parseFloat(getComputedStyle(circle).strokeWidth || "0") >= 4;
+    return document.activeElement === element && Number.parseFloat(getComputedStyle(circle).strokeWidth || "0") >= 2.4;
   });
   if (!focusRing) failures.push("keyboard focus ring is not visible");
   if (!await page.locator("#graphExplorerTooltip:not([hidden])").count()) failures.push("focus does not reveal the graph tooltip");
@@ -122,6 +145,8 @@ async function inspectExplorer(page) {
   if (!await page.locator("#graphCanvas .graph-svg-node.is-muted").count()) failures.push("hover does not dim unrelated nodes");
   if (!await page.locator("#graphCanvas .graph-svg-edge.is-connected").count()) failures.push("hover does not highlight connecting edges");
   if (!await page.locator("#graphExplorerTooltip:not([hidden])").count()) failures.push("hover tooltip is not visible after its delay");
+  const hoverLabelVisible = await hoverNode.evaluate((element) => Number.parseFloat(getComputedStyle(element.querySelector(".graph-svg-label")).opacity || "0") > 0.8);
+  if (!hoverLabelVisible) failures.push("hover does not reveal the focused node label");
 
   const layout = await page.evaluate(() => {
     const panel = document.querySelector(".graph-cockpit-panel");
@@ -143,7 +168,7 @@ async function inspectExplorer(page) {
   if (layout.canvasWidth < Math.min(320, layout.panelWidth * 0.7)) failures.push("graph canvas is not the dominant surface");
   if (layout.advancedOpen) failures.push("Advanced graph state remained open after it was closed");
   if (layout.relationLayerDisplay !== "none") failures.push(`advanced relation layers remain visible: ${layout.relationLayerDisplay}`);
-  return { failures, hoverMs: Number(hoverMs.toFixed(2)), layout };
+  return { failures, hoverMs: Number(hoverMs.toFixed(2)), layout, visualContract };
 }
 
 async function benchmarkSyntheticHover(page, count) {
@@ -212,8 +237,9 @@ async function run() {
       await restoreStaticGraph(page);
       const result = await inspectExplorer(page);
       const screenshotPath = path.join(outDir, `graph-explorer-v2-${qaCase.name}.png`);
+      await page.locator("#graphCanvas").evaluate((element) => element.dispatchEvent(new MouseEvent("mouseleave")));
       await page.evaluate(() => scrollTo(0, 0));
-      await page.waitForTimeout(80);
+      await page.waitForTimeout(220);
       await page.screenshot({ path: screenshotPath, fullPage: false });
       const screenshot = path.relative(process.cwd(), screenshotPath).replaceAll("\\", "/");
       results.push({ ...qaCase, ...result, screenshot });
