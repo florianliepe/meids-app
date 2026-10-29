@@ -40,7 +40,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | PROD-010 | P2 | Format contracts pass; physical device validation open | Complete Windows/macOS browser, microphone, M4A, PPTX, and mixed bulk-upload UAT. | Automated matrix is recorded; Windows Chrome plus macOS Safari/Chrome microphone evidence remains required. |
 | PROD-011 | P2 | Open privileged Azure action | Harden frontend deployment: custom domain, workload identity federation, deployment environment protection, and removal of direct worker URLs. | DNS/TLS verified, tokenless deployment, protected environment approval, backend-only API routes. |
 | PROD-012 | P3 | Deferred | Modularize `frontend/app.js`, `frontend/styles.css`, and `backend/server.js` after runtime contracts freeze. | Stable runtime soak followed by bounded module extraction with parity tests. |
-| PROD-013 | P3 | Preview deployed; owner UAT blocked by Entra redirect URI | Evaluate compact Graph Explorer V2 without changing the production runtime. Iteration 2 adds smaller dots, thinner relations, quiet labels and layer-specific neutral colors while the default-disabled flag preserves production. | Register the PR #28 preview callback URI, complete owner UAT, then set the protected `azure-static-web-app` environment variable `MEIDS_GRAPH_UI_V2=true` and merge PR #28. Rollback is the same variable set to `false` plus a workflow rerun. |
+| PROD-013 | P3 | Complete | Promote compact Graph Explorer V2 with smaller dots, thinner relations, quiet labels, layer-specific neutral colors, accessible focus, local depth and flag-only rollback. | Owner approved production promotion without preview login. PR #28 merged as `7b01867fd63f4617ef6a523a091f720487b596ae`; Azure deployment passed and live runtime verification returned `graphExplorerV2=true` with matching commit-revision assets. |
 
 ## Decisions
 
@@ -54,6 +54,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | 2026-10-28 | Reconnect but never replay after embedded-chat token expiry. | Automatic replay could duplicate a write or tool call. | Users receive a renewed chat context and resubmit intentionally. |
 | 2026-10-28 | Treat the 420-second lease as the recovery boundary after process loss. | Early reclaim could execute the same n8n chain twice. | The controlled recycle passed with attempt 2 after lease expiry; operators should inspect status and lease timestamps before intervening. |
 | 2026-10-29 | Keep Graph Explorer V2 disabled in production and evaluate it only in an Azure pull-request preview. | Frontend refinement must not alter the current launch candidate, API traffic, persistence, or governance behavior. | Promotion and rollback are runtime-flag decisions; current production remains unchanged. |
+| 2026-10-29 | Promote Graph Explorer V2 after explicit owner approval. | Automated V1/V2 regressions, graph contracts, accessibility interactions, responsive visual checks and synthetic performance gates passed. The owner accepted promotion without preview authentication UAT. | `MEIDS_GRAPH_UI_V2=true` is set in the protected GitHub environment. Rollback sets it to `false` and reruns the Azure Static Web App workflow. |
 
 ## Release sequence
 
