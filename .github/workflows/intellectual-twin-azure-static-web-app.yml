@@ -146,6 +146,7 @@ jobs:
       - name: Prepare Graph Explorer preview artifact
         env:
           MEIDS_GRAPH_UI_V2: "true"
+          MEIDS_ASSET_REVISION: graph-v2-${{ github.sha }}
           MEIDS_FRONTEND_HOST_LABEL: "Azure Static Web Apps preview"
           MEIDS_FRONTEND_AUTH_ENABLED: "true"
           MEIDS_FRONTEND_STATIC_MODE: "false"

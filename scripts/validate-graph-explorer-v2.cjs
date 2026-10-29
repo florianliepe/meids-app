@@ -12,6 +12,7 @@ const build = read("scripts/build-pages-static.cjs");
 const checks = [
   [runtime.includes("graphExplorerV2: false"), "runtime default must keep graph_ui_v2 disabled"],
   [build.includes('envFlag("MEIDS_GRAPH_UI_V2", false)'), "build must expose the explicit graph_ui_v2 environment flag"],
+  [build.includes('env("MEIDS_ASSET_REVISION")') && build.includes("rewriteAssetRevision"), "preview asset cache revision is missing"],
   [html.includes('id="graphExplorerToolbar"'), "Graph Explorer toolbar is missing"],
   [html.includes('data-graph-depth="0"') && html.includes('data-graph-depth="1"') && html.includes('data-graph-depth="2"'), "All/1-hop/2-hop controls are incomplete"],
   [html.includes('data-graph-layer="trusted"') && html.includes('data-graph-layer="evidence"') && html.includes('data-graph-layer="candidates"'), "Trusted/Evidence/Candidates controls are incomplete"],

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-29T20:54:34.219Z",
+  "generated_at": "2026-10-29T21:07:49.649Z",
   "results": [
     {
       "name": "desktop-light",
@@ -38,7 +38,7 @@
       "height": 1000,
       "theme": "dark",
       "failures": [],
-      "hoverMs": 0.2,
+      "hoverMs": 0.3,
       "layout": {
         "panelWidth": 749,
         "canvasWidth": 747,
@@ -69,7 +69,7 @@
       "height": 900,
       "theme": "light",
       "failures": [],
-      "hoverMs": 0.4,
+      "hoverMs": 0.3,
       "layout": {
         "panelWidth": 694,
         "canvasWidth": 692,
@@ -100,7 +100,7 @@
       "height": 900,
       "theme": "light",
       "failures": [],
-      "hoverMs": 0.3,
+      "hoverMs": 0.2,
       "layout": {
         "panelWidth": 351,
         "canvasWidth": 349,
@@ -169,36 +169,36 @@
             0.6,
             0.6,
             0.6,
+            0.6,
+            0.6,
             0.7,
             0.7,
             0.7,
-            0.7,
-            0.7,
-            0.7,
+            0.8,
             1.2
           ]
         },
         {
           "count": 500,
-          "durationMs": 2.7,
+          "durationMs": 2.6,
           "samples": [
+            2.1,
+            2.1,
             2.1,
             2.2,
             2.2,
             2.2,
             2.2,
-            2.2,
-            2.2,
             2.3,
-            2.4,
+            2.3,
             2.5,
-            2.5,
-            2.7
+            2.6,
+            2.6
           ]
         },
         {
           "count": 1000,
-          "durationMs": 4.9,
+          "durationMs": 4.5,
           "samples": [
             4.1,
             4.1,
@@ -208,10 +208,10 @@
             4.2,
             4.3,
             4.3,
-            4.5,
-            4.5,
-            4.6,
-            4.9
+            4.3,
+            4.3,
+            4.4,
+            4.5
           ]
         }
       ]

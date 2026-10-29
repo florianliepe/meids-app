@@ -65,3 +65,9 @@ Reference: <https://obsidian.md/help/plugins/graph>
 | 1,000-node hover p95 | 4.9 ms |
 
 No `/api/` literal changed in this iteration. The production feature flag remains disabled.
+
+## Preview cache correction
+
+User evidence initially showed the V1 graph after the second preview deployment. The deployed preview runtime flag was `true`, but `index.html` still referenced fixed historical cache keys for `app.js`, `styles.css`, and `runtime-config.js`. A browser that had opened the preview before the update could therefore retain the previous rendering bundle.
+
+The pull-request preview build now rewrites those three asset query strings with `graph-v2-${GITHUB_SHA}`. Each preview commit therefore receives unique asset URLs. The production build does not set this variable and remains unchanged.

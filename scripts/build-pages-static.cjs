@@ -53,6 +53,19 @@ function copyDirectory(source, target) {
   fs.cpSync(source, target, { recursive: true });
 }
 
+function rewriteAssetRevision(outputDir) {
+  const revision = env("MEIDS_ASSET_REVISION").replace(/[^A-Za-z0-9._-]/g, "-");
+  if (!revision) return;
+  const indexPath = path.join(outputDir, "index.html");
+  const original = fs.readFileSync(indexPath, "utf8");
+  const revised = ["styles.css", "runtime-config.js", "app.js"].reduce((content, asset) => {
+    const escaped = asset.replace(".", "\\.");
+    return content.replace(new RegExp(`(${escaped}\\?v=)[^"'\\s]+`, "g"), `$1${revision}`);
+  }, original);
+  fs.writeFileSync(indexPath, revised, "utf8");
+  console.log(`Frontend asset revision applied: ${revision}`);
+}
+
 function copyLiveProbePayloads(assetsDir) {
   const source = path.join(root, "contracts", "n8n", "live-probes");
   const target = path.join(assetsDir, "n8n-live-probes");
@@ -170,6 +183,7 @@ function build() {
   if (args.clean) fs.rmSync(args.output, { recursive: true, force: true });
   fs.mkdirSync(args.output, { recursive: true });
   copyDirectory(frontendDir, args.output);
+  rewriteAssetRevision(args.output);
   fs.writeFileSync(path.join(args.output, "build-info.json"), `${JSON.stringify(createBuildInfo("frontend"), null, 2)}\n`, "utf8");
 
   const runtimeConfigPath = path.join(args.output, "runtime-config.js");
