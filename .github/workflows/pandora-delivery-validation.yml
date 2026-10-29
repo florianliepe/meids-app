@@ -8,6 +8,7 @@ on:
       - "scripts/build-pages-static.cjs"
       - "scripts/write-build-info.cjs"
       - "scripts/test-build-info.cjs"
+      - "docs/production/prod-readiness-continuous.md"
       - ".github/workflows/*"
   workflow_dispatch:
 
