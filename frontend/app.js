@@ -51,6 +51,13 @@
   graphViewMode: "map",
   graphLayoutMode: "topology",
   graphFocusMode: false,
+  graphLocalDepth: 0,
+  graphLayers: {
+    trusted: true,
+    evidence: true,
+    candidates: false,
+  },
+  graphAdvancedOpen: false,
   graphZoom: 1,
   graphReasoningPreset: "explain",
   graphPresetTransition: null,
@@ -272,6 +279,7 @@
 };
 
 const runtimeConfig = window.INTELLECTUAL_TWIN_CONFIG || {};
+const graphExplorerV2Enabled = Boolean(runtimeConfig.features?.graphExplorerV2 || runtimeConfig.graphExplorerV2);
 const apiBaseUrl = normalizeBaseUrl(runtimeConfig.apiBaseUrl || "");
 const agentBackendBaseUrl = normalizeBaseUrl(runtimeConfig.agentBackendBaseUrl || runtimeConfig.agentApiBaseUrl || "");
 const agentBackendProxyEnabled = Boolean(agentBackendBaseUrl) && runtimeConfig.agentBackendProxyEnabled !== false;
@@ -511,6 +519,7 @@ const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
 async function bootMeidsApp() {
+  document.body.classList.toggle("graph-explorer-v2", graphExplorerV2Enabled);
   applyStoredTheme();
   await loadAuthSession();
   bindLanding();
@@ -923,6 +932,46 @@ function renderDashboardFilter() {
 function bindGraph() {
   $("#graphRefreshBtn")?.addEventListener("click", safeRefreshGraph);
   $("#graphExportBtn")?.addEventListener("click", exportGraph);
+  $("#graphExplorerToolbar")?.addEventListener("click", (event) => {
+    const depthButton = event.target.closest("[data-graph-depth]");
+    if (depthButton) {
+      setGraphLocalDepth(Number(depthButton.dataset.graphDepth || 0));
+      return;
+    }
+    const layerButton = event.target.closest("[data-graph-layer]");
+    if (layerButton) {
+      toggleGraphExplorerLayer(layerButton.dataset.graphLayer || "trusted");
+      return;
+    }
+    const action = event.target.closest("[data-graph-explorer-action]")?.dataset.graphExplorerAction;
+    if (action === "map" || action === "list") {
+      state.graphViewMode = action;
+      renderGraphCockpit();
+      return;
+    }
+    if (action === "fit") {
+      setGraphZoom(1);
+      return;
+    }
+    if (action === "refresh") {
+      void safeRefreshGraph();
+      return;
+    }
+    if (action === "advanced") {
+      state.graphAdvancedOpen = !state.graphAdvancedOpen;
+      renderGraphCockpit();
+    }
+  });
+  $("#graphExplorerSearch")?.addEventListener("input", (event) => {
+    state.graphReasoningPreset = "custom";
+    state.graphSearch = event.target.value || "";
+    renderGraphCockpit();
+    requestAnimationFrame(() => {
+      const input = $("#graphExplorerSearch");
+      input?.focus({ preventScroll: true });
+      input?.setSelectionRange?.(input.value.length, input.value.length);
+    });
+  });
   $("#graphPresetBar")?.addEventListener("click", (event) => {
     const preset = event.target.closest("[data-graph-preset]");
     if (preset) applyGraphReasoningPreset(preset.dataset.graphPreset || "explain");
@@ -1091,11 +1140,17 @@ function bindGraph() {
     }
   });
   $("#graphCanvas")?.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && graphExplorerV2Enabled) {
+      event.preventDefault();
+      clearGraphExplorerSelection();
+      return;
+    }
     if (event.key !== "Enter" && event.key !== " ") return;
-    const overviewNode = event.target.closest?.(".graph-overview-panel [data-graph-node]");
-    if (!overviewNode) return;
+    const node = event.target.closest?.("[data-graph-node]");
+    if (!node) return;
     event.preventDefault();
-    focusGraphOverviewNode(overviewNode.dataset.graphNode);
+    if (node.closest(".graph-overview-panel")) focusGraphOverviewNode(node.dataset.graphNode);
+    else void openGraphNode(node.dataset.graphNode);
   });
   $("#graphTraceabilityPanel")?.addEventListener("click", (event) => {
     const action = event.target.closest("[data-graph-action]");
@@ -1134,6 +1189,9 @@ function bindGraph() {
   $("#graphPresentationPngBtn")?.addEventListener("click", downloadGraphPng);
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !$("#graphPresentationOverlay")?.hidden) closeGraphPresentation();
+    if (event.key === "Escape" && graphExplorerV2Enabled && $("#graph")?.classList.contains("active")) {
+      clearGraphExplorerSelection();
+    }
   });
   document.addEventListener("click", (event) => {
     const relationApplyAction = event.target.closest?.("[data-graph-selected-relation-action]");
@@ -1149,6 +1207,7 @@ function bindGraph() {
       state.hoveredGraphEdgeKey = edge.dataset.graphEdge || "";
       state.hoveredGraphNodeKey = "";
       renderGraphHoverInspector();
+      if (graphExplorerV2Enabled) showGraphExplorerEdgeTooltip(edge, event.clientX, event.clientY);
       return;
     }
     const node = event.target.closest("[data-graph-node]");
@@ -1156,11 +1215,38 @@ function bindGraph() {
     state.hoveredGraphNodeKey = node.dataset.graphNode || "";
     state.hoveredGraphEdgeKey = "";
     renderGraphHoverInspector();
+    if (graphExplorerV2Enabled) {
+      applyGraphNeighborhoodHighlight(state.hoveredGraphNodeKey);
+      showGraphExplorerNodeTooltip(node, event.clientX, event.clientY);
+    }
+  });
+  $("#graphCanvas")?.addEventListener("mousemove", (event) => {
+    if (!graphExplorerV2Enabled || (!state.hoveredGraphNodeKey && !state.hoveredGraphEdgeKey)) return;
+    positionGraphExplorerTooltip(event.clientX, event.clientY);
   });
   $("#graphCanvas")?.addEventListener("mouseleave", () => {
     state.hoveredGraphNodeKey = "";
     state.hoveredGraphEdgeKey = "";
     renderGraphHoverInspector();
+    if (graphExplorerV2Enabled) {
+      hideGraphExplorerTooltip();
+      applyGraphNeighborhoodHighlight(state.selectedGraphNodeKey);
+    }
+  });
+  $("#graphCanvas")?.addEventListener("focusin", (event) => {
+    if (!graphExplorerV2Enabled) return;
+    const node = event.target.closest?.(".graph-svg-node[data-graph-node]");
+    if (!node) return;
+    state.hoveredGraphNodeKey = node.dataset.graphNode || "";
+    applyGraphNeighborhoodHighlight(state.hoveredGraphNodeKey);
+    const box = node.getBoundingClientRect();
+    showGraphExplorerNodeTooltip(node, box.left + box.width / 2, box.top);
+  });
+  $("#graphCanvas")?.addEventListener("focusout", (event) => {
+    if (!graphExplorerV2Enabled || event.relatedTarget?.closest?.("#graphCanvas")) return;
+    state.hoveredGraphNodeKey = "";
+    hideGraphExplorerTooltip();
+    applyGraphNeighborhoodHighlight(state.selectedGraphNodeKey);
   });
   $("#graphNodeDetail")?.addEventListener("click", (event) => {
     const copyButton = event.target.closest(".source-copy-btn");
@@ -2319,7 +2405,65 @@ function syncGraphControlValues() {
   if (searchInput) searchInput.value = state.graphSearch;
   if (includeDrafts) includeDrafts.checked = state.graphIncludeDrafts;
   if (focusMode) focusMode.checked = state.graphFocusMode;
+  syncGraphExplorerControls();
   renderGraphPresetControls();
+}
+
+function syncGraphExplorerControls() {
+  if (!graphExplorerV2Enabled) return;
+  const search = $("#graphExplorerSearch");
+  if (search && search.value !== state.graphSearch) search.value = state.graphSearch;
+  $$('[data-graph-depth]').forEach((button) => {
+    const active = Number(button.dataset.graphDepth || 0) === state.graphLocalDepth;
+    button.setAttribute("aria-pressed", String(active));
+  });
+  $$('[data-graph-layer]').forEach((button) => {
+    button.setAttribute("aria-pressed", String(Boolean(state.graphLayers[button.dataset.graphLayer])));
+  });
+  $$('[data-graph-explorer-action="map"], [data-graph-explorer-action="list"]').forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.graphExplorerAction === state.graphViewMode));
+  });
+  const advanced = $('[data-graph-explorer-action="advanced"]');
+  advanced?.setAttribute("aria-expanded", String(state.graphAdvancedOpen));
+}
+
+function setGraphLocalDepth(depth) {
+  if (!graphExplorerV2Enabled) return;
+  const normalized = [0, 1, 2].includes(depth) ? depth : 0;
+  if (normalized > 0 && !state.selectedGraphNodeKey) {
+    const graph = state.okfGraph || {};
+    const topNode = [...(graph.nodes || [])]
+      .sort((a, b) => graphNodeDegree(b, graph.edges || []) - graphNodeDegree(a, graph.edges || []))[0];
+    state.selectedGraphNodeKey = topNode?.node_key || "";
+    state.okfGraphNodeDetail = topNode ? buildStaticGraphNodeDetail(topNode.node_key) : null;
+  }
+  state.graphLocalDepth = normalized;
+  state.graphFocusMode = normalized > 0;
+  state.graphReasoningPreset = "custom";
+  renderGraphCockpit();
+}
+
+function toggleGraphExplorerLayer(layer) {
+  if (!graphExplorerV2Enabled || !Object.hasOwn(state.graphLayers, layer)) return;
+  const enabledCount = Object.values(state.graphLayers).filter(Boolean).length;
+  if (state.graphLayers[layer] && enabledCount === 1) return;
+  state.graphLayers[layer] = !state.graphLayers[layer];
+  state.graphReasoningPreset = "custom";
+  renderGraphCockpit();
+}
+
+function clearGraphExplorerSelection() {
+  state.selectedGraphNodeKey = "";
+  state.selectedGraphEdgeKey = "";
+  state.hoveredGraphNodeKey = "";
+  state.hoveredGraphEdgeKey = "";
+  state.okfGraphNodeDetail = null;
+  if (state.graphLocalDepth > 0) {
+    state.graphLocalDepth = 0;
+    state.graphFocusMode = false;
+  }
+  hideGraphExplorerTooltip();
+  renderGraphCockpit();
 }
 
 function resetGraphViewControls() {
@@ -2334,6 +2478,9 @@ function resetGraphViewControls() {
   state.graphViewMode = "map";
   state.graphLayoutMode = "topology";
   state.graphFocusMode = false;
+  state.graphLocalDepth = 0;
+  state.graphLayers = { trusted: true, evidence: true, candidates: false };
+  state.graphAdvancedOpen = false;
   state.graphZoom = 1;
   state.graphSearch = "";
   state.graphReplayContext = null;
@@ -2569,9 +2716,13 @@ function focusGraphOverviewNode(nodeKey) {
 
 function renderGraphCockpit() {
   const graph = state.okfGraph;
+  const graphView = $("#graph");
+  graphView?.classList.toggle("graph-has-selection", Boolean(state.selectedGraphNodeKey || state.selectedGraphEdgeKey));
+  graphView?.classList.toggle("graph-advanced-open", Boolean(state.graphAdvancedOpen));
   $("#graph")?.classList.toggle("graph-story-active", state.graphLayoutMode === "story");
   $("#graph")?.classList.toggle("graph-decision-active", state.graphLayoutMode === "decision");
   $("#graph")?.classList.toggle("graph-list-active", state.graphViewMode === "list");
+  syncGraphExplorerControls();
   renderGraphPresetControls();
   if (!graph) {
     $("#graphSummary").innerHTML = "";
@@ -2582,6 +2733,7 @@ function renderGraphCockpit() {
     $("#graphInterpretationPanel").innerHTML = "";
     $("#graphTraceabilityPanel").innerHTML = "";
     $("#graphCanvas").innerHTML = renderEmptyState("Load the graph to inspect OKF relationships.");
+    $("#graphExplorerSummary").innerHTML = "";
     $("#graphQualityActions").innerHTML = "";
     $("#graphInsights").innerHTML = renderEmptyState("No graph insights loaded.");
     $("#graphRecommendationTasks").innerHTML = renderEmptyState("No graph recommendation tasks loaded.");
@@ -2591,7 +2743,8 @@ function renderGraphCockpit() {
   const baseNodes = filteredGraphNodes();
   const baseNodeKeys = new Set(baseNodes.map((node) => node.node_key));
   const baseEdges = (graph.edges || []).filter((edge) => baseNodeKeys.has(edge.source) && baseNodeKeys.has(edge.target));
-  const projection = graphFocusProjection(baseNodes, baseEdges);
+  const layerProjection = graphExplorerLayerProjection(baseNodes, baseEdges);
+  const projection = graphFocusProjection(layerProjection.nodes, layerProjection.edges);
   const nodes = projection.nodes;
   const availableEdges = projection.edges;
   const edges = applyGraphEdgeFilters(availableEdges);
@@ -2606,12 +2759,34 @@ function renderGraphCockpit() {
   renderGraphInterpretationPanel(graph, nodes, edges);
   renderGraphTraceabilityPanel(graph, nodes, edges);
   renderGraphCanvas(nodes, edges, availableEdges);
+  renderGraphExplorerSummary(nodes, edges, availableEdges);
   renderGraphNodeDetail();
   renderGraphQualityActions(nodes, edges);
   renderGraphGovernanceQueue(graph, edges);
   renderGraphInsights(graph, nodes, edges);
   renderGraphRecommendationTasks();
   renderGraphTools(graph);
+}
+
+function renderGraphExplorerSummary(nodes = [], edges = [], availableEdges = edges) {
+  const target = $("#graphExplorerSummary");
+  if (!target || !graphExplorerV2Enabled) return;
+  const selected = nodes.find((node) => node.node_key === state.selectedGraphNodeKey);
+  const visibleLayers = Object.entries(state.graphLayers)
+    .filter(([, enabled]) => enabled)
+    .map(([key]) => labelizeGraph(key));
+  const scope = state.graphLocalDepth > 0
+    ? `${state.graphLocalDepth}-hop local graph${selected ? ` around ${selected.title || selected.node_key}` : ""}`
+    : "All visible knowledge";
+  target.innerHTML = `
+    <div>
+      <strong>${escapeHtml(scope)}</strong>
+      <span>${escapeHtml(`${nodes.length} nodes · ${edges.length}/${availableEdges.length} relations`)}</span>
+    </div>
+    <div class="graph-explorer-layer-key" aria-label="Visible graph layers">
+      ${visibleLayers.map((layer) => `<span class="${safeGraphClass(layer)}">${escapeHtml(layer)}</span>`).join("")}
+    </div>
+  `;
 }
 
 function renderGraphPrimaryNodeAction(nodes = [], edges = []) {
@@ -2753,17 +2928,55 @@ function graphPresetList() {
 }
 
 function graphFocusProjection(nodes, edges) {
-  if (!state.graphFocusMode || !state.selectedGraphNodeKey) return { nodes, edges };
+  const depth = graphExplorerV2Enabled ? state.graphLocalDepth : (state.graphFocusMode ? 1 : 0);
+  if (!depth || !state.selectedGraphNodeKey) return { nodes, edges };
   const nodeKeys = new Set(nodes.map((node) => node.node_key));
   if (!nodeKeys.has(state.selectedGraphNodeKey)) return { nodes, edges };
   const focusedKeys = new Set([state.selectedGraphNodeKey]);
-  edges.forEach((edge) => {
-    if (edge.source === state.selectedGraphNodeKey) focusedKeys.add(edge.target);
-    if (edge.target === state.selectedGraphNodeKey) focusedKeys.add(edge.source);
-  });
+  let frontier = new Set([state.selectedGraphNodeKey]);
+  for (let hop = 0; hop < depth; hop += 1) {
+    const next = new Set();
+    edges.forEach((edge) => {
+      if (frontier.has(edge.source) && !focusedKeys.has(edge.target)) next.add(edge.target);
+      if (frontier.has(edge.target) && !focusedKeys.has(edge.source)) next.add(edge.source);
+    });
+    next.forEach((key) => focusedKeys.add(key));
+    frontier = next;
+  }
   const focusedNodes = nodes.filter((node) => focusedKeys.has(node.node_key));
   const focusedEdges = edges.filter((edge) => focusedKeys.has(edge.source) && focusedKeys.has(edge.target));
   return { nodes: focusedNodes, edges: focusedEdges };
+}
+
+function graphExplorerLayerProjection(nodes = [], edges = []) {
+  if (!graphExplorerV2Enabled) return { nodes, edges };
+  const edgeAllowed = (edge) => {
+    const edgeClass = graphEdgeClass(edge);
+    const relation = String(edge.relation_type || edge.edge_type || "").toLowerCase();
+    const review = String(edge.review_state || "").toLowerCase();
+    const trusted = state.graphLayers.trusted
+      && (edgeClass === "explicit" || review === "approved" || review === "accepted");
+    const evidence = state.graphLayers.evidence
+      && (edgeClass === "inferred" || /(evidence|source|support|derive|cite|provenance|contract)/.test(relation));
+    const candidate = state.graphLayers.candidates
+      && (edgeClass.includes("candidate") || ["draft", "unreviewed", "pending-review", "needs-rework"].includes(review));
+    return trusted || evidence || candidate;
+  };
+  const visibleEdges = edges.filter(edgeAllowed);
+  const edgeNodeKeys = new Set(visibleEdges.flatMap((edge) => [edge.source, edge.target]));
+  const visibleNodes = nodes.filter((node) => {
+    const review = String(node.review_state || "").toLowerCase();
+    const type = String(node.node_type || "").toLowerCase();
+    const trusted = state.graphLayers.trusted && review === "approved";
+    const evidence = state.graphLayers.evidence && /(evidence|source|document|contract|citation)/.test(type);
+    const candidate = state.graphLayers.candidates && review !== "approved";
+    return trusted || evidence || candidate || edgeNodeKeys.has(node.node_key);
+  });
+  const visibleNodeKeys = new Set(visibleNodes.map((node) => node.node_key));
+  return {
+    nodes: visibleNodes,
+    edges: visibleEdges.filter((edge) => visibleNodeKeys.has(edge.source) && visibleNodeKeys.has(edge.target)),
+  };
 }
 
 function filteredGraphNodes() {
@@ -3333,7 +3546,7 @@ function renderGraphCanvas(nodes, edges, availableEdges = edges) {
   const selectedNode = nodes.find((node) => node.node_key === state.selectedGraphNodeKey);
   const focusLabel = state.graphFocusMode
     ? selectedNode
-      ? `Focused on ${selectedNode.title || selectedNode.node_key}`
+      ? `${graphExplorerV2Enabled ? `${state.graphLocalDepth}-hop local graph` : "Focused"} on ${selectedNode.title || selectedNode.node_key}`
       : "Focus mode waiting for a node"
     : `${labelizeGraph(state.graphLayoutMode)} layout`;
   const activeFilterCount = [
@@ -3374,6 +3587,7 @@ function renderGraphCanvas(nodes, edges, availableEdges = edges) {
       ${semanticLegend}
       ${actorUseMap}
       <div id="graphHoverInspector" class="graph-hover-inspector">${hoverInspector}</div>
+      ${graphExplorerV2Enabled ? '<div id="graphExplorerTooltip" class="graph-explorer-tooltip" role="tooltip" hidden></div>' : ""}
       ${renderGraphActivePathCallout(activePath)}
       ${renderGraphOverviewPanel(topology, nodes, displayEdges, activePath, edges.length)}
       <div class="graph-topology-shell">
@@ -3399,6 +3613,7 @@ function renderGraphCanvas(nodes, edges, availableEdges = edges) {
   bindGraphEdgeLabelClicks(target);
   bindGraphRelationLayerControls(target);
   bindGraphEdgeReviewControls(target);
+  if (graphExplorerV2Enabled) requestAnimationFrame(() => applyGraphNeighborhoodHighlight(state.selectedGraphNodeKey));
 }
 
 function graphTopologyDisplayEdges(nodes = [], edges = [], availableEdges = edges, activePath = null) {
@@ -4346,6 +4561,97 @@ function renderGraphHoverInspectorMarkup(nodes, edges) {
   `;
 }
 
+function applyGraphNeighborhoodHighlight(nodeKey = "") {
+  if (!graphExplorerV2Enabled) return;
+  const svg = $("#graphCanvas .graph-topology-svg");
+  if (!svg) return;
+  const nodeElements = [...svg.querySelectorAll(".graph-svg-node[data-graph-node]")];
+  const edgeElements = [...svg.querySelectorAll(".graph-svg-edge[data-graph-edge]")];
+  const edgeLabelElements = [...svg.querySelectorAll(".graph-svg-edge-label[data-graph-edge]")];
+  nodeElements.forEach((element) => element.classList.remove("is-muted", "is-neighbor", "is-emphasized"));
+  edgeElements.forEach((element) => element.classList.remove("is-muted", "is-connected"));
+  edgeLabelElements.forEach((element) => element.classList.remove("is-muted", "is-connected"));
+  svg.classList.toggle("has-graph-emphasis", Boolean(nodeKey));
+  if (!nodeKey) return;
+  const neighborKeys = new Set([nodeKey]);
+  const connectedEdgeKeys = new Set();
+  edgeElements.forEach((edge) => {
+    const source = edge.dataset.graphSource || "";
+    const target = edge.dataset.graphTarget || "";
+    if (source === nodeKey || target === nodeKey) {
+      neighborKeys.add(source === nodeKey ? target : source);
+      connectedEdgeKeys.add(edge.dataset.graphEdge || "");
+      edge.classList.add("is-connected");
+    } else {
+      edge.classList.add("is-muted");
+    }
+  });
+  nodeElements.forEach((node) => {
+    const key = node.dataset.graphNode || "";
+    if (key === nodeKey) node.classList.add("is-emphasized");
+    else if (neighborKeys.has(key)) node.classList.add("is-neighbor");
+    else node.classList.add("is-muted");
+  });
+  edgeLabelElements.forEach((label) => {
+    if (connectedEdgeKeys.has(label.dataset.graphEdge || "")) label.classList.add("is-connected");
+    else label.classList.add("is-muted");
+  });
+}
+
+function showGraphExplorerNodeTooltip(element, clientX, clientY) {
+  const graph = state.okfGraph || {};
+  const nodeKey = element?.dataset?.graphNode || "";
+  const node = (graph.nodes || []).find((item) => item.node_key === nodeKey);
+  if (!node) return;
+  const edges = (graph.edges || []).filter((edge) => edge.source === nodeKey || edge.target === nodeKey);
+  const evidenceCount = edges.filter((edge) => /(evidence|source|support|derive|cite|provenance)/i.test(String(edge.relation_type || edge.edge_type || ""))).length;
+  showGraphExplorerTooltip(`
+    <span>${escapeHtml(labelizeGraph(node.node_type || "node"))}</span>
+    <strong>${escapeHtml(node.title || node.node_key)}</strong>
+    <small>${escapeHtml(node.review_state || "unknown")} · ${edges.length} relations · ${evidenceCount} evidence paths</small>
+  `, clientX, clientY);
+}
+
+function showGraphExplorerEdgeTooltip(element, clientX, clientY) {
+  const edgeKey = element?.dataset?.graphEdge || "";
+  const graph = state.okfGraph || {};
+  const edge = (graph.edges || []).find((item) => item.edge_key === edgeKey);
+  if (!edge) return;
+  const nodeMap = new Map((graph.nodes || []).map((node) => [node.node_key, node]));
+  applyGraphNeighborhoodHighlight(edge.source || "");
+  showGraphExplorerTooltip(`
+    <span>Why connected? · ${escapeHtml(labelizeGraph(edge.relation_type || edge.edge_type || "relation"))}</span>
+    <strong>${escapeHtml(nodeMap.get(edge.source)?.title || edge.source)} → ${escapeHtml(nodeMap.get(edge.target)?.title || edge.target)}</strong>
+    <small>${escapeHtml(edge.review_state || "unreviewed")} · ${escapeHtml(graphEdgeClass(edge))} · confidence ${escapeHtml(String(graphEdgeConfidencePercent(edge) || "unscored"))}</small>
+  `, clientX, clientY);
+}
+
+function showGraphExplorerTooltip(markup, clientX, clientY) {
+  window.clearTimeout(state.graphTooltipTimer);
+  state.graphTooltipTimer = window.setTimeout(() => {
+    const tooltip = $("#graphExplorerTooltip");
+    if (!tooltip) return;
+    tooltip.innerHTML = markup;
+    tooltip.hidden = false;
+    positionGraphExplorerTooltip(clientX, clientY);
+  }, 180);
+}
+
+function positionGraphExplorerTooltip(clientX, clientY) {
+  const tooltip = $("#graphExplorerTooltip");
+  if (!tooltip || tooltip.hidden) return;
+  const width = Math.min(320, tooltip.offsetWidth || 280);
+  const height = tooltip.offsetHeight || 90;
+  tooltip.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, clientX + 16))}px`;
+  tooltip.style.top = `${Math.max(12, Math.min(window.innerHeight - height - 12, clientY + 16))}px`;
+}
+
+function hideGraphExplorerTooltip() {
+  window.clearTimeout(state.graphTooltipTimer);
+  const tooltip = $("#graphExplorerTooltip");
+  if (tooltip) tooltip.hidden = true;
+}
+
 function renderGraphEdgeWorkbench(nodes, edges) {
   const edge = edges.find((item) => item.edge_key === state.selectedGraphEdgeKey);
   if (!edge) return "";
@@ -4909,6 +5215,7 @@ function renderGraphSvgZone(zone) {
 }
 
 function renderGraphOverviewPanel(topology, nodes, edges, activePath = null, totalEdgeCount = edges.length) {
+  if (graphExplorerV2Enabled && nodes.length <= 80) return "";
   const positionedNodes = nodes.filter((node) => topology.positions.has(node.node_key));
   if (!positionedNodes.length) return "";
   const maxDegree = Math.max(1, ...positionedNodes.map((node) => graphNodeDegree(node, edges)));
@@ -4997,6 +5304,8 @@ function renderGraphSvgEdge(edge, positions, layer = "visible", activePath = nul
         class="graph-svg-edge ${safeGraphClass(relation)} ${safeGraphClass(graphEdgeClass(edge))} ${safeGraphClass(review)} confidence-${safeGraphClass(confidenceBand.key)} ${isSelected ? "selected" : ""} ${isActivePath ? "active-path" : ""} ${isRecentlyReviewed ? "recently-reviewed" : ""}"
         style="--edge-width: ${visual.width}; --edge-opacity: ${visual.opacity};"
         data-graph-edge="${escapeHtml(edge.edge_key || "")}"
+        data-graph-source="${escapeHtml(edge.source || "")}"
+        data-graph-target="${escapeHtml(edge.target || "")}"
         d="${curve}"
         marker-end="url(#graphArrow)"
       >
@@ -5103,19 +5412,23 @@ function renderGraphSvgNode(node, pos, edges, activePath = null, topology = {}) 
   const degree = graphNodeDegree(node, edges);
   const radius = Math.max(18, Math.min(34, 18 + degree * 2));
   const labelPolicy = graphNodeLabelPolicy(node, degree, activePath, topology);
-  const label = truncateGraphLabel(node.title || node.node_key, labelPolicy.maxLength);
+  const effectiveLabelPolicy = graphExplorerV2Enabled && !labelPolicy.visible
+    ? { className: "quiet-label", maxLength: state.graphDensityMode === "compact" ? 18 : 28, visible: true }
+    : labelPolicy;
+  const label = truncateGraphLabel(node.title || node.node_key, effectiveLabelPolicy.maxLength);
   const labelWidth = Math.max(68, Math.min(210, label.length * 6.2 + 22));
   const labelY = radius + 15;
-  const labelMarkup = labelPolicy.visible
+  const labelMarkup = effectiveLabelPolicy.visible
     ? `
-      <g class="graph-svg-label-wrap ${escapeHtml(labelPolicy.className)}" transform="translate(0 ${labelY})">
+      <g class="graph-svg-label-wrap ${escapeHtml(effectiveLabelPolicy.className)}" transform="translate(0 ${labelY})">
         <rect x="${Math.round(-labelWidth / 2)}" y="-10" width="${Math.round(labelWidth)}" height="22" rx="11"></rect>
-        <text class="graph-svg-label ${escapeHtml(labelPolicy.className)}" y="5">${escapeHtml(label)}</text>
+        <text class="graph-svg-label ${escapeHtml(effectiveLabelPolicy.className)}" y="5">${escapeHtml(label)}</text>
       </g>
     `
     : "";
   return `
-    <g class="graph-svg-node ${safeGraphClass(node.node_type || "node")} ${safeGraphClass(node.review_state || "unknown")}${selected}${active}" data-graph-node="${escapeHtml(node.node_key)}" transform="translate(${pos.x} ${pos.y})">
+    <g class="graph-svg-node ${safeGraphClass(node.node_type || "node")} ${safeGraphClass(node.review_state || "unknown")}${selected}${active}" data-graph-node="${escapeHtml(node.node_key)}" tabindex="0" role="button" aria-label="${escapeHtml(`${node.title || node.node_key}, ${node.review_state || "unknown"}, ${degree} relations`)}" transform="translate(${pos.x} ${pos.y})">
+      ${graphExplorerV2Enabled ? `<circle class="graph-node-hit-target" r="${Math.max(24, radius + 8)}"></circle>` : ""}
       <circle r="${radius}"></circle>
       <text y="4">${escapeHtml(graphNodeInitial(node))}</text>
       ${labelMarkup}
@@ -5479,6 +5792,7 @@ function renderGraphNodeDetail() {
       const usage = graphEdgeUsagePolicy(edge);
       return `
         <li class="graph-edge-line ${safeGraphClass(reviewState)}${selected}" data-graph-edge="${escapeHtml(edge.edge_key || "")}">
+          ${selected ? '<strong class="graph-edge-why-label">Why connected?</strong>' : ""}
           <span>${escapeHtml(labelizeGraph(relation))} ${escapeHtml(direction)} ${escapeHtml(other.title || otherKey || "node")}</span>
           <small>${escapeHtml(graphRelationMeaning(edge, node, other))}</small>
           <small>confidence ${escapeHtml(edge.confidence ?? "-")} · ${escapeHtml(reviewState)} · ${escapeHtml(usage.label)}${edge.review_note ? ` · ${escapeHtml(edge.review_note)}` : ""}</small>

@@ -12,6 +12,8 @@
     "uat:device-matrix": "node scripts/validate-document-upload-contract.cjs && node scripts/validate-audio-upload-contract.cjs && node scripts/write-device-upload-launch-matrix.cjs",
     "check:entra-onboarding": "node --check frontend/api.js && node --check frontend/app.js && node --check backend/server.js && node scripts/validate-entra-group-onboarding.cjs",
     "check:admin-cockpit": "node --check frontend/admin/admin.js && node --check backend/server.js && node scripts/validate-admin-cockpit-contract.cjs",
+    "check:graph-explorer": "node --check frontend/app.js && node scripts/validate-graph-explorer-v2.cjs",
+    "uat:graph-explorer": "node scripts/browser-graph-explorer-v2-qa.cjs dist-graph-v2-preview docs/visual-qa/screenshots-20261029-graph-explorer-v2",
     "db:migrate": "node scripts/run-postgres-migrations.cjs",
     "db:verify:runtime-jobs": "node scripts/verify-runtime-background-jobs.cjs",
     "db:bootstrap:production": "node scripts/bootstrap-production-postgres.cjs",

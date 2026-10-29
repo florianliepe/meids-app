@@ -67,6 +67,7 @@ jobs:
 
       - name: Validate graph contracts
         run: |
+          node scripts/validate-graph-explorer-v2.cjs
           node scripts/validate-postgres-graph-schema.cjs
           node scripts/validate-graph-promotions.cjs
           node scripts/validate-graph-persistence-contract.cjs

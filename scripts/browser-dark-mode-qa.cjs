@@ -89,7 +89,8 @@ async function run() {
   const results = [];
   try {
     for (const qaCase of cases) {
-      const page = await browser.newPage({ viewport: { width: qaCase.width, height: qaCase.height } });
+      const context = await browser.newContext({ viewport: { width: qaCase.width, height: qaCase.height } });
+      const page = await context.newPage();
       await page.addInitScript(() => {
         window.localStorage.setItem("intellectualTwin.theme", "dark");
         window.localStorage.setItem("intellectualTwin.landing.dismissed", "true");
@@ -97,6 +98,13 @@ async function run() {
       await page.goto(`http://${host}:${port}/?view=${qaCase.view}`, { waitUntil: "networkidle" });
       await page.waitForSelector(qaCase.main, { timeout: 10000 });
       await page.waitForTimeout(350);
+      if (qaCase.view === "graph") {
+        await page.evaluate(() => {
+          if (window.INTELLECTUAL_TWIN_CONFIG?.staticPagesMode && typeof refreshStaticPagesWorkspace === "function") {
+            refreshStaticPagesWorkspace();
+          }
+        });
+      }
       let interactionMetrics = {};
       if (qaCase.view === "graph") {
         interactionMetrics = await exerciseGraphRelationLayerFilter(page);
@@ -150,7 +158,7 @@ async function run() {
       const contrast = contrastRatio(metrics.contrastSample.foreground, metrics.contrastSample.background);
       const screenshot = path.join(outDir, `${qaCase.name}.png`);
       await page.screenshot({ path: screenshot, fullPage: true });
-      await page.close();
+      await context.close();
       const failures = [];
       if (!metrics.themeDark) failures.push("dark theme was not applied");
       if (!metrics.mainFound) failures.push(`main selector missing: ${qaCase.main}`);
@@ -200,10 +208,15 @@ async function run() {
 }
 
 async function exerciseGraphRelationLayerFilter(page) {
-  const node = page.locator("[data-graph-node]").first();
+  const explorerV2 = await page.locator("body.graph-explorer-v2").count().then((count) => count > 0);
+  const node = page.locator(".graph-svg-node:visible, .graph-node-list-item:visible").first();
   const nodeClicked = await node.count().then((count) => count > 0);
   if (!nodeClicked) return { nodeClicked: false };
   await node.click({ force: true });
+  if (explorerV2) {
+    await page.locator('[data-graph-explorer-action="advanced"]').click({ force: true });
+    await page.waitForTimeout(100);
+  }
   await page.waitForSelector(".graph-relation-layer-summary", { timeout: 10000 }).catch(() => {});
   const relationLayerSummaryFound = await page.locator(".graph-relation-layer-summary").count().then((count) => count > 0);
   const layerButtonCount = await page.locator(".graph-relation-layer-summary button").count();
@@ -217,6 +230,11 @@ async function exerciseGraphRelationLayerFilter(page) {
     document.querySelector(".graph-relation-layer-summary button.active")?.dataset?.graphEdgeClassFilter || "",
   );
   const promotionMetrics = await exerciseGraphPromotionAction(page);
+  if (explorerV2) {
+    await page.locator('[data-graph-explorer-action="advanced"]').click({ force: true });
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(100);
+  }
   return { nodeClicked, relationLayerSummaryFound, layerButtonCount, candidateClicked, edgeClassFilter, ...promotionMetrics };
 }
 
@@ -230,7 +248,7 @@ async function exerciseGraphPromotionAction(page) {
   const acceptButtonFound = await acceptButton.count().then((count) => count > 0);
   if (!acceptButtonFound) return { candidateEdgeFound, acceptButtonFound: false };
   await acceptButton.click({ force: true });
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => String(document.querySelector("#graphStatus")?.textContent || "").includes("reviewed"), null, { timeout: 2500 }).catch(() => {});
   const reviewedStatus = await page.evaluate(() => document.querySelector("#graphStatus")?.textContent || "");
   const recentlyReviewed = await page.locator(".graph-svg-edge.recently-reviewed, .graph-edge-line.selected").count();
   return { candidateEdgeFound, acceptButtonFound, reviewedStatus, recentlyReviewed };

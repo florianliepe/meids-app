@@ -2,6 +2,14 @@ name: Deploy Me.IDs frontend to Azure Static Web Apps
 
 on:
   workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    paths:
+      - "frontend/**"
+      - "scripts/build-pages-static.cjs"
+      - "scripts/pages-smoke-check.cjs"
+      - "scripts/validate-graph-explorer-v2.cjs"
+      - ".github/workflows/intellectual-twin-azure-static-web-app.yml"
   push:
     branches:
       - main
@@ -32,11 +40,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: azure-static-web-app-intellectual-twin
+  group: azure-static-web-app-intellectual-twin-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-and-deploy:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: azure-static-web-app
@@ -55,6 +64,9 @@ jobs:
 
       - name: Validate frontend JavaScript
         run: node --check frontend/app.js && node --check frontend/admin/admin.js
+
+      - name: Validate Graph Explorer contract
+        run: node scripts/validate-graph-explorer-v2.cjs
 
       - name: Validate Admin Cockpit contract
         run: node scripts/validate-admin-cockpit-contract.cjs
@@ -109,3 +121,58 @@ jobs:
           api_location: ""
           output_location: ""
           skip_app_build: true
+
+  preview:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Validate preview frontend
+        run: |
+          node --check frontend/api.js
+          node --check frontend/app.js
+          node scripts/validate-graph-explorer-v2.cjs
+
+      - name: Prepare Graph Explorer preview artifact
+        env:
+          MEIDS_GRAPH_UI_V2: "true"
+          MEIDS_FRONTEND_HOST_LABEL: "Azure Static Web Apps preview"
+          MEIDS_FRONTEND_AUTH_ENABLED: "true"
+          MEIDS_FRONTEND_STATIC_MODE: "false"
+          GH_PAGES_N8N_CHAT_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_CHAT_WEBHOOK_URL }}
+          GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL }}
+          GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL }}
+          GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL }}
+          GH_PAGES_VOICE_TRANSCRIPTION_URL: ${{ secrets.GH_PAGES_VOICE_TRANSCRIPTION_URL }}
+          GH_PAGES_N8N_VOICE_TRANSCRIPTION_WEBHOOK_URL: ${{ secrets.GH_PAGES_N8N_VOICE_TRANSCRIPTION_WEBHOOK_URL }}
+        run: node scripts/build-pages-static.cjs --output dist-swa-preview --clean --smoke
+
+      - name: Deploy pull request preview
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_INTELLECTUAL_TWIN }}
+          action: upload
+          app_location: dist-swa-preview
+          api_location: ""
+          output_location: ""
+          skip_app_build: true
+
+  close-preview:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close pull request preview
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_INTELLECTUAL_TWIN }}
+          action: close

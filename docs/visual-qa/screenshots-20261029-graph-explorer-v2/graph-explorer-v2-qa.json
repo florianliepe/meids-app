@@ -1,0 +1,160 @@
+{
+  "generated_at": "2026-10-29T18:15:51.823Z",
+  "results": [
+    {
+      "name": "desktop-light",
+      "width": 1440,
+      "height": 1000,
+      "theme": "light",
+      "failures": [],
+      "hoverMs": 0.7,
+      "layout": {
+        "panelWidth": 749,
+        "canvasWidth": 747,
+        "viewportWidth": 1440,
+        "toolbarHeight": 131,
+        "documentWidth": 1440,
+        "reduceMotion": false,
+        "advancedOpen": false,
+        "relationLayerDisplay": "none"
+      },
+      "screenshot": "docs/visual-qa/screenshots-20261029-graph-explorer-v2/graph-explorer-v2-desktop-light.png"
+    },
+    {
+      "name": "desktop-dark",
+      "width": 1440,
+      "height": 1000,
+      "theme": "dark",
+      "failures": [],
+      "hoverMs": 0.2,
+      "layout": {
+        "panelWidth": 749,
+        "canvasWidth": 747,
+        "viewportWidth": 1440,
+        "toolbarHeight": 131,
+        "documentWidth": 1440,
+        "reduceMotion": false,
+        "advancedOpen": false,
+        "relationLayerDisplay": "none"
+      },
+      "screenshot": "docs/visual-qa/screenshots-20261029-graph-explorer-v2/graph-explorer-v2-desktop-dark.png"
+    },
+    {
+      "name": "tablet-light",
+      "width": 1024,
+      "height": 900,
+      "theme": "light",
+      "failures": [],
+      "hoverMs": 0.4,
+      "layout": {
+        "panelWidth": 694,
+        "canvasWidth": 692,
+        "viewportWidth": 1024,
+        "toolbarHeight": 131,
+        "documentWidth": 1024,
+        "reduceMotion": false,
+        "advancedOpen": false,
+        "relationLayerDisplay": "none"
+      },
+      "screenshot": "docs/visual-qa/screenshots-20261029-graph-explorer-v2/graph-explorer-v2-tablet-light.png"
+    },
+    {
+      "name": "mobile-light",
+      "width": 390,
+      "height": 900,
+      "theme": "light",
+      "failures": [],
+      "hoverMs": 0.3,
+      "layout": {
+        "panelWidth": 351,
+        "canvasWidth": 349,
+        "viewportWidth": 390,
+        "toolbarHeight": 315,
+        "documentWidth": 390,
+        "reduceMotion": true,
+        "advancedOpen": false,
+        "relationLayerDisplay": "none"
+      },
+      "screenshot": "docs/visual-qa/screenshots-20261029-graph-explorer-v2/graph-explorer-v2-mobile-light.png"
+    },
+    {
+      "name": "mobile-dark",
+      "width": 390,
+      "height": 900,
+      "theme": "dark",
+      "failures": [],
+      "hoverMs": 0.4,
+      "layout": {
+        "panelWidth": 351,
+        "canvasWidth": 349,
+        "viewportWidth": 390,
+        "toolbarHeight": 315,
+        "documentWidth": 390,
+        "reduceMotion": false,
+        "advancedOpen": false,
+        "relationLayerDisplay": "none"
+      },
+      "screenshot": "docs/visual-qa/screenshots-20261029-graph-explorer-v2/graph-explorer-v2-mobile-dark.png"
+    },
+    {
+      "name": "hover-benchmarks",
+      "failures": [],
+      "benchmarks": [
+        {
+          "count": 100,
+          "durationMs": 1.1,
+          "samples": [
+            0.4,
+            0.5,
+            0.6,
+            0.6,
+            0.6,
+            0.6,
+            0.6,
+            0.6,
+            0.7,
+            0.7,
+            0.7,
+            1.1
+          ]
+        },
+        {
+          "count": 500,
+          "durationMs": 2.8,
+          "samples": [
+            2,
+            2.1,
+            2.1,
+            2.1,
+            2.1,
+            2.1,
+            2.1,
+            2.1,
+            2.2,
+            2.2,
+            2.3,
+            2.8
+          ]
+        },
+        {
+          "count": 1000,
+          "durationMs": 4.7,
+          "samples": [
+            3.9,
+            4,
+            4,
+            4.1,
+            4.1,
+            4.1,
+            4.2,
+            4.3,
+            4.3,
+            4.5,
+            4.5,
+            4.7
+          ]
+        }
+      ]
+    }
+  ]
+}

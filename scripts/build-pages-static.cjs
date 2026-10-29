@@ -103,6 +103,7 @@ function runtimeConfigJs() {
   const apiBaseUrl = env("GH_PAGES_API_BASE_URL") || env("MEIDS_FRONTEND_API_BASE_URL");
   const authEnabled = envFlag("MEIDS_FRONTEND_AUTH_ENABLED") || envFlag("GH_PAGES_AUTH_ENABLED");
   const staticPagesMode = envFlag("MEIDS_FRONTEND_STATIC_MODE", apiBaseUrl === "" && !authEnabled);
+  const graphExplorerV2 = envFlag("MEIDS_GRAPH_UI_V2", false);
 
   function status(value) {
     return value ? "configured" : "awaiting_url";
@@ -142,6 +143,9 @@ function runtimeConfigJs() {
   },
   n8nChatEnabled: ${Boolean(chatUrl || actorUrl)},
   staticPagesMode: ${staticPagesMode},
+  features: {
+    graphExplorerV2: ${graphExplorerV2}
+  },
   auth: {
     enabled: ${authEnabled},
     provider: "azure_static_web_apps_entra_id",

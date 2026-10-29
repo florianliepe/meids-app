@@ -33,6 +33,9 @@ window.INTELLECTUAL_TWIN_CONFIG = {
   },
   n8nChatEnabled: true,
   staticPagesMode: true,
+  features: {
+    graphExplorerV2: false,
+  },
   auth: {
     enabled: false,
     provider: "azure_static_web_apps_entra_id",
