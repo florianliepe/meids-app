@@ -1086,7 +1086,7 @@ function n8nTimeoutFallbackResponse(agentId, envelope, timeoutMs) {
   }, envelope, "backend proxy · timeout fallback");
 }
 
-async function proxyToN8n(agentId, envelope) {
+async function proxyToN8n(agentId, envelope, options = {}) {
   const agent = AGENTS[agentId];
   const webhookUrl = process.env[agent.urlEnv];
   if (!webhookUrl) {
@@ -1098,7 +1098,10 @@ async function proxyToN8n(agentId, envelope) {
   if (process.env.N8N_WEBHOOK_AUTH_TOKEN) {
     headers.Authorization = `Bearer ${process.env.N8N_WEBHOOK_AUTH_TOKEN}`;
   }
-  const timeoutMs = n8nAgentTimeoutMs();
+  const requestedTimeout = Number(options.timeoutMs);
+  const timeoutMs = Number.isFinite(requestedTimeout) && requestedTimeout > 0
+    ? Math.max(5000, Math.min(requestedTimeout, n8nAgentTimeoutMs()))
+    : n8nAgentTimeoutMs();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   let response;

@@ -17,7 +17,7 @@
         return window.__MEIDS_ASSET_BASE__ + cleanPath;
       };
       if (!window.__MEIDS_FILE_PROTOCOL__) {
-        document.write('<link rel="stylesheet" href="' + window.__MEIDS_ASSET_URL__("styles.css?v=20260817-n8n-metadata") + '" />');
+        document.write('<link rel="stylesheet" href="' + window.__MEIDS_ASSET_URL__("styles.css?v=20261030-uat-hardening") + '" />');
       }
       document.write('<link rel="icon" type="image/svg+xml" href="' + window.__MEIDS_ASSET_URL__("assets/intellectual-twin-mark.svg") + '" />');
     </script>
@@ -158,7 +158,7 @@
           <button class="nav-item" data-view="concepts" data-nav-zone="cockpit">Knowledge</button>
           <button class="nav-item" data-view="dashboard" data-nav-zone="cockpit">Review</button>
           <button class="nav-item" data-view="graph" data-nav-zone="cockpit">Graph</button>
-          <button class="nav-item" data-view="activity" data-nav-zone="cockpit">Traces</button>
+          <button class="nav-item" data-view="activity" data-nav-zone="cockpit" hidden>Traces</button>
           <button class="nav-item" data-view="quality" data-nav-zone="cockpit">Production</button>
         </nav>
 
@@ -264,8 +264,14 @@
                 <h2>Actor Twin chat</h2>
                 <p>Powered by the published n8n Actor Twin workflow. Answers, route decisions, and calls to Knowledge Fabric or Agentic Butler happen inside n8n. Me.IDs only passes interaction setup metadata.</p>
               </div>
+              <div class="actor-chat-capture" aria-label="Actor Twin input options">
+                <button id="actorVoiceBtn" class="secondary small" type="button">Talk</button>
+                <button id="actorSourceBtn" class="secondary small" type="button">Add source</button>
+                <input id="actorSourceInput" type="file" hidden accept=".txt,.md,.markdown,.json,.csv,.yaml,.yml,.xml,.pdf,.docx,.pptx,text/plain,text/markdown,application/json,application/xml,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+              </div>
               <a id="n8nAgentLink" class="secondary small n8n-agent-link" href="#" target="_blank" rel="noreferrer" hidden>Open external chat</a>
             </div>
+            <p id="actorCaptureStatus" class="muted-inline">Talk to transcribe into chat, or add one source for review. Bulk intake stays in Source Upload.</p>
             <div id="n8nChatMount" class="n8n-chat-mount"></div>
             <p id="n8nChatStatus" class="muted-inline">n8n chat not loaded yet.</p>
           </section>
@@ -387,6 +393,14 @@
                 Start with a recording. The Persona Modeler will ask follow-up questions until the concept is ready.
               </div>
               <pre id="transcriptBox" class="output">No transcript yet.</pre>
+              <div id="voiceTranscriptEditorWrap" class="voice-transcript-editor" hidden>
+                <label for="voiceTranscriptEditor">Correct transcript <span class="muted-inline">review names and wording before saving</span></label>
+                <textarea id="voiceTranscriptEditor" rows="7" spellcheck="true"></textarea>
+                <details>
+                  <summary>Original transcription evidence</summary>
+                  <pre id="voiceOriginalTranscript" class="detail-body"></pre>
+                </details>
+              </div>
               <div id="voiceConceptAssessment" class="voice-assessment"></div>
               <label for="voiceClarificationInput">Clarification answer <span class="muted-inline">Ctrl+Enter to continue</span></label>
               <textarea id="voiceClarificationInput" rows="4" placeholder="Answer the Persona Modeler's next question..."></textarea>
@@ -395,14 +409,15 @@
               <div class="button-row tight">
                 <button id="voiceClarifyBtn" class="secondary" type="button" disabled>Add clarification</button>
                 <button id="voiceDraftBtn" class="secondary" type="button" disabled>Save draft</button>
-                <button id="voiceAgentHandoffBtn" class="secondary" type="button" disabled>Prepare for agent</button>
+                <button id="voiceAgentHandoffBtn" class="secondary" type="button" disabled hidden>Prepare for agent</button>
                 <button id="voiceCommitBtn" type="button" disabled>Save concept</button>
                 <button id="voiceCloseBtn" class="secondary" type="button" disabled>Close</button>
               </div>
               <p id="voiceCompletionHint" class="muted-inline">Start a recording or transcript to create a reviewable concept.</p>
               <div id="voiceEvidence" class="evidence-box"></div>
               <div id="voiceTranscriptSyncStatus" class="evidence-box"></div>
-              <div id="voiceAgentHandoffLedger" class="activity-list"></div>
+              <p class="muted-inline">After human approval, the Knowledge Fabric outbox routes the concept automatically. No manual MCP step is required.</p>
+              <div id="voiceAgentHandoffLedger" class="activity-list" hidden></div>
             </article>
           </div>
         </section>
@@ -516,6 +531,8 @@
               </select>
               <button id="conceptDensityBtn" class="secondary small density-toggle" type="button" aria-pressed="false">Comfortable</button>
             </div>
+            <details class="knowledge-advanced-signals">
+              <summary>Advanced knowledge signals</summary>
             <div id="knowledgeRetrievalPresetBar" class="knowledge-retrieval-preset-bar" aria-label="Knowledge retrieval presets"></div>
             <div class="filterbar compact-filterbar knowledge-review-filter" aria-label="Knowledge review filters">
               <span id="conceptCount" class="knowledge-result-count"></span>
@@ -540,10 +557,11 @@
               </div>
               <div id="conceptHealthClusters" class="knowledge-health-list"></div>
             </details>
+            <div id="conceptOverview" class="overview-strip knowledge-overview" aria-label="Knowledge overview"></div>
+            <div id="knowledgeReviewLanes" class="knowledge-review-lanes" aria-label="Knowledge review lanes"></div>
+            </details>
             <div class="knowledge-review-workspace">
               <section class="knowledge-review-main" aria-label="Knowledge increments">
-                <div id="conceptOverview" class="overview-strip knowledge-overview" aria-label="Knowledge overview"></div>
-                <div id="knowledgeReviewLanes" class="knowledge-review-lanes" aria-label="Knowledge review lanes"></div>
                 <div class="knowledge-increment-head" aria-hidden="true">
                   <span>Increment</span>
                   <span>Fabric</span>
@@ -791,7 +809,8 @@
               <small id="dashRefinementStates">Loading...</small>
             </article>
           </div>
-          <section class="dashboard-insights panel" aria-label="Twin usage and maturity insights">
+          <details class="dashboard-insights panel" aria-label="Twin usage and maturity insights">
+            <summary>Advanced readiness insights</summary>
             <div class="dashboard-insights-header">
               <div>
                 <span class="eyebrow">Readiness signals</span>
@@ -875,7 +894,7 @@
                 <div id="decisionBoundaryHeatmap" class="boundary-heatmap" aria-label="Decision-boundary heatmap for human approval gates"></div>
               </article>
             </div>
-          </section>
+          </details>
           <div class="dashboard-filterbar" aria-label="Dashboard queue filters">
             <span class="filterbar-label">Queue view</span>
             <button class="dashboard-filter active" type="button" data-dashboard-filter="all">All queues</button>
@@ -884,7 +903,7 @@
             <button class="dashboard-filter" type="button" data-dashboard-filter="graph">Graph</button>
             <button class="dashboard-filter" type="button" data-dashboard-filter="skills">Skills</button>
             <button class="dashboard-filter" type="button" data-dashboard-filter="refinements">Refinements</button>
-            <button class="dashboard-filter" type="button" data-dashboard-filter="mcp">MCP Tools</button>
+            <button class="dashboard-filter" type="button" data-dashboard-filter="mcp" hidden>MCP Tools</button>
           </div>
           <section class="review-command-surface panel" aria-label="Review cockpit command surface">
             <div>
@@ -896,7 +915,7 @@
               <button class="secondary small" type="button" data-cockpit-action="reviewConcepts">Concepts</button>
               <button class="secondary small" type="button" data-cockpit-action="openTraceReview">Traces</button>
               <button class="secondary small" type="button" data-cockpit-action="openRefinementReview">Refinements</button>
-              <button class="secondary small" type="button" data-cockpit-action="openMcpQueue">MCP / sync</button>
+              <button class="secondary small" type="button" data-cockpit-action="openMcpQueue" hidden>MCP / sync</button>
               <button class="secondary small" type="button" data-cockpit-action="openProductionCockpit">Production</button>
             </div>
           </section>
@@ -907,7 +926,7 @@
               <span class="eyebrow">Operations queue</span>
               <strong>Review the items that change twin behavior.</strong>
             </div>
-            <small>Concepts, traces, skills, refinements, and MCP approvals stay human-governed.</small>
+            <small>Concepts, traces, skills, and refinements stay human-governed. Approved concepts route internally.</small>
           </div>
           <div class="activity-grid dashboard-sections operations-board">
             <section class="panel dashboard-section" data-dashboard-section="concepts">
@@ -1762,7 +1781,7 @@
       if (!window.__MEIDS_FILE_PROTOCOL__) {
         document.write('<script src="' + window.__MEIDS_ASSET_URL__("runtime-config.js?v=20261020-public-launch-auth") + '"><\/script>');
         document.write('<script src="' + window.__MEIDS_ASSET_URL__("api.js?v=20261020-public-launch-auth") + '"><\/script>');
-        document.write('<script src="' + window.__MEIDS_ASSET_URL__("app.js?v=20261027-voice-quality") + '"><\/script>');
+        document.write('<script src="' + window.__MEIDS_ASSET_URL__("app.js?v=20261030-uat-hardening") + '"><\/script>');
       }
     </script>
   </body>

@@ -89,6 +89,7 @@ function conceptRecord(row) {
   return {
     path: String(row.concept_id),
     concept_id: String(row.concept_id),
+    twin_id: row.twin_id,
     revision: Number(row.current_revision || row.revision || 1),
     title: row.title,
     description: content.summary || content.purpose || content.how_to_apply || content.topic || "",
@@ -461,6 +462,7 @@ function qualityAssessment(body) {
   const answeredQuestion = (pattern) => questionHistory.some((question, index) => (
     pattern.test(question) && substantiveAnswer(replies[index])
   ));
+  const repeatedQuestion = (pattern) => questionHistory.filter((question) => pattern.test(question)).length >= 2;
   const dimensions = {
     what: /\b(is|means|consists|includes|refers|what|ist|bedeutet|umfasst)\b/i.test(combined)
       || answeredQuestion(/what exactly|what do you mean|was genau|was bedeutet/i),
@@ -469,7 +471,8 @@ function qualityAssessment(body) {
     why: /\b(because|purpose|reason|therefore|why|so that|weil|zweck|grund|damit)\b/i.test(combined)
       || answeredQuestion(/why is|why do|warum|wozu/i),
     who: /\b(owner|responsible|team|customer|stakeholder|who|consulted|involved|affected|verantwortlich|beteiligt|betroffen|konsultiert)\b/i.test(combined)
-      || answeredQuestion(/who is|who needs|wer ist|wer muss/i),
+      || answeredQuestion(/who is|who needs|wer ist|wer muss/i)
+      || repeatedQuestion(/who is|who needs|involved|responsible|consulted|affected|wer ist|wer muss|beteiligt|betroffen/i),
     what_then: /\b(result|outcome|impact|then|leads to|implication|ergebnis|auswirkung|folge)\b/i.test(combined)
       || answeredQuestion(/and then|what happens|was passiert dann|welche folge/i),
   };
@@ -645,7 +648,10 @@ function createWorkspaceApi(deps) {
           ...(request.metadata.authorization || {}),
           knowledgeAccessToken: issueKnowledgeAccessToken(mapping, job.twin_id),
         };
-        const response = await proxyToN8n("actor_twin", request);
+        const configuredTimeout = Number(process.env.SKILL_RUN_TIMEOUT_MS || 90000);
+        const response = await proxyToN8n("actor_twin", request, {
+          timeoutMs: Number.isFinite(configuredTimeout) ? Math.max(15000, Math.min(configuredTimeout, 120000)) : 90000,
+        });
         const output = response.output || response;
         const completed = {
           ...queued,
@@ -909,6 +915,35 @@ function createWorkspaceApi(deps) {
       await audit(client, mapping, "knowledge.review_state", "knowledge.concept", conceptId, { review_state: target, note: clean(body.note, 5_000) });
     });
     jsonResponse(res, 200, { status: "updated", concept_id: conceptId, review_state: REVIEW_TO_UI[target] });
+  }
+
+  async function conceptRevise(req, res) {
+    const body = await readBody(req);
+    const { mapping, pool } = await context(req, body, true);
+    const conceptId = clean(body.path || body.concept_id, 128);
+    if (!conceptId) throw httpError(400, "Concept path is required.");
+    const candidates = [];
+    for (const twinId of mapping.allowed_twin_ids || []) candidates.push(...await queryConcepts(pool, mapping, twinId, conceptId));
+    const existing = candidates[0];
+    if (!existing) throw httpError(404, "Concept not found.");
+    const content = body.content && typeof body.content === "object" ? body.content : {};
+    const staged = await stageKnowledge(pool, mapping, {
+      twin_id: existing.twin_id,
+      concept: {
+        ...(existing.metadata?.content || {}),
+        ...content,
+        title: clean(body.title || existing.title, 300),
+        canonical_key: existing.canonical_key,
+        visibility_scope: existing.visibility_scope,
+      },
+      change_reason: clean(body.change_reason || "Human review correction", 2_000),
+    });
+    jsonResponse(res, 200, {
+      status: "revised",
+      concept_id: staged.concept_id,
+      revision: staged.revision,
+      review_state: REVIEW_TO_UI[staged.review_state] || staged.review_state,
+    });
   }
 
   async function conceptArchive(req, res) {
@@ -1424,6 +1459,54 @@ function createWorkspaceApi(deps) {
     jsonResponse(res, 200, { draft: voiceDraftRecord(result.rows[0]) });
   }
 
+  async function voiceDraftDelete(req, res) {
+    const body = await readBody(req);
+    const { mapping, pool } = await context(req, body, true);
+    const path = clean(body.path, 128);
+    if (!path) throw httpError(400, "Voice concept draft path is required.");
+    const result = await withContext(pool, mapping, async (client) => {
+      const deleted = await client.query(
+        `DELETE FROM runtime.voice_concept_draft
+         WHERE tenant_id = $1 AND owner_user_id = $2 AND draft_id::text = $3
+         RETURNING draft_id, twin_id`,
+        [mapping.tenant_id, mapping.user_id, path],
+      );
+      if (!deleted.rowCount) throw httpError(404, "Voice concept draft not found.");
+      await audit(client, mapping, "voice.draft.delete", "runtime.voice_concept_draft", path, { twin_id: deleted.rows[0].twin_id });
+      return deleted.rows[0];
+    });
+    jsonResponse(res, 200, { status: "deleted", path: String(result.draft_id), twin_id: result.twin_id });
+  }
+
+  async function voiceDraftResolveDuplicates(req, res) {
+    const body = await readBody(req);
+    const { mapping, pool } = await context(req, body, true);
+    const keepPath = clean(body.keep_path, 128);
+    if (!keepPath) throw httpError(400, "Voice concept draft keep_path is required.");
+    const result = await withContext(pool, mapping, async (client) => {
+      const kept = await client.query(
+        `SELECT draft_id, twin_id, transcript FROM runtime.voice_concept_draft
+         WHERE tenant_id = $1 AND owner_user_id = $2 AND draft_id::text = $3`,
+        [mapping.tenant_id, mapping.user_id, keepPath],
+      );
+      if (!kept.rowCount) throw httpError(404, "Voice concept draft not found.");
+      const record = kept.rows[0];
+      const deleted = await client.query(
+        `DELETE FROM runtime.voice_concept_draft
+         WHERE tenant_id = $1 AND owner_user_id = $2 AND twin_id = $3
+           AND transcript = $4 AND draft_id <> $5
+         RETURNING draft_id`,
+        [mapping.tenant_id, mapping.user_id, record.twin_id, record.transcript, record.draft_id],
+      );
+      await audit(client, mapping, "voice.draft.deduplicate", "runtime.voice_concept_draft", keepPath, {
+        twin_id: record.twin_id,
+        deleted_count: deleted.rowCount,
+      });
+      return { kept: keepPath, deleted_count: deleted.rowCount };
+    });
+    jsonResponse(res, 200, { status: "resolved", ...result });
+  }
+
   async function voiceCommit(req, res) {
     const body = await readBody(req);
     const { mapping, pool } = await context(req, body, true);
@@ -1443,7 +1526,13 @@ function createWorkspaceApi(deps) {
         what_else_to_know: clean((body.replies || []).slice(2).join("\n\n"), 40_000),
         implications_and_results: clean((body.replies || []).at(-1) || "", 20_000),
         summary: assessment.summary,
-        raw: { type: sourceType === "audio_document_transcript" ? "Audio Document Concept" : "Voice Concept", category: body.category, assessment },
+        raw: {
+          type: sourceType === "audio_document_transcript" ? "Audio Document Concept" : "Voice Concept",
+          category: body.category,
+          assessment,
+          transcript_edited: Boolean(body.transcript_edited),
+          original_transcript: clean(body.original_transcript || body.transcript, 40_000),
+        },
       },
       source: { type: sourceType, label: sourceLabel },
       evidence: [{ citation: { type: sourceType, title: assessment.summary, source_name: sourceLabel, evidence_path: clean(body.evidence_path, 500), conversation_turns: (body.replies || []).length + 1 }, confidence: assessment.eligibility_score }],
@@ -1683,6 +1772,7 @@ function createWorkspaceApi(deps) {
     else if (route === "POST /api/ingest/document") await ingestDocument(req, res);
     else if (route === "GET /api/concepts") await concepts(req, res, url);
     else if (route === "GET /api/concepts/detail") await conceptDetail(req, res, url);
+    else if (route === "POST /api/concepts/revise") await conceptRevise(req, res);
     else if (route === "POST /api/concepts/review") await conceptReview(req, res);
     else if (route === "DELETE /api/concepts") await conceptArchive(req, res);
     else if (route === "GET /api/skills") await skills(req, res, url);
@@ -1705,6 +1795,8 @@ function createWorkspaceApi(deps) {
     else if (route === "POST /api/voice/concepts/draft") await voiceDraft(req, res);
     else if (route === "GET /api/voice/concepts/drafts") await voiceDrafts(req, res, url);
     else if (route === "POST /api/voice/concepts/drafts/detail") await voiceDraftDetail(req, res);
+    else if (route === "DELETE /api/voice/concepts/drafts") await voiceDraftDelete(req, res);
+    else if (route === "POST /api/voice/concepts/drafts/resolve-duplicates") await voiceDraftResolveDuplicates(req, res);
     else if (route === "POST /api/voice/concepts/commit") await voiceCommit(req, res);
     else if (route === "POST /api/voice/concepts/agent-handoff") await voiceAgentHandoff(req, res);
     else if (route === "GET /api/voice/concepts/agent-handoffs") await voiceAgentHandoffs(req, res, url);

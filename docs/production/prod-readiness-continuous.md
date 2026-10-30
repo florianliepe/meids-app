@@ -1,6 +1,6 @@
 # Me.IDs Continuous PROD Readiness
 
-Last updated: 2026-10-29
+Last updated: 2026-10-30
 
 This document is the canonical, continuously maintained production-readiness backlog for Me.IDs. Every production fix, live finding, accepted risk, and release gate must be reconciled here. Detailed evidence remains in `docs/uat/` and the focused production runbooks.
 
@@ -41,6 +41,13 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | PROD-011 | P2 | Open privileged Azure action | Harden frontend deployment: custom domain, workload identity federation, deployment environment protection, and removal of direct worker URLs. | DNS/TLS verified, tokenless deployment, protected environment approval, backend-only API routes. |
 | PROD-012 | P3 | Deferred | Modularize `frontend/app.js`, `frontend/styles.css`, and `backend/server.js` after runtime contracts freeze. | Stable runtime soak followed by bounded module extraction with parity tests. |
 | PROD-013 | P3 | Complete | Promote compact Graph Explorer V2 with smaller dots, thinner relations, quiet labels, layer-specific neutral colors, accessible focus, local depth and flag-only rollback. | Owner approved production promotion without preview login. PR #28 merged as `7b01867fd63f4617ef6a523a091f720487b596ae`; Azure deployment passed and live runtime verification returned `graphExplorerV2=true` with matching commit-revision assets. |
+| PROD-014 | P0 | Implemented; CI/live verification pending | Repair voice draft deletion and duplicate-resolution routes with scoped authorization. | `check:uat-hardening`, backend suite, authenticated delete UAT and no cross-user deletion. |
+| PROD-015 | P0 | Implemented; CI/live verification pending | Make voice transcripts and structured OKF review content editable while preserving the original transcript and revision history. | Corrected voice and document concepts create new review-needed revisions; original evidence remains visible. |
+| PROD-016 | P1 | Implemented; CI/live verification pending | Stop repeated semantic clarification after the same dimension is asked twice. | Synthetic repeated-who test plus authenticated Voice Capture UAT reaches the next dimension/save gate. |
+| PROD-017 | P1 | Implemented; CI/live verification pending | Remove manual MCP routing from end-user views and rely on Knowledge Fabric promotion/outbox after approval. | No end-user MCP action; approved concept emits the existing promotion/outbox event. |
+| PROD-018 | P1 | Implemented; runtime soak pending | Apply a 90-second default approved-skill boundary and durable timeout fallback. | Fast run succeeds; controlled slow run returns by the boundary and retains job/trace evidence. |
+| PROD-019 | P1 | Implemented; browser UAT pending | Add Actor Twin microphone transcription and explicit single-source intake while preserving n8n as the only chat surface. | Windows/macOS microphone and source-confirmation UAT; visible transcript enters embedded n8n chat. |
+| PROD-020 | P2 | Designed / not implemented | Add governed visual-artifact storage and recall through private Blob, PostgreSQL metadata and optional OCR. | Artifact RLS, malware scan, retention, authorized recall and cross-user isolation tests. |
 
 ## Decisions
 
@@ -55,6 +62,9 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | 2026-10-28 | Treat the 420-second lease as the recovery boundary after process loss. | Early reclaim could execute the same n8n chain twice. | The controlled recycle passed with attempt 2 after lease expiry; operators should inspect status and lease timestamps before intervening. |
 | 2026-10-29 | Keep Graph Explorer V2 disabled in production and evaluate it only in an Azure pull-request preview. | Frontend refinement must not alter the current launch candidate, API traffic, persistence, or governance behavior. | Promotion and rollback are runtime-flag decisions; current production remains unchanged. |
 | 2026-10-29 | Promote Graph Explorer V2 after explicit owner approval. | Automated V1/V2 regressions, graph contracts, accessibility interactions, responsive visual checks and synthetic performance gates passed. The owner accepted promotion without preview authentication UAT. | `MEIDS_GRAPH_UI_V2=true` is set in the protected GitHub environment. Rollback sets it to `false` and reruns the Azure Static Web App workflow. |
+| 2026-10-30 | Keep original speech-to-text output as evidence and save human corrections as a new knowledge revision. | Intake errors must be correctable without weakening provenance. | Reviewers can correct transcript and OKF fields; corrected knowledge returns to review. |
+| 2026-10-30 | Remove MCP mechanics from normal user journeys. | Users approve knowledge and skills, not transport internals. | Knowledge approval drives the existing outbox; diagnostics remain an operator concern. |
+| 2026-10-30 | Defer visual binary recall until private Blob storage is wired. | The existing source path extracts text but does not durably store original files. | Do not put images into PostgreSQL JSON or claim recall support before artifact authorization exists. |
 
 ## Release sequence
 

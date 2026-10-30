@@ -30,6 +30,10 @@
   --radius: 8px;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 /* MeIDs redesign direction: lean workspace, grouped cockpits, calmer hierarchy. */
 :root {
   --meids-max-content: 1180px;
@@ -6456,6 +6460,84 @@ body.theme-dark .repo-responsibility-lane {
   .zielmodus-strict-operator-head,
   .n8n-ai-agent-readiness-head {
     display: grid;
+  }
+}
+
+/* UAT intake and review hardening: keep the primary path compact and editable. */
+.voice-transcript-editor {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+.voice-transcript-editor textarea,
+.concept-content-review textarea,
+.concept-content-review input {
+  width: 100%;
+}
+
+.concept-content-review {
+  display: grid;
+  gap: 8px;
+}
+
+.concept-content-review label {
+  margin-top: 4px;
+}
+
+.actor-chat-capture {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.n8n-agent-panel.actor-source-dragging {
+  box-shadow: inset 0 0 0 3px var(--accent);
+}
+
+#concepts .knowledge-browser-head h2 {
+  font-size: 22px;
+}
+
+#concepts .knowledge-source-readiness,
+#concepts .knowledge-fabric-contract-strip,
+#concepts .knowledge-signal-strip,
+#concepts .knowledge-overview {
+  max-height: 150px;
+  overflow: auto;
+}
+
+body.graph-explorer-v2 .graph-workspace,
+body.graph-explorer-v2 #graph.graph-has-selection .graph-workspace {
+  grid-template-columns: minmax(0, 1fr);
+  position: relative;
+}
+
+body.graph-explorer-v2 #graph.graph-has-selection .graph-detail-panel {
+  background: var(--surface);
+  box-shadow: -10px 0 30px rgba(25, 30, 26, 0.12);
+  display: block;
+  max-height: calc(100vh - 190px);
+  overflow: auto;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: min(370px, 42vw);
+  z-index: 7;
+}
+
+body.graph-explorer-v2 .graph-canvas-wrap {
+  min-height: min(860px, calc(100vh - 145px));
+}
+
+@media (max-width: 720px) {
+  .actor-chat-capture {
+    justify-content: flex-start;
+  }
+
+  body.graph-explorer-v2 #graph.graph-has-selection .graph-detail-panel {
+    position: static;
+    width: 100%;
   }
 }
 
@@ -34530,6 +34612,24 @@ body.theme-dark .knowledge-fabric-lifecycle-flow em {
   display: none;
 }
 
+.knowledge-increment.compact {
+  grid-template-columns: minmax(0, 1fr) minmax(130px, 0.22fr) auto;
+}
+
+.knowledge-increment.compact .knowledge-card-state-ribbon,
+.knowledge-increment.compact .knowledge-increment-source {
+  display: none;
+}
+
+#view-concepts:has(.knowledge-increment-list.compact-density) .knowledge-increment-head {
+  grid-template-columns: minmax(0, 1fr) minmax(130px, 0.22fr) auto;
+}
+
+#view-concepts:has(.knowledge-increment-list.compact-density) .knowledge-increment-head span:nth-child(3),
+.knowledge-increment.compact .knowledge-increment-main > p {
+  display: none;
+}
+
 .knowledge-source-action-status {
   align-items: center;
   border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
@@ -35004,5 +35104,36 @@ body.theme-dark .n8n-context-drawer {
 
   .n8n-chat-mount {
     min-height: 620px;
+  }
+}
+
+/* Graph canvas expansion follows the v2 rules so it wins without changing graph contracts. */
+body.graph-explorer-v2 .graph-workspace,
+body.graph-explorer-v2 #graph.graph-has-selection .graph-workspace {
+  grid-template-columns: minmax(0, 1fr);
+  position: relative;
+}
+
+body.graph-explorer-v2 #graph.graph-has-selection .graph-detail-panel {
+  background: var(--surface);
+  box-shadow: -10px 0 30px rgba(25, 30, 26, 0.12);
+  display: block;
+  max-height: calc(100vh - 190px);
+  overflow: auto;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: min(370px, 42vw);
+  z-index: 7;
+}
+
+body.graph-explorer-v2 .graph-canvas-wrap {
+  min-height: min(860px, calc(100vh - 145px));
+}
+
+@media (max-width: 720px) {
+  body.graph-explorer-v2 #graph.graph-has-selection .graph-detail-panel {
+    position: static;
+    width: 100%;
   }
 }
