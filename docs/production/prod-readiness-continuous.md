@@ -17,7 +17,8 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | Backend contracts | Pass | `npm run check:backend`; 58 launch-critical routes |
 | Agent contracts | Pass | `npm run check:agents`; routing, grounding, learning, Knowledge Fabric contracts |
 | Vector/Search static readiness | Pass | Azure Search readiness artifacts report active semantic production |
-| Backend deployed revision | Observed | App Service build `a7145204f86d2448ee2ca6249b5ff50ceb699cda`; controlled recycle retained the same deployed revision |
+| Backend deployed revision | Pass | App Service build `03f800121ce2f5adf3d43f4066422bec38c50e32`; deployment run `41090737133` |
+| Governed visual recall | Owner/anonymous boundary pass | Migration 018 applied; private Blob upload/read, SHA-256 parity, approval/rejection cascade and anonymous HTTP 401 verified; `docs/uat/governed-visual-recall-live-uat-20261030.json` |
 | Seven-agent execution history | Pass | 7/7 fresh successful workflows, including Actor Twin and six workflow-tool subagents; `docs/uat/n8n-seven-agent-live-probe-evidence.json` |
 | Azure authentication edge | Pass | Anonymous and forged-principal `/api/session` probes both returned 401; `docs/uat/azure-auth-edge-probe.json` |
 | Upload format contracts | Pass; physical device checks pending | M4A, PPTX, macOS filenames/export guidance, 25 MB file and 100 MB batch boundaries passed; `docs/uat/device-upload-launch-matrix.json` |
@@ -47,7 +48,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | PROD-017 | P1 | Complete for new promotion events; one legacy stale item remains | Remove manual MCP routing from end-user views and rely on Knowledge Fabric promotion/outbox after approval. | Synthetic concept `6da1d842-1203-4f88-a62e-b9f954857a44` was promoted and the outbox pending count fell from 2 to 1 with zero failed entries. The disposable record was then rejected. Investigate the single pre-existing stale item separately. |
 | PROD-018 | P1 | Live soak passed; queue-latency follow-up open | Apply a 90-second default approved-skill boundary and durable timeout fallback. | Three authenticated skill runs completed on attempt 1. The first completed in 39 seconds; two concurrent samples completed in 78 and 139 seconds wall time. The second sample exposes single-worker queue delay even though each n8n call remained inside its 90-second execution boundary. Add queue-age SLO/alerting before higher concurrency. |
 | PROD-019 | P1 | Deployed; device UAT pending | Add Actor Twin microphone transcription and explicit single-source intake while preserving n8n as the only chat surface. | Production assets verified; complete Windows/macOS microphone and source-confirmation UAT with visible transcript delivery into n8n chat. |
-| PROD-020 | P2 | Candidate implemented; migration/deploy/live isolation pending | Add governed visual-artifact storage and recall through private Blob, PostgreSQL metadata and optional OCR. | Migration 018, managed-identity private Blob storage, signature allowlist, PostgreSQL metadata/RLS, review-gated server recall, provenance links and frontend review controls are implemented. Apply migration before code deployment, then run authorized/unauthorized recall, rejection, retention and Defender malware-scanning UAT. OCR remains optional and out of this package. |
+| PROD-020 | P2 | Deployed; owner/anonymous pass, cross-user and malware scan pending | Add governed visual-artifact storage and recall through private Blob, PostgreSQL metadata and optional OCR. | Migration 018 and build `03f8001` are live. Owner upload/read, SHA-256 parity, approval/rejection cascade, private container posture and anonymous HTTP 401 passed. Complete a second-user/guest denial matrix, retention policy and Defender for Storage malware-scanning UAT. OCR remains optional and out of this package. |
 
 ## Decisions
 
@@ -71,7 +72,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 
 ## Release sequence
 
-1. Apply migrations through 017 with the Entra PostgreSQL administrator path.
+1. Keep migrations through 018 applied; apply every future schema migration with the Entra PostgreSQL administrator path before schema-dependent code.
 2. Deploy the backend revision through the protected `main` pipeline.
 3. Verify `/api/build-info`, worker startup logs, table/index state, and no dead letters.
 4. Run controlled synthetic skill and audio jobs; recycle only the Me.IDs backend instance/slot if approved, never the shared n8n App Service.
@@ -88,7 +89,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 
 ## Human or privileged gates
 
-- Entra PostgreSQL administrator execution of migrations through 017.
+- Future Entra PostgreSQL administrator migrations after the currently applied migration 018.
 - Any Azure App Service restart, slot swap, custom-domain/DNS change, role assignment, or production app-setting change.
 - Any n8n workflow activation/deactivation or credential mutation.
 - Any rejection, deletion, or approval of real user knowledge, learning, twins, or review records.

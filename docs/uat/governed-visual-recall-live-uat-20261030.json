@@ -1,0 +1,42 @@
+{
+  "captured_at": "2026-10-30T16:34:10.059Z",
+  "environment": "production",
+  "deployment": {
+    "backend_commit": "03f800121ce2f5adf3d43f4066422bec38c50e32",
+    "backend_run_id": 41090737133,
+    "migration": "018_governed_visual_artifacts.sql",
+    "migration_status": "applied"
+  },
+  "storage": {
+    "account": "stmeidsprod1853a19b",
+    "container": "source-artifacts",
+    "public_access": "None",
+    "backend_authentication": "system-assigned managed identity",
+    "browser_blob_uri_exposed": false
+  },
+  "synthetic_artifact": {
+    "marker": "VISUAL-RECALL-SMOKE-1793378039648",
+    "artifact_id": "f787be32-6a1f-4dd5-9834-32931f5af32f",
+    "concept_id": "3ec4b40e-9bd3-4536-b0bd-67f725ad37ba",
+    "media_type": "image/png",
+    "size_bytes": 68,
+    "sha256": "59dd53ba2bb5f0d67410907b4aa63b0a3707663db268d5cadf26d85113c24609"
+  },
+  "checks": {
+    "authenticated_upload_status": 201,
+    "pending_owner_recall_status": 200,
+    "recalled_sha256_matches": true,
+    "concept_approval_status": 200,
+    "artifact_state_after_approval": "approved",
+    "concept_cleanup_status": 200,
+    "artifact_state_after_cleanup": "rejected",
+    "anonymous_direct_recall_status": 401
+  },
+  "safety": {
+    "synthetic_record_only": true,
+    "cleanup": "linked concept and artifact left rejected for audit evidence",
+    "shared_n8n_restart": false,
+    "temporary_database_token_removed": true
+  },
+  "result": "pass_with_remaining_cross_user_and_malware_scan_gates"
+}
