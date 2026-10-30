@@ -445,6 +445,16 @@
               <div id="documentBatchStatus" class="document-batch-status" aria-live="polite">Choose one or more documents.</div>
             </article>
             <article class="panel source-capture-card">
+              <h2>Upload Visual</h2>
+              <p>Store diagrams and visual source material privately. PNG, JPEG, WebP, and GIF files up to 25 MB enter review with their source concept.</p>
+              <input id="visualArtifactInput" type="file" accept=".png,.jpg,.jpeg,.webp,.gif,image/png,image/jpeg,image/webp,image/gif" />
+              <img id="visualArtifactPreview" class="visual-artifact-preview" alt="Selected visual preview" hidden />
+              <label for="visualArtifactDescription">Context</label>
+              <textarea id="visualArtifactDescription" rows="4" placeholder="What does this visual show, and when should the twin recall it?"></textarea>
+              <button id="uploadVisualArtifactBtn" type="button" disabled>Store for review</button>
+              <p id="visualArtifactStatus" class="source-audio-status" aria-live="polite">Choose a visual file to begin.</p>
+            </article>
+            <article class="panel source-capture-card">
               <h2>Upload Audio</h2>
               <p>Supported up to 25 MB: MP3, MP4, MPEG, MPGA, M4A, WAV, and WebM. Apple Voice Memos should be exported as M4A; convert AIFF or AAC to M4A or WAV.</p>
               <input id="sourceAudioInput" type="file" accept=".mp3,.mp4,.mpeg,.mpga,.m4a,.wav,.webm,audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/webm,video/mp4" />

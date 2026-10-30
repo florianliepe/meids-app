@@ -1,0 +1,72 @@
+{
+  "captured_at": "2026-10-30T16:25:53.399Z",
+  "environment": "production",
+  "actor": "florian",
+  "safety": {
+    "synthetic_records_only": true,
+    "business_records_modified": false,
+    "shared_n8n_service_restarted": false
+  },
+  "voice_draft_delete": {
+    "marker": "SMOKE-VOICE-DELETE-1793376983490",
+    "draft_id": "1b51e5da-1296-4aff-af68-72a1f84b68f5",
+    "create_status": 201,
+    "delete_status": 200,
+    "post_delete_detail_status": 404,
+    "result": "pass"
+  },
+  "knowledge_revision": {
+    "marker": "SMOKE-REVISION-1793376991320",
+    "concept_id": "4dd1f7a4-a7f4-407a-93ae-1fb4864544f0",
+    "initial_revision": 1,
+    "corrected_revision": 2,
+    "corrected_review_state": "needs-rework",
+    "detail_reflected_correction": true,
+    "cleanup_review_state": "rejected",
+    "result": "pass"
+  },
+  "promotion_outbox": {
+    "marker": "SMOKE-PROMOTION-1793377005781",
+    "concept_id": "6da1d842-1203-4f88-a62e-b9f954857a44",
+    "promotion_status": 200,
+    "promoted_review_state": "approved",
+    "outbox_pending_before": 2,
+    "outbox_pending_after": 1,
+    "outbox_failed_before": 0,
+    "outbox_failed_after": 0,
+    "synthetic_record_cleanup_state": "rejected",
+    "legacy_pending_items_remaining": 1,
+    "result": "pass_with_legacy_follow_up"
+  },
+  "skill_timeout_soak": {
+    "execution_timeout_ms": 90000,
+    "samples": [
+      {
+        "run_id": "skill-mvv6fs3j-9bb14e",
+        "created_at": "2026-10-30T16:18:47.935Z",
+        "completed_at": "2026-10-30T16:19:27.098Z",
+        "attempts": 1,
+        "status": "completed",
+        "wall_time_ms": 39163
+      },
+      {
+        "run_id": "skill-mvv6lxdj-3c02a8",
+        "created_at": "2026-10-30T16:23:34.711Z",
+        "completed_at": "2026-10-30T16:24:52.697Z",
+        "attempts": 1,
+        "status": "completed",
+        "wall_time_ms": 77986
+      },
+      {
+        "run_id": "skill-mvv6lxh6-70b469",
+        "created_at": "2026-10-30T16:23:34.842Z",
+        "completed_at": "2026-10-30T16:25:53.399Z",
+        "attempts": 1,
+        "status": "completed",
+        "wall_time_ms": 138557
+      }
+    ],
+    "result": "pass_with_queue_latency_follow_up",
+    "finding": "The current worker processes claimed jobs sequentially. The second concurrent run waited behind the first and exceeded 90 seconds end-to-end without exceeding the per-call n8n timeout."
+  }
+}

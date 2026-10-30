@@ -488,6 +488,8 @@ const MAX_SOURCE_AUDIO_BYTES = 25 * 1024 * 1024;
 const DOCUMENT_UPLOAD_EXTENSIONS = new Set(["txt", "md", "markdown", "json", "csv", "yaml", "yml", "xml", "pdf", "docx", "pptx"]);
 const MAX_DOCUMENT_UPLOAD_BYTES = 25 * 1024 * 1024;
 const MAX_DOCUMENT_BATCH_BYTES = 100 * 1024 * 1024;
+const VISUAL_ARTIFACT_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "gif"]);
+const MAX_VISUAL_ARTIFACT_BYTES = 25 * 1024 * 1024;
 
 function sourceAudioExtension(file) {
   return String(file?.name || "").split(".").pop()?.toLowerCase() || "";
@@ -512,6 +514,14 @@ function documentUploadValidationMessage(file) {
   if (extension === "ppt") return `${file.name}: save legacy PowerPoint files as PPTX first.`;
   if (!DOCUMENT_UPLOAD_EXTENSIONS.has(extension)) return `${file.name}: unsupported format.`;
   if (file.size > MAX_DOCUMENT_UPLOAD_BYTES) return `${file.name}: larger than the 25 MB per-file limit.`;
+  return "";
+}
+
+function visualArtifactValidationMessage(file) {
+  if (!file) return "Choose a visual file to begin.";
+  const extension = documentUploadExtension(file);
+  if (!VISUAL_ARTIFACT_EXTENSIONS.has(extension)) return "Supported visual formats: PNG, JPEG, WebP, and GIF.";
+  if (file.size > MAX_VISUAL_ARTIFACT_BYTES) return "This visual is larger than the 25 MB limit.";
   return "";
 }
 
@@ -9017,6 +9027,28 @@ function bindIngest() {
     else status.textContent = `${files.length} file${files.length === 1 ? "" : "s"} selected · ${formatFileSize(totalBytes)} · uploaded sequentially.`;
   });
 
+  const visualInput = $("#visualArtifactInput");
+  visualInput?.addEventListener("change", () => {
+    const file = visualInput.files?.[0];
+    const error = visualArtifactValidationMessage(file);
+    const preview = $("#visualArtifactPreview");
+    if (preview?.dataset.objectUrl) URL.revokeObjectURL(preview.dataset.objectUrl);
+    if (preview) {
+      preview.hidden = true;
+      preview.removeAttribute("src");
+      preview.dataset.objectUrl = "";
+      if (file && !error) {
+        const objectUrl = URL.createObjectURL(file);
+        preview.src = objectUrl;
+        preview.dataset.objectUrl = objectUrl;
+        preview.hidden = false;
+      }
+    }
+    if ($("#uploadVisualArtifactBtn")) $("#uploadVisualArtifactBtn").disabled = Boolean(error);
+    if ($("#visualArtifactStatus")) $("#visualArtifactStatus").textContent = error || `${file.name} is ready for private review storage.`;
+  });
+  $("#uploadVisualArtifactBtn")?.addEventListener("click", uploadVisualArtifact);
+
   $("#textIngestBtn").addEventListener("click", async () => {
     const text = $("#textIngest").value.trim();
     if (!text) return showIngest("Paste text first.");
@@ -9100,6 +9132,50 @@ function bindIngest() {
     }
     showToast("Document batch complete", `${succeeded} staged · ${failed} failed`, failed ? "warning" : "success");
   });
+}
+
+async function uploadVisualArtifact() {
+  const input = $("#visualArtifactInput");
+  const file = input?.files?.[0];
+  const error = visualArtifactValidationMessage(file);
+  if (error) {
+    $("#visualArtifactStatus").textContent = error;
+    return;
+  }
+  if (!(await confirmTwinScopedAction(`store ${file.name} as governed visual evidence`))) return;
+  const button = $("#uploadVisualArtifactBtn");
+  button.disabled = true;
+  $("#visualArtifactStatus").textContent = "Encrypting and storing the original in private Blob storage...";
+  try {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("twin", state.activeTwin);
+    form.append("title", file.name.replace(/\.[^.]+$/, ""));
+    form.append("description", $("#visualArtifactDescription")?.value.trim() || "");
+    const result = await postForm("/api/artifacts", form);
+    $("#visualArtifactStatus").textContent = `${file.name} stored privately · pending human review.`;
+    showToast("Visual staged", "The original is private and recall stays governed by the concept review state.", "success");
+    input.value = "";
+    if ($("#visualArtifactDescription")) $("#visualArtifactDescription").value = "";
+    const preview = $("#visualArtifactPreview");
+    if (preview?.dataset.objectUrl) URL.revokeObjectURL(preview.dataset.objectUrl);
+    if (preview) {
+      preview.hidden = true;
+      preview.removeAttribute("src");
+      preview.dataset.objectUrl = "";
+    }
+    persistLocalKnowledgeFabricIngest(result, {
+      sourceType: "visual",
+      sourceName: file.name,
+      fallbackTitle: file.name,
+    });
+    await refreshConcepts();
+    await safeRefreshActivity();
+  } catch (uploadError) {
+    $("#visualArtifactStatus").textContent = `Visual upload failed: ${compactError(uploadError.message)}`;
+    showToast("Visual upload failed", compactError(uploadError.message), "error");
+    button.disabled = false;
+  }
 }
 
 function formatFileSize(bytes) {
@@ -25035,6 +25111,10 @@ function renderConceptDetail(detail) {
       ${renderConceptSourceSummary(detail, metadata)}
     </section>
     <section class="detail-section">
+      <h3>Private source material</h3>
+      <div id="conceptArtifacts" class="concept-artifacts"><p class="empty compact">Checking governed source artifacts...</p></div>
+    </section>
+    <section class="detail-section">
       <h3>Guardrail Findings</h3>
       ${renderGuardrailFindings(guardrails)}
     </section>
@@ -25048,6 +25128,58 @@ function renderConceptDetail(detail) {
   });
   $("#conceptSaveRevisionBtn")?.addEventListener("click", () => saveConceptRevision(detail.path));
   bindConceptSourceActions($("#drawerContent"));
+  loadConceptArtifacts(detail.path);
+}
+
+async function loadConceptArtifacts(conceptId) {
+  const target = $("#conceptArtifacts");
+  if (!target || staticPagesMode) {
+    if (target) target.innerHTML = '<p class="empty compact">Private artifact recall requires the Azure workspace.</p>';
+    return;
+  }
+  try {
+    const result = await getJson(`/api/artifacts?twin=${encodeURIComponent(state.activeTwin)}&concept_id=${encodeURIComponent(conceptId)}`);
+    const artifacts = Array.isArray(result.artifacts) ? result.artifacts : [];
+    if (!artifacts.length) {
+      target.innerHTML = '<p class="empty compact">No private source artifact is linked to this concept.</p>';
+      return;
+    }
+    target.innerHTML = artifacts.map((artifact) => {
+      const isImage = String(artifact.media_type || "").startsWith("image/");
+      return `
+        <article class="concept-artifact" data-artifact-id="${escapeHtml(artifact.artifact_id)}">
+          ${isImage ? `<img src="${escapeHtml(artifact.recall_url)}" alt="${escapeHtml(artifact.filename)}" loading="lazy" />` : ""}
+          <div>
+            <strong>${escapeHtml(artifact.filename)}</strong>
+            <small>${escapeHtml(`${artifact.artifact_kind} · ${artifact.review_state} · ${formatFileSize(artifact.size_bytes)}`)}</small>
+            <div class="button-row tight">
+              <a class="button secondary small" href="${escapeHtml(artifact.recall_url)}" target="_blank" rel="noopener">Open source</a>
+              ${artifact.review_state !== "approved" ? `<button class="secondary small artifact-review-action" type="button" data-state="approved">Approve source</button>` : ""}
+              ${artifact.review_state !== "rejected" ? `<button class="danger small artifact-review-action" type="button" data-state="rejected">Reject source</button>` : ""}
+            </div>
+          </div>
+        </article>`;
+    }).join("");
+    target.querySelectorAll(".artifact-review-action").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const card = button.closest("[data-artifact-id]");
+        button.disabled = true;
+        try {
+          await postJson("/api/artifacts/review", {
+            artifact_id: card.dataset.artifactId,
+            review_state: button.dataset.state,
+            note: "Human source-artifact review from Knowledge cockpit",
+          });
+          await loadConceptArtifacts(conceptId);
+        } catch (error) {
+          showToast("Source review failed", compactError(error.message), "error");
+          button.disabled = false;
+        }
+      });
+    });
+  } catch (error) {
+    target.innerHTML = `<p class="empty compact">Artifact recall unavailable: ${escapeHtml(compactError(error.message))}</p>`;
+  }
 }
 
 async function saveConceptRevision(path) {

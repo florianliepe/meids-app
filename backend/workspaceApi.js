@@ -1,6 +1,12 @@
 const crypto = require("node:crypto");
 const { MAX_DOCUMENT_BYTES, extractDocumentText } = require("./documentExtraction");
 const { MAX_AUDIO_BYTES, validateAudioUpload } = require("./audioUpload");
+const {
+  safeSegment,
+  putPrivateArtifact,
+  readPrivateArtifact,
+  deletePrivateArtifact,
+} = require("./artifactStorage");
 const { enqueueRuntimeJob, processRuntimeJobBatch } = require("./runtimeJobs");
 const {
   persistGraphProjection,
@@ -9,6 +15,24 @@ const {
 } = require("./graphPersistence");
 
 const MAX_AVATAR_BYTES = 1_500_000;
+const MAX_VISUAL_BYTES = 25 * 1024 * 1024;
+const VISUAL_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "gif"]);
+const VISUAL_MEDIA_TYPES = new Map([
+  ["png", "image/png"],
+  ["jpg", "image/jpeg"],
+  ["jpeg", "image/jpeg"],
+  ["webp", "image/webp"],
+  ["gif", "image/gif"],
+]);
+
+function visualSignatureMatches(buffer, extension) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return false;
+  if (extension === "png") return buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if (extension === "jpg" || extension === "jpeg") return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  if (extension === "gif") return ["GIF87a", "GIF89a"].includes(buffer.subarray(0, 6).toString("ascii"));
+  if (extension === "webp") return buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP";
+  return false;
+}
 const REVIEW_FROM_UI = {
   "pending-review": "review_needed",
   pending_review: "review_needed",
@@ -830,6 +854,99 @@ function createWorkspaceApi(deps) {
     jsonResponse(res, 201, { ...staged, concept: { path: staged.concept_id, concept_id: staged.concept_id, title, review_state: REVIEW_TO_UI[staged.review_state] || staged.review_state } });
   }
 
+  function artifactRecord(row) {
+    return {
+      artifact_id: String(row.artifact_id),
+      concept_id: row.concept_id ? String(row.concept_id) : "",
+      twin_id: row.twin_id,
+      filename: row.filename,
+      media_type: row.media_type,
+      size_bytes: Number(row.size_bytes) || 0,
+      sha256: row.sha256,
+      artifact_kind: row.artifact_kind,
+      review_state: REVIEW_TO_UI[row.review_state] || row.review_state,
+      visibility_scope: row.visibility_scope,
+      metadata: row.metadata || {},
+      reviewed_by: row.reviewed_by || "",
+      reviewed_at: row.reviewed_at || null,
+      created_at: row.created_at,
+      recall_url: `/api/artifacts/content?id=${encodeURIComponent(String(row.artifact_id))}`,
+    };
+  }
+
+  function artifactBlobPath(mapping, twinId, artifactId, filename) {
+    return [
+      safeSegment(mapping.tenant_id, "tenant"),
+      safeSegment(twinId, "twin"),
+      safeSegment(artifactId, "artifact"),
+      safeSegment(filename, "source.bin"),
+    ].join("/");
+  }
+
+  async function insertArtifact(pool, mapping, input) {
+    return withContext(pool, mapping, async (client) => {
+      const result = await client.query(
+        `INSERT INTO knowledge.source_artifact
+          (artifact_id, tenant_id, owner_user_id, twin_id, concept_id, filename, media_type, size_bytes, sha256, blob_uri, artifact_kind, metadata)
+         VALUES ($1::uuid, $2, $3, $4, $5::uuid, $6, $7, $8, $9, $10, $11, $12::jsonb)
+         RETURNING *`,
+        [
+          input.artifact_id, mapping.tenant_id, mapping.user_id, input.twin_id, input.concept_id || null,
+          input.filename, input.media_type, input.size_bytes, input.sha256, input.blob_uri, input.artifact_kind,
+          JSON.stringify(input.metadata || {}),
+        ],
+      );
+      await audit(client, mapping, "artifact.store.private", "knowledge.source_artifact", input.artifact_id, {
+        twin_id: input.twin_id,
+        concept_id: input.concept_id || "",
+        artifact_kind: input.artifact_kind,
+        bytes: input.size_bytes,
+      });
+      return result.rows[0];
+    });
+  }
+
+  async function uploadPrivateSourceBlob(mapping, input) {
+    const artifactId = crypto.randomUUID();
+    const checksum = input.sha256 || crypto.createHash("sha256").update(input.buffer).digest("hex");
+    const blobUri = await putPrivateArtifact({
+      container: process.env.MEIDS_SOURCE_ARTIFACT_CONTAINER || "source-artifacts",
+      path: artifactBlobPath(mapping, input.twin_id, artifactId, input.filename),
+      buffer: input.buffer,
+      contentType: input.media_type,
+      checksum,
+    });
+    return { artifact_id: artifactId, sha256: checksum, blob_uri: blobUri };
+  }
+
+  async function storePrivateSourceArtifact(pool, mapping, input) {
+    const uploaded = input.blob_uri ? input : await uploadPrivateSourceBlob(mapping, input);
+    try {
+      return await insertArtifact(pool, mapping, {
+        ...input,
+        ...uploaded,
+      });
+    } catch (error) {
+      await deletePrivateArtifact(uploaded.blob_uri).catch(() => {});
+      throw error;
+    }
+  }
+
+  async function markArtifactPersistenceFailure(pool, mapping, conceptId, error) {
+    if (!conceptId) return;
+    await withContext(pool, mapping, async (client) => {
+      await client.query(
+        `UPDATE knowledge.concept
+         SET review_state = 'needs_rework', updated_at = now()
+         WHERE tenant_id = $1 AND concept_id::text = $2`,
+        [mapping.tenant_id, conceptId],
+      );
+      await audit(client, mapping, "artifact.persistence.failed", "knowledge.concept", conceptId, {
+        error: clean(error?.message || error, 1_000),
+      });
+    }).catch(() => {});
+  }
+
   async function ingestDocument(req, res) {
     const { mapping, pool } = await context(req, {}, true);
     const form = await readMultipartForm(req, { maxBytes: MAX_DOCUMENT_BYTES + 100_000 });
@@ -840,24 +957,214 @@ function createWorkspaceApi(deps) {
     const title = clean(filename.replace(/\.[^.]+$/, ""), 200) || "Uploaded document";
     const checksum = crypto.createHash("sha256").update(file.buffer).digest("hex");
     const capturedAt = new Date().toISOString();
-    const staged = await stageKnowledge(pool, mapping, {
-      twin_id: twinId,
-      concept: { title, topic: title, summary: text.slice(0, 2_000), how_to_apply: text.slice(0, 80_000), raw: {
-        type: "Document Upload", source_name: filename, media_type: file.type,
-        sensitivity: "internal", consent_scope: "authorized_upload",
-        provenance_hash: checksum, curation_method: "direct_document_upload",
-        source_anchor_detail: { filename, extension, media_type: file.type, size_bytes: file.buffer.length, captured_at: capturedAt },
-      } },
-      source: { type: extension || "document", name: filename, size: file.buffer.length, checksum },
-      evidence: [{ citation: {
-        type: "uploaded_document", title: filename, path: filename, media_type: file.type,
-        size_bytes: file.buffer.length, sha256: checksum, captured_at: capturedAt,
-        sensitivity: "internal", consent_scope: "authorized_upload", curation_method: "direct_document_upload",
-        review_state: "pending-review",
-      }, confidence: 1 }],
-      change_reason: "Frontend document ingestion",
+    const uploaded = await uploadPrivateSourceBlob(mapping, {
+      twin_id: twinId, filename, media_type: file.type || "application/octet-stream", buffer: file.buffer, sha256: checksum,
     });
-    jsonResponse(res, 201, { ...staged, concept: { path: staged.concept_id, concept_id: staged.concept_id, title, review_state: REVIEW_TO_UI[staged.review_state] || staged.review_state } });
+    let staged;
+    try {
+      staged = await stageKnowledge(pool, mapping, {
+        twin_id: twinId,
+        concept: { title, topic: title, summary: text.slice(0, 2_000), how_to_apply: text.slice(0, 80_000), raw: {
+          type: "Document Upload", source_name: filename, media_type: file.type,
+          sensitivity: "internal", consent_scope: "authorized_upload",
+          provenance_hash: checksum, curation_method: "direct_document_upload",
+          source_anchor_detail: { filename, extension, media_type: file.type, size_bytes: file.buffer.length, captured_at: capturedAt, storage: "private_blob" },
+        } },
+        source: { type: extension || "document", name: filename, size: file.buffer.length, checksum },
+        evidence: [{ citation: {
+          type: "uploaded_document", title: filename, path: filename, media_type: file.type,
+          size_bytes: file.buffer.length, sha256: checksum, captured_at: capturedAt,
+          sensitivity: "internal", consent_scope: "authorized_upload", curation_method: "direct_document_upload",
+          review_state: "pending-review", storage: "private_blob",
+        }, confidence: 1 }],
+        change_reason: "Frontend document ingestion",
+      });
+    } catch (error) {
+      await deletePrivateArtifact(uploaded.blob_uri).catch(() => {});
+      throw error;
+    }
+    let artifact;
+    try {
+      artifact = await storePrivateSourceArtifact(pool, mapping, {
+        ...uploaded,
+        twin_id: twinId,
+        concept_id: staged.concept_id,
+        filename,
+        media_type: file.type || "application/octet-stream",
+        size_bytes: file.buffer.length,
+        sha256: checksum,
+        artifact_kind: "source_document",
+        metadata: { extension, captured_at: capturedAt, consent_scope: "authorized_upload", sensitivity: "internal" },
+      });
+    } catch (error) {
+      await markArtifactPersistenceFailure(pool, mapping, staged.concept_id, error);
+      throw error;
+    }
+    jsonResponse(res, 201, {
+      ...staged,
+      concept: { path: staged.concept_id, concept_id: staged.concept_id, title, review_state: REVIEW_TO_UI[staged.review_state] || staged.review_state },
+      artifact: artifactRecord(artifact),
+    });
+  }
+
+  async function artifactUpload(req, res) {
+    const { mapping, pool } = await context(req, {}, true);
+    const form = await readMultipartForm(req, { maxBytes: MAX_VISUAL_BYTES + 100_000 });
+    const twinId = assertTwin(mapping, form.fields.twin || form.fields.twin_id);
+    const file = form.files.file;
+    if (!file?.buffer?.length) throw httpError(400, "A non-empty visual file is required.");
+    if (file.buffer.length > MAX_VISUAL_BYTES) throw httpError(413, "Visual source files must not exceed 25 MB.");
+    const filename = clean(file.filename, 240);
+    const extension = filename.split(".").pop()?.toLowerCase() || "";
+    if (!VISUAL_EXTENSIONS.has(extension)) throw httpError(415, "Supported visual formats are PNG, JPEG, WebP, and GIF.");
+    const expectedType = VISUAL_MEDIA_TYPES.get(extension);
+    const suppliedType = clean(file.type, 256).toLowerCase();
+    if (suppliedType && !suppliedType.startsWith("image/")) throw httpError(415, "The uploaded visual has an invalid media type.");
+    if (!visualSignatureMatches(file.buffer, extension)) throw httpError(415, "The visual file signature does not match its extension.");
+    const title = clean(form.fields.title || filename.replace(/\.[^.]+$/, ""), 200) || "Uploaded visual";
+    const description = clean(form.fields.description, 4_000);
+    const capturedAt = new Date().toISOString();
+    const checksum = crypto.createHash("sha256").update(file.buffer).digest("hex");
+    const uploaded = await uploadPrivateSourceBlob(mapping, {
+      twin_id: twinId, filename, media_type: expectedType, buffer: file.buffer, sha256: checksum,
+    });
+    let staged;
+    try {
+      staged = await stageKnowledge(pool, mapping, {
+        twin_id: twinId,
+        concept: {
+          title,
+          topic: title,
+          summary: description || `Governed visual source: ${filename}. Human review is required before ordinary recall.`,
+          how_to_apply: description || "Use this visual only with its source attribution and approved review state.",
+          raw: {
+            type: "Visual Source",
+            source_name: filename,
+            media_type: expectedType,
+            sensitivity: "internal",
+            consent_scope: "authorized_upload",
+            provenance_hash: checksum,
+            curation_method: "governed_visual_upload",
+            source_anchor_detail: { filename, extension, media_type: expectedType, size_bytes: file.buffer.length, captured_at: capturedAt, storage: "private_blob" },
+          },
+        },
+        source: { type: "visual", name: filename, size: file.buffer.length, checksum },
+        evidence: [{ citation: {
+          type: "uploaded_visual", title: filename, path: filename, media_type: expectedType,
+          size_bytes: file.buffer.length, sha256: checksum, captured_at: capturedAt,
+          sensitivity: "internal", consent_scope: "authorized_upload", curation_method: "governed_visual_upload",
+          review_state: "pending-review", storage: "private_blob",
+        }, confidence: 1 }],
+        change_reason: "Governed visual source upload",
+      });
+    } catch (error) {
+      await deletePrivateArtifact(uploaded.blob_uri).catch(() => {});
+      throw error;
+    }
+    let artifact;
+    try {
+      artifact = await storePrivateSourceArtifact(pool, mapping, {
+        ...uploaded,
+        twin_id: twinId,
+        concept_id: staged.concept_id,
+        filename,
+        media_type: expectedType,
+        size_bytes: file.buffer.length,
+        sha256: checksum,
+        artifact_kind: "source_visual",
+        metadata: { description, captured_at: capturedAt, consent_scope: "authorized_upload", sensitivity: "internal" },
+      });
+    } catch (error) {
+      await markArtifactPersistenceFailure(pool, mapping, staged.concept_id, error);
+      throw error;
+    }
+    jsonResponse(res, 201, {
+      status: "review_needed",
+      concept: { path: staged.concept_id, concept_id: staged.concept_id, title, review_state: "pending-review" },
+      artifact: artifactRecord(artifact),
+    });
+  }
+
+  async function artifacts(req, res, url) {
+    const { mapping, pool } = await context(req, {}, true);
+    const twinId = assertTwin(mapping, url.searchParams.get("twin") || mapping.active_twin_id);
+    const conceptId = clean(url.searchParams.get("concept_id"), 128);
+    const result = await withContext(pool, mapping, (client) => client.query(
+      `SELECT * FROM knowledge.source_artifact
+       WHERE tenant_id = $1 AND twin_id = $2 AND ($3 = '' OR concept_id::text = $3)
+       ORDER BY created_at DESC LIMIT 100`,
+      [mapping.tenant_id, twinId, conceptId],
+    ));
+    jsonResponse(res, 200, { status: "ready", artifacts: result.rows.map(artifactRecord) });
+  }
+
+  async function artifactContent(req, res, url) {
+    const { mapping, pool } = await context(req, {}, true);
+    const artifactId = clean(url.searchParams.get("id"), 128);
+    const result = await withContext(pool, mapping, (client) => client.query(
+      `SELECT artifact.*, access.access_role
+       FROM knowledge.source_artifact artifact
+       LEFT JOIN twin.user_twin_access access
+         ON access.tenant_id = artifact.tenant_id AND access.twin_id = artifact.twin_id AND access.user_id = $2
+       WHERE artifact.tenant_id = $1 AND artifact.artifact_id::text = $3`,
+      [mapping.tenant_id, mapping.user_id, artifactId],
+    ));
+    if (!result.rowCount) throw httpError(404, "Artifact not found.");
+    const artifact = result.rows[0];
+    const privileged = artifact.owner_user_id === mapping.user_id || ["owner", "editor", "reviewer"].includes(artifact.access_role);
+    if (artifact.review_state !== "approved" && !privileged) throw httpError(403, "This source artifact is still awaiting review.");
+    const buffer = await readPrivateArtifact(artifact.blob_uri);
+    res.writeHead(200, {
+      "Content-Type": artifact.media_type || "application/octet-stream",
+      "Content-Length": buffer.length,
+      "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(artifact.filename)}`,
+      "Cache-Control": "private, no-store, max-age=0",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'; sandbox",
+    });
+    res.end(buffer);
+  }
+
+  async function artifactReview(req, res) {
+    const body = await readBody(req);
+    const { mapping, pool } = await context(req, body, true);
+    const artifactId = clean(body.artifact_id, 128);
+    const reviewState = body.review_state === "approved" ? "approved" : body.review_state === "rejected" ? "rejected" : "";
+    if (!reviewState) throw httpError(400, "review_state must be approved or rejected.");
+    const result = await withContext(pool, mapping, async (client) => {
+      const updated = await client.query(
+        `UPDATE knowledge.source_artifact artifact SET
+           review_state = $4, reviewed_by = $2, reviewed_at = now(), updated_at = now()
+         FROM twin.user_twin_access access
+         WHERE artifact.tenant_id = $1 AND artifact.artifact_id::text = $3
+           AND access.tenant_id = artifact.tenant_id AND access.twin_id = artifact.twin_id
+           AND access.user_id = $2 AND access.access_role IN ('owner','reviewer')
+         RETURNING artifact.*`,
+        [mapping.tenant_id, mapping.user_id, artifactId, reviewState],
+      );
+      if (!updated.rowCount) throw httpError(404, "Artifact not found or review access is missing.");
+      await audit(client, mapping, `artifact.${reviewState}`, "knowledge.source_artifact", artifactId, { note: clean(body.note, 2_000) });
+      return updated.rows[0];
+    });
+    jsonResponse(res, 200, { status: reviewState, artifact: artifactRecord(result) });
+  }
+
+  async function cascadeArtifactReview(pool, mapping, conceptId, reviewState, note = "") {
+    await withContext(pool, mapping, async (client) => {
+      const updated = await client.query(
+        `UPDATE knowledge.source_artifact SET
+           review_state = $4, reviewed_by = $2, reviewed_at = now(), updated_at = now()
+         WHERE tenant_id = $1 AND concept_id::text = $3 AND review_state <> $4
+         RETURNING artifact_id`,
+        [mapping.tenant_id, mapping.user_id, conceptId, reviewState],
+      );
+      for (const row of updated.rows) {
+        await audit(client, mapping, `artifact.${reviewState}.via_concept`, "knowledge.source_artifact", row.artifact_id, {
+          concept_id: conceptId,
+          note: clean(note, 2_000),
+        });
+      }
+    });
   }
 
   async function concepts(req, res, url) {
@@ -901,11 +1208,13 @@ function createWorkspaceApi(deps) {
     const target = REVIEW_FROM_UI[String(body.review_state || body.decision || "").toLowerCase()];
     if (target === "approved") {
       const result = await promoteKnowledge(pool, mapping, { concept_id: conceptId, revision: found.rows[0].current_revision, rationale: clean(body.note || body.rationale, 5_000) });
+      await cascadeArtifactReview(pool, mapping, conceptId, "approved", body.note || body.rationale);
       jsonResponse(res, 200, { ...result, review_state: "approved" });
       return;
     }
     if (target === "rejected") {
       const result = await rejectKnowledge(pool, mapping, { concept_id: conceptId, revision: found.rows[0].current_revision, decision: "reject", rationale: clean(body.note || body.rationale, 5_000) });
+      await cascadeArtifactReview(pool, mapping, conceptId, "rejected", body.note || body.rationale);
       jsonResponse(res, 200, { ...result, review_state: "rejected" });
       return;
     }
@@ -1770,6 +2079,10 @@ function createWorkspaceApi(deps) {
     else if (route === "POST /api/twins/picture/position") await picturePosition(req, res);
     else if (route === "POST /api/ingest/text") await ingestText(req, res);
     else if (route === "POST /api/ingest/document") await ingestDocument(req, res);
+    else if (route === "POST /api/artifacts") await artifactUpload(req, res);
+    else if (route === "GET /api/artifacts") await artifacts(req, res, url);
+    else if (route === "GET /api/artifacts/content") await artifactContent(req, res, url);
+    else if (route === "POST /api/artifacts/review") await artifactReview(req, res);
     else if (route === "GET /api/concepts") await concepts(req, res, url);
     else if (route === "GET /api/concepts/detail") await conceptDetail(req, res, url);
     else if (route === "POST /api/concepts/revise") await conceptRevise(req, res);
