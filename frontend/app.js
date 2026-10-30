@@ -271,7 +271,7 @@
   conceptProfileFilter: "all",
   conceptSourceFilter: "all",
   conceptClusterFilter: "all",
-  conceptDensity: "comfortable",
+  conceptDensity: "compact",
   skillStatusFilter: "all",
   activityFilter: "all",
   activityDensity: "comfortable",
@@ -529,6 +529,7 @@ async function bootMeidsApp() {
   bindTwins();
   bindIngest();
   bindVoice();
+  bindActorTwinCapture();
   bindQuality();
   bindSkills();
   bindGraph();
@@ -9168,6 +9169,7 @@ function bindVoice() {
   $("#voiceConceptAssessment").addEventListener("click", handleVoiceAssessmentActionClick);
   $("#voiceAgentHandoffLedger").addEventListener("click", handleVoiceAgentHandoffLedgerClick);
   $("#voiceClarificationInput").addEventListener("keydown", handleVoiceClarificationKeydown);
+  $("#voiceTranscriptEditor").addEventListener("input", handleVoiceTranscriptEdit);
   $("#voiceUatReports").addEventListener("click", handleVoiceUatReportClick);
   $("#voiceUatReports").addEventListener("click", handleVoiceGateActionClick);
   $("#voiceAdvancedDiagnostics").addEventListener("toggle", handleVoiceAdvancedToggle);
@@ -9177,6 +9179,113 @@ function bindVoice() {
     $("#voiceSampleStatus").textContent = "Uses selected category";
     if (state.voiceConceptSession?.transcript) assessVoiceConcept();
   });
+}
+
+function bindActorTwinCapture() {
+  $("#actorVoiceBtn")?.addEventListener("click", toggleActorVoiceCapture);
+  $("#actorSourceBtn")?.addEventListener("click", () => $("#actorSourceInput")?.click());
+  $("#actorSourceInput")?.addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (file) await addActorTwinSource(file);
+    event.target.value = "";
+  });
+  const panel = $("#n8nAgentPanel");
+  panel?.addEventListener("dragover", (event) => {
+    if (!event.dataTransfer?.types?.includes("Files")) return;
+    event.preventDefault();
+    panel.classList.add("actor-source-dragging");
+  });
+  panel?.addEventListener("dragleave", () => panel.classList.remove("actor-source-dragging"));
+  panel?.addEventListener("drop", async (event) => {
+    panel.classList.remove("actor-source-dragging");
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
+    event.preventDefault();
+    await addActorTwinSource(file);
+  });
+}
+
+async function toggleActorVoiceCapture() {
+  const button = $("#actorVoiceBtn");
+  const status = $("#actorCaptureStatus");
+  if (state.actorVoiceRecorder?.state === "recording") {
+    state.actorVoiceRecorder.stop();
+    button.disabled = true;
+    status.textContent = "Transcribing your message...";
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const chunks = [];
+    const recorder = new MediaRecorder(stream);
+    state.actorVoiceRecorder = recorder;
+    recorder.addEventListener("dataavailable", (event) => {
+      if (event.data.size) chunks.push(event.data);
+    });
+    recorder.addEventListener("stop", async () => {
+      stream.getTracks().forEach((track) => track.stop());
+      try {
+        const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+        const result = await transcribeVoiceSource(blob, {
+          filename: `actor-message-${Date.now()}.webm`,
+          category: "knowledge",
+          sourceType: "actor_chat_message",
+        });
+        submitTextToEmbeddedChat(result.transcript);
+        status.textContent = "Voice message transcribed into Actor Twin chat.";
+      } catch (error) {
+        status.textContent = `Voice message failed: ${compactError(error.message)}`;
+        showToast("Voice message failed", compactError(error.message), "error");
+      } finally {
+        button.disabled = false;
+        button.textContent = "Talk";
+        state.actorVoiceRecorder = null;
+      }
+    });
+    recorder.start();
+    button.textContent = "Stop";
+    status.textContent = "Listening. Select Stop when your message is complete.";
+  } catch (error) {
+    status.textContent = `Microphone unavailable: ${compactError(error.message)}`;
+  }
+}
+
+function submitTextToEmbeddedChat(text) {
+  const mount = $("#n8nChatMount");
+  const input = mount?.querySelector("textarea[data-test-id='chat-input'], textarea.chat-inputs, textarea");
+  if (!input) {
+    navigator.clipboard?.writeText(text).catch(() => {});
+    showToast("Transcript copied", "Paste it into Actor Twin chat to send.", "info");
+    return false;
+  }
+  const valueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+  valueSetter?.call(input, text);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.focus();
+  const send = mount.querySelector("button[data-test-id='chat-input-send-button'], button.chat-input-send-button, .chat-input-send-button");
+  if (send && !send.disabled) send.click();
+  else showToast("Transcript ready", "Review the text in chat, then send it.", "success");
+  return true;
+}
+
+async function addActorTwinSource(file) {
+  const status = $("#actorCaptureStatus");
+  const error = documentUploadValidationMessage(file);
+  if (error) {
+    status.textContent = error;
+    return;
+  }
+  if (!(await confirmTwinScopedAction(`add ${file.name} as review-needed knowledge`))) return;
+  status.textContent = `Adding ${file.name}...`;
+  try {
+    await uploadDocumentFile(file);
+    await refreshConcepts();
+    status.textContent = `${file.name} is staged for human review. It is not trusted retrieval context until approved.`;
+    submitTextToEmbeddedChat(`I added the source "${file.name}" for review. Tell me what must be reviewed before it can be used as trusted knowledge.`);
+  } catch (uploadError) {
+    status.textContent = `Source upload failed: ${compactError(uploadError.message)}`;
+    showToast("Source upload failed", compactError(uploadError.message), "error");
+  }
 }
 
 async function handleVoiceAdvancedToggle(event) {
@@ -9626,10 +9735,29 @@ async function transcribeVoiceSource(file, { filename, category, sourceType, end
   throw new Error("The transcription job exceeded 12 minutes. Keep the recording and retry; no knowledge was saved.");
 }
 
+function setVoiceTranscriptEditor(transcript, originalTranscript = transcript) {
+  const editor = $("#voiceTranscriptEditor");
+  const wrapper = $("#voiceTranscriptEditorWrap");
+  const original = $("#voiceOriginalTranscript");
+  if (editor) editor.value = transcript || "";
+  if (original) original.textContent = originalTranscript || transcript || "";
+  if (wrapper) wrapper.hidden = !transcript;
+}
+
+function handleVoiceTranscriptEdit(event) {
+  if (!state.voiceConceptSession) return;
+  state.voiceConceptSession.transcript = event.target.value;
+  state.voiceConceptSession.transcriptEdited = event.target.value !== state.voiceConceptSession.originalTranscript;
+  state.voiceConceptSession.assessment = null;
+  $("#voiceCommitBtn").disabled = true;
+  $("#voiceCompletionHint").textContent = "Transcript changed. Recheck the concept before saving.";
+}
+
 async function initializeVoiceConceptFromTranscription(result, { sourceType, sourceName }) {
   if (!result.transcript) throw new Error("The transcription provider returned no transcript.");
   state.voiceConceptSession = {
     transcript: result.transcript,
+    originalTranscript: result.transcript,
     category: result.category || "knowledge",
     evidence: result.evidence || null,
     replies: [],
@@ -9640,6 +9768,7 @@ async function initializeVoiceConceptFromTranscription(result, { sourceType, sou
     sourceName,
   };
   $("#transcriptBox").textContent = result.transcript;
+  setVoiceTranscriptEditor(result.transcript);
   $("#voiceConceptCategory").value = state.voiceConceptSession.category;
   $("#voicePromotionReviewNote").value = "";
   $("#voiceClarifyBtn").disabled = false;
@@ -9702,6 +9831,7 @@ async function startVoiceConceptFromPastedTranscript() {
   if (!(await confirmTwinScopedAction("start a voice concept conversation from pasted transcript"))) return;
   state.voiceConceptSession = {
     transcript,
+    originalTranscript: transcript,
     category: $("#voiceConceptCategory").value,
     evidence: null,
     replies: [],
@@ -9710,6 +9840,7 @@ async function startVoiceConceptFromPastedTranscript() {
     agent: null,
   };
   $("#transcriptBox").textContent = transcript;
+  setVoiceTranscriptEditor(transcript);
   $("#voiceEvidence").innerHTML = '<span class="muted-inline">Started from pasted transcript. No audio evidence file was created.</span>';
   renderVoiceTranscriptSyncStatus();
   $("#voiceConceptAssessment").innerHTML = "";
@@ -9718,6 +9849,7 @@ async function startVoiceConceptFromPastedTranscript() {
   $("#voiceDraftBtn").disabled = false;
   $("#voiceAgentHandoffBtn").disabled = false;
   $("#voiceCommitBtn").disabled = true;
+  $("#voiceCloseBtn").disabled = false;
   updateVoiceClarificationPrompt();
   setVoiceConversationStatus("pending", "Persona Modeler is assessing the pasted transcript.");
   await assessVoiceConcept();
@@ -9777,6 +9909,7 @@ async function runVoiceSampleWalkthrough() {
   `;
   state.voiceConceptSession = {
     transcript,
+    originalTranscript: transcript,
     category,
     evidence: null,
     replies: [],
@@ -9784,6 +9917,7 @@ async function runVoiceSampleWalkthrough() {
     assessment: null,
     agent: null,
   };
+  setVoiceTranscriptEditor(transcript);
   $("#voiceClarifyBtn").disabled = false;
   $("#voiceDraftBtn").disabled = false;
   $("#voiceAgentHandoffBtn").disabled = false;
@@ -11094,6 +11228,8 @@ async function commitVoiceConcept() {
   try {
     const result = await postJson("/api/voice/concepts/commit", {
       transcript: state.voiceConceptSession.transcript,
+      original_transcript: state.voiceConceptSession.originalTranscript || state.voiceConceptSession.transcript,
+      transcript_edited: Boolean(state.voiceConceptSession.transcriptEdited),
       category: state.voiceConceptSession.category,
       replies: state.voiceConceptSession.replies,
       question_history: state.voiceConceptSession.questionHistory || [],
@@ -11181,6 +11317,7 @@ async function saveVoiceConceptDraft() {
   try {
     const result = await postJson("/api/voice/concepts/draft", {
       transcript: state.voiceConceptSession.transcript,
+      original_transcript: state.voiceConceptSession.originalTranscript || state.voiceConceptSession.transcript,
       category: state.voiceConceptSession.category,
       replies: state.voiceConceptSession.replies,
       question_history: state.voiceConceptSession.questionHistory || [],
@@ -11233,6 +11370,7 @@ async function closeVoiceConceptSession() {
   state.voiceConceptSession = null;
   state.voiceConceptCommitInProgress = false;
   $("#transcriptBox").textContent = "No transcript yet.";
+  setVoiceTranscriptEditor("");
   $("#voiceConceptAssessment").innerHTML = "";
   $("#voiceClarificationInput").value = "";
   $("#voicePromotionReviewNote").value = "";
@@ -11278,6 +11416,7 @@ async function loadSelectedVoiceConceptDraft(selectedPath = "") {
     if (!draft?.transcript) throw new Error("Voice concept draft has no transcript.");
     state.voiceConceptSession = {
       transcript: draft.transcript || "",
+      originalTranscript: draft.original_transcript || draft.transcript || "",
       category: draft.category || "knowledge",
       evidence: draft.evidence_path ? { path: draft.evidence_path } : null,
       replies: draft.replies || [],
@@ -11291,6 +11430,7 @@ async function loadSelectedVoiceConceptDraft(selectedPath = "") {
     };
     $("#voiceConceptCategory").value = state.voiceConceptSession.category;
     $("#transcriptBox").textContent = state.voiceConceptSession.transcript || "Draft has no transcript.";
+    setVoiceTranscriptEditor(state.voiceConceptSession.transcript, state.voiceConceptSession.originalTranscript);
     $("#voiceClarificationInput").value = "";
     $("#voicePromotionReviewNote").value = draft.metadata?.voice_promotion_review_note || "";
     renderVoiceCriteria();
@@ -24841,10 +24981,32 @@ function closeConceptDrawer() {
 
 function renderConceptDetail(detail) {
   const metadata = detail.metadata || {};
+  const content = detail.content && typeof detail.content === "object"
+    ? detail.content
+    : { summary: typeof detail.content === "string" ? detail.content : detail.body || "" };
   $("#drawerTitle").textContent = metadata.title || detail.path;
   const guardrails = Array.isArray(metadata.guardrail_findings) ? metadata.guardrail_findings : [];
   const evidence = Array.isArray(detail.linked_evidence) ? detail.linked_evidence : [];
   $("#drawerContent").innerHTML = `
+    <section class="detail-section concept-content-review">
+      <h3>Knowledge to review</h3>
+      <p class="muted-inline">Correct extracted wording before approval. Saving creates a new review-needed revision and preserves the previous revision.</p>
+      <label for="conceptEditTitle">Title</label>
+      <input id="conceptEditTitle" type="text" value="${escapeHtml(metadata.title || "")}" />
+      ${[
+        ["topic", "Topic and purpose"],
+        ["purpose", "Why it is used"],
+        ["wider_context", "Wider context"],
+        ["how_to_apply", "How to apply"],
+        ["what_else_to_know", "What else to know"],
+        ["implications_and_results", "Implications and results"],
+        ["summary", "Review summary"],
+      ].map(([key, label]) => `
+        <label for="conceptEdit_${key}">${escapeHtml(label)}</label>
+        <textarea id="conceptEdit_${key}" data-concept-content-field="${key}" rows="${key === "how_to_apply" || key === "what_else_to_know" ? 6 : 3}">${escapeHtml(content[key] || "")}</textarea>
+      `).join("")}
+      <button id="conceptSaveRevisionBtn" class="secondary" type="button" data-path="${escapeHtml(detail.path)}">Save corrected revision</button>
+    </section>
     <section class="detail-section">
       <h3>Review State</h3>
       <dl class="detail-list">
@@ -24880,15 +25042,37 @@ function renderConceptDetail(detail) {
       <h3>Linked Evidence</h3>
       ${renderLinkedEvidence(evidence)}
     </section>
-    <section class="detail-section">
-      <h3>Body</h3>
-      <pre class="detail-body">${escapeHtml(detail.body || "")}</pre>
-    </section>
   `;
   $("#drawerContent").querySelectorAll(".concept-review-state").forEach((button) => {
     button.addEventListener("click", () => updateConceptReview(button.dataset.path, button.dataset.state));
   });
+  $("#conceptSaveRevisionBtn")?.addEventListener("click", () => saveConceptRevision(detail.path));
   bindConceptSourceActions($("#drawerContent"));
+}
+
+async function saveConceptRevision(path) {
+  const button = $("#conceptSaveRevisionBtn");
+  const content = {};
+  $("#drawerContent")?.querySelectorAll("[data-concept-content-field]").forEach((field) => {
+    content[field.dataset.conceptContentField] = field.value.trim();
+  });
+  button.disabled = true;
+  try {
+    await postJson("/api/concepts/revise", {
+      path,
+      title: $("#conceptEditTitle")?.value.trim() || "",
+      content,
+      change_reason: "Human correction during knowledge review",
+      twin: state.activeTwin,
+    });
+    showToast("Corrected revision saved", "The concept returned to review-needed state.", "success");
+    await refreshConcepts();
+    await safeRefreshReviewDashboard();
+    await openConceptDrawer(path);
+  } catch (error) {
+    showToast("Revision save failed", compactError(error.message), "error");
+    button.disabled = false;
+  }
 }
 
 function renderConceptSourceSummary(detail, metadata) {

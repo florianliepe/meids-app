@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-22",
+  "version": "2026-10-30",
   "routes": [
     "GET /api/health",
     "GET /api/status",
@@ -17,6 +17,7 @@
     "POST /api/ingest/document",
     "GET /api/concepts",
     "GET /api/concepts/detail",
+    "POST /api/concepts/revise",
     "POST /api/concepts/review",
     "DELETE /api/concepts",
     "GET /api/skills",
@@ -33,6 +34,8 @@
     "POST /api/voice/concepts/draft",
     "GET /api/voice/concepts/drafts",
     "POST /api/voice/concepts/drafts/detail",
+    "DELETE /api/voice/concepts/drafts",
+    "POST /api/voice/concepts/drafts/resolve-duplicates",
     "POST /api/voice/concepts/agent-handoff",
     "GET /api/voice/concepts/agent-handoffs",
     "POST /api/voice/concepts/commit",
