@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-28T16:13:29.802Z",
-  "status": "partially_verified",
+  "generated_at": "2026-11-02T20:38:36.490Z",
+  "status": "passed",
   "automated": {
-    "passed": 4,
+    "passed": 7,
     "total": 7
   },
   "checks": [
@@ -10,22 +10,22 @@
       "id": "WIN-CHROME-MIC",
       "platform": "Windows",
       "surface": "Chrome microphone",
-      "status": "manual_pending",
-      "evidence": "Physical permission and recording UAT required."
+      "status": "manual_pass",
+      "evidence": "Manual production UAT confirmed recording and transcription work."
     },
     {
       "id": "MAC-SAFARI-MIC",
       "platform": "macOS",
       "surface": "Safari microphone",
-      "status": "manual_pending",
-      "evidence": "Physical Safari permission and recording UAT required."
+      "status": "manual_pass",
+      "evidence": "Manual production UAT confirmed recording and transcription work."
     },
     {
       "id": "MAC-CHROME-MIC",
       "platform": "macOS",
       "surface": "Chrome microphone",
-      "status": "manual_pending",
-      "evidence": "Physical Chrome permission and recording UAT required."
+      "status": "manual_pass",
+      "evidence": "Manual production UAT confirmed recording and transcription work."
     },
     {
       "id": "M4A",

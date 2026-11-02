@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Me.IDs Admin Cockpit</title>
     <link rel="icon" type="image/svg+xml" href="../assets/intellectual-twin-mark.svg" />
-    <link rel="stylesheet" href="admin.css?v=20261023-admin-mvp" />
+    <link rel="stylesheet" href="admin.css?v=20261102-nightly-readiness" />
   </head>
   <body>
     <header class="admin-header">
@@ -56,6 +56,29 @@
             <p>Configuration and dependency readiness without secret or content exposure.</p>
           </div>
           <div id="healthGrid" class="health-grid"></div>
+          <section class="nightly-band" aria-labelledby="nightlyTitle">
+            <header class="nightly-heading">
+              <div>
+                <p class="eyebrow">Quality signal</p>
+                <h3 id="nightlyTitle">Latest published nightly run</h3>
+              </div>
+              <div class="nightly-state">
+                <span id="nightlyStatus" class="state-token">Loading</span>
+                <small id="nightlyTime">-</small>
+              </div>
+            </header>
+            <div id="nightlySummary" class="nightly-summary"></div>
+            <div class="nightly-columns">
+              <section>
+                <h4>Still to add to nightly tests</h4>
+                <div id="nightlyBacklog" class="compact-list"></div>
+              </section>
+              <section>
+                <h4>Manual launch evidence</h4>
+                <div id="manualValidation" class="compact-list"></div>
+              </section>
+            </div>
+          </section>
           <div class="split-band">
             <section>
               <h3>Attention queue</h3>
@@ -124,6 +147,6 @@
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <script src="../runtime-config.js"></script>
     <script src="../api.js"></script>
-    <script src="admin.js?v=20261023-admin-mvp"></script>
+    <script src="admin.js?v=20261102-nightly-readiness"></script>
   </body>
 </html>

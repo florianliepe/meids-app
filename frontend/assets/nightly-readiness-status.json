@@ -1,0 +1,137 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-11-02T20:38:23.193Z",
+  "source": "latest_published_nightly_evidence",
+  "status": "attention",
+  "summary": {
+    "contract_suites": "passed",
+    "no_write_scenarios": {
+      "passed": 5,
+      "total": 5
+    },
+    "fresh_agents": {
+      "passed": 6,
+      "total": 7
+    },
+    "manual_validations": {
+      "passed": 5,
+      "total": 7
+    }
+  },
+  "agent_results": [
+    {
+      "agent": "actor_twin",
+      "status": "fresh_connected",
+      "duration_ms": 99055
+    },
+    {
+      "agent": "knowledge_fabric_agent",
+      "status": "fresh_connected",
+      "duration_ms": 4125
+    },
+    {
+      "agent": "agentic_butler",
+      "status": "fresh_connected",
+      "duration_ms": 34296
+    },
+    {
+      "agent": "skill_orchestrator",
+      "status": "fresh_connected",
+      "duration_ms": 25770
+    },
+    {
+      "agent": "task_agent",
+      "status": "fresh_connected",
+      "duration_ms": 12259
+    },
+    {
+      "agent": "critical_faculty",
+      "status": "fresh_connected",
+      "duration_ms": 41366
+    },
+    {
+      "agent": "learning_agent",
+      "status": "stale_or_missing",
+      "duration_ms": null
+    }
+  ],
+  "manual_validations": [
+    {
+      "id": "windows_chrome_microphone",
+      "label": "Windows Chrome microphone",
+      "status": "passed",
+      "evidence": "Manual production UAT confirmed recording and transcription work."
+    },
+    {
+      "id": "macos_safari_microphone",
+      "label": "macOS Safari microphone",
+      "status": "passed",
+      "evidence": "Manual production UAT confirmed recording and transcription work."
+    },
+    {
+      "id": "macos_chrome_microphone",
+      "label": "macOS Chrome microphone",
+      "status": "passed",
+      "evidence": "Manual production UAT confirmed recording and transcription work."
+    },
+    {
+      "id": "second_eraneos_user_access",
+      "label": "Second Eraneos user access",
+      "status": "passed",
+      "evidence": "A second Eraneos colleague authenticated and accessed the platform."
+    },
+    {
+      "id": "visual_recall_second_identity",
+      "label": "Visual recall with second identity",
+      "status": "passed",
+      "evidence": "Governed visual recall succeeded with a second authenticated identity."
+    },
+    {
+      "id": "defender_malware_scan",
+      "label": "Defender malware scan",
+      "status": "pending",
+      "evidence": "Defender for Storage malware-scanning evidence is still required."
+    },
+    {
+      "id": "storage_retention_evidence",
+      "label": "Storage retention evidence",
+      "status": "pending",
+      "evidence": "Blob retention and lifecycle-policy evidence is still required."
+    }
+  ],
+  "pending_manual": [
+    {
+      "id": "defender_malware_scan",
+      "label": "Defender malware scan",
+      "detail": "Defender for Storage malware-scanning evidence is still required."
+    },
+    {
+      "id": "storage_retention_evidence",
+      "label": "Storage retention evidence",
+      "detail": "Blob retention and lifecycle-policy evidence is still required."
+    }
+  ],
+  "nightly_test_backlog": [
+    {
+      "id": "semantic_expected_answers",
+      "label": "Semantic expected-answer assertions",
+      "detail": "Verify citations, not_found behavior, routing, approval boundaries, and non-speculative answers."
+    },
+    {
+      "id": "authenticated_frontend_scan",
+      "label": "Authenticated frontend scan",
+      "detail": "Track console and network errors, keyboard access, text density, scroll depth, and task reachability."
+    },
+    {
+      "id": "runtime_drift",
+      "label": "Queue and outbox drift",
+      "detail": "Trend queue age, retries, dead letters, stale outbox events, and per-agent latency."
+    },
+    {
+      "id": "learning_execution_correlation",
+      "label": "Learning Agent execution correlation",
+      "detail": "Require a fresh canonical workflow execution after every successful post-turn dispatch acknowledgement."
+    }
+  ],
+  "boundary": "Public-safe release evidence. No secrets, prompts, private knowledge, or identity tokens are included."
+}
