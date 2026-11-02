@@ -1,6 +1,6 @@
 (function initAdminCockpit() {
   const api = window.IntellectualTwinApi;
-  const state = { session: null, overview: null, users: [], audit: [], rolePolicy: {} };
+  const state = { session: null, overview: null, users: [], audit: [], rolePolicy: {}, nightly: null };
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
@@ -61,15 +61,19 @@
   }
 
   async function loadData() {
-    const [overview, users, audit] = await Promise.all([
+    const [overview, users, audit, nightly] = await Promise.all([
       api.getJson("/api/admin/overview"),
       api.getJson("/api/admin/users"),
       api.getJson("/api/admin/audit?limit=100"),
+      fetch("../assets/nightly-readiness-status.json", { cache: "no-store" })
+        .then((response) => response.ok ? response.json() : null)
+        .catch(() => null),
     ]);
     state.overview = overview;
     state.users = users.users || [];
     state.rolePolicy = users.role_policy || {};
     state.audit = audit.events || [];
+    state.nightly = nightly;
   }
 
   function renderMetrics() {
@@ -121,6 +125,35 @@
     $("#attentionQueue").innerHTML = items.length
       ? items.map(([value, label]) => `<div class="stack-item"><strong>${escapeHtml(label)}</strong><span>${number(value)}</span></div>`).join("")
       : '<div class="stack-item"><strong>No immediate action</strong><span>current snapshot</span></div>';
+  }
+
+  function renderNightly() {
+    const nightly = state.nightly;
+    const status = String(nightly?.status || "unavailable").toLowerCase();
+    const statusLabel = status === "passed" ? "Passed" : status === "attention" ? "Attention" : "Unavailable";
+    const statusNode = $("#nightlyStatus");
+    statusNode.textContent = statusLabel;
+    statusNode.className = `state-token ${status === "passed" ? "provisioned" : status}`;
+    $("#nightlyTime").textContent = nightly ? time(nightly.generated_at) : "No published result";
+
+    const summary = nightly?.summary || {};
+    const items = [
+      [summary.contract_suites === "passed" ? "Pass" : "Unknown", "contract suites"],
+      [`${number(summary.no_write_scenarios?.passed)}/${number(summary.no_write_scenarios?.total)}`, "no-write scenarios"],
+      [`${number(summary.fresh_agents?.passed)}/${number(summary.fresh_agents?.total)}`, "fresh agents"],
+      [`${number(summary.manual_validations?.passed)}/${number(summary.manual_validations?.total)}`, "manual validations"],
+    ];
+    $("#nightlySummary").innerHTML = items.map(([value, label]) => `<div><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>`).join("");
+
+    const backlog = Array.isArray(nightly?.nightly_test_backlog) ? nightly.nightly_test_backlog : [];
+    $("#nightlyBacklog").innerHTML = backlog.length
+      ? backlog.map((item) => `<div class="compact-item"><i class="status-dot attention" aria-hidden="true"></i><span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.detail)}</small></span></div>`).join("")
+      : '<div class="compact-item"><span><strong>No published backlog</strong><small>Refresh after the next release.</small></span></div>';
+
+    const manual = Array.isArray(nightly?.manual_validations) ? nightly.manual_validations : [];
+    $("#manualValidation").innerHTML = manual.length
+      ? manual.map((item) => `<div class="compact-item"><i class="status-dot ${item.status === "passed" ? "ready" : "attention"}" aria-hidden="true"></i><span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.status === "passed" ? "Verified" : item.evidence)}</small></span></div>`).join("")
+      : '<div class="compact-item"><span><strong>No published evidence</strong><small>Manual validations are not available.</small></span></div>';
   }
 
   function roleControls(user) {
@@ -197,6 +230,7 @@
     $("#snapshotTime").textContent = time(state.overview?.generated_at);
     renderMetrics();
     renderHealth();
+    renderNightly();
     renderAttentionQueue();
     renderUsers();
     renderGovernance();

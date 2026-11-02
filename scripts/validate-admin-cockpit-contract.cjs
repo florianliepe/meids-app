@@ -14,6 +14,10 @@ const main = read("frontend/index.html");
 const app = read("frontend/app.js");
 const admin = read("frontend/admin/admin.js");
 const adminHtml = read("frontend/admin/index.html");
+const nightly = JSON.parse(read("frontend/assets/nightly-readiness-status.json"));
+const nightlyLive = JSON.parse(read("docs/uat/n8n-seven-agent-live-probe-evidence.json"));
+const nightlyNoWrite = JSON.parse(read("docs/uat/n8n-seven-agent-no-write-uat.json"));
+const manualValidation = JSON.parse(read("docs/uat/manual-launch-validation-status.json"));
 const swa = JSON.parse(read("frontend/staticwebapp.config.json"));
 
 [
@@ -38,9 +42,25 @@ requireText("frontend/index.html", main, 'id="landingAdminCockpitBtn"');
 requireText("frontend/app.js", app, "canAccessAdminCockpit");
 requireText("frontend/admin/index.html", adminHtml, "Users &amp; access");
 requireText("frontend/admin/index.html", adminHtml, "Platform health");
+requireText("frontend/admin/index.html", adminHtml, "Still to add to nightly tests");
+requireText("frontend/admin/index.html", adminHtml, "Latest published nightly run");
 requireText("frontend/admin/admin.js", admin, "hasAdminAccess");
 requireText("frontend/admin/admin.js", admin, "/api/admin/overview");
 requireText("frontend/admin/admin.js", admin, "/api/admin/users/roles");
+requireText("frontend/admin/admin.js", admin, "nightly-readiness-status.json");
+
+if (!nightly.summary || !Array.isArray(nightly.nightly_test_backlog) || !Array.isArray(nightly.manual_validations)) {
+  failures.push("frontend/assets/nightly-readiness-status.json must expose summary, backlog, and manual validations");
+}
+if (nightly.summary?.fresh_agents?.passed !== nightlyLive.summary?.fresh_connected_count) {
+  failures.push("nightly readiness fresh-agent count is stale");
+}
+if (nightly.summary?.no_write_scenarios?.total !== nightlyNoWrite.results?.length) {
+  failures.push("nightly readiness no-write scenario count is stale");
+}
+if (nightly.summary?.manual_validations?.total !== manualValidation.validations?.length) {
+  failures.push("nightly readiness manual-validation count is stale");
+}
 
 const adminRoute = (swa.routes || []).find((route) => route.route === "/admin*");
 if (!adminRoute || !Array.isArray(adminRoute.allowedRoles) || !adminRoute.allowedRoles.includes("authenticated")) {
@@ -60,5 +80,6 @@ console.log(JSON.stringify({
     "tenant_scoped_admin_read_policies",
     "separate_admin_frontend",
     "authenticated_static_route",
+    "public_safe_nightly_readiness_summary",
   ],
 }, null, 2));

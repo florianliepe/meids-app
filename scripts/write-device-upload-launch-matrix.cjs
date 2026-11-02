@@ -2,10 +2,27 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const outputPath = path.resolve(__dirname, "..", "docs", "uat", "device-upload-launch-matrix.json");
+const manualPath = path.resolve(__dirname, "..", "docs", "uat", "manual-launch-validation-status.json");
+const manual = fs.existsSync(manualPath)
+  ? JSON.parse(fs.readFileSync(manualPath, "utf8")).validations || []
+  : [];
+const manualStatus = new Map(manual.map((item) => [item.id, item]));
+
+function physicalCheck(id, manualId, platform, surface) {
+  const result = manualStatus.get(manualId);
+  return {
+    id,
+    platform,
+    surface,
+    status: result?.status === "passed" ? "manual_pass" : "manual_pending",
+    evidence: result?.evidence || "Physical permission and recording UAT required.",
+  };
+}
+
 const checks = [
-  { id: "WIN-CHROME-MIC", platform: "Windows", surface: "Chrome microphone", status: "manual_pending", evidence: "Physical permission and recording UAT required." },
-  { id: "MAC-SAFARI-MIC", platform: "macOS", surface: "Safari microphone", status: "manual_pending", evidence: "Physical Safari permission and recording UAT required." },
-  { id: "MAC-CHROME-MIC", platform: "macOS", surface: "Chrome microphone", status: "manual_pending", evidence: "Physical Chrome permission and recording UAT required." },
+  physicalCheck("WIN-CHROME-MIC", "windows_chrome_microphone", "Windows", "Chrome microphone"),
+  physicalCheck("MAC-SAFARI-MIC", "macos_safari_microphone", "macOS", "Safari microphone"),
+  physicalCheck("MAC-CHROME-MIC", "macos_chrome_microphone", "macOS", "Chrome microphone"),
   { id: "M4A", platform: "cross-platform", surface: "M4A upload", status: "automated_pass", evidence: "validate-audio-upload-contract.cjs normalizes audio/x-m4a to audio/mp4." },
   { id: "PPTX", platform: "cross-platform", surface: "PPTX slides and notes", status: "automated_pass", evidence: "validate-document-upload-contract.cjs extracts slide and speaker-note text." },
   { id: "BULK-100MB", platform: "cross-platform", surface: "Mixed sequential bulk upload", status: "automated_pass", evidence: "Frontend enforces a 100 MB batch buffer and 25 MB per-file backend gate." },

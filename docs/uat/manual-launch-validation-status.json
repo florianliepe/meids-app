@@ -1,0 +1,48 @@
+{
+  "schema_version": "0.1.0",
+  "updated_at": "2026-11-02T21:00:00.000Z",
+  "validations": [
+    {
+      "id": "windows_chrome_microphone",
+      "label": "Windows Chrome microphone",
+      "status": "passed",
+      "evidence": "Manual production UAT confirmed recording and transcription work."
+    },
+    {
+      "id": "macos_safari_microphone",
+      "label": "macOS Safari microphone",
+      "status": "passed",
+      "evidence": "Manual production UAT confirmed recording and transcription work."
+    },
+    {
+      "id": "macos_chrome_microphone",
+      "label": "macOS Chrome microphone",
+      "status": "passed",
+      "evidence": "Manual production UAT confirmed recording and transcription work."
+    },
+    {
+      "id": "second_eraneos_user_access",
+      "label": "Second Eraneos user access",
+      "status": "passed",
+      "evidence": "A second Eraneos colleague authenticated and accessed the platform."
+    },
+    {
+      "id": "visual_recall_second_identity",
+      "label": "Visual recall with second identity",
+      "status": "passed",
+      "evidence": "Governed visual recall succeeded with a second authenticated identity."
+    },
+    {
+      "id": "defender_malware_scan",
+      "label": "Defender malware scan",
+      "status": "pending",
+      "evidence": "Defender for Storage malware-scanning evidence is still required."
+    },
+    {
+      "id": "storage_retention_evidence",
+      "label": "Storage retention evidence",
+      "status": "pending",
+      "evidence": "Blob retention and lifecycle-policy evidence is still required."
+    }
+  ]
+}

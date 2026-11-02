@@ -88,6 +88,27 @@ main { margin: 0 auto; max-width: 1500px; padding: 32px clamp(18px, 4vw, 56px) 7
 .health-item h3, .governance-item h3, .operation-item h3 { font-size: .9rem; margin: 0 0 14px; }
 .health-item p, .governance-item p, .operation-item p { color: var(--muted); font-size: .84rem; line-height: 1.45; margin: 7px 0 0; }
 .health-item strong, .governance-item strong, .operation-item strong { font-family: Georgia, "Times New Roman", serif; font-size: 1.8rem; font-weight: 500; }
+.nightly-band { border: 1px solid var(--line); margin-top: 18px; }
+.nightly-heading { align-items: center; display: flex; justify-content: space-between; padding: 18px; }
+.nightly-heading h3, .nightly-columns h4 { margin: 0; }
+.nightly-state { display: grid; gap: 5px; justify-items: end; }
+.nightly-state small, .compact-item small { color: var(--muted); }
+.nightly-summary { border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.nightly-summary > div { display: grid; gap: 4px; padding: 14px 18px; }
+.nightly-summary > div + div { border-left: 1px solid var(--line); }
+.nightly-summary strong { font-size: 1.05rem; }
+.nightly-summary span { color: var(--muted); font-size: .76rem; }
+.nightly-columns { border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; }
+.nightly-columns > section { padding: 18px; }
+.nightly-columns > section + section { border-left: 1px solid var(--line); }
+.compact-list { display: grid; gap: 2px; margin-top: 12px; }
+.compact-item { align-items: start; display: grid; gap: 10px; grid-template-columns: 10px minmax(0, 1fr); padding: 8px 0; }
+.compact-item span { display: grid; gap: 2px; }
+.compact-item strong { font-size: .84rem; }
+.compact-item small { font-size: .76rem; line-height: 1.35; }
+.compact-item .status-dot { margin-top: 4px; }
+.status-dot.ready { background: #2f8a73; }
+.status-dot.attention { background: #d28a00; }
 .status-dot { border-radius: 50%; height: 10px; width: 10px; }
 .ready .status-dot { background: #2f8a73; }
 .attention .status-dot { background: #d28a00; }
@@ -122,6 +143,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .role-token, .state-token { border: 1px solid var(--line); border-radius: 999px; display: inline-block; font-size: .72rem; font-weight: 750; padding: 4px 8px; }
 .role-token.owner { background: var(--blue); border-color: #cbd8e8; color: var(--blue-ink); }
 .state-token.provisioned { background: var(--mint); border-color: #b9ddd5; color: var(--mint-ink); }
+.state-token.attention { background: var(--amber); border-color: #ead49f; color: var(--amber-ink); }
 .state-token.onboarding { background: var(--amber); border-color: #ead49f; color: var(--amber-ink); }
 .state-token.disabled { background: var(--red); border-color: #e6c2bd; color: var(--red-ink); }
 .save-roles { min-height: 34px; padding: 6px 10px; }
@@ -134,6 +156,9 @@ tbody tr:last-child td { border-bottom: 0; }
   .metric-strip { grid-template-columns: repeat(3, 1fr); }
   .metric:nth-child(4) { border-left: 0; }
   .health-grid, .governance-grid, .operations-grid { grid-template-columns: repeat(2, 1fr); }
+  .nightly-summary { grid-template-columns: repeat(2, 1fr); }
+  .nightly-summary > div:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
+  .nightly-summary > div:nth-child(4) { border-top: 1px solid var(--line); }
   .section-heading { align-items: start; gap: 18px; }
 }
 @media (max-width: 640px) {
@@ -146,7 +171,10 @@ tbody tr:last-child td { border-bottom: 0; }
   .metric-strip { grid-template-columns: repeat(2, 1fr); }
   .metric:nth-child(odd) { border-left: 0; }
   .metric:nth-child(even) { border-left: 1px solid var(--line); }
-  .health-grid, .governance-grid, .operations-grid, .split-band { grid-template-columns: 1fr; }
+  .health-grid, .governance-grid, .operations-grid, .split-band, .nightly-columns { grid-template-columns: 1fr; }
+  .nightly-heading { align-items: start; display: grid; gap: 12px; }
+  .nightly-state { justify-items: start; }
+  .nightly-columns > section + section { border-left: 0; border-top: 1px solid var(--line); }
   .split-band > section + section { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; }
   .search-field input { min-width: 0; width: 100%; }
   .policy-note { align-items: flex-start; display: grid; gap: 6px; }

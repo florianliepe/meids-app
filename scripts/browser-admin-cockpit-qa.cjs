@@ -96,15 +96,20 @@ async function run() {
         scrollWidth: document.documentElement.scrollWidth,
         metrics: document.querySelectorAll(".metric").length,
         health: document.querySelectorAll(".health-item").length,
+        nightlyMetrics: document.querySelectorAll("#nightlySummary > div").length,
+        nightlyBacklog: document.querySelectorAll("#nightlyBacklog .compact-item").length,
       }));
       const failures = [];
       if (dimensions.scrollWidth > dimensions.viewport + 2) failures.push(`horizontal overflow ${dimensions.scrollWidth}/${dimensions.viewport}`);
       if (dimensions.metrics !== 6) failures.push(`expected 6 metrics, found ${dimensions.metrics}`);
       if (dimensions.health !== 8) failures.push(`expected 8 health items, found ${dimensions.health}`);
-      await page.locator('[data-section="users"]').click();
-      if (await page.locator("#usersBody tr").count() !== 4) failures.push("user table did not render four users");
+      if (dimensions.nightlyMetrics !== 4) failures.push(`expected 4 nightly metrics, found ${dimensions.nightlyMetrics}`);
+      if (dimensions.nightlyBacklog < 4) failures.push(`expected at least 4 nightly backlog items, found ${dimensions.nightlyBacklog}`);
       const screenshot = path.join(outDir, `${test.name}.png`);
       await page.screenshot({ path: screenshot, fullPage: true });
+      await page.locator('[data-section="users"]').click();
+      if (await page.locator("#usersBody tr").count() !== 4) failures.push("user table did not render four users");
+      await page.screenshot({ path: path.join(outDir, `${test.name}-users.png`), fullPage: true });
       results.push({ ...test, status: failures.length ? "failed" : "passed", failures, dimensions, screenshot });
       await page.close();
     }

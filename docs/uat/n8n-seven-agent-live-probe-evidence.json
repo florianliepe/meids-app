@@ -1,13 +1,15 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-10-28T16:33:05.008Z",
+  "generated_at": "2026-11-02T20:25:14.542Z",
   "scope": "Public-safe n8n live execution evidence for Actor Twin and six workflow-tool subagents. No secrets are stored.",
-  "freshness_since": "2026-10-27T16:33:03.549Z",
-  "status": "complete",
+  "freshness_since": "2026-11-01T20:25:05.033Z",
+  "status": "partial",
   "summary": {
     "workflow_count": 7,
-    "fresh_connected_count": 7,
-    "stale_or_failed_agents": []
+    "fresh_connected_count": 6,
+    "stale_or_failed_agents": [
+      "learning_agent"
+    ]
   },
   "probes": [
     {
@@ -18,22 +20,22 @@
       "status": "fresh_connected",
       "fresh_success": true,
       "fetched_sample_size": 20,
-      "fresh_sample_size": 10,
+      "fresh_sample_size": 4,
       "latest_fresh_execution": {
-        "id": "42108",
+        "id": "65963",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-28T16:32:32.131Z",
-        "stopped_at": "2026-10-28T16:33:03.409Z",
-        "duration_ms": 31278
+        "started_at": "2026-11-02T20:23:23.916Z",
+        "stopped_at": "2026-11-02T20:25:02.971Z",
+        "duration_ms": 99055
       },
       "latest_available_execution": {
-        "id": "42108",
+        "id": "65963",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-28T16:32:32.131Z",
-        "stopped_at": "2026-10-28T16:33:03.409Z",
-        "duration_ms": 31278
+        "started_at": "2026-11-02T20:23:23.916Z",
+        "stopped_at": "2026-11-02T20:25:02.971Z",
+        "duration_ms": 99055
       }
     },
     {
@@ -43,23 +45,23 @@
       "routing_source": "actor_twin_tool",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 14,
-      "fresh_sample_size": 5,
+      "fetched_sample_size": 20,
+      "fresh_sample_size": 1,
       "latest_fresh_execution": {
-        "id": "42103",
+        "id": "65958",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-28T16:32:07.252Z",
-        "stopped_at": "2026-10-28T16:32:08.995Z",
-        "duration_ms": 1743
+        "started_at": "2026-11-02T20:22:42.661Z",
+        "stopped_at": "2026-11-02T20:22:46.786Z",
+        "duration_ms": 4125
       },
       "latest_available_execution": {
-        "id": "42103",
+        "id": "65958",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-28T16:32:07.252Z",
-        "stopped_at": "2026-10-28T16:32:08.995Z",
-        "duration_ms": 1743
+        "started_at": "2026-11-02T20:22:42.661Z",
+        "stopped_at": "2026-11-02T20:22:46.786Z",
+        "duration_ms": 4125
       }
     },
     {
@@ -69,23 +71,23 @@
       "routing_source": "actor_twin_tool",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 10,
-      "fresh_sample_size": 4,
+      "fetched_sample_size": 17,
+      "fresh_sample_size": 1,
       "latest_fresh_execution": {
-        "id": "42109",
+        "id": "65964",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-28T16:32:35.646Z",
-        "stopped_at": "2026-10-28T16:32:59.922Z",
-        "duration_ms": 24276
+        "started_at": "2026-11-02T20:23:27.694Z",
+        "stopped_at": "2026-11-02T20:24:01.990Z",
+        "duration_ms": 34296
       },
       "latest_available_execution": {
-        "id": "42109",
+        "id": "65964",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-28T16:32:35.646Z",
-        "stopped_at": "2026-10-28T16:32:59.922Z",
-        "duration_ms": 24276
+        "started_at": "2026-11-02T20:23:27.694Z",
+        "stopped_at": "2026-11-02T20:24:01.990Z",
+        "duration_ms": 34296
       }
     },
     {
@@ -96,22 +98,22 @@
       "status": "fresh_connected",
       "fresh_success": true,
       "fetched_sample_size": 20,
-      "fresh_sample_size": 4,
+      "fresh_sample_size": 1,
       "latest_fresh_execution": {
-        "id": "42110",
+        "id": "65965",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-28T16:32:38.912Z",
-        "stopped_at": "2026-10-28T16:32:55.285Z",
-        "duration_ms": 16373
+        "started_at": "2026-11-02T20:23:31.054Z",
+        "stopped_at": "2026-11-02T20:23:56.824Z",
+        "duration_ms": 25770
       },
       "latest_available_execution": {
-        "id": "42110",
+        "id": "65965",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-28T16:32:38.912Z",
-        "stopped_at": "2026-10-28T16:32:55.285Z",
-        "duration_ms": 16373
+        "started_at": "2026-11-02T20:23:31.054Z",
+        "stopped_at": "2026-11-02T20:23:56.824Z",
+        "duration_ms": 25770
       }
     },
     {
@@ -122,22 +124,22 @@
       "status": "fresh_connected",
       "fresh_success": true,
       "fetched_sample_size": 20,
-      "fresh_sample_size": 4,
+      "fresh_sample_size": 1,
       "latest_fresh_execution": {
-        "id": "42111",
+        "id": "65966",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-28T16:32:45.520Z",
-        "stopped_at": "2026-10-28T16:32:49.755Z",
-        "duration_ms": 4235
+        "started_at": "2026-11-02T20:23:37.904Z",
+        "stopped_at": "2026-11-02T20:23:50.163Z",
+        "duration_ms": 12259
       },
       "latest_available_execution": {
-        "id": "42111",
+        "id": "65966",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-28T16:32:45.520Z",
-        "stopped_at": "2026-10-28T16:32:49.755Z",
-        "duration_ms": 4235
+        "started_at": "2026-11-02T20:23:37.904Z",
+        "stopped_at": "2026-11-02T20:23:50.163Z",
+        "duration_ms": 12259
       }
     },
     {
@@ -150,20 +152,20 @@
       "fetched_sample_size": 20,
       "fresh_sample_size": 2,
       "latest_fresh_execution": {
-        "id": "42107",
+        "id": "65969",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-28T16:32:23.030Z",
-        "stopped_at": "2026-10-28T16:32:25.632Z",
-        "duration_ms": 2602
+        "started_at": "2026-11-02T20:24:12.224Z",
+        "stopped_at": "2026-11-02T20:24:53.590Z",
+        "duration_ms": 41366
       },
       "latest_available_execution": {
-        "id": "42107",
+        "id": "65969",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-28T16:32:23.030Z",
-        "stopped_at": "2026-10-28T16:32:25.632Z",
-        "duration_ms": 2602
+        "started_at": "2026-11-02T20:24:12.224Z",
+        "stopped_at": "2026-11-02T20:24:53.590Z",
+        "duration_ms": 41366
       }
     },
     {
@@ -171,25 +173,18 @@
       "agent": "learning_agent",
       "label": "Learning Agent",
       "routing_source": "actor_twin_tool",
-      "status": "fresh_connected",
-      "fresh_success": true,
+      "status": "stale_or_missing",
+      "fresh_success": false,
       "fetched_sample_size": 20,
-      "fresh_sample_size": 5,
-      "latest_fresh_execution": {
-        "id": "42112",
-        "status": "success",
-        "finished": true,
-        "started_at": "2026-10-28T16:33:03.852Z",
-        "stopped_at": "2026-10-28T16:33:04.737Z",
-        "duration_ms": 885
-      },
+      "fresh_sample_size": 0,
+      "latest_fresh_execution": null,
       "latest_available_execution": {
-        "id": "42112",
+        "id": "51367",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-28T16:33:03.852Z",
-        "stopped_at": "2026-10-28T16:33:04.737Z",
-        "duration_ms": 885
+        "started_at": "2026-10-30T16:25:53.410Z",
+        "stopped_at": "2026-10-30T16:26:36.890Z",
+        "duration_ms": 43480
       }
     }
   ]
