@@ -50,7 +50,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | PROD-019 | P1 | Deployed; device UAT pending | Add Actor Twin microphone transcription and explicit single-source intake while preserving n8n as the only chat surface. | Production assets verified; complete Windows/macOS microphone and source-confirmation UAT with visible transcript delivery into n8n chat. |
 | PROD-020 | P2 | Deployed; second-identity recall pass, malware scan and retention pending | Add governed visual-artifact storage and recall through private Blob, PostgreSQL metadata and optional OCR. | Owner upload/read, SHA-256 parity, approval/rejection cascade, private container posture, anonymous HTTP 401 and visual recall with a second identity passed. Defender for Storage malware-scanning and Blob retention/lifecycle evidence remain open. OCR remains optional. |
 | PROD-021 | P1 | Nightly heartbeat and Admin summary active; semantic and live-browser assertions need expansion | Detect contract, routing, latency, expected-answer and frontend regressions every night without production mutations. | The Admin Cockpit shows the latest published safe summary and the remaining Nightly-test backlog. Add deterministic semantic answer assertions, queue/outbox drift thresholds and a reusable authenticated Playwright identity/session. |
-| PROD-022 | P2 | Candidate validated; external review reconciled; protected promotion pending | Promote the actor-first frontend refinement: Actor Twin as the primary surface, compact Voice and Source intake, progressive Twin/Skill settings, lean Knowledge/Review, and operator-only Traces/Production links in Admin Cockpit. | Backend, agent, RLS, Entra, Admin, Graph V2, API parity, upload/device and responsive browser suites pass. The adversarial review found four P2 issues; Graph Advanced/rollback, Guided Setup, readable Voice status and direct Production routing are fixed. Sixteen responsive views plus a Graph V1 rollback case pass without horizontal overflow. Promote only after the protected pipeline passes. |
+| PROD-022 | P2 | Complete | Promote the actor-first frontend refinement: Actor Twin as the primary surface, compact Voice and Source intake, progressive Twin/Skill settings, lean Knowledge/Review, and operator-only Traces/Production links in Admin Cockpit. | The adversarial review found four P2 issues; Graph Advanced/rollback, Guided Setup, readable Voice status and direct Production routing were fixed. Sixteen responsive views plus Graph V1 rollback passed. PR #35 merged as `7aafabca5edb564b79dcd506c07730049522781b`; Azure Static Web Apps, backend and sandbox deployments passed. Live static verification confirms Actor-first markup, direct Voice/Source actions, visible Guided Setup, restored Graph controls and `graphExplorerV2=true`. |
 
 ## Decisions
 
@@ -73,6 +73,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | 2026-10-30 | Release the UAT intake and review hardening through protected PR #30. | Backend, agent hierarchy, admin, graph, API parity, and browser contract checks passed without production-data writes. | Merge `1bdcb7832d856ae26d8c64d8292082b91c3b5dcc` deployed successfully to Azure Static Web Apps and the backend App Service; the remaining gates are explicit authenticated/device smoke tests above. |
 | 2026-11-03 | Make Actor Twin the default daily workspace and move operational detail behind progressive disclosure. | End users need one conversational entry point; governance and production diagnostics remain available without dominating normal work. | Voice and source intake stay accessible within one action, Graph V2 retains its rollback flag, Traces/Production move to Admin Cockpit, and no API, authorization, persistence or n8n contract changes. |
 | 2026-11-04 | Treat progressive disclosure and feature-flag rollback as tested interactions, not markup assumptions. | The external review reproduced inaccessible Graph Advanced, Guided Setup and rollback controls even though the original static contract test passed. | Browser UAT now opens the disclosures, verifies all five setup steps, and runs Graph with both V2 enabled and disabled before promotion. |
+| 2026-11-04 | Promote the reconciled actor-first refinement through protected PR #35. | All local suites, preview checks, protected PR validation and three production deployment workflows passed after the four P2 findings were fixed. | Production now serves the Actor-first frontend at commit `7aafabca5edb564b79dcd506c07730049522781b`; Graph rollback remains flag-only. |
 
 ## Release sequence
 
@@ -84,12 +85,13 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 6. Promote remaining frontend/auth UX fixes through the Static Web App pipeline.
 7. Close only evidence-backed items above; add every new defect here before release.
 
-## Current promotion candidate
+## Current production release
 
-- Pull request: `https://github.com/florianliepe/meids-app/pull/27`
-- Candidate revision: `03d6585cb79a48ae873900944319c24446f069f8`
-- CI evidence: delivery validation run `40727350870` and Me.IDs PR validation run `40727351116` passed.
-- Migration 017 and controlled recovery are verified. Promotion may proceed after the documentation-only candidate update passes the same protected checks.
+- Pull request: `https://github.com/florianliepe/meids-app/pull/35`
+- Production revision: `7aafabca5edb564b79dcd506c07730049522781b`
+- PR evidence: validation runs `41869374977`, `41869374995`, and `41869375039` passed.
+- Deployment evidence: Azure Static Web Apps `41869707340`, Azure App Service `41869707285`, and GitHub Pages sandbox `41869707356` passed.
+- Live static verification confirms the Actor-first body scope, Voice and Source actions, Guided Setup disclosure, Graph control restoration, and `graphExplorerV2=true`. Authenticated API build information remains protected by Entra as designed.
 
 ## Human or privileged gates
 
