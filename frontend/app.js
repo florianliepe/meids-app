@@ -264,6 +264,8 @@
   twinPicturePreviewUrl: "",
   skillRunQualityFilter: "all",
   dashboardFilter: "concepts",
+  dashboardLaneKey: "",
+  dashboardLaneTargetId: "",
   dashboardClusterFilter: "",
   dashboardTraceQuadrant: "",
   conceptReviewFilter: "all",
@@ -737,8 +739,18 @@ function bindNavigation() {
   $$(".dashboard-filter").forEach((button) => {
     button.addEventListener("click", () => {
       state.dashboardFilter = button.dataset.dashboardFilter || "all";
+      state.dashboardLaneKey = "";
       renderDashboardFilter();
     });
+  });
+  $("#dashboardQueueSelect")?.addEventListener("change", (event) => {
+    state.dashboardFilter = event.target.value || "concepts";
+    state.dashboardLaneKey = "";
+    renderDashboardFilter();
+  });
+  $("#dashboardLaneSelect")?.addEventListener("change", (event) => {
+    state.dashboardLaneKey = event.target.value || "";
+    renderDashboardFilter();
   });
   document.addEventListener("click", (event) => {
     const action = event.target.closest("[data-cockpit-action]");
@@ -862,6 +874,7 @@ function handleCockpitAction(action) {
   const routes = {
     reviewConcepts: () => {
       state.dashboardFilter = "concepts";
+      state.dashboardLaneTargetId = "dashPendingConcepts";
       showView("dashboard");
       renderDashboardFilter();
       $("#dashPendingConcepts")?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -934,9 +947,37 @@ function renderDashboardFilter() {
   $$(".dashboard-filter").forEach((button) => {
     button.classList.toggle("active", (button.dataset.dashboardFilter || "all") === state.dashboardFilter);
   });
+  const queueSelect = $("#dashboardQueueSelect");
+  if (queueSelect && queueSelect.value !== state.dashboardFilter) queueSelect.value = state.dashboardFilter;
+  const matching = $$(".dashboard-section").filter((section) => (
+    state.dashboardFilter === "all" || section.dataset.dashboardSection === state.dashboardFilter
+  ));
+  const laneSelect = $("#dashboardLaneSelect");
+  const laneItems = matching.map((section, index) => ({
+    section,
+    key: section.id || section.querySelector("[id]")?.id || `${section.dataset.dashboardSection || "all"}:${index}`,
+    label: section.querySelector("h2")?.textContent?.trim() || `Queue ${index + 1}`,
+  }));
+  if (state.dashboardLaneTargetId) {
+    const target = laneItems.find((item) => item.key === state.dashboardLaneTargetId);
+    if (target) state.dashboardLaneKey = target.key;
+    state.dashboardLaneTargetId = "";
+  }
+  if (!laneItems.some((item) => item.key === state.dashboardLaneKey)) {
+    state.dashboardLaneKey = laneItems[0]?.key || "";
+  }
+  if (laneSelect) {
+    laneSelect.innerHTML = laneItems
+      .map((item) => `<option value="${escapeHtml(item.key)}">${escapeHtml(item.label)}</option>`)
+      .join("");
+    laneSelect.value = state.dashboardLaneKey;
+    laneSelect.disabled = laneItems.length < 2;
+  }
   $$(".dashboard-section").forEach((section) => {
-    const visible = state.dashboardFilter === "all" || section.dataset.dashboardSection === state.dashboardFilter;
+    const item = laneItems.find((candidate) => candidate.section === section);
+    const visible = Boolean(item && item.key === state.dashboardLaneKey);
     section.hidden = !visible;
+    section.classList.toggle("review-lane-active", visible);
   });
 }
 
@@ -1202,6 +1243,9 @@ function bindGraph() {
     if (event.key === "Escape" && !$("#graphPresentationOverlay")?.hidden) closeGraphPresentation();
     if (event.key === "Escape" && graphExplorerV2Enabled && $("#graph")?.classList.contains("active")) {
       clearGraphExplorerSelection();
+    }
+    if (event.key === "Escape" && document.activeElement?.classList?.contains("knowledge-increment")) {
+      document.activeElement.blur();
     }
   });
   document.addEventListener("click", (event) => {
@@ -14030,6 +14074,7 @@ function renderDecisionBoundaryHeatmap(result = {}) {
   target.querySelectorAll("[data-boundary-target]").forEach((button) => {
     button.addEventListener("click", () => {
       state.dashboardFilter = button.dataset.boundaryTarget || "all";
+      state.dashboardLaneTargetId = state.dashboardFilter === "traces" ? "dashLatestTraces" : state.dashboardFilter === "skills" ? "dashSkillQueue" : state.dashboardFilter === "refinements" ? "dashRefinementQueue" : state.dashboardFilter === "mcp" ? "dashMcpQueue" : "dashPendingConcepts";
       renderDashboardFilter();
       const section = state.dashboardFilter === "traces" ? $("#dashLatestTraces") : state.dashboardFilter === "skills" ? $("#dashSkillQueue") : state.dashboardFilter === "refinements" ? $("#dashRefinementQueue") : state.dashboardFilter === "mcp" ? $("#dashMcpQueue") : $("#dashPendingConcepts");
       section?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -14047,6 +14092,7 @@ function bindDashboardChartDrilldowns(target) {
         return;
       }
       state.dashboardFilter = targetFilter;
+      state.dashboardLaneTargetId = targetFilter === "traces" ? "dashLatestTraces" : targetFilter === "skills" ? "dashSkillQueue" : targetFilter === "mcp" ? "dashMcpQueue" : "dashPendingConcepts";
       renderDashboardFilter();
       const section = targetFilter === "traces" ? $("#dashLatestTraces") : targetFilter === "skills" ? $("#dashSkillQueue") : targetFilter === "mcp" ? $("#dashMcpQueue") : $("#dashPendingConcepts");
       section?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -14068,6 +14114,7 @@ function bindDashboardChartDrilldowns(target) {
         return;
       }
       state.dashboardFilter = "traces";
+      state.dashboardLaneTargetId = "dashLatestTraces";
       renderDashboardFilter();
       $("#dashLatestTraces")?.scrollIntoView({ block: "center", behavior: "smooth" });
     };
@@ -14086,6 +14133,7 @@ function bindClusterHealthDrilldowns(target) {
     button.addEventListener("click", () => {
       state.dashboardClusterFilter = button.dataset.cluster || "";
       state.dashboardFilter = "concepts";
+      state.dashboardLaneTargetId = "dashPendingConcepts";
       renderReviewDashboard(state.reviewDashboard || {});
       $("#dashPendingConcepts")?.scrollIntoView({ block: "center", behavior: "smooth" });
       showToast("Cluster drill-down", button.dataset.cluster || "Knowledge cluster", "info");
@@ -16736,7 +16784,10 @@ function reloadN8nChatContext() {
   state.n8nChatLoaded = false;
   state.n8nChatLoading = false;
   const mount = $("#n8nChatMount");
-  if (mount) mount.innerHTML = "";
+  if (mount) {
+    parkActorChatControls(mount);
+    mount.innerHTML = "";
+  }
   renderN8nInteractionContext();
   void ensureN8nChat();
 }
@@ -16745,6 +16796,7 @@ function installN8nChatBusyGuard(mount) {
   if (!mount || mount.dataset.busyGuardInstalled === "true") return;
   mount.dataset.busyGuardInstalled = "true";
   const sync = () => {
+    placeActorChatControls(mount);
     const busy = Boolean(mount.querySelector(".chat-message-typing"));
     const input = mount.querySelector("textarea[data-test-id='chat-input']");
     if (!input) return;
@@ -16758,6 +16810,28 @@ function installN8nChatBusyGuard(mount) {
   const observer = new MutationObserver(sync);
   observer.observe(mount, { childList: true, subtree: true });
   sync();
+}
+
+function placeActorChatControls(mount = $("#n8nChatMount")) {
+  const controls = $("#actorChatControls");
+  if (!mount || !controls) return false;
+  const composer = mount.querySelector(".chat-inputs, .chat-input, [data-test-id='chat-input-container']");
+  if (!composer) return false;
+  const send = composer.querySelector("button[data-test-id='chat-input-send-button'], button.chat-input-send-button, .chat-input-send-button");
+  const insertionParent = send?.parentElement || composer;
+  controls.classList.add("actor-chat-controls-docked");
+  if (controls.parentElement === insertionParent && (!send || controls.nextElementSibling === send)) return true;
+  if (send) insertionParent.insertBefore(controls, send);
+  else insertionParent.appendChild(controls);
+  return true;
+}
+
+function parkActorChatControls(mount = $("#n8nChatMount")) {
+  const controls = $("#actorChatControls");
+  if (!mount || !controls || !mount.contains(controls)) return false;
+  controls.classList.remove("actor-chat-controls-docked");
+  mount.insertAdjacentElement("afterend", controls);
+  return true;
 }
 
 async function refreshN8nChatAuthorizationContext({ reconnect = false, reason = "refresh" } = {}) {
@@ -16835,6 +16909,7 @@ async function ensureN8nChat() {
   try {
     ensureStylesheet("n8n-chat-style", N8N_CHAT_CSS_URL);
     const module = await import(N8N_CHAT_MODULE_URL);
+    parkActorChatControls(mount);
     mount.innerHTML = "";
     module.createChat({
       webhookUrl,
@@ -16847,13 +16922,14 @@ async function ensureN8nChat() {
       initialMessages: [],
       i18n: {
         en: {
-          title: "Actor Twin",
-          subtitle: "n8n orchestration",
+          title: "",
+          subtitle: "",
           inputPlaceholder: "Ask the Actor Twin...",
         },
       },
     });
     installN8nChatBusyGuard(mount);
+    requestAnimationFrame(() => placeActorChatControls(mount));
     state.n8nChatLoaded = true;
     scheduleN8nAuthorizationRefresh();
     if (status) status.textContent = "n8n agent connected.";
@@ -19160,6 +19236,7 @@ function bindKnowledgeFabricQueueActions() {
     }
     if (action === "review") {
       state.dashboardFilter = "concepts";
+      state.dashboardLaneTargetId = "dashPendingConcepts";
       showView("dashboard");
       renderDashboardFilter();
       $("#dashPendingConcepts")?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -23995,8 +24072,9 @@ function renderKnowledgeCard(concept) {
   const reviewState = concept.review_state || "pending-review";
   const actorUse = knowledgeActorUseState(concept);
   const sourceState = conceptSourceState(concept);
+  const previewId = `knowledge-preview-${safeGraphClass(concept.path || concept.concept_id || concept.title || "concept")}`;
   return `
-    <article class="knowledge-increment ${state.conceptDensity === "compact" ? "compact" : ""}" data-review-state="${escapeHtml(reviewState)}" data-actor-use="${escapeHtml(actorUse.className)}" data-source-state="${escapeHtml(sourceState)}">
+    <article class="knowledge-increment ${state.conceptDensity === "compact" ? "compact" : ""}" data-review-state="${escapeHtml(reviewState)}" data-actor-use="${escapeHtml(actorUse.className)}" data-source-state="${escapeHtml(sourceState)}" tabindex="0" aria-describedby="${escapeHtml(previewId)}">
       <div class="knowledge-increment-main">
         ${renderKnowledgeTitleRow(concept, reviewState)}
         <p>${escapeHtml(cardDescription)}</p>
@@ -24006,6 +24084,11 @@ function renderKnowledgeCard(concept) {
       ${renderKnowledgeCardStateRibbon(concept, actorUse)}
       ${renderKnowledgeSource(concept, sourceLabel)}
       ${renderKnowledgeActions(concept)}
+      <div id="${escapeHtml(previewId)}" class="knowledge-hover-preview" role="note">
+        <strong>${escapeHtml(concept.title || concept.path)}</strong>
+        <p>${escapeHtml(cardDescription)}</p>
+        <span>${escapeHtml(labelizeGraph(reviewState))} · ${escapeHtml(actorUse.label || "audit only")} · ${escapeHtml(sourceLabel)}</span>
+      </div>
     </article>
   `;
 }
@@ -34316,6 +34399,7 @@ async function exportTraceReviewPackFromDrawer() {
 function openTraceReviewQueue() {
   closeConceptDrawer();
   state.dashboardFilter = "traces";
+  state.dashboardLaneTargetId = "dashLatestTraces";
   showView("dashboard");
   renderDashboardFilter();
   $("#dashLatestTraces")?.scrollIntoView({ block: "center", behavior: "smooth" });

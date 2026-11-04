@@ -13662,7 +13662,12 @@ body.graph-explorer-v2 .graph-cockpit-panel {
 }
 
 body.graph-explorer-v2 .graph-cockpit-head {
+  display: none;
+}
+
+body.graph-explorer-v2 #graph.graph-advanced-open .graph-cockpit-head {
   align-items: center;
+  display: flex;
   margin-bottom: 12px;
   padding: 0 2px 12px;
 }
@@ -35497,5 +35502,243 @@ body.actor-first-ui.graph-explorer-v2 #graph.graph-has-selection .graph-detail-p
 @media (prefers-reduced-motion: reduce) {
   .actor-first-ui .knowledge-increment {
     transition: none;
+  }
+}
+
+/* End-user refinement: one conversation, one review queue, and progressive knowledge detail. */
+.actor-first-ui #chat.view.active,
+.actor-first-ui #n8nAgentPanel {
+  max-width: none;
+  width: 100%;
+}
+
+.actor-first-ui #n8nAgentPanel {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.actor-first-ui .n8n-chat-mount {
+  min-height: calc(100vh - 150px);
+  overflow: hidden;
+}
+
+.actor-first-ui .n8n-chat-mount .chat-header,
+.actor-first-ui .n8n-chat-mount header.chat-header,
+.actor-first-ui .n8n-chat-mount .chat-heading {
+  display: none !important;
+}
+
+.actor-first-ui .n8n-chat-mount .chat-layout,
+.actor-first-ui .n8n-chat-mount .chat-wrapper {
+  min-height: inherit;
+}
+
+.actor-first-ui .actor-chat-capture {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.actor-first-ui .actor-chat-controls-docked {
+  flex: 0 0 auto;
+  margin-left: auto;
+  order: 8;
+  padding: 0 2px;
+}
+
+.actor-first-ui .actor-chat-controls-docked button {
+  min-height: 36px;
+  padding: 7px 10px;
+}
+
+.actor-first-ui .actor-chat-status {
+  bottom: 8px;
+  font-size: 0.78rem;
+  left: 14px;
+  margin: 0;
+  max-width: min(60ch, calc(100% - 28px));
+  pointer-events: none;
+  position: absolute;
+  z-index: 4;
+}
+
+.actor-first-ui #n8nAgentPanel {
+  position: relative;
+}
+
+.actor-first-ui .knowledge-increment {
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  min-height: 72px;
+  overflow: visible;
+  padding: 10px 12px;
+  position: relative;
+}
+
+.actor-first-ui .knowledge-increment-main > p,
+.actor-first-ui .knowledge-increment .knowledge-actor-use,
+.actor-first-ui .knowledge-increment .knowledge-card-state-ribbon,
+.actor-first-ui .knowledge-increment .knowledge-increment-source {
+  display: none;
+}
+
+.actor-first-ui .knowledge-increment-fabric {
+  min-width: 180px;
+}
+
+.actor-first-ui .knowledge-hover-preview {
+  background: color-mix(in srgb, var(--surface) 97%, var(--accent) 3%);
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line));
+  border-radius: 7px;
+  box-shadow: 0 14px 34px rgba(25, 30, 26, 0.16);
+  display: grid;
+  gap: 5px;
+  left: 34px;
+  max-width: min(620px, calc(100vw - 90px));
+  opacity: 0;
+  padding: 12px 14px;
+  pointer-events: none;
+  position: absolute;
+  top: calc(100% - 4px);
+  transform: translateY(-4px);
+  transition: opacity 100ms ease, transform 100ms ease;
+  visibility: hidden;
+  width: max-content;
+  z-index: 12;
+}
+
+.actor-first-ui .knowledge-hover-preview strong,
+.actor-first-ui .knowledge-hover-preview p,
+.actor-first-ui .knowledge-hover-preview span {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.actor-first-ui .knowledge-hover-preview p,
+.actor-first-ui .knowledge-hover-preview span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.actor-first-ui .knowledge-increment:hover .knowledge-hover-preview,
+.actor-first-ui .knowledge-increment:focus-within .knowledge-hover-preview,
+.actor-first-ui .knowledge-increment:focus .knowledge-hover-preview {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actor-first-ui .knowledge-hover-preview {
+    transition: none;
+  }
+}
+
+.actor-first-ui #dashboard .dashboard-filterbar {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(190px, 0.7fr) minmax(240px, 1fr);
+  padding: 10px 12px;
+}
+
+.actor-first-ui #dashboard .dashboard-filter {
+  display: none;
+}
+
+.review-queue-select,
+.review-lane-select {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.review-queue-select > span,
+.review-lane-select > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.actor-first-ui #dashboard .operations-queue-title {
+  display: none;
+}
+
+.actor-first-ui #dashboard .operations-board {
+  display: block;
+}
+
+.actor-first-ui #dashboard .dashboard-section.review-lane-active {
+  min-height: min(720px, calc(100vh - 250px));
+  width: 100%;
+}
+
+body.actor-first-ui.graph-explorer-v2 .graph-topology-shell {
+  align-items: stretch;
+  display: flex;
+  min-height: calc(100vh - 250px);
+  padding: 8px;
+}
+
+body.actor-first-ui.graph-explorer-v2 .graph-topology-svg {
+  height: 100%;
+  min-height: calc(100vh - 270px);
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .actor-first-ui #n8nChatMount .chat-inputs {
+    display: grid !important;
+    gap: 6px;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+  }
+
+  .actor-first-ui #n8nChatMount .chat-inputs textarea,
+  .actor-first-ui #n8nChatMount .chat-inputs [data-test-id="chat-input"] {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .actor-first-ui #actorChatControls.actor-chat-controls-docked {
+    grid-column: 2 / 4;
+    justify-content: flex-end;
+    margin-left: 0;
+    min-width: max-content;
+    order: initial;
+  }
+
+  .actor-first-ui #n8nChatMount .chat-input-send-button,
+  .actor-first-ui #n8nChatMount [data-test-id="chat-input-send-button"] {
+    grid-column: 4;
+  }
+
+  .actor-first-ui .n8n-chat-mount {
+    min-height: calc(100vh - 120px);
+  }
+
+  .actor-first-ui .actor-chat-controls-docked #actorSourceBtn {
+    display: inline-flex;
+  }
+
+  .actor-first-ui .knowledge-increment {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .actor-first-ui .knowledge-increment-fabric {
+    display: none;
+  }
+
+  .actor-first-ui .knowledge-hover-preview {
+    left: 8px;
+    max-width: calc(100vw - 40px);
+    width: calc(100% - 16px);
+  }
+
+  .actor-first-ui #dashboard .dashboard-filterbar {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
