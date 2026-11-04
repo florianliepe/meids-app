@@ -35205,3 +35205,297 @@ body.graph-explorer-v2 .graph-canvas-wrap {
     max-height: 220px;
   }
 }
+
+/* Actor-first refinement: daily work stays calm while governed tools remain available. */
+.actor-first-ui [hidden] {
+  display: none !important;
+}
+
+.actor-first-ui .topbar {
+  min-height: 72px;
+  padding-block: 12px;
+}
+
+.actor-first-ui .topbar-actions {
+  gap: 8px;
+}
+
+.actor-first-ui #chat.view.active {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: min(1040px, 100%);
+}
+
+.actor-first-ui #n8nAgentPanel {
+  order: 1;
+  width: min(900px, 100%);
+  padding: 16px;
+}
+
+.actor-first-ui #chatInteractionSetup {
+  order: 2;
+  width: min(900px, 100%);
+  margin-bottom: 0;
+}
+
+.actor-first-ui .n8n-agent-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+.actor-first-ui .n8n-agent-head h2 {
+  margin-bottom: 4px;
+}
+
+.actor-first-ui .n8n-agent-head p {
+  max-width: 62ch;
+  margin: 0;
+}
+
+.actor-first-ui .actor-chat-capture {
+  align-self: start;
+  display: flex;
+  gap: 8px;
+}
+
+.actor-first-ui .n8n-chat-mount {
+  min-height: min(590px, calc(100vh - 250px));
+}
+
+.actor-first-ui #actorCaptureStatus {
+  margin: 8px 0;
+}
+
+.actor-first-ui #voice .source-capture-grid {
+  grid-template-columns: minmax(300px, 0.82fr) minmax(420px, 1.18fr);
+  align-items: start;
+}
+
+.actor-first-ui #voice .source-capture-card,
+.actor-first-ui #ingest .source-capture-card {
+  padding: 18px;
+}
+
+.actor-first-ui #voiceReadiness {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  min-height: 24px;
+  margin: 2px 0 12px;
+  padding: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.actor-first-ui #voiceReadiness::before {
+  content: "";
+  flex: 0 0 10px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: #9b9b92;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.actor-first-ui #voiceReadiness.ready::before {
+  background: #2f9f77;
+}
+
+.actor-first-ui #voiceReadiness.missing::before {
+  background: #c65d4b;
+}
+
+.actor-first-ui .voice-draft-loader,
+.actor-first-ui .voice-paste-disclosure,
+.actor-first-ui #voiceAdvancedDiagnostics {
+  margin-top: 12px;
+}
+
+.actor-first-ui #transcriptBox,
+.actor-first-ui #voiceTranscriptEditor {
+  max-height: 250px;
+  overflow: auto;
+}
+
+.actor-first-ui #ingest .source-capture-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.actor-first-ui #ingest .source-capture-card > p {
+  min-height: 0;
+  margin-bottom: 12px;
+}
+
+.actor-first-ui #ingestResult {
+  max-height: 180px;
+  margin-top: 14px;
+  overflow: auto;
+}
+
+.actor-first-ui .knowledge-browser-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.actor-first-ui .knowledge-browser-head > div:first-child .badge,
+.actor-first-ui .knowledge-browser-summary {
+  display: none;
+}
+
+.actor-first-ui .knowledge-browser-head h2 {
+  max-width: 36ch;
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.actor-first-ui .knowledge-control-rail {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--surface);
+}
+
+.actor-first-ui .knowledge-increment {
+  transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.actor-first-ui .knowledge-increment:hover,
+.actor-first-ui .knowledge-increment:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+  box-shadow: 0 8px 22px rgba(30, 35, 31, 0.08);
+}
+
+.actor-first-ui #dashboard .cockpit-view-rail,
+.actor-first-ui #twins .cockpit-view-rail,
+.actor-first-ui #skills .cockpit-view-rail,
+.actor-first-ui #graph .cockpit-view-rail {
+  margin-bottom: 12px;
+}
+
+.actor-first-ui #dashboard .dashboard-filterbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin-bottom: 12px;
+  background: var(--surface);
+}
+
+.actor-first-ui #dashboard .operations-queue-title {
+  padding-block: 10px;
+}
+
+.actor-first-ui #dashboard .operations-queue-title small,
+.actor-first-ui #dashboard .filterbar-label,
+.actor-first-ui #dashboard [data-dashboard-filter="all"],
+.actor-first-ui #dashboard [data-dashboard-filter="traces"] {
+  display: none;
+}
+
+.actor-first-ui #twins .twin-grid {
+  grid-template-columns: minmax(280px, 0.75fr) minmax(520px, 1.25fr);
+  align-items: start;
+}
+
+.actor-first-ui #twins .profile-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.actor-first-ui .profile-advanced-settings {
+  grid-column: 1 / -1;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0;
+  background: var(--surface-quiet);
+}
+
+.actor-first-ui .profile-advanced-settings > summary {
+  padding: 12px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.actor-first-ui .profile-advanced-settings[open] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 12px 12px;
+}
+
+.actor-first-ui .profile-advanced-settings[open] > summary {
+  grid-column: 1 / -1;
+  margin-inline: -12px;
+}
+
+.actor-first-ui #skills .skill-authoring-grid {
+  grid-template-columns: minmax(360px, 0.9fr) minmax(440px, 1.1fr);
+}
+
+.actor-first-ui #skills .skill-detail-grid > article:nth-child(2) {
+  display: none;
+}
+
+.actor-first-ui #skills .skill-detail-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body.actor-first-ui.graph-explorer-v2 #graph.view.active {
+  max-width: none;
+  padding-inline: 12px;
+}
+
+body.actor-first-ui.graph-explorer-v2 .graph-cockpit-panel {
+  padding: 12px;
+}
+
+body.actor-first-ui.graph-explorer-v2 .graph-canvas-wrap {
+  min-height: min(900px, calc(100vh - 150px));
+}
+
+body.actor-first-ui.graph-explorer-v2 #graph.graph-has-selection .graph-detail-panel {
+  width: min(340px, 38vw);
+}
+
+@media (max-width: 980px) {
+  .actor-first-ui #voice .source-capture-grid,
+  .actor-first-ui #twins .twin-grid,
+  .actor-first-ui #skills .skill-authoring-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .actor-first-ui .topbar {
+    align-items: flex-start;
+  }
+
+  .actor-first-ui .n8n-agent-head,
+  .actor-first-ui #ingest .source-capture-grid,
+  .actor-first-ui #twins .profile-form-grid,
+  .actor-first-ui .profile-advanced-settings[open] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .actor-first-ui .actor-chat-capture {
+    width: 100%;
+  }
+
+  .actor-first-ui .actor-chat-capture button {
+    flex: 1;
+  }
+
+  .actor-first-ui .n8n-chat-mount {
+    min-height: 540px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actor-first-ui .knowledge-increment {
+    transition: none;
+  }
+}

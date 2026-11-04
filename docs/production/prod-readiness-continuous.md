@@ -1,6 +1,6 @@
 # Me.IDs Continuous PROD Readiness
 
-Last updated: 2026-10-30
+Last updated: 2026-11-04
 
 This document is the canonical, continuously maintained production-readiness backlog for Me.IDs. Every production fix, live finding, accepted risk, and release gate must be reconciled here. Detailed evidence remains in `docs/uat/` and the focused production runbooks.
 
@@ -50,6 +50,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | PROD-019 | P1 | Deployed; device UAT pending | Add Actor Twin microphone transcription and explicit single-source intake while preserving n8n as the only chat surface. | Production assets verified; complete Windows/macOS microphone and source-confirmation UAT with visible transcript delivery into n8n chat. |
 | PROD-020 | P2 | Deployed; second-identity recall pass, malware scan and retention pending | Add governed visual-artifact storage and recall through private Blob, PostgreSQL metadata and optional OCR. | Owner upload/read, SHA-256 parity, approval/rejection cascade, private container posture, anonymous HTTP 401 and visual recall with a second identity passed. Defender for Storage malware-scanning and Blob retention/lifecycle evidence remain open. OCR remains optional. |
 | PROD-021 | P1 | Nightly heartbeat and Admin summary active; semantic and live-browser assertions need expansion | Detect contract, routing, latency, expected-answer and frontend regressions every night without production mutations. | The Admin Cockpit shows the latest published safe summary and the remaining Nightly-test backlog. Add deterministic semantic answer assertions, queue/outbox drift thresholds and a reusable authenticated Playwright identity/session. |
+| PROD-022 | P2 | Candidate validated; external review reconciled; protected promotion pending | Promote the actor-first frontend refinement: Actor Twin as the primary surface, compact Voice and Source intake, progressive Twin/Skill settings, lean Knowledge/Review, and operator-only Traces/Production links in Admin Cockpit. | Backend, agent, RLS, Entra, Admin, Graph V2, API parity, upload/device and responsive browser suites pass. The adversarial review found four P2 issues; Graph Advanced/rollback, Guided Setup, readable Voice status and direct Production routing are fixed. Sixteen responsive views plus a Graph V1 rollback case pass without horizontal overflow. Promote only after the protected pipeline passes. |
 
 ## Decisions
 
@@ -70,6 +71,8 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | 2026-10-30 | Store governed source binaries only in private Blob and keep recall server-mediated. | Browser-visible SAS URLs would weaken revocation and leak storage topology; PostgreSQL is the correct metadata and RLS authority, not a binary store. | The backend managed identity writes/reads Blob, responses omit Blob URIs, pending artifacts are visible only to their owner/reviewers, and ordinary recall starts only after approval. |
 | 2026-10-30 | Preserve the 90-second per-execution skill boundary and track queue age separately. | Concurrent jobs are intentionally processed sequentially by the current durable worker, so end-to-end wall time can exceed the n8n request timeout without violating it. | Add queue-age telemetry and scale worker concurrency only after idempotency and n8n capacity are measured; do not raise the interactive n8n timeout to hide queue delay. |
 | 2026-10-30 | Release the UAT intake and review hardening through protected PR #30. | Backend, agent hierarchy, admin, graph, API parity, and browser contract checks passed without production-data writes. | Merge `1bdcb7832d856ae26d8c64d8292082b91c3b5dcc` deployed successfully to Azure Static Web Apps and the backend App Service; the remaining gates are explicit authenticated/device smoke tests above. |
+| 2026-11-03 | Make Actor Twin the default daily workspace and move operational detail behind progressive disclosure. | End users need one conversational entry point; governance and production diagnostics remain available without dominating normal work. | Voice and source intake stay accessible within one action, Graph V2 retains its rollback flag, Traces/Production move to Admin Cockpit, and no API, authorization, persistence or n8n contract changes. |
+| 2026-11-04 | Treat progressive disclosure and feature-flag rollback as tested interactions, not markup assumptions. | The external review reproduced inaccessible Graph Advanced, Guided Setup and rollback controls even though the original static contract test passed. | Browser UAT now opens the disclosures, verifies all five setup steps, and runs Graph with both V2 enabled and disabled before promotion. |
 
 ## Release sequence
 
