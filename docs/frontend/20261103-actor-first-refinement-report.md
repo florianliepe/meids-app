@@ -1,6 +1,6 @@
 # Actor-first frontend refinement report
 
-Date: 2026-11-03  
+Date: 2026-11-03
 Source: `visual refinement 03.11.2026.pdf`
 
 ## Outcome
