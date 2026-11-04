@@ -258,22 +258,16 @@
             </details>
           </details>
           <section id="n8nAgentPanel" class="n8n-agent-panel">
-            <div class="n8n-agent-head">
-              <div>
-                <span class="badge">Connected agent</span>
-                <h2>Ask your Actor Twin</h2>
-                <p>Talk, type, or add a source. Your twin finds trusted knowledge and routes specialist work for you.</p>
-              </div>
-              <div class="actor-chat-capture" aria-label="Actor Twin input options">
-                <button id="actorVoiceBtn" class="secondary small" type="button">Talk</button>
-                <button id="actorSourceBtn" class="secondary small" type="button">Add source</button>
-                <input id="actorSourceInput" type="file" hidden accept=".txt,.md,.markdown,.json,.csv,.yaml,.yml,.xml,.pdf,.docx,.pptx,text/plain,text/markdown,application/json,application/xml,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
-              </div>
-              <a id="n8nAgentLink" class="secondary small n8n-agent-link" href="#" target="_blank" rel="noreferrer" hidden>Open external chat</a>
-            </div>
-            <p id="actorCaptureStatus" class="muted-inline">Talk to transcribe into chat, or add one source. Use Source Upload for several files.</p>
+            <h2 class="sr-only">Actor Twin chat</h2>
             <div id="n8nChatMount" class="n8n-chat-mount"></div>
-            <p id="n8nChatStatus" class="muted-inline">n8n chat not loaded yet.</p>
+            <div id="actorChatControls" class="actor-chat-capture" aria-label="Actor Twin input options">
+              <button id="actorVoiceBtn" class="secondary small" type="button" title="Talk to Actor Twin">Talk</button>
+              <button id="actorSourceBtn" class="secondary small" type="button" title="Add one source">Add source</button>
+              <input id="actorSourceInput" type="file" hidden accept=".txt,.md,.markdown,.json,.csv,.yaml,.yml,.xml,.pdf,.docx,.pptx,text/plain,text/markdown,application/json,application/xml,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+            </div>
+            <p id="actorCaptureStatus" class="muted-inline actor-chat-status" aria-live="polite">Talk or type a message.</p>
+            <p id="n8nChatStatus" class="sr-only" aria-live="polite">n8n chat not loaded yet.</p>
+            <a id="n8nAgentLink" class="secondary small n8n-agent-link" href="#" target="_blank" rel="noreferrer" hidden>Open external chat</a>
           </section>
           <details id="chatSkillContext" class="chat-skill-context" hidden>
             <summary>Skill source context</summary>
@@ -906,7 +900,21 @@
             </div>
           </details>
           <div class="dashboard-filterbar" aria-label="Dashboard queue filters">
-            <span class="filterbar-label">Queue view</span>
+            <label class="review-queue-select" for="dashboardQueueSelect">
+              <span>Queue</span>
+              <select id="dashboardQueueSelect" class="compact-select">
+                <option value="concepts">Concept review</option>
+                <option value="graph">Graph review</option>
+                <option value="skills">Skill approvals</option>
+                <option value="refinements">Refinements</option>
+                <option value="traces">Trace review</option>
+              </select>
+            </label>
+            <label class="review-lane-select" for="dashboardLaneSelect">
+              <span>Issue type</span>
+              <select id="dashboardLaneSelect" class="compact-select"></select>
+            </label>
+            <span class="filterbar-label sr-only">Queue view</span>
             <button class="dashboard-filter active" type="button" data-dashboard-filter="all">All queues</button>
             <button class="dashboard-filter" type="button" data-dashboard-filter="concepts">Concepts</button>
             <button class="dashboard-filter" type="button" data-dashboard-filter="traces">Traces</button>

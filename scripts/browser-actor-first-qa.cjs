@@ -37,8 +37,9 @@ function serve({ listenPort = port, graphV2 = true } = {}) {
     if (!file.startsWith(root)) return response.writeHead(403).end("forbidden");
     fs.readFile(file, (error, data) => {
       if (error) return response.writeHead(404).end("not found");
-      const body = path.basename(file) === "runtime-config.js" && graphV2
-        ? String(data).replace("graphExplorerV2: false", "graphExplorerV2: true")
+      const body = path.basename(file) === "runtime-config.js"
+        ? String(data)
+          .replace("graphExplorerV2: false", `graphExplorerV2: ${graphV2 ? "true" : "false"}`)
         : data;
       response.writeHead(200, { "Content-Type": type(file) });
       response.end(body);
@@ -58,11 +59,25 @@ async function run() {
     for (const item of cases) {
       const context = await browser.newContext({ viewport: { width: item.width, height: item.height } });
       const page = await context.newPage();
+      await page.route("https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css", (route) => route.fulfill({
+        contentType: "text/css",
+        body: ".chat-layout{min-height:inherit;display:grid;grid-template-rows:1fr auto}.chat-inputs{display:flex;align-items:center;gap:6px;padding:12px}.chat-inputs textarea{flex:1}",
+      }));
+      await page.route("https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js", (route) => route.fulfill({
+        contentType: "text/javascript",
+        body: `export function createChat(options){document.querySelector(options.target).innerHTML='<div class="chat-layout"><div class="chat-messages"></div><div class="chat-inputs"><textarea data-test-id="chat-input" placeholder="Ask the Actor Twin..."></textarea><button data-test-id="chat-input-send-button" class="chat-input-send-button">Send</button></div></div>';}`,
+      }));
       await page.addInitScript(() => {
         localStorage.setItem("intellectualTwin.landing.dismissed", "true");
       });
-      await page.goto(`http://${host}:${port}/?view=${item.view}`, { waitUntil: "networkidle" });
+      await page.goto(`http://${host}:${port}/?view=${item.view}`, { waitUntil: "domcontentloaded" });
       await page.waitForSelector(`#${item.view}.view.active`, { timeout: 10000 });
+      if (item.view === "graph") {
+        await page.evaluate(() => {
+          if (window.INTELLECTUAL_TWIN_CONFIG?.staticPagesMode && typeof refreshStaticPagesWorkspace === "function") refreshStaticPagesWorkspace();
+        });
+        await page.waitForSelector("#graphCanvas .graph-topology-svg", { timeout: 10000 });
+      }
       await page.waitForTimeout(250);
       const metrics = await page.evaluate((view) => {
         const visible = (selector) => {
@@ -96,6 +111,10 @@ async function run() {
           skillApproval: visible("#skills .skill-detail-grid > article:nth-child(2)"),
           graphCanvasHeight: rect("#graph .graph-canvas-wrap")?.height || 0,
           reviewConceptActive: document.querySelector('[data-dashboard-filter="concepts"]')?.classList.contains("active") || false,
+          reviewQueueSelect: visible("#dashboardQueueSelect"),
+          reviewLaneSelect: visible("#dashboardLaneSelect"),
+          visibleReviewLanes: Array.from(document.querySelectorAll("#dashboard .dashboard-section")).filter((node) => !node.hidden && getComputedStyle(node).display !== "none").length,
+          graphSvgHeight: rect("#graph .graph-topology-svg")?.height || 0,
         };
       }, item.view);
       const failures = [];
@@ -104,10 +123,87 @@ async function run() {
       if (item.view === "chat" && (!metrics.actorPanel || !metrics.actorVoice || !metrics.actorSource)) failures.push("Actor Twin primary controls are not all visible");
       if (item.view === "voice" && (metrics.voiceHero || !metrics.voiceStatusVisible || !metrics.voiceStatusText)) failures.push("Voice Capture lacks a compact readable status");
       if (item.view === "ingest" && (metrics.ingestHero || metrics.ingestContract || metrics.ingestCards !== 4)) failures.push("Source Upload is not reduced to four intake lanes");
-      if (item.view === "dashboard" && !metrics.reviewConceptActive) failures.push("Review does not default to concepts");
+      if (item.view === "dashboard" && (!metrics.reviewConceptActive || !metrics.reviewQueueSelect || !metrics.reviewLaneSelect || metrics.visibleReviewLanes !== 1)) failures.push("Review is not reduced to one selectable queue lane");
       if (item.view === "twins" && (!metrics.setupPanel || metrics.setupOpen || metrics.advancedTwinOpen)) failures.push("Twin setup is not a visible collapsed disclosure");
       if (item.view === "skills" && metrics.skillApproval) failures.push("Skill approval remains in the daily skill view");
-      if (item.view === "graph" && metrics.graphCanvasHeight < 500) failures.push(`graph canvas too small: ${metrics.graphCanvasHeight}`);
+      if (item.view === "graph" && (metrics.graphCanvasHeight < 500 || metrics.graphSvgHeight < metrics.graphCanvasHeight * 0.72)) failures.push(`graph does not fill its initial canvas: ${metrics.graphSvgHeight}/${metrics.graphCanvasHeight}`);
+      if (item.view === "chat") {
+        const composer = await page.evaluate(async () => {
+          const mount = document.querySelector("#n8nChatMount");
+          if (!mount.querySelector(".chat-inputs")) mount.innerHTML = '<div class="chat-layout"><div class="chat-inputs"><textarea data-test-id="chat-input"></textarea><button data-test-id="chat-input-send-button">Send</button></div></div>';
+          placeActorChatControls(mount);
+          const controls = document.querySelector("#actorChatControls");
+          const send = mount.querySelector('[data-test-id="chat-input-send-button"]');
+          const initial = {
+            docked: controls?.parentElement === send?.parentElement,
+            talkBeforeSend: Boolean(controls && send && controls.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING),
+            headerVisible: Boolean(mount.querySelector(".chat-header")),
+          };
+          parkActorChatControls(mount);
+          mount.innerHTML = '<div class="chat-layout"><div class="chat-inputs"><textarea data-test-id="chat-input"></textarea><div class="actions"><button data-test-id="chat-input-send-button">Send</button></div></div></div>';
+          placeActorChatControls(mount);
+          const nestedSend = mount.querySelector('[data-test-id="chat-input-send-button"]');
+          let mutationCount = 0;
+          const observer = new MutationObserver((records) => { mutationCount += records.length; });
+          observer.observe(mount, { childList: true, subtree: true });
+          placeActorChatControls(mount);
+          placeActorChatControls(mount);
+          await Promise.resolve();
+          observer.disconnect();
+          const nested = {
+            docked: controls?.parentElement === nestedSend?.parentElement,
+            count: mount.querySelectorAll("#actorChatControls").length,
+            mutationCount,
+          };
+          parkActorChatControls(mount);
+          mount.innerHTML = '<div class="chat-layout"><div class="chat-inputs"><textarea data-test-id="chat-input"></textarea><button data-test-id="chat-input-send-button">Send</button></div></div>';
+          const reconnected = placeActorChatControls(mount) && mount.querySelectorAll("#actorChatControls").length === 1;
+          return { ...initial, nested, reconnected };
+        });
+        if (!composer.docked || !composer.talkBeforeSend || composer.headerVisible || !composer.nested.docked || composer.nested.count !== 1 || composer.nested.mutationCount !== 0 || !composer.reconnected) failures.push("Actor Twin controls are not stable beside Send across nested DOM and reconnect");
+      }
+      if (item.view === "concepts") {
+        const row = page.locator(".knowledge-increment").first();
+        if (!await row.count()) {
+          failures.push("Knowledge test fixture has no row");
+        } else {
+          await row.hover();
+          await page.waitForTimeout(140);
+          const previewVisible = await row.locator(".knowledge-hover-preview").evaluate((node) => getComputedStyle(node).visibility === "visible" && Number(getComputedStyle(node).opacity) > 0.8);
+          if (!previewVisible) failures.push("Knowledge hover does not reveal a preview");
+          await row.focus();
+          const accessible = await row.evaluate((node) => {
+            const describedBy = node.getAttribute("aria-describedby");
+            const preview = describedBy ? document.getElementById(describedBy) : null;
+            return Boolean(preview && preview.getAttribute("aria-hidden") !== "true" && preview.textContent.trim().length > 20);
+          });
+          if (!accessible) failures.push("Knowledge focus preview is missing accessible detail");
+          await page.keyboard.press("Escape");
+        }
+      }
+      if (item.view === "dashboard") {
+        const laneTransitions = await page.evaluate(() => {
+          const queue = document.querySelector("#dashboardQueueSelect");
+          const lane = document.querySelector("#dashboardLaneSelect");
+          const results = [];
+          for (const option of Array.from(queue?.options || [])) {
+            queue.value = option.value;
+            queue.dispatchEvent(new Event("change", { bubbles: true }));
+            const options = Array.from(lane?.options || []);
+            for (const laneOption of options) {
+              lane.value = laneOption.value;
+              lane.dispatchEvent(new Event("change", { bubbles: true }));
+              results.push(document.querySelectorAll(".dashboard-section:not([hidden])").length);
+            }
+          }
+          state.dashboardFilter = "traces";
+          state.dashboardLaneKey = "dashAgentTraceHistory";
+          renderDashboardFilter();
+          openTraceReviewQueue();
+          return { results, target: state.dashboardLaneKey, latestVisible: !document.querySelector("#dashLatestTraces")?.hidden };
+        });
+        if (laneTransitions.results.some((count) => count !== 1) || laneTransitions.target !== "dashLatestTraces" || !laneTransitions.latestVisible) failures.push(`Review queue or targeted lane navigation is unstable: ${JSON.stringify(laneTransitions)}`);
+      }
       if (item.view === "twins") {
         await page.locator("#twins .setup-panel > summary").click();
         const setup = await page.evaluate(() => ({
@@ -123,10 +219,12 @@ async function run() {
           return Boolean(node && getComputedStyle(node).display !== "none" && node.getBoundingClientRect().height > 0);
         });
         if (!advancedVisible) failures.push("Graph Advanced does not reveal projection controls");
+        await page.locator('[data-graph-explorer-action="advanced"]').click();
       }
       const screenshot = path.join(outDir, `${item.name}.png`);
       await page.screenshot({ path: screenshot, fullPage: true });
-      results.push({ ...item, metrics, failures, status: failures.length ? "failed" : "passed", screenshot });
+      const screenshotRef = path.relative(process.cwd(), screenshot).replace(/\\/g, "/");
+      results.push({ ...item, metrics, failures, status: failures.length ? "failed" : "passed", screenshot: screenshotRef });
       await context.close();
     }
 
@@ -134,8 +232,8 @@ async function run() {
     const rollbackContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
     const rollbackPage = await rollbackContext.newPage();
     await rollbackPage.addInitScript(() => localStorage.setItem("intellectualTwin.landing.dismissed", "true"));
-    await rollbackPage.goto(`http://${host}:${port + 1}/?view=graph`, { waitUntil: "networkidle" });
-    await rollbackPage.waitForSelector("#graph.view.active", { timeout: 10000 });
+    await rollbackPage.goto(`http://${host}:${port + 1}/?view=graph`, { waitUntil: "domcontentloaded" });
+    await rollbackPage.waitForTimeout(600);
     const rollback = await rollbackPage.evaluate(() => {
       const visible = (selector) => {
         const node = document.querySelector(selector);

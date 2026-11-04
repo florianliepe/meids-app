@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-04T16:34:40.868Z",
+  "generated_at": "2026-11-04T18:21:49.548Z",
   "results": [
     {
       "view": "chat",
@@ -25,11 +25,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\actor-desktop.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/actor-desktop.png"
     },
     {
       "view": "chat",
@@ -55,11 +59,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\actor-mobile.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/actor-mobile.png"
     },
     {
       "view": "voice",
@@ -85,11 +93,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\voice-desktop.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/voice-desktop.png"
     },
     {
       "view": "voice",
@@ -115,11 +127,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\voice-mobile.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/voice-mobile.png"
     },
     {
       "view": "ingest",
@@ -145,11 +161,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\source-desktop.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/source-desktop.png"
     },
     {
       "view": "ingest",
@@ -175,11 +195,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\source-mobile.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/source-mobile.png"
     },
     {
       "view": "concepts",
@@ -205,11 +229,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\knowledge-desktop.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/knowledge-desktop.png"
     },
     {
       "view": "concepts",
@@ -235,11 +263,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\knowledge-mobile.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/knowledge-mobile.png"
     },
     {
       "view": "dashboard",
@@ -249,7 +281,7 @@
       "metrics": {
         "scrollWidth": 1440,
         "viewportWidth": 1440,
-        "controlCount": 34,
+        "controlCount": 20,
         "actorPanel": false,
         "actorVoice": false,
         "actorSource": false,
@@ -265,11 +297,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": true,
+        "reviewLaneSelect": true,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\review-desktop.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/review-desktop.png"
     },
     {
       "view": "dashboard",
@@ -279,7 +315,7 @@
       "metrics": {
         "scrollWidth": 390,
         "viewportWidth": 390,
-        "controlCount": 34,
+        "controlCount": 20,
         "actorPanel": false,
         "actorVoice": false,
         "actorSource": false,
@@ -295,11 +331,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": true,
+        "reviewLaneSelect": true,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\review-mobile.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/review-mobile.png"
     },
     {
       "view": "twins",
@@ -325,11 +365,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\twins-desktop.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/twins-desktop.png"
     },
     {
       "view": "twins",
@@ -355,11 +399,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\twins-mobile.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/twins-mobile.png"
     },
     {
       "view": "skills",
@@ -385,11 +433,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\skills-desktop.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/skills-desktop.png"
     },
     {
       "view": "skills",
@@ -415,11 +467,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 0,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 0
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\skills-mobile.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/skills-mobile.png"
     },
     {
       "view": "graph",
@@ -445,11 +501,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 852,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 832
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\graph-desktop.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/graph-desktop.png"
     },
     {
       "view": "graph",
@@ -475,11 +535,15 @@
         "advancedTwinOpen": false,
         "skillApproval": false,
         "graphCanvasHeight": 696,
-        "reviewConceptActive": true
+        "reviewConceptActive": true,
+        "reviewQueueSelect": false,
+        "reviewLaneSelect": false,
+        "visibleReviewLanes": 1,
+        "graphSvgHeight": 676
       },
       "failures": [],
       "status": "passed",
-      "screenshot": "C:\\Users\\e729958\\Downloads\\INtellectual twin\\Pandora\\.local\\meids-frontend-refinement\\docs\\visual-qa\\actor-first-20261103\\graph-mobile.png"
+      "screenshot": "docs/visual-qa/actor-first-20261103/graph-mobile.png"
     },
     {
       "name": "graph-v1-rollback",
