@@ -263,7 +263,7 @@
   lastTwinSwitchAt: null,
   twinPicturePreviewUrl: "",
   skillRunQualityFilter: "all",
-  dashboardFilter: "all",
+  dashboardFilter: "concepts",
   dashboardClusterFilter: "",
   dashboardTraceQuadrant: "",
   conceptReviewFilter: "all",
@@ -11708,6 +11708,8 @@ async function refreshAll() {
     ? (voiceProxyUrl ? "Ready: hosted speech-to-text proxy is configured." : "Ready: backend speech-to-text is configured.")
     : (status.voice_transcription?.reason || "Needs backend setup: configure a governed speech-to-text endpoint and an explicit supported transcription model.");
   $("#voiceReadiness").className = `readiness ${state.openAIConfigured ? "ready" : "missing"}`;
+  $("#voiceReadiness").title = $("#voiceReadiness").textContent;
+  $("#voiceReadiness").setAttribute("aria-label", $("#voiceReadiness").textContent);
   const activeView = document.querySelector(".nav-item.active")?.dataset.view || "chat";
   await refreshViewData(activeView);
 }
@@ -11743,6 +11745,8 @@ function refreshStaticPagesWorkspace() {
     ? "Ready: hosted speech-to-text proxy is configured for static staging."
     : "Static staging: voice recording UI is visible; speech-to-text requires a local backend, hosted backend, or n8n proxy with the Eraneos AI Gateway key.";
   $("#voiceReadiness").className = `readiness ${voiceProxyUrl ? "ready" : "missing"}`;
+  $("#voiceReadiness").title = $("#voiceReadiness").textContent;
+  $("#voiceReadiness").setAttribute("aria-label", $("#voiceReadiness").textContent);
   updateLandingStatus();
   renderProductionRestartHint();
   renderTwinContextNotices();

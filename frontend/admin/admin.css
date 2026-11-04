@@ -190,3 +190,10 @@ tbody tr:last-child td { border-bottom: 0; }
   #usersTable .empty { display: block; }
   #usersTable .empty::before { content: none; }
 }
+
+.operations-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}

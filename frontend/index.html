@@ -94,7 +94,7 @@
       }
     </script>
   </head>
-  <body>
+  <body class="actor-first-ui">
     <section class="file-open-warning" hidden aria-hidden="true">
       <article>
         <p class="eyebrow">Me.IDs</p>
@@ -159,7 +159,7 @@
           <button class="nav-item" data-view="dashboard" data-nav-zone="cockpit">Review</button>
           <button class="nav-item" data-view="graph" data-nav-zone="cockpit">Graph</button>
           <button class="nav-item" data-view="activity" data-nav-zone="cockpit" hidden>Traces</button>
-          <button class="nav-item" data-view="quality" data-nav-zone="cockpit">Production</button>
+          <button class="nav-item" data-view="quality" data-nav-zone="cockpit" hidden>Production</button>
         </nav>
 
         <section class="panel compact">
@@ -189,7 +189,7 @@
           </div>
           <div class="topbar-actions">
             <span id="workspaceMode" class="mode-pill">Workspace</span>
-            <span id="workspaceSignal" class="workspace-signal">Local workspace</span>
+            <span id="workspaceSignal" class="workspace-signal" hidden>Local workspace</span>
             <button id="adminCockpitBtn" class="secondary" type="button" hidden>Admin Cockpit</button>
             <button id="themeToggleBtn" class="secondary theme-toggle" type="button" aria-pressed="false">Dark</button>
             <button id="backToMainBtn" class="secondary">Back to main</button>
@@ -199,8 +199,8 @@
         <div id="productionProgressHeader" class="production-progress-header" hidden></div>
 
         <section id="chat" class="view active">
-          <div id="chatWorkspaceIntro" class="workspace-intro"></div>
-          <section class="chat-workspace-hero" aria-label="Agent interaction workspace">
+          <div id="chatWorkspaceIntro" class="workspace-intro" hidden></div>
+          <section class="chat-workspace-hero" aria-label="Agent interaction workspace" hidden>
             <span class="badge">Actor Twin</span>
             <h2>Actor Twin, directly in n8n.</h2>
             <p>The embedded n8n chat is the single interaction surface. Optional setup below is passed to n8n as routing metadata: keyword hints, vector cache, knowledge graph, voice preference, and source-scope signals.</p>
@@ -261,8 +261,8 @@
             <div class="n8n-agent-head">
               <div>
                 <span class="badge">Connected agent</span>
-                <h2>Actor Twin chat</h2>
-                <p>Powered by the published n8n Actor Twin workflow. Answers, route decisions, and calls to Knowledge Fabric or Agentic Butler happen inside n8n. Me.IDs only passes interaction setup metadata.</p>
+                <h2>Ask your Actor Twin</h2>
+                <p>Talk, type, or add a source. Your twin finds trusted knowledge and routes specialist work for you.</p>
               </div>
               <div class="actor-chat-capture" aria-label="Actor Twin input options">
                 <button id="actorVoiceBtn" class="secondary small" type="button">Talk</button>
@@ -271,7 +271,7 @@
               </div>
               <a id="n8nAgentLink" class="secondary small n8n-agent-link" href="#" target="_blank" rel="noreferrer" hidden>Open external chat</a>
             </div>
-            <p id="actorCaptureStatus" class="muted-inline">Talk to transcribe into chat, or add one source for review. Bulk intake stays in Source Upload.</p>
+            <p id="actorCaptureStatus" class="muted-inline">Talk to transcribe into chat, or add one source. Use Source Upload for several files.</p>
             <div id="n8nChatMount" class="n8n-chat-mount"></div>
             <p id="n8nChatStatus" class="muted-inline">n8n chat not loaded yet.</p>
           </section>
@@ -312,7 +312,7 @@
 
         <section id="voice" class="view">
           <div id="voiceTwinNotice" class="twin-notice"></div>
-          <article class="source-capture-hero panel">
+          <article class="source-capture-hero panel" hidden>
             <div>
               <span class="badge">Source capture</span>
               <h2>Turn spoken context into reusable knowledge.</h2>
@@ -328,7 +328,7 @@
             <article class="panel source-capture-card">
               <h2>Guided Voice Capture</h2>
               <p>Record a thought, let the Persona Modeler clarify it, then save it when the concept is ready.</p>
-              <p id="voiceReadiness" class="readiness">Checking transcription readiness...</p>
+              <p id="voiceReadiness" class="readiness" role="status" aria-live="polite">Checking transcription readiness...</p>
               <label for="voiceConceptCategory">Concept category</label>
               <select id="voiceConceptCategory">
                 <option value="knowledge">Knowledge</option>
@@ -424,7 +424,7 @@
 
         <section id="ingest" class="view">
           <div id="ingestTwinNotice" class="twin-notice"></div>
-          <article class="source-capture-hero panel">
+          <article class="source-capture-hero panel" hidden>
             <div>
               <span class="badge">Source capture</span>
               <h2>Add documents and notes without leaving the workspace.</h2>
@@ -479,7 +479,7 @@
               <button id="textIngestBtn">Auto-create concept</button>
             </article>
           </div>
-          <article class="panel knowledge-fabric-ingest-contract">
+          <article class="panel knowledge-fabric-ingest-contract" hidden>
             <div>
               <span class="badge">Knowledge Fabric contract</span>
               <h2>Every source enters as pending OKF.</h2>
@@ -493,7 +493,7 @@
               <span><strong>Retrieve</strong><small>Approved-only context</small></span>
             </div>
           </article>
-          <article class="panel knowledge-fabric-queue-panel">
+          <article class="panel knowledge-fabric-queue-panel" hidden>
             <div class="knowledge-fabric-queue-head">
               <div>
                 <span class="badge">Source status</span>
@@ -590,8 +590,8 @@
             <button type="button" data-cockpit-action="openSkills">Skills</button>
             <button type="button" data-cockpit-action="openDashboard">Review</button>
             <button class="active" type="button" data-cockpit-action="openGraph">Graph</button>
-            <button type="button" data-cockpit-action="openActivity">Traces</button>
-            <button type="button" data-cockpit-action="openProductionCockpit">Production</button>
+            <button type="button" data-cockpit-action="openActivity" hidden>Traces</button>
+            <button type="button" data-cockpit-action="openProductionCockpit" hidden>Production</button>
           </div>
           <article class="panel graph-cockpit-panel">
             <div class="graph-cockpit-head">
@@ -788,11 +788,11 @@
             <button type="button" data-cockpit-action="openSkills">Skills</button>
             <button class="active" type="button" data-cockpit-action="openDashboard">Review</button>
             <button type="button" data-cockpit-action="openGraph">Graph</button>
-            <button type="button" data-cockpit-action="openActivity">Traces</button>
-            <button type="button" data-cockpit-action="openProductionCockpit">Production</button>
+            <button type="button" data-cockpit-action="openActivity" hidden>Traces</button>
+            <button type="button" data-cockpit-action="openProductionCockpit" hidden>Production</button>
           </div>
-          <article id="cockpitOverview" class="cockpit-overview panel"></article>
-          <div class="dashboard-grid">
+          <article id="cockpitOverview" class="cockpit-overview panel" hidden></article>
+          <div class="dashboard-grid" hidden>
             <article class="metric-card">
               <span>Concepts</span>
               <strong id="dashConceptTotal">-</strong>
@@ -915,7 +915,7 @@
             <button class="dashboard-filter" type="button" data-dashboard-filter="refinements">Refinements</button>
             <button class="dashboard-filter" type="button" data-dashboard-filter="mcp" hidden>MCP Tools</button>
           </div>
-          <section class="review-command-surface panel" aria-label="Review cockpit command surface">
+          <section class="review-command-surface panel" aria-label="Review cockpit command surface" hidden>
             <div>
               <span class="badge">Human governance</span>
               <h2>Decide what may change the twin.</h2>
@@ -1029,7 +1029,7 @@
         </section>
 
         <section id="twins" class="view">
-          <article class="section-lead panel">
+          <article class="section-lead panel" hidden>
             <div>
               <span class="badge">Design cockpit</span>
               <h2>Shape the actor behind the work.</h2>
@@ -1042,11 +1042,11 @@
             <button type="button" data-cockpit-action="openSkills">Skills</button>
             <button type="button" data-cockpit-action="openDashboard">Review</button>
             <button type="button" data-cockpit-action="openGraph">Graph</button>
-            <button type="button" data-cockpit-action="openActivity">Traces</button>
-            <button type="button" data-cockpit-action="openQuality">Production</button>
+            <button type="button" data-cockpit-action="openActivity" hidden>Traces</button>
+            <button type="button" data-cockpit-action="openQuality" hidden>Production</button>
           </div>
-          <article id="designCockpitBoard" class="design-cockpit-board panel"></article>
-          <details class="panel setup-panel primary-cockpit-panel cockpit-disclosure" open>
+          <article id="designCockpitBoard" class="design-cockpit-board panel" hidden></article>
+          <details class="panel setup-panel primary-cockpit-panel cockpit-disclosure">
             <summary>Guided setup details</summary>
             <div class="toolbar">
               <h2>Setup phases</h2>
@@ -1141,6 +1141,8 @@
                   <label for="twinDecisionPrinciples">Decision principles</label>
                   <textarea id="twinDecisionPrinciples" rows="3" placeholder="How should this twin prioritize deadlines, stakeholder urgency, quality, and escalation?"></textarea>
                 </fieldset>
+                <details class="profile-advanced-settings">
+                  <summary>Advanced governance and voice settings</summary>
                 <fieldset class="profile-section">
                   <legend>Governance</legend>
                   <label for="twinEscalationBoundaries">Escalation boundaries</label>
@@ -1170,6 +1172,7 @@
                   <input id="twinVoiceConsentRef" type="text" placeholder="Provider consent id or internal approval reference" />
                   <p class="empty">Store provider voice IDs and consent references here. Do not upload raw training samples into the MVP repository.</p>
                 </fieldset>
+                </details>
               </div>
               <div class="button-row tight">
                 <button id="createTwinBtn" type="button">Create twin</button>
@@ -1193,7 +1196,7 @@
         </section>
 
         <section id="skills" class="view">
-          <article class="section-lead panel">
+          <article class="section-lead panel" hidden>
             <div>
               <span class="badge">Agentic Butler</span>
               <h2>Design work behaviors, then let the Actor steer.</h2>
@@ -1206,10 +1209,10 @@
             <button class="active" type="button" data-cockpit-action="openSkills">Skills</button>
             <button type="button" data-cockpit-action="openDashboard">Review</button>
             <button type="button" data-cockpit-action="openGraph">Graph</button>
-            <button type="button" data-cockpit-action="openActivity">Traces</button>
-            <button type="button" data-cockpit-action="openProductionCockpit">Production</button>
+            <button type="button" data-cockpit-action="openActivity" hidden>Traces</button>
+            <button type="button" data-cockpit-action="openProductionCockpit" hidden>Production</button>
           </div>
-          <section class="skill-command-surface panel" aria-label="Skill lifecycle shortcuts">
+          <section class="skill-command-surface panel" aria-label="Skill lifecycle shortcuts" hidden>
             <div>
               <span class="badge">Skill lifecycle</span>
               <h2>Turn repeated work into approved agentic behavior.</h2>
@@ -1222,7 +1225,7 @@
               <button class="secondary small" type="button" data-cockpit-action="focusSkillImprove">Refine</button>
             </div>
           </section>
-          <div id="skillsCockpit" class="skills-cockpit"></div>
+          <div id="skillsCockpit" class="skills-cockpit" hidden></div>
           <div class="grid two skill-authoring-grid">
             <article class="panel workflow-panel workflow-shape">
               <h2>Shape Skill</h2>
