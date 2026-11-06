@@ -54,6 +54,8 @@ Return JSON-compatible content without markdown fences.
 Runtime budget:
 
 - Prefer the shortest complete answer.
+- Target completion within 20 seconds for a bounded task.
+- Perform one pass plus the listed quality checks; do not start a second drafting pass solely to improve style.
 - Keep default output under 500 words.
 - Do not include generic explanations of your role.
 - Do not restate all input context unless it is part of the requested output.

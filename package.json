@@ -16,6 +16,7 @@
     "check:admin-cockpit": "node --check frontend/admin/admin.js && node --check backend/server.js && node scripts/validate-admin-cockpit-contract.cjs",
     "check:graph-explorer": "node --check frontend/app.js && node scripts/validate-graph-explorer-v2.cjs",
     "check:frontend-actor-first": "node --check frontend/app.js && node scripts/validate-actor-first-frontend.cjs",
+    "check:agent-performance": "node --check frontend/app.js && node scripts/validate-agent-interaction-performance.cjs",
     "uat:frontend-actor-first": "node scripts/browser-actor-first-qa.cjs frontend docs/visual-qa/actor-first-20261103",
     "check:uat-hardening": "node --check frontend/app.js && node --check backend/workspaceApi.js && node --check backend/server.js && node scripts/validate-uat-intake-review-hardening.cjs",
     "uat:graph-explorer": "node scripts/browser-graph-explorer-v2-qa.cjs dist-graph-v2-preview docs/visual-qa/screenshots-20261029-graph-explorer-v2",

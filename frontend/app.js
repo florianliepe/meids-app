@@ -295,6 +295,8 @@ const FRONTEND_BUILD_TAG = "20260721-okf-health-sync";
 const N8N_CHAT_MODE = "__n8n_agent";
 const N8N_CHAT_CSS_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css";
 const N8N_CHAT_MODULE_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js";
+const ACTOR_CHAT_LATENCY_STORAGE_KEY = "meids:actor-chat-latency:v1";
+const ACTOR_CHAT_LATENCY_SAMPLE_LIMIT = 20;
 const N8N_CONTRACT_REPLAY_STATUS_PATH = "assets/n8n-contract-replay-status.json";
 const N8N_AGENT_RUNTIME_CONFIG_PATH = "assets/agent-runtime-config.json";
 const N8N_RUNTIME_READINESS_STATUS_PATH = "assets/n8n-runtime-readiness-status.json";
@@ -16795,9 +16797,83 @@ function reloadN8nChatContext() {
 function installN8nChatBusyGuard(mount) {
   if (!mount || mount.dataset.busyGuardInstalled === "true") return;
   mount.dataset.busyGuardInstalled = "true";
+  const status = $("#actorCaptureStatus");
+  let progressTimer = null;
+  let readyResetTimer = null;
+  let startedAt = 0;
+
+  const progressCopy = (elapsedSeconds) => {
+    if (elapsedSeconds < 5) return { phase: "understand", text: "Understanding your request" };
+    if (elapsedSeconds < 15) return { phase: "knowledge", text: "Checking reviewed knowledge" };
+    if (elapsedSeconds < 30) return { phase: "route", text: "Coordinating the right specialist" };
+    if (elapsedSeconds < 60) return { phase: "deep", text: "Completing a deeper workflow" };
+    return { phase: "extended", text: "Still working; no need to resubmit" };
+  };
+
+  const renderProgress = () => {
+    if (!status || !startedAt) return;
+    const elapsedSeconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+    const progress = progressCopy(elapsedSeconds);
+    status.dataset.phase = progress.phase;
+    status.classList.add("is-busy");
+    status.textContent = `${progress.text} - ${elapsedSeconds}s`;
+  };
+
+  const recordLatency = (durationMs, outcome) => {
+    const entry = {
+      recorded_at: new Date().toISOString(),
+      duration_ms: Math.max(0, Math.round(Number(durationMs) || 0)),
+      outcome: String(outcome || "completed").slice(0, 24),
+    };
+    try {
+      const current = JSON.parse(localStorage.getItem(ACTOR_CHAT_LATENCY_STORAGE_KEY) || "[]");
+      const samples = Array.isArray(current) ? current : [];
+      samples.push(entry);
+      localStorage.setItem(
+        ACTOR_CHAT_LATENCY_STORAGE_KEY,
+        JSON.stringify(samples.slice(-ACTOR_CHAT_LATENCY_SAMPLE_LIMIT)),
+      );
+    } catch (_error) {
+      // Private browsing or storage policy can disable localStorage; chat must still work.
+    }
+    window.dispatchEvent(new CustomEvent("meids:actor-chat-latency", { detail: entry }));
+  };
+
+  const startProgress = () => {
+    clearTimeout(readyResetTimer);
+    if (startedAt) return;
+    startedAt = Date.now();
+    renderProgress();
+    progressTimer = window.setInterval(renderProgress, 1000);
+  };
+
+  const finishProgress = () => {
+    if (!startedAt) return;
+    const durationMs = Date.now() - startedAt;
+    startedAt = 0;
+    window.clearInterval(progressTimer);
+    progressTimer = null;
+    recordLatency(durationMs, "completed");
+    if (!status) return;
+    status.dataset.phase = "ready";
+    status.classList.remove("is-busy");
+    status.textContent = `Answer ready in ${Math.max(1, Math.round(durationMs / 1000))}s.`;
+    readyResetTimer = window.setTimeout(() => {
+      if (mount.dataset.actorBusy !== "true") {
+        status.dataset.phase = "idle";
+        status.textContent = "Talk or type a message.";
+      }
+    }, 4500);
+  };
+
   const sync = () => {
     placeActorChatControls(mount);
     const busy = Boolean(mount.querySelector(".chat-message-typing"));
+    const wasBusy = mount.dataset.actorBusy === "true";
+    mount.dataset.actorBusy = String(busy);
+    mount.setAttribute("aria-busy", String(busy));
+    if (busy && !wasBusy) startProgress();
+    if (!busy && wasBusy) finishProgress();
     const input = mount.querySelector("textarea[data-test-id='chat-input']");
     if (!input) return;
     if (!input.dataset.readyPlaceholder) {

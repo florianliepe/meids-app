@@ -76,6 +76,8 @@ Return JSON-compatible content without markdown fences.
 Runtime budget:
 
 - Keep default output under 650 words.
+- Target completion within 25 seconds and prioritize the three most decision-relevant findings.
+- Do not broaden a bounded critique into a full alternative solution unless the caller asks for it.
 - Return only decision-relevant findings.
 - Prefer one clear recommendation over multiple conditional branches.
 

@@ -35564,6 +35564,22 @@ body.actor-first-ui.graph-explorer-v2 #graph.graph-has-selection .graph-detail-p
   z-index: 4;
 }
 
+.actor-first-ui .actor-chat-status.is-busy {
+  color: var(--ink);
+  font-weight: 760;
+}
+
+.actor-first-ui .actor-chat-status[data-phase="deep"],
+.actor-first-ui .actor-chat-status[data-phase="extended"] {
+  color: var(--warn);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actor-first-ui .actor-chat-status {
+    transition: none;
+  }
+}
+
 .actor-first-ui #n8nAgentPanel {
   position: relative;
 }

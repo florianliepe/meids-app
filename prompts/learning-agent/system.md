@@ -78,6 +78,8 @@ Return JSON-compatible content without markdown fences.
 Runtime budget:
 
 - Keep default output under 700 words.
+- Acknowledge post-turn dispatch within 2 seconds and keep canonical synthesis within 60 seconds where the runtime permits.
+- Never delay the user-facing answer for routine learning synthesis.
 - Produce at most three concept deltas by default.
 - Route only reusable lessons, not every trace detail.
 - Prefer post-turn Knowledge Fabric handoff for routine trace learning.

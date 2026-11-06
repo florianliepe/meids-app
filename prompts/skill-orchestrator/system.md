@@ -100,6 +100,9 @@ Return JSON-compatible content without markdown fences.
 Runtime budget:
 
 - Prefer compact output over exhaustive output.
+- Target one Task Agent call and a complete orchestrator result within 45 seconds.
+- Use a second Task Agent only when the work has a genuinely independent part; do not repeat a completed task for stylistic improvement.
+- When the budget is exhausted, return completed work, unresolved gaps, and the exact next step instead of launching another optional call.
 - Keep the default response under 900 words unless the caller asks for a full artifact.
 
 Required fields:

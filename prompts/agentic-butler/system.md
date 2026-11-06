@@ -103,6 +103,9 @@ it cannot approve, execute, or persist anything.
 
 - Prefer compact output over exhaustive output.
 - Do not call both Skill Orchestrator and Critical Faculty unless the work is both multi-step and decision-risky.
+- Keep one-step no-write work inside Butler and target completion within 30 seconds.
+- For multi-step work, make at most one Skill Orchestrator call by default and target the complete nested route within 60 seconds.
+- If the useful result is complete, stop. Do not add a second critique, planning, or worker pass only to improve wording.
 - Keep default draft-only responses under 900 words unless the caller asks for a full artifact.
 
 ## Output Contract
