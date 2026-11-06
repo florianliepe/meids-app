@@ -16800,13 +16800,14 @@ function installN8nChatBusyGuard(mount) {
   const status = $("#actorCaptureStatus");
   let progressTimer = null;
   let readyResetTimer = null;
+  let terminalTimer = null;
   let startedAt = 0;
 
   const progressCopy = (elapsedSeconds) => {
     if (elapsedSeconds < 5) return { phase: "understand", text: "Understanding your request" };
-    if (elapsedSeconds < 15) return { phase: "knowledge", text: "Checking reviewed knowledge" };
-    if (elapsedSeconds < 30) return { phase: "route", text: "Coordinating the right specialist" };
-    if (elapsedSeconds < 60) return { phase: "deep", text: "Completing a deeper workflow" };
+    if (elapsedSeconds < 15) return { phase: "working", text: "Working on your request" };
+    if (elapsedSeconds < 30) return { phase: "working", text: "Still working on your request" };
+    if (elapsedSeconds < 60) return { phase: "deep", text: "Preparing your answer" };
     return { phase: "extended", text: "Still working; no need to resubmit" };
   };
 
@@ -16841,29 +16842,45 @@ function installN8nChatBusyGuard(mount) {
 
   const startProgress = () => {
     clearTimeout(readyResetTimer);
+    clearTimeout(terminalTimer);
+    terminalTimer = null;
     if (startedAt) return;
     startedAt = Date.now();
     renderProgress();
     progressTimer = window.setInterval(renderProgress, 1000);
   };
 
-  const finishProgress = () => {
+  const finishProgress = (outcome, message) => {
     if (!startedAt) return;
     const durationMs = Date.now() - startedAt;
     startedAt = 0;
     window.clearInterval(progressTimer);
     progressTimer = null;
-    recordLatency(durationMs, "completed");
+    recordLatency(durationMs, outcome);
     if (!status) return;
-    status.dataset.phase = "ready";
+    status.dataset.phase = outcome === "completed" ? "ready" : outcome;
     status.classList.remove("is-busy");
-    status.textContent = `Answer ready in ${Math.max(1, Math.round(durationMs / 1000))}s.`;
+    status.textContent = message || `Answer ready in ${Math.max(1, Math.round(durationMs / 1000))}s.`;
     readyResetTimer = window.setTimeout(() => {
       if (mount.dataset.actorBusy !== "true") {
         status.dataset.phase = "idle";
         status.textContent = "Talk or type a message.";
       }
     }, 4500);
+  };
+
+  const settleProgress = () => {
+    terminalTimer = null;
+    if (mount.dataset.actorBusy === "true" || !startedAt) return;
+    if (mount.querySelector(".chat-message-error, [data-test-id='chat-message-error']")) {
+      finishProgress("failed", "The request failed. You can try again.");
+      return;
+    }
+    if (mount.querySelector(".chat-message-from-bot, [data-test-id='chat-message-from-bot']")) {
+      finishProgress("completed");
+      return;
+    }
+    finishProgress("interrupted", "Connection refreshed. Your message was not replayed.");
   };
 
   const sync = () => {
@@ -16873,7 +16890,10 @@ function installN8nChatBusyGuard(mount) {
     mount.dataset.actorBusy = String(busy);
     mount.setAttribute("aria-busy", String(busy));
     if (busy && !wasBusy) startProgress();
-    if (!busy && wasBusy) finishProgress();
+    if (!busy && wasBusy) {
+      clearTimeout(terminalTimer);
+      terminalTimer = window.setTimeout(settleProgress, 0);
+    }
     const input = mount.querySelector("textarea[data-test-id='chat-input']");
     if (!input) return;
     if (!input.dataset.readyPlaceholder) {

@@ -122,6 +122,20 @@ owner to make green. They do not measure live route SLOs, server deduplication,
 actual n8n error DOM, or post-turn Learning. The existing 16 string safeguards
 remain static checks and are not a substitute for these behaviors or live evidence.
 
+### Follow-up remediation
+
+The busy guard was corrected after the adversarial review. A request is now
+recorded as `completed` only when a bot-answer element is present. Error elements
+produce `failed`; a cleared or replaced chat mount without an answer produces
+`interrupted` and explicitly states that the message was not replayed. Elapsed-time
+copy is routing-neutral and no longer claims knowledge retrieval, specialist
+coordination or a deeper workflow without route evidence.
+
+The same isolated Chromium suite then passed 5/5 checks on 2026-11-06. This closes
+the reproduced frontend-state defects only. Live route SLOs, server-side
+deduplication and canonical post-turn Learning still require correlated runtime
+evidence before production compliance is claimed.
+
 ## Sources and interpretation
 
 - [Google SRE: Implementing SLOs](https://sre.google/workbook/implementing-slos/)

@@ -35574,6 +35574,14 @@ body.actor-first-ui.graph-explorer-v2 #graph.graph-has-selection .graph-detail-p
   color: var(--warn);
 }
 
+.actor-first-ui .actor-chat-status[data-phase="failed"] {
+  color: var(--danger);
+}
+
+.actor-first-ui .actor-chat-status[data-phase="interrupted"] {
+  color: var(--muted);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .actor-first-ui .actor-chat-status {
     transition: none;
