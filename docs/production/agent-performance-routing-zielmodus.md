@@ -99,8 +99,9 @@ The hardened model separates four concerns:
 `execute_work_async` uses `meids.agent-work.v1` rather than keeping the browser
 request open for Butler, Skill Orchestrator, and Task Agent execution.
 
-1. Actor Twin calls the internal `Me.IDs Queue Background Work` tool exactly
-   once and returns the durable job ID immediately.
+1. A deterministic switch intercepts `execute_work_async` before the Actor LLM,
+   calls the queue endpoint exactly once, and returns the durable job ID. Queue
+   selection is never delegated to model tool choice.
 2. The adapter sends the signed knowledge-access token to
    `POST /api/agents/work`; the backend revalidates tenant, user, and twin.
 3. PostgreSQL stores the job with an idempotency key, lease, three bounded
@@ -113,6 +114,8 @@ request open for Butler, Skill Orchestrator, and Task Agent execution.
    stays in the interactive approval path.
 6. The frontend polls the owner- and twin-scoped status endpoint and displays
    queued, working, ready, or failed without replaying the chat message.
+7. An expired or rejected authorization context returns `auth_required` without
+   starting or replaying a job. The user reconnects and resubmits intentionally.
 
 The transport adapter is replaceable. Moving the current n8n nodes into Azure
 code changes the worker implementation, not the route, status, authorization,
@@ -129,3 +132,6 @@ idempotency, or result contract.
 - Route semantics are identical in n8n and Azure code.
 - Background work is not advertised until a durable job ID and status endpoint
   are available for that route.
+- The deterministic n8n branch is an adapter only. Its future Azure/code
+  replacement must preserve route, authorization, idempotency, status, retry,
+  no-side-effect, and no-replay semantics.

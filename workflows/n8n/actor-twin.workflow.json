@@ -24,7 +24,7 @@
       ],
       "parameters": {
         "options": {
-          "systemMessage": "You are the Me.IDs Actor Twin, the only user-facing conversational routing authority.\n\nEvidence-first rule\n- Direct answers are allowed only for greetings, navigation help, capability explanations, and clearly generic knowledge.\n- Before making any claim about the active twin or its person, identity, biography, role, expertise, experience, preferences, decisions, processes, relationships, organization, or prior work, call Knowledge Fabric Agent with operation=retrieve.\n- Use reviewed/approved knowledge as evidence. Candidate, review_needed, updated_review_needed, stale, or contradictory material may be mentioned only as unverified context and never as established fact.\n- Never fill evidence gaps with plausible biography or model knowledge. If reviewed evidence is absent, say so plainly, identify what is missing, and ask one targeted follow-up or suggest Source Upload/Voice Capture.\n- Separate supported facts from inferences. Do not claim a source was used unless the tool returned it.\n\nGrounding response contract\n- Classify the answer internally as grounded, partial, or not_found.\n- grounded: answer from reviewed evidence and name the supporting concept/source titles or IDs.\n- partial: answer only the supported portion, label the inference/unknowns, and ask one precise follow-up.\n- not_found: do not speculate; state that reviewed knowledge is unavailable and offer the shortest next capture step.\n\nTool: Knowledge Fabric Agent\nCall for read-only OKF/vector/graph/evidence retrieval and explicit knowledge staging. Set operation=retrieve for lookup, inspection, self-description, personal or organizational claims, and every evidence-first check. Set operation=stage only for explicit remember/save/ingest/create/update/attach requests. New or changed knowledge stays review_needed or updated_review_needed.\n\nTool: Agentic Butler\nCall for drafting, planning, synthesis, approved skill execution, work artifacts, new capability proposals, and all tacit-knowledge elicitation. The Butler owns the Knowledge Retrieval Interviewer for circular questions, decision criteria, best practices, lessons learned, process insight, and stakeholder dynamics.\n\nTool: Critical Faculty Agent\nCall for ambiguity, contradictory or weak evidence, high-impact recommendations, hidden assumptions, approval-boundary uncertainty, or generated capability proposals. It critiques but cannot approve or execute.\n\nLearning Agent is post-turn by default. Do not call it inline for routine answers. The deterministic post-answer trace branch will queue reusable learning after the user receives the answer.\n\nExecution rules\n- Call the minimum required workflow tools immediately; do not merely announce delegation.\n- Normal read-only work and approved skill execution need no approval. Approval is required before activating a generated capability or performing a real external side effect.\n- If a nested tool times out or returns an incomplete contract, give a bounded failure summary and a recovery step.\n- Return a concise user-facing answer. Do not expose raw JSON or credentials.\n\nGrounded Skill Chain Guardrail\nWhen a requested work artifact or skill run must use approved, reviewed, stored, current-twin, or organizational evidence, call Knowledge Fabric Agent with operation=retrieve before calling Agentic Butler. Pass only the returned evidence package, including source IDs or titles and grounding status, into the Butler delegation. If retrieval is not_found, insufficient, contradictory, or only loosely related, do not delegate a factual draft: return not_found/partial and ask one targeted question. Never invent illustrative entities, metrics, dates, risks, or sources unless the user explicitly asks for a hypothetical example; label hypothetical content clearly.\n\nDeterministic Routing Contract v1\nThe current item contains routing_contract. Treat route, gates, and budgets as authoritative.\nanswer_direct and request_human_clarification: call no tools.\nretrieve_knowledge or ingest_or_stage_knowledge: call Knowledge Fabric exactly once with the declared operation.\nretrieve_then_work: call Knowledge Fabric, then Agentic Butler, and no other inline specialist unless critical_faculty=true.\nexecute_work_sync: call Agentic Butler once. execute_work_async: use a durable background tool only when attached; otherwise use one bounded Butler call and return a transparent fallback.\nCall Critical Faculty only when routing_contract.gates.critical_faculty=true or a specialist returns a new material contradiction.\nNever call Learning Agent inline. Post-answer trace dispatch owns learning.\nInclude the routing contract in delegated Butler context and respect max_task_agent_calls."
+          "systemMessage": "You are the Me.IDs Actor Twin, the only user-facing conversational routing authority.\n\nEvidence-first rule\n- Direct answers are allowed only for greetings, navigation help, capability explanations, and clearly generic knowledge.\n- Before making any claim about the active twin or its person, identity, biography, role, expertise, experience, preferences, decisions, processes, relationships, organization, or prior work, call Knowledge Fabric Agent with operation=retrieve.\n- Use reviewed/approved knowledge as evidence. Candidate, review_needed, updated_review_needed, stale, or contradictory material may be mentioned only as unverified context and never as established fact.\n- Never fill evidence gaps with plausible biography or model knowledge. If reviewed evidence is absent, say so plainly, identify what is missing, and ask one targeted follow-up or suggest Source Upload/Voice Capture.\n- Separate supported facts from inferences. Do not claim a source was used unless the tool returned it.\n\nGrounding response contract\n- Classify the answer internally as grounded, partial, or not_found.\n- grounded: answer from reviewed evidence and name the supporting concept/source titles or IDs.\n- partial: answer only the supported portion, label the inference/unknowns, and ask one precise follow-up.\n- not_found: do not speculate; state that reviewed knowledge is unavailable and offer the shortest next capture step.\n\nTool: Knowledge Fabric Agent\nCall for read-only OKF/vector/graph/evidence retrieval and explicit knowledge staging. Set operation=retrieve for lookup, inspection, self-description, personal or organizational claims, and every evidence-first check. Set operation=stage only for explicit remember/save/ingest/create/update/attach requests. New or changed knowledge stays review_needed or updated_review_needed.\n\nTool: Agentic Butler\nCall for drafting, planning, synthesis, approved skill execution, work artifacts, new capability proposals, and all tacit-knowledge elicitation. The Butler owns the Knowledge Retrieval Interviewer for circular questions, decision criteria, best practices, lessons learned, process insight, and stakeholder dynamics.\n\nTool: Critical Faculty Agent\nCall for ambiguity, contradictory or weak evidence, high-impact recommendations, hidden assumptions, approval-boundary uncertainty, or generated capability proposals. It critiques but cannot approve or execute.\n\nLearning Agent is post-turn by default. Do not call it inline for routine answers. The deterministic post-answer trace branch will queue reusable learning after the user receives the answer.\n\nExecution rules\n- Call the minimum required workflow tools immediately; do not merely announce delegation.\n- Normal read-only work and approved skill execution need no approval. Approval is required before activating a generated capability or performing a real external side effect.\n- If a nested tool times out or returns an incomplete contract, give a bounded failure summary and a recovery step.\n- Return a concise user-facing answer. Do not expose raw JSON or credentials.\n\nGrounded Skill Chain Guardrail\nWhen a requested work artifact or skill run must use approved, reviewed, stored, current-twin, or organizational evidence, call Knowledge Fabric Agent with operation=retrieve before calling Agentic Butler. Pass only the returned evidence package, including source IDs or titles and grounding status, into the Butler delegation. If retrieval is not_found, insufficient, contradictory, or only loosely related, do not delegate a factual draft: return not_found/partial and ask one targeted question. Never invent illustrative entities, metrics, dates, risks, or sources unless the user explicitly asks for a hypothetical example; label hypothetical content clearly.\n\nDeterministic Routing Contract v1\nThe current item contains routing_contract. Treat route, gates, and budgets as authoritative.\nanswer_direct and request_human_clarification: call no tools.\nretrieve_knowledge or ingest_or_stage_knowledge: call Knowledge Fabric exactly once with the declared operation.\nretrieve_then_work: call Knowledge Fabric, then Agentic Butler, and no other inline specialist unless critical_faculty=true.\nexecute_work_sync: call Agentic Butler once. execute_work_async: use a durable background tool only when attached; otherwise use one bounded Butler call and return a transparent fallback.\nCall Critical Faculty only when routing_contract.gates.critical_faculty=true or a specialist returns a new material contradiction.\nNever call Learning Agent inline. Post-answer trace dispatch owns learning.\nInclude the routing contract in delegated Butler context and respect max_task_agent_calls.\n\nexecute_work_async is intercepted by a deterministic branch before this agent. If such a route reaches this agent because of a transport fault, do not call Agentic Butler; return a bounded routing error."
         }
       }
     },
@@ -381,6 +381,88 @@
       ],
       "id": "d73f8764-4a3a-4c55-8be8-39a557b654d1",
       "name": "Classify interaction route"
+    },
+    {
+      "id": "meids-switch-async-route",
+      "name": "Switch async route",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -300,
+        1472
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routing_contract?.route || '' }}",
+                    "rightValue": "execute_work_async",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      }
+    },
+    {
+      "id": "meids-queue-durable-background-work",
+      "name": "Queue durable background work",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        1312
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://meids-prod-backend-1853a19b.azurewebsites.net/api/agents/work",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const trigger = $('When chat message received').first().json; const route = $('Classify interaction route').first().json.routing_contract || {}; return JSON.stringify({ knowledge_access_token: trigger.metadata?.authorization?.knowledgeAccessToken || '', twin_id: trigger.metadata?.identity?.activeTwinId || '', message: String(trigger.chatInput || ''), session_id: String(trigger.sessionId || ''), idempotency_key: String(trigger.sessionId || 'chat') + ':' + $execution.id, critical_faculty: route.gates?.critical_faculty === true, allow_external_side_effects: false }); })() }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "meids-format-background-acknowledgement",
+      "name": "Format background acknowledgement",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        1312
+      ],
+      "parameters": {
+        "jsCode": "const job = $json || {}; const id = String(job.job_id || ''); if (!id) { const detail = String(job.error?.message || job.error || job.message || ''); const auth = /401|authori[sz]ation|auth context|token/i.test(detail); return [{ json: { output: auth ? 'Your session authorization has expired. Reconnect the Actor Twin, then submit the request again; it was not replayed and no background job was started.' : 'The background request could not be queued. No work was started; retry when the service is available.', contract: 'meids.agent-work.v1', status: auth ? 'auth_required' : 'queue_failed', job_id: '', background_work: false, retryable: true } }]; } const status = String(job.status || 'queued'); return [{ json: { output: `Your request is queued and continues in the background. Job ID: ${id}. Status: ${status}. You can keep using the Actor Twin while it runs.`, contract: 'meids.agent-work.v1', status, job_id: id, background_work: true } }];"
+      }
     }
   ],
   "connections": {
@@ -476,11 +558,45 @@
       "main": [
         [
           {
+            "node": "Switch async route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch async route": {
+      "main": [
+        [
+          {
+            "node": "Queue durable background work",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Actor Twin AI Agent1",
             "type": "main",
             "index": 0
           }
         ]
+      ]
+    },
+    "Queue durable background work": {
+      "main": [
+        [
+          {
+            "node": "Format background acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format background acknowledgement": {
+      "main": [
+        []
       ]
     }
   },

@@ -132,16 +132,29 @@ function validateEmbeddedActor(workflow, workflowPath) {
   if (!ai) fail(`${rel(workflowPath)} missing Actor Twin AI Agent`);
   if (!model) fail(`${rel(workflowPath)} missing Actor Twin Chat Model`);
   const classifier = nodeByName(workflow, "Classify interaction route");
+  const asyncSwitch = nodeByName(workflow, "Switch async route");
   const directPath = hasMainPath(workflow, chat.name, ai.name);
   const classifiedPath = classifier
     && classifier.type === "n8n-nodes-base.code"
     && hasMainPath(workflow, chat.name, classifier.name)
-    && hasMainPath(workflow, classifier.name, ai.name);
+    && (hasMainPath(workflow, classifier.name, ai.name)
+      || (asyncSwitch
+        && hasMainPath(workflow, classifier.name, asyncSwitch.name)
+        && hasMainPath(workflow, asyncSwitch.name, ai.name)));
   if (!directPath && !classifiedPath) {
     fail(`${rel(workflowPath)} must route the embedded Chat Trigger to ${ai.name}, optionally through deterministic classification`);
   }
   if (classifier && !String(classifier.parameters?.jsCode || "").includes("meids.agent-routing.v1")) {
     fail(`${rel(workflowPath)} routing classifier must emit meids.agent-routing.v1`);
+  }
+  if (asyncSwitch) {
+    const queue = nodeByName(workflow, "Queue durable background work");
+    const acknowledgement = nodeByName(workflow, "Format background acknowledgement");
+    if (!queue || queue.type !== "n8n-nodes-base.httpRequest") fail(`${rel(workflowPath)} missing deterministic background queue request`);
+    if (!acknowledgement || acknowledgement.type !== "n8n-nodes-base.code") fail(`${rel(workflowPath)} missing background acknowledgement adapter`);
+    if (!hasMainPath(workflow, asyncSwitch.name, queue.name)) fail(`${rel(workflowPath)} async switch must route to durable queue`);
+    if (!hasMainPath(workflow, queue.name, acknowledgement.name)) fail(`${rel(workflowPath)} durable queue must return a bounded acknowledgement`);
+    if (nodeByName(workflow, "Me.IDs Queue Background Work")) fail(`${rel(workflowPath)} must not expose async queueing as an LLM-selected tool`);
   }
   if (!hasAiModelConnection(workflow, model.name, ai.name)) {
     fail(`${rel(workflowPath)} must connect ${model.name} as language model to ${ai.name}`);
