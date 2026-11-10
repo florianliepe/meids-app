@@ -94,11 +94,11 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 
 ## Current production release
 
-- Pull request: `https://github.com/florianliepe/meids-app/pull/35`
-- Production revision: `7aafabca5edb564b79dcd506c07730049522781b`
-- PR evidence: validation runs `41869374977`, `41869374995`, and `41869375039` passed.
-- Deployment evidence: Azure Static Web Apps `41869707340`, Azure App Service `41869707285`, and GitHub Pages sandbox `41869707356` passed.
-- Live static verification confirms the Actor-first body scope, Voice and Source actions, Guided Setup disclosure, Graph control restoration, and `graphExplorerV2=true`. Authenticated API build information remains protected by Entra as designed.
+- Pull request: `https://github.com/florianliepe/meids-app/pull/39`
+- Production revision: `8a78277e1687002b60604e6f2099841a9c28cf73`
+- PR evidence: Delivery validation `42879622438`, Me.IDs validation `42879622432`, and Azure preview `42879622433` passed.
+- Deployment evidence: Azure Static Web Apps `42879897249`, Azure App Service `42879897278`, and GitHub Pages sandbox `42879897429` passed.
+- Live build verification returned the exact production revision from both `/build-info.json` and `/api/build-info`. Actor Twin and its connected Agentic Butler also run the matching `meids.agent-routing.v1` workflow contract with independent n8n rollback backups.
 
 ## Human or privileged gates
 
