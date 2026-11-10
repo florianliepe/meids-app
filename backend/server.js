@@ -1099,8 +1099,12 @@ async function proxyToN8n(agentId, envelope, options = {}) {
     headers.Authorization = `Bearer ${process.env.N8N_WEBHOOK_AUTH_TOKEN}`;
   }
   const requestedTimeout = Number(options.timeoutMs);
+  const requestedCeiling = Number(options.maxTimeoutMs);
+  const timeoutCeiling = Number.isFinite(requestedCeiling) && requestedCeiling > 0
+    ? Math.max(5000, Math.min(requestedCeiling, 300000))
+    : n8nAgentTimeoutMs();
   const timeoutMs = Number.isFinite(requestedTimeout) && requestedTimeout > 0
-    ? Math.max(5000, Math.min(requestedTimeout, n8nAgentTimeoutMs()))
+    ? Math.max(5000, Math.min(requestedTimeout, timeoutCeiling))
     : n8nAgentTimeoutMs();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);

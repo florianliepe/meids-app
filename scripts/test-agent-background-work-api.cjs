@@ -142,3 +142,47 @@ test("worker re-enters Actor Twin once with a trusted non-recursive no-write ove
   assert.equal(proxyCalls[0].request.metadata.side_effect_policy, "no_external_side_effects");
   assert.equal(proxyCalls[0].request.metadata.authorization.knowledgeAccessToken, "fresh-worker-token");
 });
+
+test("worker does not report an n8n timeout fallback as completed or retry it automatically", async () => {
+  const job = {
+    job_id: "agent-work-timeout-test", job_type: "agent_work",
+    tenant_id: mapping.tenant_id, actor_user_id: mapping.user_id, twin_id: mapping.active_twin_id,
+    attempts: 1, max_attempts: 3, leased_by: "worker-timeout",
+    payload: {
+      mapping,
+      queued: { twin_id: "twin-a", request: "Prepare the brief.", critical_faculty: false },
+      request: { chatInput: "Prepare the brief.", metadata: { identity: { activeTwinId: "twin-a" }, authorization: {} } },
+    },
+  };
+  const calls = [];
+  const client = {
+    async query(sql, params = []) {
+      calls.push({ sql: String(sql), params });
+      if (String(sql).includes("RETURNING job.*")) return { rowCount: 1, rows: [job] };
+      if (String(sql).includes("UPDATE audit.event")) return { rowCount: 1, rows: [] };
+      return { rowCount: 1, rows: [] };
+    },
+    release() {},
+  };
+  const pool = {
+    async connect() { return client; },
+    async query(sql, params = []) { calls.push({ sql: String(sql), params }); return { rowCount: 1, rows: [] }; },
+  };
+  const api = createWorkspaceApi({
+    async getPgPool() { return pool; },
+    async requireTwinRequestMapping() { return mapping; }, async requireKnowledgeRequestMapping() { return mapping; },
+    async readBody() { return {}; }, async readMultipartForm() { throw new Error("not used"); }, jsonResponse() {},
+    async stageKnowledge() {}, async promoteKnowledge() {}, async rejectKnowledge() {},
+    async proxyToN8n(_agent, _request, options) {
+      assert.equal(options.timeoutMs, 180000);
+      assert.equal(options.maxTimeoutMs, 240000);
+      return { status: "failed", error: { code: "n8n_agent_timeout", message: "timed out" }, trace: { timeout: true } };
+    },
+    async transcribeAudio() {}, transcriptionConfig() { return {}; }, issueKnowledgeAccessToken() { return "fresh-worker-token"; },
+  });
+  const result = await api.processRuntimeJobs({ workerId: "worker-timeout" });
+  assert.equal(result.results[0].status, "dead_letter");
+  const failedLedger = calls.find((call) => call.sql.includes("UPDATE audit.event") && call.params[2] === "agent.work.failed");
+  assert.ok(failedLedger);
+  assert.equal(failedLedger.params[3].includes('"retry_scheduled":false'), true);
+});

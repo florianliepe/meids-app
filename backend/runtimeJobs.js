@@ -93,7 +93,7 @@ async function completeRuntimeJob(pool, job, result) {
 }
 
 async function failRuntimeJob(pool, job, error) {
-  const terminal = Number(job.attempts) >= Number(job.max_attempts);
+  const terminal = error?.noRetry === true || Number(job.attempts) >= Number(job.max_attempts);
   const delaySeconds = Math.min(900, 15 * (2 ** Math.max(0, Number(job.attempts) - 1)));
   const update = await pool.query(
     `UPDATE runtime.background_job
