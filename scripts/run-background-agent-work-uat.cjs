@@ -45,7 +45,7 @@ async function request(url, options = {}) {
     timeout: 30_000,
   });
   if (!ack.response.ok) throw new Error(`Actor acknowledgement failed ${ack.response.status}: ${ack.raw.slice(0, 600)}`);
-  const jobId = ack.raw.match(/agent-work-[a-f0-9]{32}/i)?.[0] || "";
+  const jobId = String(ack.body?.job_id || ack.body?.output?.match?.(/agent-work-[a-f0-9]{32}/i)?.[0] || ack.raw.match(/agent-work-[a-f0-9]{32}/i)?.[0] || "");
   if (!jobId) throw new Error(`Actor response did not include a durable background job ID: ${ack.raw.slice(0, 800)}`);
   if (ack.duration_ms > 10_000) throw new Error(`Background acknowledgement exceeded 10 seconds: ${ack.duration_ms}ms.`);
 
