@@ -704,10 +704,16 @@ function createWorkspaceApi(deps) {
           attempts: Number(job.attempts),
           started_at: new Date().toISOString(),
         });
-        const configuredTimeout = Number(process.env.AGENT_WORK_TIMEOUT_MS || 105000);
+        const configuredTimeout = Number(process.env.AGENT_WORK_TIMEOUT_MS || 180000);
         const response = await proxyToN8n("actor_twin", request, {
-          timeoutMs: Number.isFinite(configuredTimeout) ? Math.max(30000, Math.min(configuredTimeout, 120000)) : 105000,
+          timeoutMs: Number.isFinite(configuredTimeout) ? Math.max(30000, Math.min(configuredTimeout, 240000)) : 180000,
+          maxTimeoutMs: 240000,
         });
+        if (response.status === "failed" || response.trace?.timeout === true || response.error?.code === "n8n_agent_timeout") {
+          const error = new Error(response.error?.message || "Background Actor execution failed before producing a result.");
+          error.noRetry = response.trace?.timeout === true || response.error?.code === "n8n_agent_timeout";
+          throw error;
+        }
         const output = response.output || response;
         const completed = {
           ...queued,

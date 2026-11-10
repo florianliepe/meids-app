@@ -76,3 +76,20 @@ test("synthetic runtime job dead-letters and purges binary after final attempt",
   assert.equal(failure.params[1], "dead_letter");
   assert.match(failure.sql, /binary_payload = CASE WHEN \$2 = 'dead_letter' THEN NULL/);
 });
+
+test("uncertain timeout is terminal without an automatic duplicate retry", async () => {
+  const pool = fakePool(syntheticJob({ attempts: 1, max_attempts: 3 }));
+  const timeout = new Error("upstream completion is unknown");
+  timeout.noRetry = true;
+  const failures = [];
+  const result = await processRuntimeJobBatch(pool, {
+    synthetic: {
+      async run() { throw timeout; },
+      async onFailure(job, error, failure) { failures.push({ job, error, failure }); },
+    },
+  });
+  assert.equal(result.results[0].status, "dead_letter");
+  const failure = pool.calls.find((call) => call.scope === "pool" && call.sql.includes("SET status = $2"));
+  assert.equal(failure.params[1], "dead_letter");
+  assert.equal(failures[0].failure.terminal, true);
+});
