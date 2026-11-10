@@ -439,6 +439,10 @@
             {
               "name": "Content-Type",
               "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + ($('When chat message received').first().json.metadata?.authorization?.knowledgeAccessToken || '') }}"
             }
           ]
         },
