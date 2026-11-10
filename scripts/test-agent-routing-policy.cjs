@@ -33,6 +33,13 @@ assert.equal(risky.gates.external_side_effect_approval, false);
 const sideEffect = classifyAgentInteraction({ message: "Publish the final report." });
 assert.equal(sideEffect.gates.external_side_effect_approval, true);
 
+const negatedSideEffect = classifyAgentInteraction({ message: "Compare three options, then prepare a brief. Do not send, publish, deploy, or delete anything." });
+assert.equal(negatedSideEffect.route, "execute_work_async");
+assert.equal(negatedSideEffect.gates.external_side_effect_approval, false);
+
+const adversativeSideEffect = classifyAgentInteraction({ message: "Do not send the draft, but publish the final report." });
+assert.equal(adversativeSideEffect.gates.external_side_effect_approval, true);
+
 const probeOverride = classifyAgentInteraction({
   message: "Check alpha, beta, gamma.",
   metadata: {
@@ -73,4 +80,4 @@ const untrustedBackgroundOverride = classifyAgentInteraction({
 assert.equal(untrustedBackgroundOverride.route, "retrieve_then_work");
 assert.equal(untrustedBackgroundOverride.worker_override, undefined);
 
-console.log(`Agent routing policy tests passed: ${cases.length + 6} cases`);
+console.log(`Agent routing policy tests passed: ${cases.length + 8} cases`);

@@ -81,7 +81,6 @@ async function main() {
   writeJson(path.join(backup, "actor-twin.before.json"), actorBefore);
   const actorUpdated = await n8nJson("PUT", `/api/v1/workflows/${actorId}`, cleanPayload(attachTool(actorBefore, created.id, created.name)));
   writeJson(path.join(backup, "actor-twin.after.json"), actorUpdated);
-  writeJson(path.join(root, "workflows/n8n/actor-twin.workflow.json"), cleanPayload(actorUpdated));
   result.workflow = { id: created.id, name: created.name, active: true };
   result.actor = { id: actorUpdated.id, name: actorUpdated.name, active: Boolean(actorUpdated.active) };
   result.backup = path.relative(root, backup).replaceAll("\\", "/");
