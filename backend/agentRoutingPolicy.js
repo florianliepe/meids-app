@@ -98,6 +98,10 @@ function classifyAgentInteraction(input = {}) {
     && input.metadata?.intent === "live_probe"
     && input.metadata?.side_effect_policy === "no_write_probe"
     && input.metadata?.routingHints?.noWriteProbe === true;
+  const trustedBackgroundWork = input.metadata?.source === "meids_backend_background_work"
+    && input.metadata?.intent === "execute_background_work"
+    && input.metadata?.side_effect_policy === "no_external_side_effects"
+    && input.metadata?.routingHints?.backgroundWorker === true;
   if (trustedNoWriteProbe && override?.route === "execute_work_sync") {
     contract.route = "execute_work_sync";
     contract.target = "agentic_butler";
@@ -109,6 +113,19 @@ function classifyAgentInteraction(input = {}) {
     contract.budgets.response_ms = 90_000;
     contract.budgets.max_inline_specialists = 1;
     contract.probe_override = "trusted_no_write_chain";
+  }
+  if (trustedBackgroundWork && override?.route === "execute_work_sync") {
+    contract.route = "execute_work_sync";
+    contract.target = "agentic_butler";
+    contract.operation = "execute_work";
+    contract.gates.skill_orchestrator = override.skill_orchestrator !== false;
+    contract.gates.max_task_agent_calls = Math.max(1, Math.min(Number(override.max_task_agent_calls) || 2, 2));
+    contract.gates.critical_faculty = override.critical_faculty === true;
+    contract.gates.external_side_effect_approval = true;
+    contract.gates.external_side_effects_allowed = false;
+    contract.budgets.response_ms = 90_000;
+    contract.budgets.max_inline_specialists = 1;
+    contract.worker_override = "trusted_background_work";
   }
   return contract;
 }

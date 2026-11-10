@@ -22,6 +22,10 @@ for (const required of [
 for (const required of [
   'job_type: "skill_execution"',
   'job_type: "voice_transcription"',
+  'job_type: "agent_work"',
+  '"POST /api/agents/work"',
+  '"GET /api/agents/work"',
+  'source: "meids_backend_background_work"',
   "await enqueueRuntimeJob(client",
   "delete queuedRequest.metadata.authorization.knowledgeAccessToken",
   "knowledgeAccessToken: issueKnowledgeAccessToken(mapping, job.twin_id)",

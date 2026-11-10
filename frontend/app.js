@@ -250,6 +250,8 @@
   n8nChatLoading: false,
   n8nContextReloadTimer: null,
   n8nAuthRefreshTimer: null,
+  actorBackgroundJobs: [],
+  actorBackgroundPollTimer: null,
   n8nSessionId: `meids-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
   knowledgeFabricIngestQueue: [],
   knowledgeFabricQueueFilter: "all",
@@ -806,6 +808,11 @@ function showView(viewId) {
   if (viewId === "chat") {
     renderChatSkillMode();
     void ensureN8nChat();
+    void refreshActorBackgroundWork();
+    scheduleActorBackgroundWorkPolling();
+  } else if (state.actorBackgroundPollTimer) {
+    clearTimeout(state.actorBackgroundPollTimer);
+    state.actorBackgroundPollTimer = null;
   }
   void refreshViewData(viewId);
 }
@@ -16798,6 +16805,11 @@ function installN8nChatBusyGuard(mount) {
   const sync = () => {
     placeActorChatControls(mount);
     const busy = Boolean(mount.querySelector(".chat-message-typing"));
+    const wasBusy = mount.dataset.actorBusy === "true";
+    mount.dataset.actorBusy = String(busy);
+    if (wasBusy && !busy) {
+      void refreshActorBackgroundWork().then(scheduleActorBackgroundWorkPolling);
+    }
     const input = mount.querySelector("textarea[data-test-id='chat-input']");
     if (!input) return;
     if (!input.dataset.readyPlaceholder) {
@@ -16939,6 +16951,61 @@ async function ensureN8nChat() {
   } finally {
     state.n8nChatLoading = false;
   }
+}
+
+function actorBackgroundStatusLabel(status) {
+  if (status === "queued") return "Queued";
+  if (status === "processing") return "Working";
+  if (status === "completed") return "Ready";
+  if (status === "failed") return "Needs attention";
+  return status || "Queued";
+}
+
+function renderActorBackgroundWork() {
+  const target = $("#actorBackgroundWork");
+  if (!target) return;
+  const jobs = state.actorBackgroundJobs || [];
+  target.hidden = jobs.length === 0;
+  if (!jobs.length) {
+    target.innerHTML = "";
+    return;
+  }
+  target.innerHTML = jobs.slice(0, 3).map((job) => {
+    const finished = ["completed", "failed"].includes(job.status);
+    const summary = finished ? (job.summary || job.error || "Background work finished.") : "Long-running work continues while you use the chat.";
+    return `
+      <details class="actor-background-job" ${finished ? "" : "open"}>
+        <summary>
+          <span class="actor-background-state ${escapeHtml(job.status || "queued")}">${escapeHtml(actorBackgroundStatusLabel(job.status))}</span>
+          <strong>${escapeHtml((job.request || "Background work").slice(0, 120))}</strong>
+        </summary>
+        <p>${escapeHtml(summary)}</p>
+        ${job.status === "completed" && job.result ? `<pre>${escapeHtml(typeof job.result === "string" ? job.result : JSON.stringify(job.result, null, 2))}</pre>` : ""}
+      </details>
+    `;
+  }).join("");
+}
+
+async function refreshActorBackgroundWork() {
+  if (staticPagesMode || !authenticatedSession() || !state.activeTwin) return;
+  try {
+    const result = await getJson(`/api/agents/work?twin=${encodeURIComponent(state.activeTwin)}&limit=3`);
+    state.actorBackgroundJobs = Array.isArray(result.jobs) ? result.jobs : [];
+    renderActorBackgroundWork();
+  } catch (error) {
+    console.warn("Actor background work status refresh failed", error);
+  }
+}
+
+function scheduleActorBackgroundWorkPolling() {
+  if (state.actorBackgroundPollTimer) clearTimeout(state.actorBackgroundPollTimer);
+  const active = state.actorBackgroundJobs.some((job) => ["queued", "processing"].includes(job.status));
+  const delay = active ? 3_000 : 15_000;
+  state.actorBackgroundPollTimer = setTimeout(async () => {
+    if (document.body.dataset.activeView !== "chat") return;
+    await refreshActorBackgroundWork();
+    scheduleActorBackgroundWorkPolling();
+  }, delay);
 }
 
 async function askTwinViaN8n(query) {

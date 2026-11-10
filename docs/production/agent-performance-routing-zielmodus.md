@@ -94,6 +94,30 @@ The hardened model separates four concerns:
 10. Publish only after contract, no-write UAT, latency probes, and regression
     suites pass.
 
+## Durable Background Work Contract
+
+`execute_work_async` uses `meids.agent-work.v1` rather than keeping the browser
+request open for Butler, Skill Orchestrator, and Task Agent execution.
+
+1. Actor Twin calls the internal `Me.IDs Queue Background Work` tool exactly
+   once and returns the durable job ID immediately.
+2. The adapter sends the signed knowledge-access token to
+   `POST /api/agents/work`; the backend revalidates tenant, user, and twin.
+3. PostgreSQL stores the job with an idempotency key, lease, three bounded
+   attempts, and an owner-scoped audit ledger.
+4. The worker re-enters Actor Twin with a backend-created trusted override that
+   converts the route to `execute_work_sync`. Browser metadata cannot create
+   this override, which prevents recursive queueing.
+5. External side effects remain prohibited. A request that needs send,
+   publish, schedule, delete, deploy, approval, or another real-world write
+   stays in the interactive approval path.
+6. The frontend polls the owner- and twin-scoped status endpoint and displays
+   queued, working, ready, or failed without replaying the chat message.
+
+The transport adapter is replaceable. Moving the current n8n nodes into Azure
+code changes the worker implementation, not the route, status, authorization,
+idempotency, or result contract.
+
 ## Production Gates
 
 - Direct and clarification routes invoke zero specialist tools.
