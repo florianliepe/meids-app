@@ -1,18 +1,18 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-10-28T16:33:47.881Z",
+  "generated_at": "2026-11-10T18:50:01.078Z",
   "scope": "Agent prompt size and n8n execution duration audit. No secrets are stored.",
   "filters": {
     "since": null,
     "agent": null,
-    "limit": 10
+    "limit": 30
   },
   "prompt_metrics": [
     {
       "agent": "actor_twin",
       "path": "prompts/actor-twin/system.md",
-      "chars": 8583,
-      "approx_tokens": 2146
+      "chars": 10315,
+      "approx_tokens": 2579
     },
     {
       "agent": "knowledge_retrieval_interviewer",
@@ -21,22 +21,22 @@
       "approx_tokens": 1907
     },
     {
-      "agent": "critical_faculty",
-      "path": "prompts/critical-faculty/system.md",
-      "chars": 5564,
-      "approx_tokens": 1391
+      "agent": "agentic_butler",
+      "path": "prompts/agentic-butler/system.md",
+      "chars": 6083,
+      "approx_tokens": 1521
     },
     {
       "agent": "skill_orchestrator",
       "path": "prompts/skill-orchestrator/system.md",
-      "chars": 5533,
-      "approx_tokens": 1384
+      "chars": 5894,
+      "approx_tokens": 1474
     },
     {
-      "agent": "agentic_butler",
-      "path": "prompts/agentic-butler/system.md",
-      "chars": 5467,
-      "approx_tokens": 1367
+      "agent": "critical_faculty",
+      "path": "prompts/critical-faculty/system.md",
+      "chars": 5564,
+      "approx_tokens": 1391
     },
     {
       "agent": "learning_agent",
@@ -63,55 +63,55 @@
       "agent": "actor_twin",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 10,
-      "sample_size": 10,
-      "success_count": 10,
+      "fetched_sample_size": 30,
+      "sample_size": 30,
+      "success_count": 30,
       "failure_count": 0,
-      "avg_ms": 37570,
-      "p50_ms": 10392,
-      "p90_ms": 102263,
-      "max_ms": 122488
+      "avg_ms": 20342,
+      "p50_ms": 9839,
+      "p90_ms": 41727,
+      "max_ms": 85804
     },
     {
       "id": "dUkrCHpkLmqmFc7I",
       "agent": "knowledge_fabric_agent",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 10,
-      "sample_size": 10,
-      "success_count": 9,
+      "fetched_sample_size": 30,
+      "sample_size": 30,
+      "success_count": 29,
       "failure_count": 1,
-      "avg_ms": 7307,
-      "p50_ms": 1743,
-      "p90_ms": 16121,
-      "max_ms": 41554
+      "avg_ms": 7912,
+      "p50_ms": 1624,
+      "p90_ms": 31698,
+      "max_ms": 44141
     },
     {
       "id": "elbiGicaFmQQW4w8",
       "agent": "agentic_butler",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 10,
-      "sample_size": 10,
-      "success_count": 10,
+      "fetched_sample_size": 21,
+      "sample_size": 21,
+      "success_count": 21,
       "failure_count": 0,
-      "avg_ms": 76093,
-      "p50_ms": 78375,
-      "p90_ms": 124248,
-      "max_ms": 153460
+      "avg_ms": 42587,
+      "p50_ms": 34296,
+      "p90_ms": 85391,
+      "max_ms": 104538
     },
     {
       "id": "8ER9laJuKS6UrQJF",
       "agent": "skill_orchestrator",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 10,
-      "sample_size": 10,
-      "success_count": 10,
+      "fetched_sample_size": 14,
+      "sample_size": 14,
+      "success_count": 14,
       "failure_count": 0,
-      "avg_ms": 46523,
-      "p50_ms": 37924,
-      "p90_ms": 65606,
+      "avg_ms": 28565,
+      "p50_ms": 21568,
+      "p90_ms": 60910,
       "max_ms": 79608
     },
     {
@@ -119,46 +119,45 @@
       "agent": "task_agent",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 10,
-      "sample_size": 10,
-      "success_count": 10,
+      "fetched_sample_size": 14,
+      "sample_size": 14,
+      "success_count": 14,
       "failure_count": 0,
-      "avg_ms": 12264,
-      "p50_ms": 13188,
-      "p90_ms": 17327,
-      "max_ms": 18847
+      "avg_ms": 7561,
+      "p50_ms": 6541,
+      "p90_ms": 12259,
+      "max_ms": 14141
     },
     {
       "id": "MH1nWMs8IFyNKN1E",
       "agent": "critical_faculty",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 10,
-      "sample_size": 10,
-      "success_count": 10,
+      "fetched_sample_size": 17,
+      "sample_size": 17,
+      "success_count": 17,
       "failure_count": 0,
-      "avg_ms": 18981,
-      "p50_ms": 16905,
-      "p90_ms": 25883,
-      "max_ms": 41605
+      "avg_ms": 21724,
+      "p50_ms": 20988,
+      "p90_ms": 41366,
+      "max_ms": 51055
     },
     {
       "id": "zX0s3hOByJ4HWQye",
       "agent": "learning_agent",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 10,
-      "sample_size": 10,
-      "success_count": 10,
+      "fetched_sample_size": 22,
+      "sample_size": 22,
+      "success_count": 22,
       "failure_count": 0,
-      "avg_ms": 46300,
-      "p50_ms": 35123,
-      "p90_ms": 75117,
+      "avg_ms": 34244,
+      "p50_ms": 15292,
+      "p90_ms": 88675,
       "max_ms": 163064
     }
   ],
   "recommendations": [
-    "Nested n8n agent calls exceed 90s p90. Keep default tool chains to one subagent call unless the user asks for deeper decomposition.",
     "Prompts above 1800 approximate tokens should be split into core instruction plus optional reference, or compressed before production.",
     "Keep Actor Twin as the only frontend chat and avoid exposing subagent conversations in the UI.",
     "Use backend proxy for production to avoid browser-to-n8n latency/security coupling and to persist traces durably."

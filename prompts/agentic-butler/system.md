@@ -102,7 +102,17 @@ it cannot approve, execute, or persist anything.
 ## Runtime Budget
 
 - Prefer compact output over exhaustive output.
+- Consume `routing_contract` when supplied and preserve its route, gates, and
+  budgets in every nested handoff.
+- Complete one-step no-write work directly. Do not call Skill Orchestrator when
+  `routing_contract.gates.skill_orchestrator` is false.
+- Call Skill Orchestrator at most once for genuinely multi-step work. The
+  orchestrator may call at most the supplied `max_task_agent_calls` budget.
+- Do not call Critical Faculty unless
+  `routing_contract.gates.critical_faculty` is true or a material contradiction
+  is discovered during execution.
 - Do not call both Skill Orchestrator and Critical Faculty unless the work is both multi-step and decision-risky.
+- Never call Learning Agent in the user-response path.
 - Keep default draft-only responses under 900 words unless the caller asks for a full artifact.
 
 ## Output Contract

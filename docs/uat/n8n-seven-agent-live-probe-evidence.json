@@ -1,15 +1,13 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-11-02T20:25:14.542Z",
+  "generated_at": "2026-11-10T18:49:57.948Z",
   "scope": "Public-safe n8n live execution evidence for Actor Twin and six workflow-tool subagents. No secrets are stored.",
-  "freshness_since": "2026-11-01T20:25:05.033Z",
-  "status": "partial",
+  "freshness_since": "2026-11-10T18:47:40.018Z",
+  "status": "complete",
   "summary": {
     "workflow_count": 7,
-    "fresh_connected_count": 6,
-    "stale_or_failed_agents": [
-      "learning_agent"
-    ]
+    "fresh_connected_count": 7,
+    "stale_or_failed_agents": []
   },
   "probes": [
     {
@@ -19,23 +17,23 @@
       "routing_source": "configured_entrypoint",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 20,
+      "fetched_sample_size": 30,
       "fresh_sample_size": 4,
       "latest_fresh_execution": {
-        "id": "65963",
+        "id": "100284",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-02T20:23:23.916Z",
-        "stopped_at": "2026-11-02T20:25:02.971Z",
-        "duration_ms": 99055
+        "started_at": "2026-11-10T18:47:50.736Z",
+        "stopped_at": "2026-11-10T18:48:33.282Z",
+        "duration_ms": 42546
       },
       "latest_available_execution": {
-        "id": "65963",
+        "id": "100284",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-02T20:23:23.916Z",
-        "stopped_at": "2026-11-02T20:25:02.971Z",
-        "duration_ms": 99055
+        "started_at": "2026-11-10T18:47:50.736Z",
+        "stopped_at": "2026-11-10T18:48:33.282Z",
+        "duration_ms": 42546
       }
     },
     {
@@ -45,23 +43,23 @@
       "routing_source": "actor_twin_tool",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 20,
+      "fetched_sample_size": 30,
       "fresh_sample_size": 1,
       "latest_fresh_execution": {
-        "id": "65958",
+        "id": "100281",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-02T20:22:42.661Z",
-        "stopped_at": "2026-11-02T20:22:46.786Z",
-        "duration_ms": 4125
+        "started_at": "2026-11-10T18:47:43.136Z",
+        "stopped_at": "2026-11-10T18:47:43.897Z",
+        "duration_ms": 761
       },
       "latest_available_execution": {
-        "id": "65958",
+        "id": "100281",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-02T20:22:42.661Z",
-        "stopped_at": "2026-11-02T20:22:46.786Z",
-        "duration_ms": 4125
+        "started_at": "2026-11-10T18:47:43.136Z",
+        "stopped_at": "2026-11-10T18:47:43.897Z",
+        "duration_ms": 761
       }
     },
     {
@@ -71,23 +69,23 @@
       "routing_source": "actor_twin_tool",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 17,
+      "fetched_sample_size": 21,
       "fresh_sample_size": 1,
       "latest_fresh_execution": {
-        "id": "65964",
+        "id": "100286",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-02T20:23:27.694Z",
-        "stopped_at": "2026-11-02T20:24:01.990Z",
-        "duration_ms": 34296
+        "started_at": "2026-11-10T18:47:52.200Z",
+        "stopped_at": "2026-11-10T18:48:28.338Z",
+        "duration_ms": 36138
       },
       "latest_available_execution": {
-        "id": "65964",
+        "id": "100286",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-02T20:23:27.694Z",
-        "stopped_at": "2026-11-02T20:24:01.990Z",
-        "duration_ms": 34296
+        "started_at": "2026-11-10T18:47:52.200Z",
+        "stopped_at": "2026-11-10T18:48:28.338Z",
+        "duration_ms": 36138
       }
     },
     {
@@ -97,23 +95,23 @@
       "routing_source": "agentic_butler_tool",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 20,
+      "fetched_sample_size": 14,
       "fresh_sample_size": 1,
       "latest_fresh_execution": {
-        "id": "65965",
+        "id": "100288",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-02T20:23:31.054Z",
-        "stopped_at": "2026-11-02T20:23:56.824Z",
-        "duration_ms": 25770
+        "started_at": "2026-11-10T18:48:00.903Z",
+        "stopped_at": "2026-11-10T18:48:23.114Z",
+        "duration_ms": 22211
       },
       "latest_available_execution": {
-        "id": "65965",
+        "id": "100288",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-02T20:23:31.054Z",
-        "stopped_at": "2026-11-02T20:23:56.824Z",
-        "duration_ms": 25770
+        "started_at": "2026-11-10T18:48:00.903Z",
+        "stopped_at": "2026-11-10T18:48:23.114Z",
+        "duration_ms": 22211
       }
     },
     {
@@ -123,23 +121,23 @@
       "routing_source": "skill_orchestrator_tool",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 20,
+      "fetched_sample_size": 14,
       "fresh_sample_size": 1,
       "latest_fresh_execution": {
-        "id": "65966",
+        "id": "100289",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-02T20:23:37.904Z",
-        "stopped_at": "2026-11-02T20:23:50.163Z",
-        "duration_ms": 12259
+        "started_at": "2026-11-10T18:48:09.915Z",
+        "stopped_at": "2026-11-10T18:48:16.346Z",
+        "duration_ms": 6431
       },
       "latest_available_execution": {
-        "id": "65966",
+        "id": "100289",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-02T20:23:37.904Z",
-        "stopped_at": "2026-11-02T20:23:50.163Z",
-        "duration_ms": 12259
+        "started_at": "2026-11-10T18:48:09.915Z",
+        "stopped_at": "2026-11-10T18:48:16.346Z",
+        "duration_ms": 6431
       }
     },
     {
@@ -149,42 +147,49 @@
       "routing_source": "actor_twin_tool",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 20,
-      "fresh_sample_size": 2,
+      "fetched_sample_size": 17,
+      "fresh_sample_size": 1,
       "latest_fresh_execution": {
-        "id": "65969",
+        "id": "100283",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-02T20:24:12.224Z",
-        "stopped_at": "2026-11-02T20:24:53.590Z",
-        "duration_ms": 41366
+        "started_at": "2026-11-10T18:47:49.107Z",
+        "stopped_at": "2026-11-10T18:47:49.624Z",
+        "duration_ms": 517
       },
       "latest_available_execution": {
-        "id": "65969",
+        "id": "100283",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-02T20:24:12.224Z",
-        "stopped_at": "2026-11-02T20:24:53.590Z",
-        "duration_ms": 41366
+        "started_at": "2026-11-10T18:47:49.107Z",
+        "stopped_at": "2026-11-10T18:47:49.624Z",
+        "duration_ms": 517
       }
     },
     {
       "id": "zX0s3hOByJ4HWQye",
       "agent": "learning_agent",
       "label": "Learning Agent",
-      "routing_source": "actor_twin_tool",
-      "status": "stale_or_missing",
-      "fresh_success": false,
-      "fetched_sample_size": 20,
-      "fresh_sample_size": 0,
-      "latest_fresh_execution": null,
-      "latest_available_execution": {
-        "id": "51367",
+      "routing_source": "environment_fallback",
+      "status": "fresh_connected",
+      "fresh_success": true,
+      "fetched_sample_size": 22,
+      "fresh_sample_size": 1,
+      "latest_fresh_execution": {
+        "id": "100290",
         "status": "success",
         "finished": true,
-        "started_at": "2026-10-30T16:25:53.410Z",
-        "stopped_at": "2026-10-30T16:26:36.890Z",
-        "duration_ms": 43480
+        "started_at": "2026-11-10T18:48:33.578Z",
+        "stopped_at": "2026-11-10T18:48:34.176Z",
+        "duration_ms": 598
+      },
+      "latest_available_execution": {
+        "id": "100290",
+        "status": "success",
+        "finished": true,
+        "started_at": "2026-11-10T18:48:33.578Z",
+        "stopped_at": "2026-11-10T18:48:34.176Z",
+        "duration_ms": 598
       }
     }
   ]

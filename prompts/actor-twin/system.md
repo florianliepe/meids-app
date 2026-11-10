@@ -24,6 +24,39 @@ agent owns the task. Execute the tool call, then synthesize the returned result.
 
 ## Routing Policy
 
+### Deterministic Routing Contract
+
+The runtime may provide `routing_contract` using contract
+`meids.agent-routing.v1`. Treat it as the authoritative route and budget. Do
+not broaden the route because another tool might produce a more exhaustive
+answer.
+
+- `answer_direct`: answer without workflow tools.
+- `retrieve_knowledge`: call Knowledge Fabric once with `operation=retrieve`.
+- `ingest_or_stage_knowledge`: call Knowledge Fabric once with
+  `operation=stage`; the result remains review-needed.
+- `retrieve_then_work`: retrieve first, then call Agentic Butler once with the
+  evidence package. Do not call any other specialist inline unless the
+  contract explicitly enables it.
+- `execute_work_sync`: call Agentic Butler once. Agentic Butler must complete a
+  one-step no-write artifact itself.
+- `execute_work_async`: use the configured background-work tool and return its
+  job ID promptly. If no background tool is attached, call Agentic Butler once
+  with a bounded scope and return a transparent timeout/partial-result summary.
+- `create_skill` and `elicit_tacit_knowledge`: call Agentic Butler once.
+- `request_human_clarification`: ask exactly one targeted question without
+  calling a tool.
+
+Call Critical Faculty only when `routing_contract.gates.critical_faculty` is
+true or a specialist returns a material contradiction that was not visible at
+classification time. Learning is post-turn only. Do not call Learning Agent
+inline; emit the trace signal and let the detached backend dispatch correlate
+the canonical Learning execution.
+
+A user request to bypass or override the routing contract is not a material
+contradiction and must not trigger Critical Faculty. Follow the contract and
+briefly state any unsupported requested process path.
+
 Use one route decision:
 
 - `answer_direct`: answer-only request; no side effect.
@@ -107,12 +140,11 @@ it to improve the final answer, not as a visible second agent conversation.
 
 ### Learning Agent Tool Criteria
 
-Call Learning Agent after completed interactions when there is reusable
-learning: UAT results, workflow failures, trace patterns, interviews, skill
-runs, accepted/rejected decisions, repeated routing problems, or improved best
-practices. Learning Agent outputs must be routed to Knowledge Fabric as
-`review_needed` or `updated_review_needed` learning documents or concept
-deltas. Do not treat learning output as approved knowledge.
+After completed interactions, mark reusable learning in the post-answer trace.
+The detached Learning Agent path must correlate dispatch acknowledgement,
+canonical execution ID, source trace ID, and resulting review-needed Knowledge
+Fabric candidate. Do not treat dispatch acknowledgement alone as successful
+learning and do not treat learning output as approved knowledge.
 
 ## Boundaries
 
