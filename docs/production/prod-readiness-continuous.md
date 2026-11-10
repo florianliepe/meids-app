@@ -19,7 +19,7 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | Deterministic agent routing | Production v1 active | `meids.agent-routing.v1` classifies before Actor reasoning; synchronous Learning removed; async work is intercepted before the LLM and cannot fall through to an inline Butler chain |
 | Generic background work | Live adapter; positive authenticated UAT pending | `meids.agent-work.v1`, migration 019, owner/twin status polling, idempotency, retry and frontend progress are deployed. Auth-recovery UAT returned in 1.19 s; deterministic execution `100597` completed in 787 ms without Actor LLM or Butler. |
 | Vector/Search static readiness | Pass | Azure Search readiness artifacts report active semantic production |
-| Backend deployed revision | Pass | App Service build `03f800121ce2f5adf3d43f4066422bec38c50e32`; deployment run `41090737133` |
+| Backend deployed revision | Pass | App Service and frontend build `8ab57422075f5b7798467bd6f7bab767be46f9ea`; deployment runs `42895757450` and `42895756938` |
 | Governed visual recall | Owner/anonymous boundary pass | Migration 018 applied; private Blob upload/read, SHA-256 parity, approval/rejection cascade and anonymous HTTP 401 verified; `docs/uat/governed-visual-recall-live-uat-20261030.json` |
 | Seven-agent execution history | Pass | 7/7 fresh successful workflows, including Actor Twin and six workflow-tool subagents; `docs/uat/n8n-seven-agent-live-probe-evidence.json` |
 | Azure authentication edge | Pass | Anonymous and forged-principal `/api/session` probes both returned 401; `docs/uat/azure-auth-edge-probe.json` |
@@ -98,11 +98,11 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 
 ## Current production release
 
-- Pull request: `https://github.com/florianliepe/meids-app/pull/39`
-- Production revision: `8a78277e1687002b60604e6f2099841a9c28cf73`
-- PR evidence: Delivery validation `42879622438`, Me.IDs validation `42879622432`, and Azure preview `42879622433` passed.
-- Deployment evidence: Azure Static Web Apps `42879897249`, Azure App Service `42879897278`, and GitHub Pages sandbox `42879897429` passed.
-- Live build verification returned the exact production revision from both `/build-info.json` and `/api/build-info`. Actor Twin and its connected Agentic Butler also run the matching `meids.agent-routing.v1` workflow contract with independent n8n rollback backups.
+- Pull request: `https://github.com/florianliepe/meids-app/pull/43`
+- Production revision: `8ab57422075f5b7798467bd6f7bab767be46f9ea`
+- PR evidence: Me.IDs validation `42895614858` and delivery validation `42895614894` passed.
+- Deployment evidence: Azure Static Web Apps `42895756938`, Azure App Service `42895757450`, and GitHub Pages sandbox `42895756948` passed.
+- Live build verification returned the exact production revision from both `/build-info.json` and `/api/build-info`. Actor Twin runs the deterministic pre-LLM async branch with n8n rollback backup `exports/n8n-live-backups/20261110T202511Z-deterministic-background-branch`.
 
 ## Human or privileged gates
 
