@@ -8,6 +8,7 @@ const {
   deletePrivateArtifact,
 } = require("./artifactStorage");
 const { enqueueRuntimeJob, processRuntimeJobBatch } = require("./runtimeJobs");
+const { classifyAgentInteraction } = require("./agentRoutingPolicy");
 const {
   persistGraphProjection,
   latestEdgeReviews,
@@ -661,7 +662,83 @@ function createWorkspaceApi(deps) {
     });
   }
 
+  async function persistAgentWorkResult(pool, mapping, jobId, action, details) {
+    await withContext(pool, mapping, async (client) => {
+      const updated = await client.query(
+        `UPDATE audit.event SET action = $3, details = $4::jsonb
+         WHERE tenant_id = $1 AND resource_id = $2 AND resource_type = 'agent.background_work'
+           AND actor_user_id = $5`,
+        [mapping.tenant_id, jobId, action, JSON.stringify(details), mapping.user_id],
+      );
+      if (updated.rowCount !== 1) throw new Error(`Agent work ledger update did not match ${jobId}.`);
+    });
+  }
+
   const runtimeJobHandlers = {
+    agent_work: {
+      async run(job) {
+        const mapping = runtimeMapping(job);
+        const queued = job.payload.queued || {};
+        const request = structuredClone(job.payload.request || {});
+        request.metadata = {
+          ...(request.metadata || {}),
+          source: "meids_backend_background_work",
+          intent: "execute_background_work",
+          side_effect_policy: "no_external_side_effects",
+          routingHints: { backgroundWorker: true },
+          routingContractOverride: {
+            route: "execute_work_sync",
+            skill_orchestrator: true,
+            max_task_agent_calls: 2,
+            critical_faculty: Boolean(queued.critical_faculty),
+          },
+        };
+        request.metadata.authorization = {
+          ...(request.metadata.authorization || {}),
+          knowledgeAccessToken: issueKnowledgeAccessToken(mapping, job.twin_id),
+        };
+        const pool = await getPgPool();
+        await persistAgentWorkResult(pool, mapping, job.job_id, "agent.work.processing", {
+          ...queued,
+          status: "processing",
+          attempts: Number(job.attempts),
+          started_at: new Date().toISOString(),
+        });
+        const configuredTimeout = Number(process.env.AGENT_WORK_TIMEOUT_MS || 105000);
+        const response = await proxyToN8n("actor_twin", request, {
+          timeoutMs: Number.isFinite(configuredTimeout) ? Math.max(30000, Math.min(configuredTimeout, 120000)) : 105000,
+        });
+        const output = response.output || response;
+        const completed = {
+          ...queued,
+          status: "completed",
+          summary: clean(typeof output === "string" ? output : response.message || "Background work completed.", 1_000),
+          result: output,
+          attempts: Number(job.attempts),
+          completed_at: new Date().toISOString(),
+        };
+        await persistAgentWorkResult(pool, mapping, job.job_id, "agent.work.completed", completed);
+        return completed;
+      },
+      async onFailure(job, error, failure) {
+        const mapping = runtimeMapping(job);
+        const queued = job.payload.queued || {};
+        await persistAgentWorkResult(
+          await getPgPool(),
+          mapping,
+          job.job_id,
+          failure.terminal ? "agent.work.failed" : "agent.work.queued",
+          {
+            ...queued,
+            status: failure.terminal ? "failed" : "queued",
+            error: clean(error.message || "Background work failed.", 1_000),
+            attempts: Number(job.attempts),
+            retry_scheduled: !failure.terminal,
+            completed_at: failure.terminal ? new Date().toISOString() : undefined,
+          },
+        );
+      },
+    },
     skill_execution: {
       async run(job) {
         const mapping = runtimeMapping(job);
@@ -1402,6 +1479,93 @@ function createWorkspaceApi(deps) {
     jsonResponse(res, 202, queued);
   }
 
+  async function agentWorkEnqueue(req, res) {
+    const body = await readBody(req);
+    const { mapping, pool } = await context(req, body, true);
+    const twinId = assertTwin(mapping, body.twin || body.twin_id);
+    const message = clean(body.message || body.chatInput, 20_000);
+    if (!message) throw httpError(400, "A background work request is required.");
+    const classified = classifyAgentInteraction({ message });
+    if (body.allow_external_side_effects === true || classified.route !== "execute_work_async") {
+      throw httpError(409, "Only multi-step no-write work can run in the background. Knowledge writes, capability activation, and external side effects require an interactive flow.");
+    }
+    const suppliedKey = clean(body.idempotency_key, 128);
+    const requestHash = crypto.createHash("sha256").update(`${mapping.tenant_id}:${mapping.user_id}:${twinId}:${message}`).digest("hex");
+    const timeBucket = Math.floor(Date.now() / 300_000);
+    const idempotencyMaterial = suppliedKey || `${body.session_id || "sessionless"}:${requestHash}:${timeBucket}`;
+    const idempotencyHash = crypto.createHash("sha256").update(idempotencyMaterial).digest("hex");
+    const jobId = `agent-work-${idempotencyHash.slice(0, 32)}`;
+    const queued = {
+      contract: "meids.agent-work.v1",
+      status: "queued",
+      job_id: jobId,
+      twin_id: twinId,
+      request: message,
+      request_sha256: requestHash,
+      side_effect_policy: "no_external_side_effects",
+      critical_faculty: body.critical_faculty === true,
+      classified_route: classified.route,
+      created_at: new Date().toISOString(),
+    };
+    const envelope = {
+      envelope_version: "0.1.0",
+      request_id: jobId,
+      timestamp: queued.created_at,
+      agent_id: "actor_twin",
+      intent: "execute_background_work",
+      principal: { tenant_id: mapping.tenant_id, user_id: mapping.user_id, roles: mapping.roles || [] },
+      input: { message, no_write: true },
+      context: { active_twin_id: twinId, allowed_twin_ids: mapping.allowed_twin_ids, routing_policy: "meids.agent-routing.v1" },
+    };
+    const request = actorChatRequest(envelope, mapping, twinId, message, body.session_id);
+    const queuedRequest = structuredClone(request);
+    if (queuedRequest.metadata?.authorization) delete queuedRequest.metadata.authorization.knowledgeAccessToken;
+    const inserted = await withContext(pool, mapping, async (client) => {
+      const insertedJob = await enqueueRuntimeJob(client, {
+        job_id: jobId,
+        idempotency_key: `agent-work:${mapping.tenant_id}:${mapping.user_id}:${twinId}:${idempotencyHash}`,
+        tenant_id: mapping.tenant_id,
+        actor_user_id: mapping.user_id,
+        twin_id: twinId,
+        job_type: "agent_work",
+        payload: { mapping, request: queuedRequest, queued },
+        max_attempts: 3,
+      });
+      const existingLedger = await client.query(
+        `SELECT 1 FROM audit.event WHERE tenant_id = $1 AND actor_user_id = $2
+         AND resource_type = 'agent.background_work' AND resource_id = $3 LIMIT 1`,
+        [mapping.tenant_id, mapping.user_id, insertedJob.job_id],
+      );
+      if (!existingLedger.rowCount) {
+        await audit(client, mapping, "agent.work.queued", "agent.background_work", insertedJob.job_id, { ...queued, job_id: insertedJob.job_id });
+      }
+      return insertedJob;
+    });
+    jsonResponse(res, 202, { ...queued, job_id: inserted.job_id, status: inserted.status === "pending" ? "queued" : inserted.status });
+  }
+
+  async function agentWorkStatus(req, res, url) {
+    const { mapping, pool } = await context(req, {}, true);
+    const twinId = assertTwin(mapping, url.searchParams.get("twin"));
+    const jobId = clean(url.searchParams.get("job"), 128);
+    const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit")) || 10, 25));
+    const params = [mapping.tenant_id, mapping.user_id, twinId];
+    const jobFilter = jobId ? "AND resource_id = $4" : "";
+    if (jobId) params.push(jobId);
+    params.push(limit);
+    const result = await withContext(pool, mapping, (client) => client.query(
+      `SELECT resource_id, action, details, created_at FROM audit.event
+       WHERE tenant_id = $1 AND actor_user_id = $2
+         AND resource_type = 'agent.background_work' AND details->>'twin_id' = $3
+         ${jobFilter}
+       ORDER BY created_at DESC LIMIT $${params.length}`,
+      params,
+    ));
+    if (jobId && !result.rowCount) throw httpError(404, "Background work job not found.");
+    const jobs = result.rows.map((row) => ({ job_id: row.resource_id, ...row.details, created_at: row.details.created_at || row.created_at }));
+    jsonResponse(res, 200, jobId ? jobs[0] : { status: "ready", total: jobs.length, jobs });
+  }
+
   async function skillRuns(req, res, url) {
     const { mapping, pool } = await context(req);
     const limit = Math.min(100, Number(url.searchParams.get("limit")) || 20);
@@ -2096,6 +2260,8 @@ function createWorkspaceApi(deps) {
     else if (route === "POST /api/skills/archive") await skillMutate(req, res, "archive");
     else if (route === "POST /api/skills/run") await skillRun(req, res);
     else if (route === "GET /api/skills/runs") await skillRuns(req, res, url);
+    else if (route === "POST /api/agents/work") await agentWorkEnqueue(req, res);
+    else if (route === "GET /api/agents/work") await agentWorkStatus(req, res, url);
     else if (route === "GET /api/skills/refinements") await stableEmpty(res, "skill_refinements");
     else if (route === "GET /api/skills/telemetry") await stableEmpty(res, "telemetry");
     else if (route === "GET /api/voice/concepts/criteria") await voiceCriteria(res);

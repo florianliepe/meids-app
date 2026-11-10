@@ -24,5 +24,13 @@
     "portable_fields": ["route", "target", "operation", "scores", "gates", "budgets"],
     "orchestrator_specific_fields": [],
     "rule": "Azure code and n8n must consume the same contract and must not reinterpret route semantics."
+  },
+  "background_work": {
+    "contract": "meids.agent-work.v1",
+    "ack_ms": 3000,
+    "execution_route": "actor_twin_then_agentic_butler",
+    "side_effect_policy": "no_external_side_effects",
+    "status_states": ["queued", "processing", "completed", "failed"],
+    "rule": "The backend creates the trusted worker override. Browser metadata can never force synchronous worker execution."
   }
 }

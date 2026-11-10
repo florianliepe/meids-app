@@ -47,4 +47,30 @@ assert.equal(probeOverride.gates.skill_orchestrator, true);
 assert.equal(probeOverride.gates.max_task_agent_calls, 1);
 assert.equal(probeOverride.gates.critical_faculty, false);
 
-console.log(`Agent routing policy tests passed: ${cases.length + 4} cases`);
+const backgroundOverride = classifyAgentInteraction({
+  message: "Research the evidence, compare the options, then prepare a decision brief.",
+  metadata: {
+    source: "meids_backend_background_work",
+    intent: "execute_background_work",
+    side_effect_policy: "no_external_side_effects",
+    routingHints: { backgroundWorker: true },
+    routingContractOverride: { route: "execute_work_sync", skill_orchestrator: true, max_task_agent_calls: 2 },
+  },
+});
+assert.equal(backgroundOverride.route, "execute_work_sync");
+assert.equal(backgroundOverride.worker_override, "trusted_background_work");
+assert.equal(backgroundOverride.gates.external_side_effect_approval, true);
+assert.equal(backgroundOverride.gates.external_side_effects_allowed, false);
+assert.equal(backgroundOverride.gates.max_task_agent_calls, 2);
+
+const untrustedBackgroundOverride = classifyAgentInteraction({
+  message: "Research the evidence, compare the options, then prepare a decision brief.",
+  metadata: {
+    source: "browser",
+    routingContractOverride: { route: "execute_work_sync" },
+  },
+});
+assert.equal(untrustedBackgroundOverride.route, "retrieve_then_work");
+assert.equal(untrustedBackgroundOverride.worker_override, undefined);
+
+console.log(`Agent routing policy tests passed: ${cases.length + 6} cases`);

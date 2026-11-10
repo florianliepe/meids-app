@@ -1,0 +1,53 @@
+{
+  "name": "Me.IDs Queue Background Work - callable v1",
+  "nodes": [
+    {
+      "id": "meids-background-work-trigger",
+      "name": "Receive background work",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0],
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            { "name": "message", "type": "string" },
+            { "name": "knowledge_access_token", "type": "string" },
+            { "name": "twin_id", "type": "string" },
+            { "name": "session_id", "type": "string" },
+            { "name": "idempotency_key", "type": "string" },
+            { "name": "critical_faculty", "type": "boolean" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "meids-background-work-request",
+      "name": "Queue durable work",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "__MEIDS_BACKEND_BASE_URL__/api/agents/work",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $json.message, knowledge_access_token: $json.knowledge_access_token, twin_id: $json.twin_id, session_id: $json.session_id, idempotency_key: $json.idempotency_key || ('n8n:' + $execution.id), critical_faculty: $json.critical_faculty === true, allow_external_side_effects: false }) }}",
+        "options": { "timeout": 5000 }
+      }
+    }
+  ],
+  "connections": {
+    "Receive background work": {
+      "main": [[{ "node": "Queue durable work", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null
+}
