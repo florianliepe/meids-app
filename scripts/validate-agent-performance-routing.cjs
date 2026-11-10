@@ -26,6 +26,7 @@ assert.equal(queueRequest.parameters.method, "POST");
 assert.match(queueRequest.parameters.url, /\/api\/agents\/work$/);
 assert.match(queueRequest.parameters.jsonBody, /knowledgeAccessToken/);
 assert.match(queueRequest.parameters.jsonBody, /allow_external_side_effects: false/);
+assert(queueRequest.parameters.headerParameters.parameters.some((header) => header.name === "Authorization" && /Bearer/.test(header.value)));
 assert.equal(queueRequest.parameters.options.timeout, 5000);
 assert.equal(queueRequest.onError, "continueRegularOutput");
 assert.match(acknowledgement.parameters.jsCode, /meids\.agent-work\.v1/);

@@ -1,0 +1,71 @@
+name: Configure Me.IDs backend service endpoint
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Add or remove the exact EasyAuth exclusion
+        required: true
+        default: apply
+        type: choice
+        options:
+          - apply
+          - remove
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: meids-backend-auth-exclusions
+  cancel-in-progress: false
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_BACKEND_APP_NAME }}
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_BACKEND_RESOURCE_GROUP }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      EXCLUDED_PATH: /api/agents/work
+    steps:
+      - name: Sign in to Azure with GitHub OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Back up and update exact excluded path
+        shell: bash
+        env:
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          set -euo pipefail
+          uri="https://management.azure.com/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${AZURE_RESOURCE_GROUP}/providers/Microsoft.Web/sites/${AZURE_WEBAPP_NAME}/config/authsettingsV2?api-version=2022-03-01"
+          az rest --method get --uri "$uri" > authsettings-before.json
+          if [ "$OPERATION" = "apply" ]; then
+            jq --arg path "$EXCLUDED_PATH" \
+              '.properties.globalValidation.excludedPaths = (((.properties.globalValidation.excludedPaths // []) + [$path]) | unique) | {properties: .properties}' \
+              authsettings-before.json > authsettings-update.json
+          else
+            jq --arg path "$EXCLUDED_PATH" \
+              '.properties.globalValidation.excludedPaths = ((.properties.globalValidation.excludedPaths // []) | map(select(. != $path))) | {properties: .properties}' \
+              authsettings-before.json > authsettings-update.json
+          fi
+          az rest --method put --uri "$uri" --body @authsettings-update.json > authsettings-after.json
+          actual="$(jq -r --arg path "$EXCLUDED_PATH" '(.properties.globalValidation.excludedPaths // []) | index($path) != null' authsettings-after.json)"
+          if [ "$OPERATION" = "apply" ]; then test "$actual" = "true"; else test "$actual" = "false"; fi
+          echo "Operation: $OPERATION" >> "$GITHUB_STEP_SUMMARY"
+          echo "Exact path: $EXCLUDED_PATH" >> "$GITHUB_STEP_SUMMARY"
+          echo "Application-level signed-token authorization remains mandatory." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain rollback evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: meids-backend-authsettings-${{ github.run_id }}
+          path: |
+            authsettings-before.json
+            authsettings-after.json
+          retention-days: 14

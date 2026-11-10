@@ -55,7 +55,10 @@ function patchWorkflow(workflow) {
     method: "POST",
     url: `${backendBase}/api/agents/work`,
     sendHeaders: true,
-    headerParameters: { parameters: [{ name: "Content-Type", value: "application/json" }] },
+    headerParameters: { parameters: [
+      { name: "Content-Type", value: "application/json" },
+      { name: "Authorization", value: "={{ 'Bearer ' + ($('When chat message received').first().json.metadata?.authorization?.knowledgeAccessToken || '') }}" },
+    ] },
     sendBody: true,
     specifyBody: "json",
     jsonBody: "={{ (() => { const trigger = $('When chat message received').first().json; const route = $('Classify interaction route').first().json.routing_contract || {}; return JSON.stringify({ knowledge_access_token: trigger.metadata?.authorization?.knowledgeAccessToken || '', twin_id: trigger.metadata?.identity?.activeTwinId || '', message: String(trigger.chatInput || ''), session_id: String(trigger.sessionId || ''), idempotency_key: String(trigger.sessionId || 'chat') + ':' + $execution.id, critical_faculty: route.gates?.critical_faculty === true, allow_external_side_effects: false }); })() }}",

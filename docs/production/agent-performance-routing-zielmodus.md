@@ -116,6 +116,9 @@ request open for Butler, Skill Orchestrator, and Task Agent execution.
    queued, working, ready, or failed without replaying the chat message.
 7. An expired or rejected authorization context returns `auth_required` without
    starting or replaying a job. The user reconnects and resubmits intentionally.
+8. The App Service platform exemption is limited to `/api/agents/work` so n8n
+   can reach the application. The endpoint itself still rejects missing,
+   forged, expired, cross-user, and cross-twin signed access tokens.
 
 The transport adapter is replaceable. Moving the current n8n nodes into Azure
 code changes the worker implementation, not the route, status, authorization,
