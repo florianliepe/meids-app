@@ -131,8 +131,17 @@ function validateEmbeddedActor(workflow, workflowPath) {
   if (!chat) fail(`${rel(workflowPath)} missing embedded Chat Trigger`);
   if (!ai) fail(`${rel(workflowPath)} missing Actor Twin AI Agent`);
   if (!model) fail(`${rel(workflowPath)} missing Actor Twin Chat Model`);
-  if (!hasMainPath(workflow, chat.name, ai.name)) {
-    fail(`${rel(workflowPath)} must route the embedded Chat Trigger to ${ai.name}`);
+  const classifier = nodeByName(workflow, "Classify interaction route");
+  const directPath = hasMainPath(workflow, chat.name, ai.name);
+  const classifiedPath = classifier
+    && classifier.type === "n8n-nodes-base.code"
+    && hasMainPath(workflow, chat.name, classifier.name)
+    && hasMainPath(workflow, classifier.name, ai.name);
+  if (!directPath && !classifiedPath) {
+    fail(`${rel(workflowPath)} must route the embedded Chat Trigger to ${ai.name}, optionally through deterministic classification`);
+  }
+  if (classifier && !String(classifier.parameters?.jsCode || "").includes("meids.agent-routing.v1")) {
+    fail(`${rel(workflowPath)} routing classifier must emit meids.agent-routing.v1`);
   }
   if (!hasAiModelConnection(workflow, model.name, ai.name)) {
     fail(`${rel(workflowPath)} must connect ${model.name} as language model to ${ai.name}`);

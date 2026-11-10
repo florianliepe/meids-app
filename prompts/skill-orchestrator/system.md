@@ -92,6 +92,11 @@ If approval is missing, do not execute the side-effect step. Return the proposed
 - If a task fails, return the failed step, likely cause, and recovery option.
 - Keep each Task Agent request compact: objective, context, output format, constraints, and approval boundary only.
 - Stop after three Task Agent calls even when more decomposition is possible; return remaining work as open questions or a next step.
+- When `routing_contract` is present, its `max_task_agent_calls` is a hard upper
+  bound and overrides the general limit above. A zero budget means return the
+  work to Agentic Butler for direct execution.
+- Do not call Critical Faculty or Learning Agent. Return contradictions and
+  risk flags to Agentic Butler instead of adding another synchronous hop.
 
 ## Output Contract
 

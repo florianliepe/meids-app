@@ -1,8 +1,8 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-11-02T20:38:23.193Z",
+  "generated_at": "2026-11-10T18:50:01.959Z",
   "source": "latest_published_nightly_evidence",
-  "status": "attention",
+  "status": "passed",
   "summary": {
     "contract_suites": "passed",
     "no_write_scenarios": {
@@ -10,7 +10,7 @@
       "total": 5
     },
     "fresh_agents": {
-      "passed": 6,
+      "passed": 7,
       "total": 7
     },
     "manual_validations": {
@@ -22,37 +22,37 @@
     {
       "agent": "actor_twin",
       "status": "fresh_connected",
-      "duration_ms": 99055
+      "duration_ms": 42546
     },
     {
       "agent": "knowledge_fabric_agent",
       "status": "fresh_connected",
-      "duration_ms": 4125
+      "duration_ms": 761
     },
     {
       "agent": "agentic_butler",
       "status": "fresh_connected",
-      "duration_ms": 34296
+      "duration_ms": 36138
     },
     {
       "agent": "skill_orchestrator",
       "status": "fresh_connected",
-      "duration_ms": 25770
+      "duration_ms": 22211
     },
     {
       "agent": "task_agent",
       "status": "fresh_connected",
-      "duration_ms": 12259
+      "duration_ms": 6431
     },
     {
       "agent": "critical_faculty",
       "status": "fresh_connected",
-      "duration_ms": 41366
+      "duration_ms": 517
     },
     {
       "agent": "learning_agent",
-      "status": "stale_or_missing",
-      "duration_ms": null
+      "status": "fresh_connected",
+      "duration_ms": 598
     }
   ],
   "manual_validations": [

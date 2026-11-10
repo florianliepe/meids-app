@@ -47,6 +47,7 @@ const scenarios = [
     id: "butler_skill_task_chain",
     url: actorUrl,
     query: "No-write launch probe: delegate to Agentic Butler, which must call Skill Orchestrator and exactly one Task Agent for an in-memory dry run that checks the three words alpha, beta, gamma are alphabetically ordered. Do not use GitHub, send, schedule, publish, persist, or activate anything.",
+    routingContractOverride: { route: "execute_work_sync", skill_orchestrator: true, max_task_agent_calls: 1 },
   },
   {
     id: "learning_agent",
@@ -81,8 +82,47 @@ function actorBody(scenario) {
       input: { execute: false },
       side_effect_policy: "no_write_probe",
       routingHints: { evidenceFirst: true, noWriteProbe: true },
+      ...(scenario.routingContractOverride ? { routingContractOverride: scenario.routingContractOverride } : {}),
     },
   };
+}
+
+async function latestLearningExecution() {
+  const base = String(process.env.N8N_API_BASE_URL || "").replace(/\/+$/, "");
+  const key = String(process.env.N8N_API_KEY || "");
+  const workflowId = String(process.env.N8N_LEARNING_AGENT_WORKFLOW_ID || "zX0s3hOByJ4HWQye");
+  if (!base || !key) return null;
+  const response = await fetch(`${base}/api/v1/executions?workflowId=${encodeURIComponent(workflowId)}&limit=5`, {
+    headers: { "X-N8N-API-KEY": key, Accept: "application/json" },
+  });
+  if (!response.ok) return null;
+  const payload = await response.json();
+  return (payload.data || [])[0] || null;
+}
+
+async function correlateLearningExecution(result, baselineId) {
+  if (!result || ![200, 202].includes(result.http_status)) return result;
+  const deadline = Date.now() + 75_000;
+  while (Date.now() < deadline) {
+    const latest = await latestLearningExecution();
+    if (latest && String(latest.id) !== String(baselineId || "") && latest.finished !== false) {
+      result.canonical_execution = {
+        id: String(latest.id),
+        status: latest.status,
+        started_at: latest.startedAt,
+        stopped_at: latest.stoppedAt,
+      };
+      if (latest.status !== "success") {
+        result.status = "failed";
+        result.error = `Fresh Learning Agent execution ${latest.id} finished with ${latest.status}.`;
+      }
+      return result;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2_500));
+  }
+  result.status = "failed";
+  result.error = "Learning dispatch was acknowledged but no fresh canonical Learning Agent execution was observed within 75 seconds.";
+  return result;
 }
 
 async function postScenario(scenario) {
@@ -120,9 +160,13 @@ async function postScenario(scenario) {
 
 (async () => {
   const results = [];
+  const learningBaseline = await latestLearningExecution();
   for (const scenario of scenarios) {
     process.stdout.write(`Running ${scenario.id}...\n`);
-    results.push(await postScenario(scenario));
+    const result = await postScenario(scenario);
+    results.push(scenario.id === "learning_agent"
+      ? await correlateLearningExecution(result, learningBaseline?.id)
+      : result);
   }
   const artifact = {
     schema_version: "0.1.0",

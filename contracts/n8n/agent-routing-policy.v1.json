@@ -1,0 +1,28 @@
+{
+  "contract": "meids.agent-routing.v1",
+  "owner": "actor_twin",
+  "principles": [
+    "The route is classified before generative reasoning.",
+    "Stored personal or organizational facts require reviewed evidence retrieval.",
+    "One-step no-write work stays in Agentic Butler; multi-step work may use Skill Orchestrator.",
+    "Critical Faculty is conditional, never a default hop.",
+    "Learning is post-turn unless its result is explicitly required now.",
+    "External side effects and generated-capability activation remain approval-gated."
+  ],
+  "routes": {
+    "answer_direct": { "target": "actor_twin", "max_inline_specialists": 0, "response_ms": 8000 },
+    "retrieve_knowledge": { "target": "knowledge_fabric_agent", "max_inline_specialists": 1, "response_ms": 12000 },
+    "ingest_or_stage_knowledge": { "target": "knowledge_fabric_agent", "max_inline_specialists": 1, "response_ms": 15000 },
+    "retrieve_then_work": { "target": "knowledge_fabric_agent_then_agentic_butler", "max_inline_specialists": 2, "response_ms": 20000 },
+    "execute_work_sync": { "target": "agentic_butler", "max_inline_specialists": 1, "response_ms": 20000 },
+    "execute_work_async": { "target": "agentic_butler", "max_inline_specialists": 1, "ack_ms": 3000 },
+    "create_skill": { "target": "agentic_butler", "max_inline_specialists": 1, "response_ms": 15000 },
+    "elicit_tacit_knowledge": { "target": "agentic_butler", "max_inline_specialists": 1, "response_ms": 15000 },
+    "request_human_clarification": { "target": "human", "max_inline_specialists": 0, "response_ms": 8000 }
+  },
+  "migration_boundary": {
+    "portable_fields": ["route", "target", "operation", "scores", "gates", "budgets"],
+    "orchestrator_specific_fields": [],
+    "rule": "Azure code and n8n must consume the same contract and must not reinterpret route semantics."
+  }
+}

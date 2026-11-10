@@ -23,12 +23,8 @@ function hasMainPath(workflow, from, to) {
 }
 
 const actorTool = nodeByName(actor, "Learning Agent");
-const mapped = actorTool?.parameters?.workflowInputs?.value || {};
-const schema = (actorTool?.parameters?.workflowInputs?.schema || []).map((entry) => entry.id);
-for (const field of ["query", "knowledge_access_token", "tenant_id", "user_id", "twin_id", "organization_id"]) {
-  if (!(field in mapped) || !schema.includes(field)) {
-    fail(`Actor Twin Learning Agent tool must map ${field}.`);
-  }
+if (actorTool) {
+  fail("Actor Twin must not expose Learning Agent as a synchronous workflow tool.");
 }
 
 const executeTrigger = learning.nodes.find((node) => node.type === "n8n-nodes-base.executeWorkflowTrigger");
@@ -99,7 +95,7 @@ if (!actorTraceBody.includes("learningSignal") || !actorTraceBody.includes("trac
 console.log(JSON.stringify({
   status: "passed",
   checks: [
-    "actor_learning_tool_propagates_identity_context",
+    "actor_learning_is_detached_from_synchronous_tools",
     "inline_and_post_turn_inputs_are_normalized",
     "post_turn_dispatch_contains_trace_content_and_transient_auth",
     "learning_to_knowledge_fabric_preserves_auth_and_twin_scope",

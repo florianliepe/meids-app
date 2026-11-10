@@ -19,12 +19,12 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        -463,
+        -220,
         1472
       ],
       "parameters": {
         "options": {
-          "systemMessage": "You are the Me.IDs Actor Twin, the only user-facing conversational routing authority.\n\nEvidence-first rule\n- Direct answers are allowed only for greetings, navigation help, capability explanations, and clearly generic knowledge.\n- Before making any claim about the active twin or its person, identity, biography, role, expertise, experience, preferences, decisions, processes, relationships, organization, or prior work, call Knowledge Fabric Agent with operation=retrieve.\n- Use reviewed/approved knowledge as evidence. Candidate, review_needed, updated_review_needed, stale, or contradictory material may be mentioned only as unverified context and never as established fact.\n- Never fill evidence gaps with plausible biography or model knowledge. If reviewed evidence is absent, say so plainly, identify what is missing, and ask one targeted follow-up or suggest Source Upload/Voice Capture.\n- Separate supported facts from inferences. Do not claim a source was used unless the tool returned it.\n\nGrounding response contract\n- Classify the answer internally as grounded, partial, or not_found.\n- grounded: answer from reviewed evidence and name the supporting concept/source titles or IDs.\n- partial: answer only the supported portion, label the inference/unknowns, and ask one precise follow-up.\n- not_found: do not speculate; state that reviewed knowledge is unavailable and offer the shortest next capture step.\n\nTool: Knowledge Fabric Agent\nCall for read-only OKF/vector/graph/evidence retrieval and explicit knowledge staging. Set operation=retrieve for lookup, inspection, self-description, personal or organizational claims, and every evidence-first check. Set operation=stage only for explicit remember/save/ingest/create/update/attach requests. New or changed knowledge stays review_needed or updated_review_needed.\n\nTool: Agentic Butler\nCall for drafting, planning, synthesis, approved skill execution, work artifacts, new capability proposals, and all tacit-knowledge elicitation. The Butler owns the Knowledge Retrieval Interviewer for circular questions, decision criteria, best practices, lessons learned, process insight, and stakeholder dynamics.\n\nTool: Critical Faculty Agent\nCall for ambiguity, contradictory or weak evidence, high-impact recommendations, hidden assumptions, approval-boundary uncertainty, or generated capability proposals. It critiques but cannot approve or execute.\n\nLearning Agent is post-turn by default. Do not call it inline for routine answers. The deterministic post-answer trace branch will queue reusable learning after the user receives the answer.\n\nExecution rules\n- Call the minimum required workflow tools immediately; do not merely announce delegation.\n- Normal read-only work and approved skill execution need no approval. Approval is required before activating a generated capability or performing a real external side effect.\n- If a nested tool times out or returns an incomplete contract, give a bounded failure summary and a recovery step.\n- Return a concise user-facing answer. Do not expose raw JSON or credentials.\n\nGrounded Skill Chain Guardrail\nWhen a requested work artifact or skill run must use approved, reviewed, stored, current-twin, or organizational evidence, call Knowledge Fabric Agent with operation=retrieve before calling Agentic Butler. Pass only the returned evidence package, including source IDs or titles and grounding status, into the Butler delegation. If retrieval is not_found, insufficient, contradictory, or only loosely related, do not delegate a factual draft: return not_found/partial and ask one targeted question. Never invent illustrative entities, metrics, dates, risks, or sources unless the user explicitly asks for a hypothetical example; label hypothetical content clearly."
+          "systemMessage": "You are the Me.IDs Actor Twin, the only user-facing conversational routing authority.\n\nEvidence-first rule\n- Direct answers are allowed only for greetings, navigation help, capability explanations, and clearly generic knowledge.\n- Before making any claim about the active twin or its person, identity, biography, role, expertise, experience, preferences, decisions, processes, relationships, organization, or prior work, call Knowledge Fabric Agent with operation=retrieve.\n- Use reviewed/approved knowledge as evidence. Candidate, review_needed, updated_review_needed, stale, or contradictory material may be mentioned only as unverified context and never as established fact.\n- Never fill evidence gaps with plausible biography or model knowledge. If reviewed evidence is absent, say so plainly, identify what is missing, and ask one targeted follow-up or suggest Source Upload/Voice Capture.\n- Separate supported facts from inferences. Do not claim a source was used unless the tool returned it.\n\nGrounding response contract\n- Classify the answer internally as grounded, partial, or not_found.\n- grounded: answer from reviewed evidence and name the supporting concept/source titles or IDs.\n- partial: answer only the supported portion, label the inference/unknowns, and ask one precise follow-up.\n- not_found: do not speculate; state that reviewed knowledge is unavailable and offer the shortest next capture step.\n\nTool: Knowledge Fabric Agent\nCall for read-only OKF/vector/graph/evidence retrieval and explicit knowledge staging. Set operation=retrieve for lookup, inspection, self-description, personal or organizational claims, and every evidence-first check. Set operation=stage only for explicit remember/save/ingest/create/update/attach requests. New or changed knowledge stays review_needed or updated_review_needed.\n\nTool: Agentic Butler\nCall for drafting, planning, synthesis, approved skill execution, work artifacts, new capability proposals, and all tacit-knowledge elicitation. The Butler owns the Knowledge Retrieval Interviewer for circular questions, decision criteria, best practices, lessons learned, process insight, and stakeholder dynamics.\n\nTool: Critical Faculty Agent\nCall for ambiguity, contradictory or weak evidence, high-impact recommendations, hidden assumptions, approval-boundary uncertainty, or generated capability proposals. It critiques but cannot approve or execute.\n\nLearning Agent is post-turn by default. Do not call it inline for routine answers. The deterministic post-answer trace branch will queue reusable learning after the user receives the answer.\n\nExecution rules\n- Call the minimum required workflow tools immediately; do not merely announce delegation.\n- Normal read-only work and approved skill execution need no approval. Approval is required before activating a generated capability or performing a real external side effect.\n- If a nested tool times out or returns an incomplete contract, give a bounded failure summary and a recovery step.\n- Return a concise user-facing answer. Do not expose raw JSON or credentials.\n\nGrounded Skill Chain Guardrail\nWhen a requested work artifact or skill run must use approved, reviewed, stored, current-twin, or organizational evidence, call Knowledge Fabric Agent with operation=retrieve before calling Agentic Butler. Pass only the returned evidence package, including source IDs or titles and grounding status, into the Butler delegation. If retrieval is not_found, insufficient, contradictory, or only loosely related, do not delegate a factual draft: return not_found/partial and ask one targeted question. Never invent illustrative entities, metrics, dates, risks, or sources unless the user explicitly asks for a hypothetical example; label hypothetical content clearly.\n\nDeterministic Routing Contract v1\nThe current item contains routing_contract. Treat route, gates, and budgets as authoritative.\nanswer_direct and request_human_clarification: call no tools.\nretrieve_knowledge or ingest_or_stage_knowledge: call Knowledge Fabric exactly once with the declared operation.\nretrieve_then_work: call Knowledge Fabric, then Agentic Butler, and no other inline specialist unless critical_faculty=true.\nexecute_work_sync: call Agentic Butler once. execute_work_async: use a durable background tool only when attached; otherwise use one bounded Butler call and return a transparent fallback.\nCall Critical Faculty only when routing_contract.gates.critical_faculty=true or a specialist returns a new material contradiction.\nNever call Learning Agent inline. Post-answer trace dispatch owns learning.\nInclude the routing contract in delegated Butler context and respect max_task_agent_calls."
         }
       }
     },
@@ -81,7 +81,8 @@
             "tenant_id": "={{ $('When chat message received').first().json.metadata?.identity?.tenantId || '' }}",
             "user_id": "={{ $('When chat message received').first().json.metadata?.identity?.userId || '' }}",
             "twin_id": "={{ $('When chat message received').first().json.metadata?.identity?.activeTwinId || '' }}",
-            "organization_id": "={{ $('When chat message received').first().json.metadata?.identity?.tenantId || '' }}"
+            "organization_id": "={{ $('When chat message received').first().json.metadata?.identity?.tenantId || '' }}",
+            "routing_contract": "={{ JSON.stringify($('Classify interaction route').first().json.routing_contract || {}) }}"
           },
           "matchingColumns": [],
           "schema": [
@@ -142,6 +143,16 @@
               "defaultMatch": false,
               "display": true,
               "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "routing_contract",
+              "displayName": "routing_contract",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": false,
               "type": "string",
               "removed": false
             }
@@ -316,102 +327,6 @@
       }
     },
     {
-      "id": "6600e929-2434-43e0-ad3f-6b288c015216",
-      "name": "Learning Agent",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 2.2,
-      "position": [
-        -160,
-        1904
-      ],
-      "parameters": {
-        "description": "Call this internal workflow tool only when learning synthesis is explicitly needed inline or required to complete the current answer. Post-turn preferred: for routine trace learning, emit trace_learning_recommended and let a detached workflow run Learning Agent after Actor Twin has answered.\n\nThe Learning Agent creates reviewable learning documents, concept deltas, decision-pattern summaries, failure-mode notes, and future-behavior-change candidates. Outputs must be staged through Knowledge Fabric as review_needed or updated_review_needed, not treated as approved truth.\n\nDo not call it for real-time answering, fresh tacit-knowledge interviews, direct OKF/vector/graph retrieval, skill execution, approvals, or external side effects.",
-        "workflowId": {
-          "__rl": true,
-          "value": "zX0s3hOByJ4HWQye",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/zX0s3hOByJ4HWQye",
-          "cachedResultName": "Me.IDs Learning Agent - staging"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "query": "={{ $fromAI('query', 'Completed trace, decision review, interview, UAT result, or reusable lesson to synthesize now.', 'string') }}",
-            "knowledge_access_token": "={{ $('When chat message received').first().json.metadata?.authorization?.knowledgeAccessToken || '' }}",
-            "tenant_id": "={{ $('When chat message received').first().json.metadata?.identity?.tenantId || '' }}",
-            "user_id": "={{ $('When chat message received').first().json.metadata?.identity?.userId || '' }}",
-            "twin_id": "={{ $('When chat message received').first().json.metadata?.identity?.activeTwinId || '' }}",
-            "organization_id": "={{ $('When chat message received').first().json.metadata?.identity?.tenantId || '' }}"
-          },
-          "matchingColumns": [],
-          "schema": [
-            {
-              "id": "query",
-              "displayName": "query",
-              "required": true,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string",
-              "removed": false
-            },
-            {
-              "id": "knowledge_access_token",
-              "displayName": "knowledge_access_token",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string",
-              "removed": false
-            },
-            {
-              "id": "tenant_id",
-              "displayName": "tenant_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string",
-              "removed": false
-            },
-            {
-              "id": "user_id",
-              "displayName": "user_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string",
-              "removed": false
-            },
-            {
-              "id": "twin_id",
-              "displayName": "twin_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string",
-              "removed": false
-            },
-            {
-              "id": "organization_id",
-              "displayName": "organization_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string",
-              "removed": false
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        }
-      }
-    },
-    {
       "id": "meids-actor-post-answer-trace",
       "name": "Persist post-answer trace",
       "type": "n8n-nodes-base.httpRequest",
@@ -453,6 +368,19 @@
       "parameters": {
         "jsCode": "const answer = $('Actor Twin AI Agent1').first().json; const trace = $json || {}; return [{ json: { ...answer, trace_persistence: { status: trace.status || (trace.error ? 'degraded' : 'stored'), trace_id: trace.trace_id || '', post_turn_learning: trace.post_turn_learning || 'unknown' } } }];"
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const classifyAgentInteraction = function classifyAgentInteraction(input = {}) {\n  const policyVersion = \"meids.agent-routing.v1\";\n  const message = String(input.message || input.chatInput || \"\").trim();\n  const text = message.toLowerCase();\n  const has = (pattern) => pattern.test(text);\n  const matches = (pattern) => text.match(pattern) || [];\n\n  const explicitKnowledgeWrite = has(/\\b(remember|save|store|retain|ingest|upload|attach|add|update|capture|stage|merke\\w*|speicher\\w*|behalt\\w*|hochlad\\w*|anh[aä]ng\\w*|erg[aä]nz\\w*)\\b.{0,45}\\b(knowledge|memory|note|source|document|transcript|wissen|notiz|quelle|dokument|transkript)\\b|\\b(remember this|save this|merke dir das|speichere das)\\b/i);\n  const evidenceRequest = has(/\\b(source|sources|evidence|citation|cite|according to|documented|reviewed knowledge|okf|knowledge graph|vector|quelle|quellen|beleg|belege|zitat|laut dokument|wissensgraph)\\b/i);\n  const storedFactRequest = has(/\\b(what do (we|you) know|find in|search (the )?knowledge|show evidence|who am i|my |mine |our |active twin|this twin|prior work|previous decision|wer bin ich|was (weißt|wissen)|mein(e|er|en|em)? |unser(e|er|en|em)? |fr[uü]here|vorherige)\\b/i);\n  const workIntent = has(/\\b(draft|write|prepare|compose|summari[sz]e|prioriti[sz]e|plan|analyse|analyze|compare|create|build|generate|review|entwirf|schreib|erstelle|bereite|fasse|priorisiere|plane|analysiere|vergleiche|pr[uü]fe)\\b/i);\n  const capabilityCreation = has(/\\b(new|create|build|design|generate|neue[nmrs]?|erstelle|entwickle)\\b.{0,30}\\b(skill|agent|subagent|task agent|capability|f[aä]higkeit)\\b/i);\n  const tacitInterview = has(/\\b(tacit|implicit knowledge|decision criteria|best practice|lessons learned|interview me|circular question|deep dive|implizit|erfahrungswissen|entscheidungskriterien|best practice|lessons learned|interviewe? mich|zirkul[aä]re frage|tiefeninterview)\\b/i);\n  const explicitLearningNow = has(/\\b(learn from this now|create (a )?learning summary now|retrospective now|after.action review now|lerne jetzt daraus|erstelle jetzt.{0,20}lerner|retrospektive jetzt)\\b/i);\n  const externalSideEffect = has(/\\b(send|publish|schedule|book|delete|commit|deploy|approve|reject|activate|sende|ver[oö]ffentliche|plane ein|buche|l[oö]sche|deploye|genehmige|lehne ab|aktiviere)\\b/i);\n  const highImpact = has(/\\b(legal|contract|financial|medical|security|privacy|production|architecture decision|binding|irreversible|rechtlich|vertrag|finanziell|medizinisch|sicherheit|datenschutz|produktion|architekturentscheidung|verbindlich|irreversibel)\\b/i);\n  const uncertainty = has(/\\b(uncertain|ambiguous|contradict|conflict|weak evidence|assumption|unknown|unklar|mehrdeutig|widerspruch|konflikt|schwache belege|annahme|unbekannt)\\b/i);\n  const multiStepCue = has(/\\b(first|then|after that|step by step|end.to.end|multiple|several|research and|analyse and|analyze and|compare and|zuerst|danach|anschlie[sß]end|schritt f[uü]r schritt|mehrere|recherchiere und|analysiere und|vergleiche und)\\b/i);\n  const conjunctions = matches(/\\b(and|then|after|und|danach|anschlie[sß]end)\\b/gi).length;\n  const likelyMultiStep = workIntent && (multiStepCue || conjunctions >= 2 || message.length > 520);\n  const missingObject = workIntent && message.split(/\\s+/).length < 4;\n\n  const knowledgeDependency = explicitKnowledgeWrite || evidenceRequest || storedFactRequest ? 3 : 0;\n  const executionDepth = likelyMultiStep ? 3 : workIntent || tacitInterview ? 1 : 0;\n  const decisionRisk = highImpact && (uncertainty || externalSideEffect) ? 3 : highImpact || externalSideEffect ? 2 : 0;\n  const ambiguity = missingObject || uncertainty ? 2 : 0;\n\n  let route = \"answer_direct\";\n  let target = \"actor_twin\";\n  let operation = \"answer\";\n  if (explicitKnowledgeWrite) {\n    route = \"ingest_or_stage_knowledge\";\n    target = \"knowledge_fabric_agent\";\n    operation = \"stage\";\n  } else if (tacitInterview) {\n    route = \"elicit_tacit_knowledge\";\n    target = \"agentic_butler\";\n    operation = \"interview\";\n  } else if ((evidenceRequest || storedFactRequest) && workIntent) {\n    route = \"retrieve_then_work\";\n    target = \"knowledge_fabric_agent_then_agentic_butler\";\n    operation = \"retrieve_then_execute\";\n  } else if (evidenceRequest || storedFactRequest) {\n    route = \"retrieve_knowledge\";\n    target = \"knowledge_fabric_agent\";\n    operation = \"retrieve\";\n  } else if (missingObject) {\n    route = \"request_human_clarification\";\n    target = \"human\";\n    operation = \"clarify\";\n  } else if (capabilityCreation) {\n    route = \"create_skill\";\n    target = \"agentic_butler\";\n    operation = \"propose_capability\";\n  } else if (externalSideEffect) {\n    route = \"execute_work_sync\";\n    target = \"agentic_butler\";\n    operation = \"propose_approval_gated_action\";\n  } else if (workIntent) {\n    route = likelyMultiStep ? \"execute_work_async\" : \"execute_work_sync\";\n    target = \"agentic_butler\";\n    operation = likelyMultiStep ? \"queue_work\" : \"execute_work\";\n  }\n\n  const criticalFaculty = decisionRisk >= 3\n    || (decisionRisk >= 2 && knowledgeDependency >= 3)\n    || (uncertainty && (knowledgeDependency >= 3 || executionDepth >= 3));\n  const learningMode = explicitLearningNow ? \"inline_required\" : \"post_turn_only\";\n  const responseBudgetMs = route === \"answer_direct\" ? 8_000\n    : route === \"retrieve_knowledge\" ? 12_000\n      : route === \"execute_work_sync\" ? 20_000\n        : route === \"execute_work_async\" ? 3_000\n          : 15_000;\n\n  const contract = {\n    contract: policyVersion,\n    route,\n    target,\n    operation,\n    scores: { knowledge_dependency: knowledgeDependency, execution_depth: executionDepth, decision_risk: decisionRisk, ambiguity },\n    gates: {\n      critical_faculty: criticalFaculty,\n      learning_mode: learningMode,\n      external_side_effect_approval: externalSideEffect,\n      skill_orchestrator: likelyMultiStep,\n      max_task_agent_calls: likelyMultiStep ? 2 : 0,\n    },\n    budgets: {\n      response_ms: responseBudgetMs,\n      max_inline_specialists: route === \"retrieve_then_work\" ? 2 : route === \"answer_direct\" ? 0 : 1,\n      timeout_behavior: \"return_bounded_fallback\",\n    },\n  };\n  const override = input.metadata?.routingContractOverride;\n  const trustedNoWriteProbe = input.metadata?.source === \"run-seven-agent-no-write-uat\"\n    && input.metadata?.intent === \"live_probe\"\n    && input.metadata?.side_effect_policy === \"no_write_probe\"\n    && input.metadata?.routingHints?.noWriteProbe === true;\n  if (trustedNoWriteProbe && override?.route === \"execute_work_sync\") {\n    contract.route = \"execute_work_sync\";\n    contract.target = \"agentic_butler\";\n    contract.operation = \"execute_work\";\n    contract.gates.skill_orchestrator = override.skill_orchestrator === true;\n    contract.gates.max_task_agent_calls = Math.max(0, Math.min(Number(override.max_task_agent_calls) || 0, 2));\n    contract.gates.critical_faculty = false;\n    contract.gates.external_side_effect_approval = false;\n    contract.budgets.response_ms = 90_000;\n    contract.budgets.max_inline_specialists = 1;\n    contract.probe_override = \"trusted_no_write_chain\";\n  }\n  return contract;\n};\nreturn $input.all().map((item) => ({ json: { ...item.json, routing_contract: classifyAgentInteraction(item.json) } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        1472
+      ],
+      "id": "d73f8764-4a3a-4c55-8be8-39a557b654d1",
+      "name": "Classify interaction route"
     }
   ],
   "connections": {
@@ -482,7 +410,7 @@
       "main": [
         [
           {
-            "node": "Actor Twin AI Agent1",
+            "node": "Classify interaction route",
             "type": "main",
             "index": 0
           }
@@ -533,22 +461,22 @@
         ]
       ]
     },
-    "Learning Agent": {
-      "ai_tool": [
-        [
-          {
-            "node": "Actor Twin AI Agent1",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Persist post-answer trace": {
       "main": [
         [
           {
             "node": "Preserve Actor answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify interaction route": {
+      "main": [
+        [
+          {
+            "node": "Actor Twin AI Agent1",
             "type": "main",
             "index": 0
           }
