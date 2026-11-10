@@ -14,7 +14,14 @@ function classifyAgentInteraction(input = {}) {
   const capabilityCreation = has(/\b(new|create|build|design|generate|neue[nmrs]?|erstelle|entwickle)\b.{0,30}\b(skill|agent|subagent|task agent|capability|f[aä]higkeit)\b/i);
   const tacitInterview = has(/\b(tacit|implicit knowledge|decision criteria|best practice|lessons learned|interview me|circular question|deep dive|implizit|erfahrungswissen|entscheidungskriterien|best practice|lessons learned|interviewe? mich|zirkul[aä]re frage|tiefeninterview)\b/i);
   const explicitLearningNow = has(/\b(learn from this now|create (a )?learning summary now|retrospective now|after.action review now|lerne jetzt daraus|erstelle jetzt.{0,20}lerner|retrospektive jetzt)\b/i);
-  const externalSideEffect = has(/\b(send|publish|schedule|book|delete|commit|deploy|approve|reject|activate|sende|ver[oö]ffentliche|plane ein|buche|l[oö]sche|deploye|genehmige|lehne ab|aktiviere)\b/i);
+  const sideEffectPattern = /\b(send|publish|schedule|book|delete|commit|deploy|approve|reject|activate|sende|ver[oö]ffentliche|plane ein|buche|l[oö]sche|deploye|genehmige|lehne ab|aktiviere)\b/gi;
+  const sideEffectMatches = [...text.matchAll(sideEffectPattern)];
+  const sideEffectIsNegated = (index) => {
+    const prefix = text.slice(Math.max(0, index - 100), index);
+    const clause = prefix.split(/\b(?:but|however|then|aber|sondern|jedoch|danach)\b/i).at(-1) || "";
+    return /\b(?:do not|don't|never|without|no|nicht|niemals|ohne)\b[^.!?;]{0,80}$/i.test(clause);
+  };
+  const externalSideEffect = sideEffectMatches.some((match) => !sideEffectIsNegated(match.index || 0));
   const highImpact = has(/\b(legal|contract|financial|medical|security|privacy|production|architecture decision|binding|irreversible|rechtlich|vertrag|finanziell|medizinisch|sicherheit|datenschutz|produktion|architekturentscheidung|verbindlich|irreversibel)\b/i);
   const uncertainty = has(/\b(uncertain|ambiguous|contradict|conflict|weak evidence|assumption|unknown|unklar|mehrdeutig|widerspruch|konflikt|schwache belege|annahme|unbekannt)\b/i);
   const multiStepCue = has(/\b(first|then|after that|step by step|end.to.end|multiple|several|research and|analyse and|analyze and|compare and|zuerst|danach|anschlie[sß]end|schritt f[uü]r schritt|mehrere|recherchiere und|analysiere und|vergleiche und)\b/i);
