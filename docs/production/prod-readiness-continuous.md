@@ -60,6 +60,26 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 
 ## Decisions
 
+### Background lifecycle follow-up (2026-11-11)
+
+The direct-entry Queued-to-Ready presentation defect under PROD-024 is resolved
+by PR #49 and its reported authenticated production retest, documented by PR #50.
+It does not close queued-only cancellation or the wider Nightly evidence gaps.
+
+Prioritized open test definitions are consolidated in
+[Background-job lifecycle test backlog](../uat/20261111-background-job-lifecycle-test-plan.md):
+
+- **P1 BG-CANCEL-01 / PROD-024:** queued-only cancellation races and idempotency.
+- **P1 BG-SLO-01 / PROD-018, PROD-021:** per-route rolling p50/p90 and queue-age drift.
+- **P1 BG-SESSION-01 / PROD-021:** reusable least-privilege authenticated Nightly session.
+- **P1 BG-LEARN-01 / PROD-021, PERF-07:** reject accepted dispatch without fresh,
+  correctly correlated canonical Learning completion.
+
+BG-LIFE-01 through BG-LIFE-12 add startup, polling lifecycle, view/scope changes,
+out-of-order responses, auth refresh, error recovery and terminal-state coverage.
+These cases are defined but not executed; no production mutation or deployment
+was performed for this review. Potential races remain hypotheses until reproduced.
+
 | Date | Decision | Reasoning | Consequence |
 | --- | --- | --- | --- |
 | 2026-10-28 | Reuse the existing PostgreSQL-backed runtime boundary for durable jobs. | It preserves tenant/twin context, supports transactional enqueue with the user-visible ledger, and avoids introducing a second queue service during launch hardening. | Migration 016 is a required release gate. Service Bus remains an option when throughput or cross-service fan-out justifies it. |
