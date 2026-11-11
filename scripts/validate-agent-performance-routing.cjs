@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, "..");
 const actor = JSON.parse(fs.readFileSync(path.join(root, "workflows/n8n/actor-twin.workflow.json")));
 const butler = JSON.parse(fs.readFileSync(path.join(root, "workflows/n8n/agentic-butler.workflow.json")));
 const contract = JSON.parse(fs.readFileSync(path.join(root, "contracts/n8n/agent-routing-policy.v1.json")));
+const nightly = fs.readFileSync(path.join(root, "scripts", "run-seven-agent-no-write-uat.cjs"), "utf8");
 
 assert.equal(contract.contract, "meids.agent-routing.v1");
 assert(actor.nodes.some((node) => node.name === "Classify interaction route"), "Actor must classify before reasoning");
@@ -45,5 +46,12 @@ const butlerTrigger = butler.nodes.find((node) => node.type === "n8n-nodes-base.
 assert(butlerTrigger.parameters.workflowInputs.values.some((field) => field.name === "routing_contract"));
 const butlerAgent = butler.nodes.find((node) => node.type === "@n8n/n8n-nodes-langchain.agent");
 assert.match(butlerAgent.parameters.options.systemMessage, /gates\.skill_orchestrator=true/);
+
+assert.match(nightly, /canonicalWorkflowId: "MH1nWMs8IFyNKN1E"/);
+assert.match(nightly, /recoverCanonicalScenario/);
+assert.match(nightly, /trigger\?\.sessionId !== expectedSessionId/);
+assert.match(nightly, /recovered_from_canonical_execution/);
+assert.match(nightly, /timeoutMs: 60_000/);
+assert.match(nightly, /timeoutMs: 180_000/);
 
 console.log("Agent performance routing validation passed");

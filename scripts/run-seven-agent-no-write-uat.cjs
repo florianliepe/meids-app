@@ -8,6 +8,8 @@ const outputPath = path.join(root, "docs", "uat", "n8n-seven-agent-no-write-uat.
 const runtime = JSON.parse(fs.readFileSync(path.join(root, "frontend", "assets", "agent-runtime-config.json"), "utf8"));
 const actorUrl = String(runtime.n8nActorTwinWebhookUrl || runtime.n8nAgentWebhooks?.actor_twin || "").trim();
 const n8nOrigin = actorUrl ? new URL(actorUrl).origin : "";
+const n8nApiBase = String(process.env.N8N_API_BASE_URL || "").replace(/\/+$/, "");
+const n8nApiKey = String(process.env.N8N_API_KEY || "");
 const userId = String(process.env.MEIDS_UAT_USER_ID || "").trim();
 const twinId = String(process.env.MEIDS_UAT_TWIN_ID || "").trim();
 const tenantId = String(process.env.MEIDS_UAT_TENANT_ID || "eraneos").trim();
@@ -32,22 +34,29 @@ const scenarios = [
     id: "actor_direct",
     url: actorUrl,
     query: "No-write launch probe: report Actor Twin routing readiness only. Do not call tools and do not persist anything.",
+    timeoutMs: 60_000,
   },
   {
     id: "knowledge_retrieval",
     url: actorUrl,
     query: "No-write launch probe: call Knowledge Fabric Agent with operation=retrieve for the active twin and report only whether scoped reviewed retrieval is reachable. Do not stage, update, merge, approve, or persist knowledge.",
+    canonicalWorkflowId: "dUkrCHpkLmqmFc7I",
+    timeoutMs: 90_000,
   },
   {
     id: "critical_faculty",
     url: actorUrl,
     query: "No-write launch probe: ask Critical Faculty Agent to critique this synthetic reversible decision: choose option A because it has lower latency. Return its recommendation without taking action or persisting knowledge.",
+    canonicalWorkflowId: "MH1nWMs8IFyNKN1E",
+    timeoutMs: 90_000,
   },
   {
     id: "butler_skill_task_chain",
     url: actorUrl,
     query: "No-write launch probe: delegate to Agentic Butler, which must call Skill Orchestrator and exactly one Task Agent for an in-memory dry run that checks the three words alpha, beta, gamma are alphabetically ordered. Do not use GitHub, send, schedule, publish, persist, or activate anything.",
     routingContractOverride: { route: "execute_work_sync", skill_orchestrator: true, max_task_agent_calls: 1 },
+    canonicalWorkflowId: "elbiGicaFmQQW4w8",
+    timeoutMs: 180_000,
   },
   {
     id: "learning_agent",
@@ -59,6 +68,7 @@ const scenarios = [
       context: { side_effect_policy: "no_write_probe", tenant_id: tenantId, user_id: userId, twin_id: twinId },
       trace: { trace_id: `${runId}_learning`, twin_id: twinId, input_summary: "synthetic probe", output_summary: "synthetic probe" },
     },
+    timeoutMs: 30_000,
   },
 ];
 
@@ -87,17 +97,76 @@ function actorBody(scenario) {
   };
 }
 
-async function latestLearningExecution() {
-  const base = String(process.env.N8N_API_BASE_URL || "").replace(/\/+$/, "");
-  const key = String(process.env.N8N_API_KEY || "");
-  const workflowId = String(process.env.N8N_LEARNING_AGENT_WORKFLOW_ID || "zX0s3hOByJ4HWQye");
-  if (!base || !key) return null;
-  const response = await fetch(`${base}/api/v1/executions?workflowId=${encodeURIComponent(workflowId)}&limit=5`, {
-    headers: { "X-N8N-API-KEY": key, Accept: "application/json" },
+async function n8nApi(pathname) {
+  if (!n8nApiBase || !n8nApiKey) return null;
+  const response = await fetch(`${n8nApiBase}${pathname}`, {
+    headers: { "X-N8N-API-KEY": n8nApiKey, Accept: "application/json" },
+    signal: AbortSignal.timeout(15_000),
   });
   if (!response.ok) return null;
-  const payload = await response.json();
-  return (payload.data || [])[0] || null;
+  return response.json();
+}
+
+async function recentWorkflowExecutions(workflowId, limit = 10) {
+  const payload = await n8nApi(`/api/v1/executions?workflowId=${encodeURIComponent(workflowId)}&limit=${limit}`);
+  return payload?.data || [];
+}
+
+async function latestWorkflowExecution(workflowId) {
+  return (await recentWorkflowExecutions(workflowId, 5))[0] || null;
+}
+
+async function executionDetail(executionId) {
+  return n8nApi(`/api/v1/executions/${encodeURIComponent(executionId)}?includeData=true`);
+}
+
+function lastNodeJson(execution, nodeName) {
+  const runs = execution?.data?.resultData?.runData?.[nodeName] || [];
+  return runs.at(-1)?.data?.main?.[0]?.[0]?.json || null;
+}
+
+async function recoverCanonicalScenario(result, scenario, baselineId) {
+  if (result.status === "completed" || !scenario.canonicalWorkflowId) return result;
+  const expectedSessionId = `${runId}_${scenario.id}`;
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    const candidates = await recentWorkflowExecutions(scenario.canonicalWorkflowId);
+    for (const candidate of candidates) {
+      if (String(candidate.id) === String(baselineId || "")) continue;
+      const child = await executionDetail(candidate.id);
+      const parentId = child?.data?.parentExecution?.executionId;
+      if (!parentId) continue;
+      const parent = await executionDetail(parentId);
+      const trigger = lastNodeJson(parent, "When chat message received");
+      if (trigger?.sessionId !== expectedSessionId) continue;
+      if (child.status !== "success" || parent?.status !== "success") return result;
+      const finalAnswer = lastNodeJson(parent, "Preserve Actor answer");
+      return {
+        ...result,
+        status: "completed",
+        transport_status: "recovered_from_canonical_execution",
+        transport_error: result.error || "HTTP response was not observed by the probe client.",
+        response_preview: JSON.stringify(finalAnswer || {}).replaceAll(token, "[redacted]").slice(0, 1200),
+        canonical_execution: {
+          child_id: String(child.id),
+          child_status: child.status,
+          child_started_at: child.startedAt,
+          child_stopped_at: child.stoppedAt,
+          actor_id: String(parent.id),
+          actor_status: parent.status,
+          actor_started_at: parent.startedAt,
+          actor_stopped_at: parent.stoppedAt,
+        },
+      };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2_500));
+  }
+  return result;
+}
+
+async function latestLearningExecution() {
+  const workflowId = String(process.env.N8N_LEARNING_AGENT_WORKFLOW_ID || "zX0s3hOByJ4HWQye");
+  return latestWorkflowExecution(workflowId);
 }
 
 async function correlateLearningExecution(result, baselineId) {
@@ -127,7 +196,8 @@ async function correlateLearningExecution(result, baselineId) {
 
 async function postScenario(scenario) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 240_000);
+  const timeoutMs = Number(scenario.timeoutMs || 90_000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const startedAt = new Date().toISOString();
   try {
     const response = await fetch(scenario.url, {
@@ -151,7 +221,7 @@ async function postScenario(scenario) {
       started_at: startedAt,
       completed_at: new Date().toISOString(),
       status: "failed",
-      error: error.name === "AbortError" ? "Timed out after 240 seconds" : error.message,
+      error: error.name === "AbortError" ? `Timed out after ${timeoutMs} milliseconds` : error.message,
     };
   } finally {
     clearTimeout(timeout);
@@ -163,10 +233,14 @@ async function postScenario(scenario) {
   const learningBaseline = await latestLearningExecution();
   for (const scenario of scenarios) {
     process.stdout.write(`Running ${scenario.id}...\n`);
-    const result = await postScenario(scenario);
-    results.push(scenario.id === "learning_agent"
+    const canonicalBaseline = scenario.canonicalWorkflowId
+      ? await latestWorkflowExecution(scenario.canonicalWorkflowId)
+      : null;
+    let result = await postScenario(scenario);
+    result = scenario.id === "learning_agent"
       ? await correlateLearningExecution(result, learningBaseline?.id)
-      : result);
+      : await recoverCanonicalScenario(result, scenario, canonicalBaseline?.id);
+    results.push(result);
   }
   const artifact = {
     schema_version: "0.1.0",
