@@ -568,8 +568,13 @@ async function bootMeidsApp() {
   applyAuthState();
   if (runtimeConfig.n8nChatEnabled) void ensureN8nChat();
   applyInitialRoute();
-  if ($("#chat")?.classList.contains("active") && runtimeConfig.n8nChatEnabled) {
-    renderChatSkillMode();
+  if (!document.body.dataset.activeView) {
+    const initialView = currentWorkspaceView();
+    renderWorkspaceMode(initialView);
+    if (initialView === "chat") {
+      if (runtimeConfig.n8nChatEnabled) renderChatSkillMode();
+      void refreshActorBackgroundWork().then(scheduleActorBackgroundWorkPolling);
+    }
   }
 }
 
@@ -815,6 +820,13 @@ function showView(viewId) {
     state.actorBackgroundPollTimer = null;
   }
   void refreshViewData(viewId);
+}
+
+function currentWorkspaceView() {
+  return document.body.dataset.activeView
+    || document.querySelector(".nav-item.active")?.dataset.view
+    || document.querySelector(".view.active")?.id
+    || "chat";
 }
 
 async function refreshViewData(viewId) {
@@ -17018,7 +17030,7 @@ function scheduleActorBackgroundWorkPolling() {
   const active = state.actorBackgroundJobs.some((job) => ["queued", "processing"].includes(job.status));
   const delay = active ? 3_000 : 15_000;
   state.actorBackgroundPollTimer = setTimeout(async () => {
-    if (document.body.dataset.activeView !== "chat") return;
+    if (currentWorkspaceView() !== "chat") return;
     await refreshActorBackgroundWork();
     scheduleActorBackgroundWorkPolling();
   }, delay);
