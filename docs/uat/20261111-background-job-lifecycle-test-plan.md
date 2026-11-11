@@ -19,10 +19,10 @@ user content are copied into these test definitions.
 Keep this specific presentation defect resolved. Do not mark all of PROD-024
 complete: queued cancellation and the lifecycle coverage below remain open.
 
-The inspected frontend test file covers token-header construction and two
-`currentWorkspaceView()` results. It does not execute application startup, timers,
-request ordering, view switching or terminal rendering. Its helper tests therefore
-do not prove the full direct-entry polling lifecycle.
+The frontend test file now covers token-header construction, view resolution,
+out-of-order request rejection, old-scope rejection and timer shutdown after a
+view change. It still does not prove all startup, auth-refresh, browser suspension,
+terminal rendering or accessibility behavior below.
 
 ## Four prioritized open work items
 
@@ -57,19 +57,21 @@ current contract; future cancellation states are conditional on that contract.
 
 ## Source-review follow-up, not reproduced production defects
 
-`refreshActorBackgroundWork()` currently assigns the latest arriving response to
-shared state; no request-generation/scope check is apparent in that function.
-The timer checks Chat before awaiting the GET and schedules again afterward.
-These patterns specifically motivate BG-LIFE-03/04/05. Controlled race fixtures
-must establish actual failures before opening new confirmed defect records.
+The source review found that `refreshActorBackgroundWork()` previously assigned
+each arriving response directly to shared state and the timer could schedule again
+after the user left Chat. The implementation now rejects stale request generations
+and old tenant/user/twin scopes, and rechecks the active view before rescheduling.
+Controlled promise/timer tests validate BG-LIFE-03/04/05 without a live request.
+No corresponding production data leak or status regression was observed.
 
 ## Evidence discipline and next execution order
 
-1. Add deterministic cancellation/correlation fixtures and polling lifecycle tests.
+1. Add deterministic cancellation/correlation fixtures and the remaining polling lifecycle tests.
 2. Run them locally without external network calls; record exact revision/results.
 3. Implement only separately accepted fixes and rerun the failing fixtures.
 4. Plan authenticated read-only Nightly UI assertions after session provisioning.
 
-All new cases above are **defined, not executed**. Neither the historical 15/15
-result nor a helper's fallback test closes these new assertions. Existing KG
-isolation, revocation, recovery and Learning evidence gaps remain unchanged.
+BG-LIFE-03/04/05 are **implemented and passing**; the other newly listed cases
+remain defined but not executed. The current aggregate is 18 passing Background
+Job tests. Existing cancellation, SLO, authenticated Nightly, KG isolation,
+revocation, recovery and Learning evidence gaps remain unchanged.

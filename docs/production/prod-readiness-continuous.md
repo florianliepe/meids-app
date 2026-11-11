@@ -77,8 +77,9 @@ Prioritized open test definitions are consolidated in
 
 BG-LIFE-01 through BG-LIFE-12 add startup, polling lifecycle, view/scope changes,
 out-of-order responses, auth refresh, error recovery and terminal-state coverage.
-These cases are defined but not executed; no production mutation or deployment
-was performed for this review. Potential races remain hypotheses until reproduced.
+BG-LIFE-03/04/05 are now executable and pass after request-generation, scope and
+view-exit hardening; the remaining cases are defined but not executed. The tests
+use controlled promises and timers without production requests or mutations.
 
 | Date | Decision | Reasoning | Consequence |
 | --- | --- | --- | --- |

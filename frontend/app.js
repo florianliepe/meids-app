@@ -252,6 +252,7 @@
   n8nAuthRefreshTimer: null,
   actorBackgroundJobs: [],
   actorBackgroundPollTimer: null,
+  actorBackgroundRequestId: 0,
   n8nSessionId: `meids-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
   knowledgeFabricIngestQueue: [],
   knowledgeFabricQueueFilter: "all",
@@ -818,6 +819,7 @@ function showView(viewId) {
   } else if (state.actorBackgroundPollTimer) {
     clearTimeout(state.actorBackgroundPollTimer);
     state.actorBackgroundPollTimer = null;
+    state.actorBackgroundRequestId += 1;
   }
   void refreshViewData(viewId);
 }
@@ -17003,8 +17005,18 @@ function knowledgeAccessHeaders(session = state.authSession) {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+function actorBackgroundScopeKey() {
+  return [
+    state.authSession?.tenant?.id || "",
+    state.authSession?.user?.id || "",
+    state.activeTwin || "",
+  ].join(":");
+}
+
 async function refreshActorBackgroundWork() {
   if (staticPagesMode || !authenticatedSession() || !state.activeTwin) return;
+  const requestId = ++state.actorBackgroundRequestId;
+  const scopeKey = actorBackgroundScopeKey();
   const requestStatus = () => apiRequestJson(
     `/api/agents/work?twin=${encodeURIComponent(state.activeTwin)}&limit=3`,
     { headers: knowledgeAccessHeaders() },
@@ -17018,21 +17030,31 @@ async function refreshActorBackgroundWork() {
       await refreshN8nChatAuthorizationContext({ reconnect: false, reason: "background_poll" });
       result = await requestStatus();
     }
+    if (
+      requestId !== state.actorBackgroundRequestId
+      || scopeKey !== actorBackgroundScopeKey()
+      || currentWorkspaceView() !== "chat"
+    ) return;
     state.actorBackgroundJobs = Array.isArray(result.jobs) ? result.jobs : [];
     renderActorBackgroundWork();
   } catch (error) {
-    console.warn("Actor background work status refresh failed", error);
+    if (requestId === state.actorBackgroundRequestId && scopeKey === actorBackgroundScopeKey()) {
+      console.warn("Actor background work status refresh failed", error);
+    }
   }
 }
 
 function scheduleActorBackgroundWorkPolling() {
   if (state.actorBackgroundPollTimer) clearTimeout(state.actorBackgroundPollTimer);
+  state.actorBackgroundPollTimer = null;
+  if (currentWorkspaceView() !== "chat") return;
   const active = state.actorBackgroundJobs.some((job) => ["queued", "processing"].includes(job.status));
   const delay = active ? 3_000 : 15_000;
   state.actorBackgroundPollTimer = setTimeout(async () => {
+    state.actorBackgroundPollTimer = null;
     if (currentWorkspaceView() !== "chat") return;
     await refreshActorBackgroundWork();
-    scheduleActorBackgroundWorkPolling();
+    if (currentWorkspaceView() === "chat") scheduleActorBackgroundWorkPolling();
   }, delay);
 }
 
