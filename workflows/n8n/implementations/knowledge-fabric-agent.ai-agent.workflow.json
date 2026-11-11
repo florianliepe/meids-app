@@ -1,5 +1,5 @@
 {
-  "name": "MeIDs Knowledge Fabric Agent - staging v3",
+  "name": "MeIDs Knowledge Fabric Agent - Production v3",
   "nodes": [
     {
       "id": "meids-knowledge-fabric-ingest-webhook",

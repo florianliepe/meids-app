@@ -15,7 +15,7 @@
     "Return final Actor Twin response/status to frontend."
   ],
   "workflow": {
-    "name": "MeIDs Actor Twin - staging",
+    "name": "MeIDs Actor Twin - Production",
     "nodes": [
       {
         "parameters": {

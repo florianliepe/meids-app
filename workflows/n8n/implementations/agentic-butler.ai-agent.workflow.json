@@ -1,9 +1,9 @@
 {
   "schema_version": "0.1.0",
   "exported_at": "2026-08-11T10:46:35.678Z",
-  "source": "n8n live staging workflow export via Codex",
+  "source": "n8n live production workflow export via Codex",
   "workflow_id": "tK8c6ZN89IpMRulz",
-  "name": "Me.IDs Agentic Butler - staging v2",
+  "name": "Me.IDs Agentic Butler - Production v2",
   "active": true,
   "boundary": "Public-safe workflow structure. Contains node names, parameters, and credential references only; no secret values.",
   "nodes": [
