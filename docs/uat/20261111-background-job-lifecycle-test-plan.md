@@ -81,8 +81,8 @@ revocation, recovery and Learning evidence gaps remain unchanged.
 - The focused runtime, API and frontend lifecycle set passes 25/25.
 - The PostgreSQL race harness accepts only a run-owned loopback database named
   from its explicit run ID and destructive-test opt-in.
-- The harness applies migrations 017, 019 and 020, verifies the `cancelled`
-  constraint and cancellation audit RLS policy, and observes the waiting lock in
+- The harness applies migrations 012, 017, 019 and 020, proves owner/tenant RLS
+  isolation and rollback behavior, and observes the waiting lock in
   `pg_stat_activity` rather than relying on a fixed delay.
 - Claim-first preserves `processing` and its payload. Cancellation-first purges
   the payload and the exported production claim function returns no work.

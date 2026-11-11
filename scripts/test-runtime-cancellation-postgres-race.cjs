@@ -33,18 +33,25 @@ async function prepareMigratedSchema() {
   await pool.query("CREATE SCHEMA app_security");
   await pool.query("CREATE SCHEMA audit");
   await pool.query(`CREATE FUNCTION app_security.setting(name text) RETURNS text
-    LANGUAGE sql STABLE AS $$ SELECT current_setting('app.' || name, true) $$`);
+    LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting(name, true), '') $$`);
+  await pool.query(`CREATE FUNCTION app_security.setting_list(name text) RETURNS text[]
+    LANGUAGE sql STABLE AS $$ SELECT CASE
+      WHEN app_security.setting(name) IS NULL THEN ARRAY[]::text[]
+      ELSE string_to_array(app_security.setting(name), ',') END $$`);
   await pool.query(`CREATE TABLE audit.event (
-    tenant_id text NOT NULL, actor_user_id text NOT NULL, resource_type text NOT NULL,
+    tenant_id text NOT NULL, actor_user_id text NOT NULL, resource_id text, resource_type text NOT NULL,
     action text NOT NULL, details jsonb NOT NULL DEFAULT '{}'::jsonb
   )`);
   for (const migration of [
+    "012_audit_runtime_read_policy.sql",
     "017_runtime_background_jobs.sql",
     "019_audit_background_work_update_policy.sql",
     "020_runtime_background_job_cancellation.sql",
   ]) {
     await pool.query(fs.readFileSync(path.join(root, "backend", "migrations", migration), "utf8"));
   }
+  await pool.query("GRANT USAGE ON SCHEMA runtime, audit, app_security TO meids_app_runtime");
+  await pool.query("GRANT EXECUTE ON FUNCTION app_security.setting(text), app_security.setting_list(text) TO meids_app_runtime");
   const constraint = await pool.query(
     `SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
      WHERE conrelid = 'runtime.background_job'::regclass AND conname = 'background_job_status_check'`,
@@ -55,6 +62,43 @@ async function prepareMigratedSchema() {
      AND tablename = 'event' AND policyname = 'audit_event_background_work_update_own'`,
   );
   assert.match(policy.rows[0].with_check, /agent\.work\.cancelled/);
+}
+
+async function verifyEffectiveAuditRls() {
+  await pool.query("TRUNCATE audit.event");
+  await pool.query(
+    `INSERT INTO audit.event (tenant_id, actor_user_id, resource_type, action, details) VALUES
+      ('tenant-a', 'user-a', 'agent.background_work', 'agent.work.queued', '{}'),
+      ('tenant-a', 'user-b', 'agent.background_work', 'agent.work.queued', '{}'),
+      ('tenant-b', 'user-a', 'agent.background_work', 'agent.work.queued', '{}')`,
+  );
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config('app.tenant_id', 'tenant-a', true), set_config('app.user_id', 'user-a', true)");
+    await client.query("SET LOCAL ROLE meids_app_runtime");
+    const own = await client.query(
+      "UPDATE audit.event SET action = 'agent.work.cancelled' WHERE actor_user_id = 'user-a' AND tenant_id = 'tenant-a'",
+    );
+    assert.equal(own.rowCount, 1);
+    const foreignOwner = await client.query(
+      "UPDATE audit.event SET action = 'agent.work.cancelled' WHERE actor_user_id = 'user-b' AND tenant_id = 'tenant-a'",
+    );
+    assert.equal(foreignOwner.rowCount, 0);
+    const foreignTenant = await client.query(
+      "UPDATE audit.event SET action = 'agent.work.cancelled' WHERE actor_user_id = 'user-a' AND tenant_id = 'tenant-b'",
+    );
+    assert.equal(foreignTenant.rowCount, 0);
+    await client.query("SAVEPOINT invalid_action");
+    await assert.rejects(
+      () => client.query("UPDATE audit.event SET action = 'agent.work.deleted' WHERE actor_user_id = 'user-a' AND tenant_id = 'tenant-a'"),
+      (error) => error.code === "42501",
+    );
+    await client.query("ROLLBACK TO SAVEPOINT invalid_action");
+    await client.query("ROLLBACK");
+  } finally {
+    client.release();
+  }
 }
 
 async function reset() {
@@ -121,14 +165,43 @@ async function cancellationWinsAgainstRealClaim() {
   }
 }
 
+async function verifyScopeAndRollback() {
+  await reset();
+  const client = await pool.connect();
+  try {
+    const foreign = await cancelQueuedRuntimeJob(client, { ...scope, actor_user_id: "user-b" });
+    assert.equal(foreign, null);
+    await client.query("BEGIN");
+    const cancelled = await cancelQueuedRuntimeJob(client, scope);
+    assert.equal(cancelled.cancelled, true);
+    await client.query("ROLLBACK");
+    const stored = await pool.query(
+      "SELECT status, binary_payload IS NOT NULL AS has_binary FROM runtime.background_job WHERE job_id = $1",
+      [scope.job_id],
+    );
+    assert.deepEqual(stored.rows[0], { status: "pending", has_binary: true });
+  } finally {
+    await client.query("ROLLBACK").catch(() => {});
+    client.release();
+  }
+}
+
 Promise.resolve()
   .then(prepareMigratedSchema)
+  .then(verifyEffectiveAuditRls)
   .then(claimWins)
   .then(cancellationWinsAgainstRealClaim)
+  .then(verifyScopeAndRollback)
   .then(() => console.log(JSON.stringify({
     status: "passed",
-    schema: "migrations_017_019_020",
-    scenarios: ["claim_wins_observed_lock", "cancellation_wins_real_claim"],
+    schema: "migrations_012_017_019_020",
+    scenarios: [
+      "effective_owner_tenant_rls",
+      "claim_wins_observed_lock",
+      "cancellation_wins_real_claim",
+      "foreign_scope_hidden",
+      "transaction_rollback_restores_job",
+    ],
   }, null, 2)))
   .finally(() => pool.end())
   .catch((error) => { console.error(error.stack || error.message); process.exitCode = 1; });
