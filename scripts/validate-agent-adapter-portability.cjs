@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { POLICY_VERSION, classifyAgentInteraction } = require("../backend/agentRoutingPolicy");
-const { INPUT_CONTRACT, BACKGROUND_CONTRACT, createAgentExecutionAdapter } = require("../backend/agentExecutionAdapter");
+const { INPUT_CONTRACT, BACKGROUND_CONTRACT, ADAPTER_STATUSES, createAgentExecutionAdapter } = require("../backend/agentExecutionAdapter");
 
 const cases = [
   ["direct", "Hello", "answer_direct", 8_000],
@@ -45,13 +45,32 @@ async function verifyExecutableAdapters() {
       trace: { synthetic: true },
     };
   };
-  const n8n = await createAgentExecutionAdapter("n8n", makeExecutor()).execute(request);
-  const azure = await createAgentExecutionAdapter("azure_native", makeExecutor()).execute(request);
+  const n8nAdapter = createAgentExecutionAdapter("n8n", makeExecutor());
+  const azureAdapter = createAgentExecutionAdapter("azure_native", makeExecutor());
+  const n8n = await n8nAdapter.execute(request);
+  const azure = await azureAdapter.execute(request);
   assert.deepEqual({ ...n8n, adapter: "portable" }, { ...azure, adapter: "portable" });
   await assert.rejects(
     () => createAgentExecutionAdapter("invalid", async () => undefined).execute(request),
     /invalid result/,
   );
+  await assert.rejects(
+    () => createAgentExecutionAdapter("invalid-status", async () => ({ status: "mystery", output: {} })).execute(request),
+    /unsupported status/,
+  );
+  await assert.rejects(
+    () => createAgentExecutionAdapter("invalid-output", async () => ({ status: "completed", output: "text" })).execute(request),
+    /invalid output shape/,
+  );
+  await assert.rejects(
+    () => createAgentExecutionAdapter("rejected", async () => { throw new Error("provider failed"); }).execute(request),
+    /provider failed/,
+  );
+  await assert.rejects(
+    () => n8nAdapter.execute({ ...request, routing_contract: { ...routing, budgets: { ...routing.budgets, response_ms: 0 } } }),
+    /explicit response budget/,
+  );
+  assert.deepEqual(ADAPTER_STATUSES, ["completed", "approval_required", "failed", "queued", "blocked"]);
   return [n8n.adapter, azure.adapter];
 }
 

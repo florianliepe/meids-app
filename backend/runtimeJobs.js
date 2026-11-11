@@ -186,5 +186,6 @@ async function processRuntimeJobBatch(pool, handlers, options = {}) {
 module.exports = {
   enqueueRuntimeJob,
   cancelQueuedRuntimeJob,
+  claimRuntimeJobs,
   processRuntimeJobBatch,
 };
