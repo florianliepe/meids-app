@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { processRuntimeJobBatch } = require("../backend/runtimeJobs");
+const { cancelQueuedRuntimeJob, processRuntimeJobBatch } = require("../backend/runtimeJobs");
 
 function fakePool(job) {
   const calls = [];
@@ -92,4 +92,36 @@ test("uncertain timeout is terminal without an automatic duplicate retry", async
   const failure = pool.calls.find((call) => call.scope === "pool" && call.sql.includes("SET status = $2"));
   assert.equal(failure.params[1], "dead_letter");
   assert.equal(failures[0].failure.terminal, true);
+});
+
+test("queued cancellation is atomic, owner-scoped, and purges binary payload", async () => {
+  const calls = [];
+  const client = {
+    async query(sql, params) {
+      calls.push({ sql: String(sql), params });
+      return { rowCount: 1, rows: [{ job_id: "agent-work-cancel", status: "cancelled", cancelled: true }] };
+    },
+  };
+  const result = await cancelQueuedRuntimeJob(client, {
+    job_id: "agent-work-cancel", tenant_id: "tenant-a", actor_user_id: "user-a", twin_id: "twin-a",
+  });
+  assert.equal(result.cancelled, true);
+  assert.deepEqual(calls[0].params, ["agent-work-cancel", "tenant-a", "user-a", "twin-a"]);
+  assert.match(calls[0].sql, /target\.status IN \('pending', 'failed'\)/);
+  assert.match(calls[0].sql, /job\.status IN \('pending', 'failed'\)/);
+  assert.match(calls[0].sql, /FOR UPDATE/);
+  assert.match(calls[0].sql, /binary_payload = NULL/);
+  assert.doesNotMatch(calls[0].sql, /status = 'processing'.*cancelled/s);
+});
+
+test("cancellation reports a processing race without changing the leased job", async () => {
+  const client = {
+    async query() {
+      return { rowCount: 1, rows: [{ job_id: "agent-work-running", status: "processing", cancelled: false }] };
+    },
+  };
+  const result = await cancelQueuedRuntimeJob(client, {
+    job_id: "agent-work-running", tenant_id: "tenant-a", actor_user_id: "user-a", twin_id: "twin-a",
+  });
+  assert.deepEqual(result, { job_id: "agent-work-running", status: "processing", cancelled: false });
 });

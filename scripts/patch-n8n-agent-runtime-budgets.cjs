@@ -16,7 +16,7 @@ const workflows = [
     ].join("\n"),
   },
   {
-    id: process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "KZOqZRUAnVfFEAYJ",
+    id: process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "elbiGicaFmQQW4w8",
     label: "agentic-butler",
     agentNames: ["Agentic Butler AI Agent"],
     patch: [

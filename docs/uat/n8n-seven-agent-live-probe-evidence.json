@@ -1,8 +1,8 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-11-10T18:49:57.948Z",
+  "generated_at": "2026-11-11T16:37:25.290Z",
   "scope": "Public-safe n8n live execution evidence for Actor Twin and six workflow-tool subagents. No secrets are stored.",
-  "freshness_since": "2026-11-10T18:47:40.018Z",
+  "freshness_since": "2026-11-10T16:37:21.322Z",
   "status": "complete",
   "summary": {
     "workflow_count": 7,
@@ -17,23 +17,23 @@
       "routing_source": "configured_entrypoint",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 30,
-      "fresh_sample_size": 4,
+      "fetched_sample_size": 20,
+      "fresh_sample_size": 20,
       "latest_fresh_execution": {
-        "id": "100284",
+        "id": "104294",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:47:50.736Z",
-        "stopped_at": "2026-11-10T18:48:33.282Z",
-        "duration_ms": 42546
+        "started_at": "2026-11-11T16:36:27.580Z",
+        "stopped_at": "2026-11-11T16:37:06.994Z",
+        "duration_ms": 39414
       },
       "latest_available_execution": {
-        "id": "100284",
+        "id": "104294",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:47:50.736Z",
-        "stopped_at": "2026-11-10T18:48:33.282Z",
-        "duration_ms": 42546
+        "started_at": "2026-11-11T16:36:27.580Z",
+        "stopped_at": "2026-11-11T16:37:06.994Z",
+        "duration_ms": 39414
       }
     },
     {
@@ -43,23 +43,23 @@
       "routing_source": "actor_twin_tool",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 30,
-      "fresh_sample_size": 1,
+      "fetched_sample_size": 20,
+      "fresh_sample_size": 12,
       "latest_fresh_execution": {
-        "id": "100281",
+        "id": "104286",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:47:43.136Z",
-        "stopped_at": "2026-11-10T18:47:43.897Z",
-        "duration_ms": 761
+        "started_at": "2026-11-11T16:35:45.193Z",
+        "stopped_at": "2026-11-11T16:35:46.460Z",
+        "duration_ms": 1267
       },
       "latest_available_execution": {
-        "id": "100281",
+        "id": "104286",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:47:43.136Z",
-        "stopped_at": "2026-11-10T18:47:43.897Z",
-        "duration_ms": 761
+        "started_at": "2026-11-11T16:35:45.193Z",
+        "stopped_at": "2026-11-11T16:35:46.460Z",
+        "duration_ms": 1267
       }
     },
     {
@@ -69,23 +69,23 @@
       "routing_source": "actor_twin_tool",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 21,
-      "fresh_sample_size": 1,
+      "fetched_sample_size": 20,
+      "fresh_sample_size": 10,
       "latest_fresh_execution": {
-        "id": "100286",
+        "id": "104295",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:47:52.200Z",
-        "stopped_at": "2026-11-10T18:48:28.338Z",
-        "duration_ms": 36138
+        "started_at": "2026-11-11T16:36:34.464Z",
+        "stopped_at": "2026-11-11T16:37:03.253Z",
+        "duration_ms": 28789
       },
       "latest_available_execution": {
-        "id": "100286",
+        "id": "104295",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:47:52.200Z",
-        "stopped_at": "2026-11-10T18:48:28.338Z",
-        "duration_ms": 36138
+        "started_at": "2026-11-11T16:36:34.464Z",
+        "stopped_at": "2026-11-11T16:37:03.253Z",
+        "duration_ms": 28789
       }
     },
     {
@@ -95,23 +95,23 @@
       "routing_source": "agentic_butler_tool",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 14,
-      "fresh_sample_size": 1,
+      "fetched_sample_size": 20,
+      "fresh_sample_size": 9,
       "latest_fresh_execution": {
-        "id": "100288",
+        "id": "104297",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:48:00.903Z",
-        "stopped_at": "2026-11-10T18:48:23.114Z",
-        "duration_ms": 22211
+        "started_at": "2026-11-11T16:36:39.415Z",
+        "stopped_at": "2026-11-11T16:36:58.037Z",
+        "duration_ms": 18622
       },
       "latest_available_execution": {
-        "id": "100288",
+        "id": "104297",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:48:00.903Z",
-        "stopped_at": "2026-11-10T18:48:23.114Z",
-        "duration_ms": 22211
+        "started_at": "2026-11-11T16:36:39.415Z",
+        "stopped_at": "2026-11-11T16:36:58.037Z",
+        "duration_ms": 18622
       }
     },
     {
@@ -121,23 +121,23 @@
       "routing_source": "skill_orchestrator_tool",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 14,
-      "fresh_sample_size": 1,
+      "fetched_sample_size": 20,
+      "fresh_sample_size": 10,
       "latest_fresh_execution": {
-        "id": "100289",
+        "id": "104298",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:48:09.915Z",
-        "stopped_at": "2026-11-10T18:48:16.346Z",
-        "duration_ms": 6431
+        "started_at": "2026-11-11T16:36:45.674Z",
+        "stopped_at": "2026-11-11T16:36:51.506Z",
+        "duration_ms": 5832
       },
       "latest_available_execution": {
-        "id": "100289",
+        "id": "104298",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:48:09.915Z",
-        "stopped_at": "2026-11-10T18:48:16.346Z",
-        "duration_ms": 6431
+        "started_at": "2026-11-11T16:36:45.674Z",
+        "stopped_at": "2026-11-11T16:36:51.506Z",
+        "duration_ms": 5832
       }
     },
     {
@@ -147,23 +147,23 @@
       "routing_source": "actor_twin_tool",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 17,
-      "fresh_sample_size": 1,
+      "fetched_sample_size": 20,
+      "fresh_sample_size": 8,
       "latest_fresh_execution": {
-        "id": "100283",
+        "id": "104293",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:47:49.107Z",
-        "stopped_at": "2026-11-10T18:47:49.624Z",
-        "duration_ms": 517
+        "started_at": "2026-11-11T16:35:55.520Z",
+        "stopped_at": "2026-11-11T16:36:19.487Z",
+        "duration_ms": 23967
       },
       "latest_available_execution": {
-        "id": "100283",
+        "id": "104293",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:47:49.107Z",
-        "stopped_at": "2026-11-10T18:47:49.624Z",
-        "duration_ms": 517
+        "started_at": "2026-11-11T16:35:55.520Z",
+        "stopped_at": "2026-11-11T16:36:19.487Z",
+        "duration_ms": 23967
       }
     },
     {
@@ -173,23 +173,23 @@
       "routing_source": "environment_fallback",
       "status": "fresh_connected",
       "fresh_success": true,
-      "fetched_sample_size": 22,
-      "fresh_sample_size": 1,
+      "fetched_sample_size": 20,
+      "fresh_sample_size": 10,
       "latest_fresh_execution": {
-        "id": "100290",
+        "id": "104301",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:48:33.578Z",
-        "stopped_at": "2026-11-10T18:48:34.176Z",
-        "duration_ms": 598
+        "started_at": "2026-11-11T16:37:07.254Z",
+        "stopped_at": "2026-11-11T16:37:18.370Z",
+        "duration_ms": 11116
       },
       "latest_available_execution": {
-        "id": "100290",
+        "id": "104301",
         "status": "success",
         "finished": true,
-        "started_at": "2026-11-10T18:48:33.578Z",
-        "stopped_at": "2026-11-10T18:48:34.176Z",
-        "duration_ms": 598
+        "started_at": "2026-11-11T16:37:07.254Z",
+        "stopped_at": "2026-11-11T16:37:18.370Z",
+        "duration_ms": 11116
       }
     }
   ]

@@ -8906,6 +8906,10 @@ function bindChat() {
       safeRefreshBackendAgentRuntimeState();
       return;
     }
+    if (action.dataset.chatAction === "cancel-background-work") {
+      void cancelActorBackgroundWork(action.dataset.jobId || "", action);
+      return;
+    }
     if (action.dataset.chatAction === "open-agent-trace") {
       openAgentTraceFromChat(action.dataset.traceId || action.dataset.requestId || "");
     }
@@ -16972,6 +16976,7 @@ function actorBackgroundStatusLabel(status) {
   if (status === "processing") return "Working";
   if (status === "completed") return "Ready";
   if (status === "failed") return "Needs attention";
+  if (status === "cancelled") return "Cancelled";
   return status || "Queued";
 }
 
@@ -16985,7 +16990,7 @@ function renderActorBackgroundWork() {
     return;
   }
   target.innerHTML = jobs.slice(0, 3).map((job) => {
-    const finished = ["completed", "failed"].includes(job.status);
+    const finished = ["completed", "failed", "cancelled"].includes(job.status);
     const summary = finished ? (job.summary || job.error || "Background work finished.") : "Long-running work continues while you use the chat.";
     return `
       <details class="actor-background-job" ${finished ? "" : "open"}>
@@ -16995,9 +17000,29 @@ function renderActorBackgroundWork() {
         </summary>
         <p>${escapeHtml(summary)}</p>
         ${job.status === "completed" && job.result ? `<pre>${escapeHtml(typeof job.result === "string" ? job.result : JSON.stringify(job.result, null, 2))}</pre>` : ""}
+        ${job.status === "queued" ? `<button class="secondary small" type="button" data-chat-action="cancel-background-work" data-job-id="${escapeHtml(job.job_id || "")}">Cancel queued work</button>` : ""}
       </details>
     `;
   }).join("");
+}
+
+async function cancelActorBackgroundWork(jobId, button) {
+  if (!jobId || !state.activeTwin || staticPagesMode) return;
+  button.disabled = true;
+  try {
+    await apiRequestJson("/api/agents/work", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", ...knowledgeAccessHeaders() },
+      body: JSON.stringify({ twin_id: state.activeTwin, job_id: jobId }),
+    });
+    await refreshActorBackgroundWork();
+    showToast("Background work cancelled", "The queued job was stopped before processing began.", "success");
+  } catch (error) {
+    showToast("Cancellation was not applied", error.message, "error");
+    await refreshActorBackgroundWork();
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function knowledgeAccessHeaders(session = state.authSession) {

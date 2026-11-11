@@ -11,7 +11,7 @@ const mapping = {
   group_ids: [],
 };
 
-function harness({ existingLedger = false, statusRows = [] } = {}) {
+function harness({ existingLedger = false, statusRows = [], cancellationRow = null } = {}) {
   const calls = [];
   const client = {
     async query(sql, params = []) {
@@ -21,6 +21,9 @@ function harness({ existingLedger = false, statusRows = [] } = {}) {
       }
       if (String(sql).includes("SELECT 1 FROM audit.event")) return { rowCount: existingLedger ? 1 : 0, rows: existingLedger ? [{ exists: 1 }] : [] };
       if (String(sql).includes("SELECT resource_id, action, details")) return { rowCount: statusRows.length, rows: statusRows };
+      if (String(sql).includes("WITH target AS")) {
+        return { rowCount: cancellationRow ? 1 : 0, rows: cancellationRow ? [cancellationRow] : [] };
+      }
       if (String(sql).includes("UPDATE audit.event")) return { rowCount: 1, rows: [] };
       return { rowCount: 1, rows: [] };
     },
@@ -93,6 +96,54 @@ test("status lookup is constrained by tenant, owner, twin, and job", async () =>
   assert.deepEqual(select.params.slice(0, 4), ["tenant-a", "user-a", "twin-a", "agent-work-1"]);
   assert.match(select.sql, /actor_user_id = \$2/);
   assert.match(select.sql, /details->>'twin_id' = \$3/);
+});
+
+test("queued background work can be cancelled once through an owner-scoped compare-and-set", async () => {
+  const { api, calls, responses } = harness({
+    cancellationRow: { job_id: "agent-work-cancel", status: "cancelled", cancelled: true },
+  });
+  const req = { method: "DELETE", body: { twin_id: "twin-a", job_id: "agent-work-cancel" } };
+  await api(req, {}, new URL("https://example.test/api/agents/work"));
+  const cancel = calls.find((call) => call.sql.includes("WITH target AS"));
+  assert.ok(cancel);
+  assert.deepEqual(cancel.params, ["agent-work-cancel", "tenant-a", "user-a", "twin-a"]);
+  assert.equal(responses[0].status, 200);
+  assert.equal(responses[0].body.status, "cancelled");
+  assert.ok(calls.some((call) => call.sql.includes("agent.work.cancelled")));
+});
+
+test("processing background work rejects cancellation without rewriting the ledger", async () => {
+  const { api, calls } = harness({
+    cancellationRow: { job_id: "agent-work-running", status: "processing", cancelled: false },
+  });
+  const req = { method: "DELETE", body: { twin_id: "twin-a", job_id: "agent-work-running" } };
+  await assert.rejects(
+    () => api(req, {}, new URL("https://example.test/api/agents/work")),
+    (error) => error.statusCode === 409 && /processing/.test(error.message),
+  );
+  assert.equal(calls.some((call) => call.sql.includes("agent.work.cancelled")), false);
+});
+
+test("already-cancelled background work rejects repeated cancellation without rewriting the ledger", async () => {
+  const { api, calls } = harness({
+    cancellationRow: { job_id: "agent-work-cancelled", status: "cancelled", cancelled: false },
+  });
+  const req = { method: "DELETE", body: { twin_id: "twin-a", job_id: "agent-work-cancelled" } };
+  await assert.rejects(
+    () => api(req, {}, new URL("https://example.test/api/agents/work")),
+    (error) => error.statusCode === 409 && /cancelled/.test(error.message),
+  );
+  assert.equal(calls.some((call) => call.sql.includes("agent.work.cancelled")), false);
+});
+
+test("owner-scoped cancellation does not reveal a missing or foreign job", async () => {
+  const { api, calls } = harness();
+  const req = { method: "DELETE", body: { twin_id: "twin-a", job_id: "agent-work-foreign" } };
+  await assert.rejects(
+    () => api(req, {}, new URL("https://example.test/api/agents/work")),
+    (error) => error.statusCode === 404,
+  );
+  assert.equal(calls.some((call) => call.sql.includes("agent.work.cancelled")), false);
 });
 
 test("worker re-enters Actor Twin once with a trusted non-recursive no-write override", async () => {

@@ -8,7 +8,7 @@ const defaultOutput = path.join(root, "docs", "uat", "n8n-seven-agent-live-probe
 const fallbackIds = {
   actor_twin: process.env.N8N_ACTOR_TWIN_WORKFLOW_ID || "eKI3qM7nyCNn9r1q",
   knowledge_fabric_agent: process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "oPs77Qzrg9Repzgp",
-  agentic_butler: process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "KZOqZRUAnVfFEAYJ",
+  agentic_butler: process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "elbiGicaFmQQW4w8",
   skill_orchestrator: process.env.N8N_SKILL_ORCHESTRATOR_WORKFLOW_ID || "8ER9laJuKS6UrQJF",
   task_agent: process.env.N8N_TASK_AGENT_WORKFLOW_ID || "YXcl8Wb68Oup3Z8n",
   critical_faculty: process.env.N8N_CRITICAL_FACULTY_WORKFLOW_ID || "MH1nWMs8IFyNKN1E",

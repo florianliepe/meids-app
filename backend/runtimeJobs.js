@@ -37,6 +37,39 @@ async function enqueueRuntimeJob(client, job) {
   return result.rows[0];
 }
 
+async function cancelQueuedRuntimeJob(client, scope) {
+  const result = await client.query(
+    `WITH target AS (
+       SELECT job_id, status
+       FROM runtime.background_job
+       WHERE job_id = $1 AND tenant_id = $2 AND actor_user_id = $3 AND twin_id = $4
+       FOR UPDATE
+     ), cancelled AS (
+       UPDATE runtime.background_job job
+       SET status = 'cancelled', completed_at = now(), next_attempt_at = now(),
+           leased_at = NULL, lease_expires_at = NULL, leased_by = NULL,
+           binary_payload = NULL, updated_at = now()
+       FROM target
+       WHERE job.job_id = target.job_id
+         AND target.status IN ('pending', 'failed')
+         AND job.status IN ('pending', 'failed')
+       RETURNING job.job_id, job.status
+     )
+     SELECT job_id, status, true AS cancelled FROM cancelled
+     UNION ALL
+     SELECT job_id, status, false AS cancelled FROM target
+     WHERE NOT EXISTS (SELECT 1 FROM cancelled)
+     LIMIT 1`,
+    [
+      clean(scope.job_id, 128),
+      clean(scope.tenant_id, 256),
+      clean(scope.actor_user_id, 256),
+      clean(scope.twin_id, 128),
+    ],
+  );
+  return result.rows[0] || null;
+}
+
 async function claimRuntimeJobs(pool, options = {}) {
   const batchSize = Math.max(1, Math.min(Number(options.batchSize || process.env.MEIDS_RUNTIME_JOB_BATCH_SIZE || 4), 25));
   const leaseSeconds = Math.max(60, Math.min(Number(options.leaseSeconds || process.env.MEIDS_RUNTIME_JOB_LEASE_SECONDS || DEFAULT_LEASE_SECONDS), 1_800));
@@ -152,5 +185,6 @@ async function processRuntimeJobBatch(pool, handlers, options = {}) {
 
 module.exports = {
   enqueueRuntimeJob,
+  cancelQueuedRuntimeJob,
   processRuntimeJobBatch,
 };

@@ -7,7 +7,7 @@ const {
   readPrivateArtifact,
   deletePrivateArtifact,
 } = require("./artifactStorage");
-const { enqueueRuntimeJob, processRuntimeJobBatch } = require("./runtimeJobs");
+const { enqueueRuntimeJob, cancelQueuedRuntimeJob, processRuntimeJobBatch } = require("./runtimeJobs");
 const { classifyAgentInteraction } = require("./agentRoutingPolicy");
 const {
   persistGraphProjection,
@@ -1572,6 +1572,42 @@ function createWorkspaceApi(deps) {
     jsonResponse(res, 200, jobId ? jobs[0] : { status: "ready", total: jobs.length, jobs });
   }
 
+  async function agentWorkCancel(req, res) {
+    const body = await readBody(req);
+    const { mapping, pool } = await context(req, body, true);
+    const twinId = assertTwin(mapping, body.twin || body.twin_id);
+    const jobId = clean(body.job || body.job_id, 128);
+    if (!jobId) throw httpError(400, "A background work job ID is required.");
+    const outcome = await withContext(pool, mapping, async (client) => {
+      const cancelled = await cancelQueuedRuntimeJob(client, {
+        job_id: jobId,
+        tenant_id: mapping.tenant_id,
+        actor_user_id: mapping.user_id,
+        twin_id: twinId,
+      });
+      if (!cancelled) throw httpError(404, "Background work job not found.");
+      if (!cancelled.cancelled) {
+        throw httpError(409, `Background work can only be cancelled before processing starts; current status is ${cancelled.status}.`);
+      }
+      const details = {
+        contract: "meids.agent-work.v1",
+        status: "cancelled",
+        job_id: jobId,
+        twin_id: twinId,
+        cancelled_at: new Date().toISOString(),
+      };
+      const ledger = await client.query(
+        `UPDATE audit.event SET action = 'agent.work.cancelled', details = $4::jsonb
+         WHERE tenant_id = $1 AND actor_user_id = $2 AND resource_type = 'agent.background_work'
+           AND resource_id = $3`,
+        [mapping.tenant_id, mapping.user_id, jobId, JSON.stringify(details)],
+      );
+      if (ledger.rowCount !== 1) throw new Error(`Agent work cancellation ledger did not match ${jobId}.`);
+      return details;
+    });
+    jsonResponse(res, 200, outcome);
+  }
+
   async function skillRuns(req, res, url) {
     const { mapping, pool } = await context(req);
     const limit = Math.min(100, Number(url.searchParams.get("limit")) || 20);
@@ -2268,6 +2304,7 @@ function createWorkspaceApi(deps) {
     else if (route === "GET /api/skills/runs") await skillRuns(req, res, url);
     else if (route === "POST /api/agents/work") await agentWorkEnqueue(req, res);
     else if (route === "GET /api/agents/work") await agentWorkStatus(req, res, url);
+    else if (route === "DELETE /api/agents/work") await agentWorkCancel(req, res);
     else if (route === "GET /api/skills/refinements") await stableEmpty(res, "skill_refinements");
     else if (route === "GET /api/skills/telemetry") await stableEmpty(res, "telemetry");
     else if (route === "GET /api/voice/concepts/criteria") await voiceCriteria(res);

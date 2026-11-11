@@ -5,14 +5,14 @@ window.INTELLECTUAL_TWIN_CONFIG = {
   assetBaseUrl: "/static",
   n8nChatWebhookUrl: "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat",
   n8nActorTwinWebhookUrl: "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat",
-  n8nKnowledgeFabricWebhookUrl: "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/knowledge-fabric/ingest",
-  n8nAgenticButlerWebhookUrl: "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/agentic-butler/run",
+  n8nKnowledgeFabricWebhookUrl: "",
+  n8nAgenticButlerWebhookUrl: "",
   voiceTranscriptionUrl: "",
   n8nVoiceTranscriptionWebhookUrl: "",
   n8nAgentWebhooks: {
     actor_twin: "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat",
-    knowledge_fabric_agent: "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/knowledge-fabric/ingest",
-    agentic_butler: "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/agentic-butler/run",
+    knowledge_fabric_agent: "",
+    agentic_butler: "",
   },
   n8nAgentProbeSlots: {
     actor_twin: {

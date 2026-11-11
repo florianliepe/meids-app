@@ -7,7 +7,7 @@ const applyLive = process.argv.includes("--apply");
 const workflowIds = {
   actor: String(process.env.N8N_ACTOR_TWIN_WORKFLOW_ID || "eKI3qM7nyCNn9r1q"),
   knowledge: String(process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "oPs77Qzrg9Repzgp"),
-  butler: String(process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "KZOqZRUAnVfFEAYJ"),
+  butler: String(process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "elbiGicaFmQQW4w8"),
 };
 
 const inputDefinitions = [
