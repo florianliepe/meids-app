@@ -15,7 +15,13 @@ for (const text of [
 for (const text of ["trustedBackgroundWork", "meids_backend_background_work", "trusted_background_work"]) {
   if (!policy.includes(text)) throw new Error(`Missing trusted worker boundary: ${text}`);
 }
-for (const text of ["refreshActorBackgroundWork", "actorBackgroundPollTimer", "/api/agents/work?twin="]) {
+for (const text of [
+  "refreshActorBackgroundWork",
+  "actorBackgroundPollTimer",
+  "/api/agents/work?twin=",
+  "knowledgeAccessHeaders()",
+  'refreshN8nChatAuthorizationContext({ reconnect: false, reason: "background_poll" })',
+]) {
   if (!frontend.includes(text)) throw new Error(`Missing frontend background-work behavior: ${text}`);
 }
 if (workflow.nodes[0]?.type !== "n8n-nodes-base.executeWorkflowTrigger") throw new Error("Background adapter must be an internal callable workflow.");

@@ -16986,10 +16986,26 @@ function renderActorBackgroundWork() {
   }).join("");
 }
 
+function knowledgeAccessHeaders(session = state.authSession) {
+  const token = String(session?.knowledge_access_token || "").trim();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function refreshActorBackgroundWork() {
   if (staticPagesMode || !authenticatedSession() || !state.activeTwin) return;
+  const requestStatus = () => apiRequestJson(
+    `/api/agents/work?twin=${encodeURIComponent(state.activeTwin)}&limit=3`,
+    { headers: knowledgeAccessHeaders() },
+  );
   try {
-    const result = await getJson(`/api/agents/work?twin=${encodeURIComponent(state.activeTwin)}&limit=3`);
+    let result;
+    try {
+      result = await requestStatus();
+    } catch (error) {
+      if (Number(error.status || 0) !== 401 && !blockedN8nAuthContext(error.details || error.message)) throw error;
+      await refreshN8nChatAuthorizationContext({ reconnect: false, reason: "background_poll" });
+      result = await requestStatus();
+    }
     state.actorBackgroundJobs = Array.isArray(result.jobs) ? result.jobs : [];
     renderActorBackgroundWork();
   } catch (error) {
