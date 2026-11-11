@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - "backend/**"
-      - "frontend/staticwebapp.config.json"
+      - "frontend/**"
       - "scripts/build-pages-static.cjs"
       - "scripts/write-build-info.cjs"
       - "scripts/test-build-info.cjs"
