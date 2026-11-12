@@ -24,6 +24,7 @@
     "db:verify:runtime-jobs": "node scripts/verify-runtime-background-jobs.cjs",
     "test:cancellation-race": "node scripts/test-runtime-cancellation-postgres-race.cjs",
     "test:runtime-lease-fencing": "node scripts/test-runtime-lease-fencing-postgres.cjs",
+    "test:runtime-worker-termination": "node scripts/test-runtime-worker-termination-postgres.cjs",
     "test:learning-dry-run-domain-proof": "node scripts/test-learning-dry-run-domain-proof-postgres.cjs",
     "test:approval-race": "node scripts/test-approval-postgres-race.cjs",
     "test:approval-process-termination": "node scripts/test-approval-process-termination-postgres.cjs",
