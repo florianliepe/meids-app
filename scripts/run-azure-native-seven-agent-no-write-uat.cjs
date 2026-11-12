@@ -55,7 +55,7 @@ function envelope(id, message, metadata = {}) {
 const scenarios = [
   {
     id: "actor_direct",
-    message: "Synthetic no-write readiness probe. Reply briefly that the Azure-native Actor Twin direct path is ready. Do not call tools or retain this interaction.",
+    message: "Synthetic readiness probe. Reply briefly that the Azure-native Actor Twin direct path is ready. Do not call tools or retain this interaction.",
     expectedRoles: ["actor_twin"],
   },
   {

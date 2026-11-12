@@ -1,7 +1,7 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-11-11T08:58:03.190Z",
-  "source": "latest_published_nightly_evidence",
+  "generated_at": "2026-11-12T18:39:42.185Z",
+  "source": "latest_azure_native_nightly_evidence",
   "status": "passed",
   "summary": {
     "contract_suites": "passed",
@@ -21,38 +21,38 @@
   "agent_results": [
     {
       "agent": "actor_twin",
-      "status": "fresh_connected",
-      "duration_ms": 42546
+      "status": "completed",
+      "duration_ms": 535
     },
     {
       "agent": "knowledge_fabric_agent",
-      "status": "fresh_connected",
-      "duration_ms": 761
+      "status": "completed",
+      "duration_ms": 591
     },
     {
       "agent": "agentic_butler",
-      "status": "fresh_connected",
-      "duration_ms": 36138
+      "status": "completed",
+      "duration_ms": 1596
     },
     {
       "agent": "skill_orchestrator",
-      "status": "fresh_connected",
-      "duration_ms": 22211
+      "status": "completed",
+      "duration_ms": 1513
     },
     {
       "agent": "task_agent",
-      "status": "fresh_connected",
-      "duration_ms": 6431
+      "status": "completed",
+      "duration_ms": 1471
     },
     {
       "agent": "critical_faculty",
-      "status": "fresh_connected",
-      "duration_ms": 517
+      "status": "completed",
+      "duration_ms": 1052
     },
     {
       "agent": "learning_agent",
-      "status": "fresh_connected",
-      "duration_ms": 598
+      "status": "completed",
+      "duration_ms": null
     }
   ],
   "manual_validations": [
@@ -130,7 +130,7 @@
     {
       "id": "learning_execution_correlation",
       "label": "Learning Agent execution correlation",
-      "detail": "Require a fresh canonical workflow execution after every successful post-turn dispatch acknowledgement."
+      "detail": "Require a fresh owner-scoped Azure job and completed non-persisting Learning proposal after every successful probe acknowledgement."
     }
   ],
   "boundary": "Public-safe release evidence. No secrets, prompts, private knowledge, or identity tokens are included."
