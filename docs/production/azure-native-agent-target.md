@@ -96,7 +96,7 @@ flowchart LR
 
 ## Current rollout state
 
-- PRs #56-#85 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter and hardened the Azure-native Nightly verdict. The current backend revision is merge commit `3e2a6c63fb457f888dc00ae8d7d28571bda56354`, deployed by run `43283060350`; the native frontend remains active.
+- PRs #56-#87 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter, hardened the Azure-native Nightly verdict and added authoritative Learning dry-run domain proof. The current backend revision is merge commit `088303a591d67044b0ae207685f27a93247a0eaa`, deployed by run `43286637969`; the native frontend remains active.
 - The browser talks only to authenticated App Service routes; direct n8n URLs are empty in production runtime configuration.
 - Direct-answer shadow and primary canaries passed from the real App Service web process. A 20-request soak returned 20/20 expected answers with p50 814 ms, p90 1,044 ms and max 1,402 ms.
 - Missing and forged knowledge tokens both return `401 blocked_auth_context`.
@@ -124,7 +124,7 @@ flowchart LR
 - Native chat passes expired-auth no-replay, queued-only cancellation, keyboard and responsive-browser tests.
 - Azure OpenAI access is private-network restricted and remains reachable only through the proven App Service path.
 - Route canaries passed in this order: direct, retrieval, synchronous work, background work, conditional critique, approval resume, voice preparation and detached Learning.
-- The Nightly harness now targets authenticated App Service routes and correlates fresh Azure-native root traces, provider/model metadata, role executions and an owner-scoped Learning job. Its Learning probe generates a real proposal in `dry_run` mode; after the domain-proof release it also requires matching authoritative PostgreSQL before/after fingerprints rather than trusting `not_persisted` alone. Historical n8n execution evidence remains rollback/audit evidence only.
+- The Nightly harness now targets authenticated App Service routes and correlates fresh Azure-native root traces, provider/model metadata, role executions and an owner-scoped Learning job. Its Learning probe generates a real proposal in `dry_run` mode and requires matching authoritative PostgreSQL before/after fingerprints rather than trusting `not_persisted` alone. Production passed this proof with 12 entities and identical non-empty digests. Historical n8n execution evidence remains rollback/audit evidence only.
 - Production Nightly evidence now passes all five scenarios and all seven Azure-native roles. The signed-token App Service exclusions are limited to the four application-authorized runtime routes and remain fail-closed in the backend.
 - Open before physical n8n removal: complete two-principal/guest RLS, run a measured rollback rehearsal, prove zero n8n egress during the observation window, and satisfy audit retention.
 - After those gates, remove n8n webhook settings, API credentials, workflow administration UI and retained workflow assets in one separately approved retirement release.
