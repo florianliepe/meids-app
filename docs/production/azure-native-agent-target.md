@@ -96,7 +96,7 @@ flowchart LR
 
 ## Current rollout state
 
-- PRs #56-#89 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter, hardened the Azure-native Nightly verdict, added authoritative Learning dry-run domain proof and fenced reclaimed worker attempts. The current backend revision is merge commit `11d5c944454b58058a1aaf74432dcad3cf2720f6`, deployed by run `43288844451`; the native frontend remains active.
+- PRs #56-#91 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter, hardened the Azure-native Nightly verdict, added authoritative Learning dry-run domain proof, fenced reclaimed worker attempts and stopped uncertain lease redispatch. The current backend revision is merge commit `0b810fa2738275bd1a885bc13753465aaf682647`, deployed by run `43290598653`; the native frontend remains active.
 - The browser talks only to authenticated App Service routes; direct n8n URLs are empty in production runtime configuration.
 - Direct-answer shadow and primary canaries passed from the real App Service web process. A 20-request soak returned 20/20 expected answers with p50 814 ms, p90 1,044 ms and max 1,402 ms.
 - Missing and forged knowledge tokens both return `401 blocked_auth_context`.
@@ -119,6 +119,7 @@ flowchart LR
 - Runtime recovery hardening uses the atomic PostgreSQL claim counter as a lease generation. Completion and failure compare job ID, processing state, worker ID and generation. Isolated PostgreSQL validation reclaims an expired lease with the same worker ID, rejects both stale completion and stale failure, and proves the accepted terminal result cannot regress. Azure OpenAI timeout validation marks completion unknown and non-retryable.
 - Worker recovery is fail-closed at the provider boundary: pending/failed jobs retain bounded retry, while an expired processing lease is persisted as `runtime_lease_expired_unknown_completion`, purges transient binary data and requires reconciliation. The worker never sends that uncertain operation to Azure OpenAI, n8n or another adapter again automatically.
 - Post-deploy no-write UAT on backend `11d5c944` passed 5/5 scenarios and 7/7 roles with no findings: direct 753 ms, retrieval 1,903 ms, conditional critique 1,740 ms, Butler/Skill/Task 2,545 ms and detached Learning 5,157 ms. Learning completed once on attempt 1 with matching non-empty authoritative domain digests.
+- Post-deploy no-write UAT on the final no-redispatch backend `0b810fa2` also passed 5/5 scenarios and 7/7 roles with no findings: direct 1,034 ms, retrieval 1,803 ms, conditional critique 1,957 ms, Butler/Skill/Task 3,409 ms and detached Learning 7,709 ms. Learning completed once on attempt 1 with unchanged authoritative domain fingerprints.
 
 ## Cutover gates
 

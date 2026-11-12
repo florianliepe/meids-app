@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-11-12T19:22:08.222Z",
+  "generated_at": "2026-11-12T19:32:16.551Z",
   "source": "latest_azure_native_nightly_evidence",
   "status": "passed",
   "summary": {
@@ -22,32 +22,32 @@
     {
       "agent": "actor_twin",
       "status": "completed",
-      "duration_ms": 573
+      "duration_ms": 870
     },
     {
       "agent": "knowledge_fabric_agent",
       "status": "completed",
-      "duration_ms": 528
+      "duration_ms": 516
     },
     {
       "agent": "agentic_butler",
       "status": "completed",
-      "duration_ms": 903
+      "duration_ms": 953
     },
     {
       "agent": "skill_orchestrator",
       "status": "completed",
-      "duration_ms": 821
+      "duration_ms": 856
     },
     {
       "agent": "task_agent",
       "status": "completed",
-      "duration_ms": 1066
+      "duration_ms": 1695
     },
     {
       "agent": "critical_faculty",
       "status": "completed",
-      "duration_ms": 783
+      "duration_ms": 722
     },
     {
       "agent": "learning_agent",
