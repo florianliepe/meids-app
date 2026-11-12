@@ -108,10 +108,10 @@ const LEARNING_DRY_RUN_DOMAIN_QUERIES = [
   ["knowledge.concept_revision", "concept_id::text || ':' || revision::text", `SELECT * FROM knowledge.concept_revision WHERE tenant_id = $1 AND owner_user_id = $2 AND twin_id = $3`],
   ["knowledge.evidence", "evidence_id", `SELECT * FROM knowledge.evidence WHERE tenant_id = $1 AND owner_user_id = $2 AND twin_id = $3`],
   ["knowledge.chunk", "chunk_id", `SELECT * FROM knowledge.chunk WHERE tenant_id = $1 AND owner_user_id = $2 AND twin_id = $3`],
-  ["knowledge.graph_node", "node_key", `SELECT * FROM knowledge.graph_node WHERE tenant_id = $1 AND twin_id = $3`],
-  ["knowledge.graph_edge", "edge_key", `SELECT * FROM knowledge.graph_edge WHERE tenant_id = $1 AND twin_id = $3`],
-  ["knowledge.graph_edge_review", "review_id", `SELECT * FROM knowledge.graph_edge_review WHERE tenant_id = $1 AND twin_id = $3`],
-  ["knowledge.graph_projection_run", "run_id", `SELECT * FROM knowledge.graph_projection_run WHERE tenant_id = $1 AND twin_id = $3`],
+  ["knowledge.graph_node", "node_key", `SELECT * FROM knowledge.graph_node WHERE tenant_id = $1 AND twin_id = $3 AND $2::text <> ''`],
+  ["knowledge.graph_edge", "edge_key", `SELECT * FROM knowledge.graph_edge WHERE tenant_id = $1 AND twin_id = $3 AND $2::text <> ''`],
+  ["knowledge.graph_edge_review", "review_id", `SELECT * FROM knowledge.graph_edge_review WHERE tenant_id = $1 AND twin_id = $3 AND $2::text <> ''`],
+  ["knowledge.graph_projection_run", "run_id", `SELECT * FROM knowledge.graph_projection_run WHERE tenant_id = $1 AND twin_id = $3 AND $2::text <> ''`],
   ["runtime.outbox_event", "event_id", `SELECT * FROM runtime.outbox_event WHERE tenant_id = $1 AND (payload->>'user_id' = $2 OR payload->>'owner_user_id' = $2) AND (payload->>'twin_id' = $3 OR payload->>'active_twin_id' = $3)`],
 ];
 
