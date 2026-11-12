@@ -96,15 +96,16 @@ function skillProposalPayload(approval = {}, body = {}) {
   };
 }
 
-async function stageSkillProposal(pool, mapping, payload) {
+async function stageSkillProposal(pool, mapping, payload, options = {}) {
   if (!payload.twin_id || !(mapping.allowed_twin_ids || []).includes(payload.twin_id)) {
     const error = new Error("The approved skill proposal is outside the authenticated twin scope.");
     error.statusCode = 403;
     throw error;
   }
-  const client = await pool.connect();
+  const externalClient = options.client || null;
+  const client = externalClient || await pool.connect();
   try {
-    await client.query("BEGIN");
+    if (!externalClient) await client.query("BEGIN");
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [mapping.tenant_id]);
     await client.query("SELECT set_config('app.user_id', $1, true)", [mapping.user_id]);
     await client.query("SELECT set_config('app.allowed_twin_ids', $1, true)", [(mapping.allowed_twin_ids || []).join(",")]);
@@ -121,13 +122,13 @@ async function stageSkillProposal(pool, mapping, payload) {
        VALUES ($1, $2, 'skill.elicit', 'agent.skill_spec', $3, $4::jsonb)`,
       [mapping.tenant_id, mapping.user_id, payload.skill_id, JSON.stringify({ twin_id: payload.twin_id, source: "azure_native_approval_resume" })],
     );
-    await client.query("COMMIT");
+    if (!externalClient) await client.query("COMMIT");
     return { status: "pending_approval", skill: inserted.rows[0] };
   } catch (error) {
-    await client.query("ROLLBACK");
+    if (!externalClient) await client.query("ROLLBACK");
     throw error;
   } finally {
-    client.release();
+    if (!externalClient) client.release();
   }
 }
 
