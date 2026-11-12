@@ -1,15 +1,15 @@
 {
-  "purpose": "Public-safe Me.IDs runtime metadata. Actor Twin is the only browser-visible n8n entrypoint; worker agents are reachable only through governed backend or internal workflow routes.",
+  "purpose": "Public-safe Me.IDs runtime metadata. Actor Twin uses the authenticated backend composer; no n8n endpoint is browser-visible.",
   "n8nAgentWebhooks": {
-    "actor_twin": "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat",
+    "actor_twin": "",
     "knowledge_fabric_agent": "",
     "agentic_butler": ""
   },
   "n8nAgentProbeSlots": {
     "actor_twin": {
-      "status": "configured",
-      "probe_boundary": "Embedded n8n chat is configured as the public Actor Twin entrypoint. Live workflow proof requires n8n chat execution traces.",
-      "next_action": "Run Actor Twin embedded-chat UAT and capture direct answer, Knowledge Fabric tool, and Agentic Butler tool trace evidence."
+      "status": "backend_only",
+      "probe_boundary": "Actor Twin uses the authenticated backend composer; no n8n endpoint is published to the browser.",
+      "next_action": "Use backend runtime and trace evidence for Actor Twin readiness."
     },
     "knowledge_fabric_agent": {
       "status": "internal_tool_via_actor_twin",
@@ -22,7 +22,7 @@
       "next_action": "Verify Actor Twin has the Agentic Butler workflow tool connected and published."
     }
   },
-  "n8nActorTwinWebhookUrl": "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat",
+  "n8nActorTwinWebhookUrl": "",
   "n8nKnowledgeFabricWebhookUrl": "",
   "n8nAgenticButlerWebhookUrl": ""
 }

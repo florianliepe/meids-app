@@ -10,11 +10,15 @@ const asset = JSON.parse(fs.readFileSync(path.join(root, "frontend/assets/agent-
 const builder = fs.readFileSync(path.join(root, "scripts/build-pages-static.cjs"), "utf8");
 const assetBuilder = fs.readFileSync(path.join(root, "scripts/write-pages-agent-runtime-config.cjs"), "utf8");
 
-assert.match(runtime, /n8nChatWebhookUrl:\s*"https:\/\//, "Actor Twin browser entrypoint must remain configured");
+assert.match(runtime, /n8nChatWebhookUrl:\s*""/, "The browser must not expose an n8n chat endpoint");
+assert.match(runtime, /n8nActorTwinWebhookUrl:\s*""/, "The browser must not expose an n8n Actor endpoint");
+assert.match(runtime, /nativeActorChatEnabled:\s*true/, "The authenticated native Actor composer must be enabled");
 assert.match(runtime, /n8nKnowledgeFabricWebhookUrl:\s*""/);
 assert.match(runtime, /n8nAgenticButlerWebhookUrl:\s*""/);
 assert.equal(asset.n8nAgentWebhooks.knowledge_fabric_agent, "");
 assert.equal(asset.n8nAgentWebhooks.agentic_butler, "");
+assert.equal(asset.n8nAgentWebhooks.actor_twin, "");
+assert.equal(asset.n8nActorTwinWebhookUrl, "");
 assert.equal(asset.n8nKnowledgeFabricWebhookUrl, "");
 assert.equal(asset.n8nAgenticButlerWebhookUrl, "");
 assert.match(builder, /const knowledgeUrl = "";/);
@@ -32,6 +36,8 @@ try {
       ...process.env,
       GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL: forbiddenWorkerUrl,
       GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL: forbiddenWorkerUrl,
+      GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL: forbiddenWorkerUrl,
+      GH_PAGES_N8N_CHAT_WEBHOOK_URL: forbiddenWorkerUrl,
     },
   });
   assert.equal(build.status, 0, `Static build failed:\n${build.stdout}\n${build.stderr}`);
@@ -39,6 +45,8 @@ try {
   const builtAsset = fs.readFileSync(path.join(buildDir, "assets/agent-runtime-config.json"), "utf8");
   assert.equal(builtRuntime.includes(forbiddenWorkerUrl), false, "Built runtime config leaked a worker URL");
   assert.equal(builtAsset.includes(forbiddenWorkerUrl), false, "Built agent asset leaked a worker URL");
+  assert.match(builtRuntime, /n8nChatWebhookUrl:\s*""/);
+  assert.match(builtRuntime, /n8nActorTwinWebhookUrl:\s*""/);
   assert.match(builtRuntime, /n8nKnowledgeFabricWebhookUrl:\s*""/);
   assert.match(builtRuntime, /n8nAgenticButlerWebhookUrl:\s*""/);
 } finally {
@@ -47,5 +55,5 @@ try {
 
 console.log(JSON.stringify({
   status: "passed",
-  contract: "source and built browser assets expose Actor Twin only; worker agents use backend or internal workflow routes",
+  contract: "source and built browser assets expose no n8n endpoint; Actor Twin and worker agents use authenticated backend routes",
 }, null, 2));

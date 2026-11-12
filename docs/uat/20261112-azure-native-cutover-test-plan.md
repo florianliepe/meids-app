@@ -40,7 +40,7 @@ Queued work and detached Learning now have production evidence. Concurrency, com
 | AZ-16 | P0 | Fallback-off route matrix. | Every enabled route is Azure-native; no trace contains n8n fallback. Passed before and after global Azure-native mode activation. |
 | AZ-17 | P0 | Stable Entra subject versus internal owner key. | Resolve to an active canonical user, intersect current DB twin grants, and reject unknown/removed scope before persistence. Unit and live owner staging pass. |
 | AZ-18 | P1 | Generated skill approval. | Exactly one `pending_approval` SkillSpec, never activated or executed; duplicate decision 409. Passed with synthetic proposal. |
-| AZ-19 | P1 | n8n egress observation and retained-setting audit. | No runtime egress during the agreed window; retained settings are documented rollback-only and inaccessible to browser code. Open. |
+| AZ-19 | P1 | n8n egress observation and retained-setting audit. | Reproducible gate active: App Service HTTP telemetry has Search positive control; 16 current/historical Me.IDs n8n workflows (15 active, one inactive) are inventoried with visible pre-cutover execution retention. Since `2026-11-12T16:27:00Z`, the active window shows zero n8n dependency calls and zero workflow executions. Browser assets publish no n8n URL. Window remains open. |
 | AZ-20 | P0 | Full employee/guest RLS matrix after canonical identity mapping. | No cross-user/twin/group/Blob/Search/Graph leak or existence oracle. Open under AZ-06/PROD-008. |
 | AZ-21 | P1 | Physical n8n retirement. | After rollback/audit gates, remove webhooks, credentials, workflow admin surfaces and workflows; production remains functional and rollback documentation changes to Azure-only recovery. Open. |
 | AZ-22 | P1; P0 on false pass or data leak | Adversarial Azure-native Nightly: bare 202, queued/failed/hanging Learning, stale/foreign job and trace, wrong provider, missing role span, grant revoke during poll, dry-run write attempt and worker/provider uncertainty. | The harness fails closed for synthetic evidence. PR #89 passed PostgreSQL 16 same-worker lease reclaim and rejects stale completion/failure by attempt generation; provider timeout is unknown and non-retryable. Post-deploy UAT passed 5/5 scenarios and 7/7 roles on backend `11d5c944`. Real principal revocation and controlled live process/provider disruption remain open. |
@@ -57,11 +57,11 @@ PR #89 proves stale terminal writes cannot win, but attempt fencing alone does n
 
 1. **RW-01 - worker termination at provider acceptance (P0 on duplicate effect; complete):** `meids.runtime-worker-termination.v1` starts a real worker against PostgreSQL 16, observes provider receipt, kills the worker before response, expires the lease and starts a replacement. Evidence: one provider invocation, zero replacement claims and terminal reconciliation-required `unknown_completion`. Existing completion-generation tests separately cover late result and terminal non-regression.
 2. **RW-02 - real principal and grant revocation while polling (P0):** use two dedicated employees, a guest and isolated twins. Revoke after the poll begins, switch twin scope while a response is delayed, and prove current grants remain authoritative without replay or existence leakage.
-3. **RW-03 - measured zero-n8n egress (P1; P0 on egress):** passive production observation with sensor positive control and coverage of every App Service/worker instance, scheduler and legacy alias. Missing or sampled logs are not proof of zero.
+3. **RW-03 - measured zero-n8n egress (P1; P0 on egress; active):** `npm run n8n:egress:status` combines App Service dependency telemetry, hourly gap/freshness/sampling guards, explicit HTTP/Search positive controls, runtime fallback flags, browser artifact checks and the paginated inventory of 16 current/historical Me.IDs n8n workflows. It reports `observation_in_progress` until 168 hours have elapsed, even when both counters are zero. Public-safe evidence is `frontend/assets/n8n-egress-readiness-status.json`.
 4. **RW-04 - isolated rollback rehearsal (P0 on replay):** switch Azure-native to n8n and back for queued, processing, unknown and terminal work. New work needs one linear cutover point; processing/unknown work remains provider-bound and is never redispatched by a global flag change.
 5. **RW-05 - route soak including failures (P1):** report `n`, window, p50/p90, timeout, cancellation, unknown and error rates per route. Separate async acknowledgement, queue wait, provider time and completion; never remove failed or censored requests from the SLO verdict.
 
-RW-01 and RW-02 are first. RW-03 can run passively in parallel; RW-04 follows the explicit recovery policy; RW-05 runs within a predeclared cost and request budget. Successful single probes remain canary evidence, not soak evidence.
+RW-01 is complete. RW-03 is running passively in parallel; RW-02 remains the next P0 identity gate, RW-04 follows the explicit recovery policy, and RW-05 runs within a predeclared cost and request budget. Successful single probes remain canary evidence, not soak evidence.
 
 ## Post-cutover adversarial status
 
@@ -76,7 +76,7 @@ The Project Issue Tracking review classifies AZ-13 through AZ-21 as partial or o
 7. **P1 Learning/Nightly:** correlate fresh Azure root trace, job, approval, provider and revision. A transport acknowledgement or stale n8n execution cannot pass.
 8. **P1 rollback/retirement:** define owner, trigger, RTO and end date; rehearse native-only to n8n and back with queued, processing, approval-required and unknown work before deleting n8n assets.
 
-The initial read-only egress observation from `2026-11-12T16:27:00Z` through `16:33:28Z` found zero n8n executions. This six-minute sample is recorded only as a sensor smoke, not as the required observation window.
+The production observation started at the global Azure-native cutover, `2026-11-12T16:27:00Z`. The latest public-safe artifact has outbound HTTP/Search telemetry, zero n8n App Service dependencies and zero executions across 16 current/historical Me.IDs n8n workflows. This remains an in-progress gate until the full 168-hour window elapses.
 
 ## Promotion rule
 

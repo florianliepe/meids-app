@@ -1,6 +1,6 @@
 (function initAdminCockpit() {
   const api = window.IntellectualTwinApi;
-  const state = { session: null, overview: null, users: [], audit: [], rolePolicy: {}, nightly: null };
+  const state = { session: null, overview: null, users: [], audit: [], rolePolicy: {}, nightly: null, n8nEgress: null };
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
@@ -61,11 +61,14 @@
   }
 
   async function loadData() {
-    const [overview, users, audit, nightly] = await Promise.all([
+    const [overview, users, audit, nightly, n8nEgress] = await Promise.all([
       api.getJson("/api/admin/overview"),
       api.getJson("/api/admin/users"),
       api.getJson("/api/admin/audit?limit=100"),
       fetch("../assets/nightly-readiness-status.json", { cache: "no-store" })
+        .then((response) => response.ok ? response.json() : null)
+        .catch(() => null),
+      fetch("../assets/n8n-egress-readiness-status.json", { cache: "no-store" })
         .then((response) => response.ok ? response.json() : null)
         .catch(() => null),
     ]);
@@ -74,6 +77,7 @@
     state.rolePolicy = users.role_policy || {};
     state.audit = audit.events || [];
     state.nightly = nightly;
+    state.n8nEgress = n8nEgress;
   }
 
   function renderMetrics() {
@@ -144,6 +148,24 @@
       [`${number(summary.manual_validations?.passed)}/${number(summary.manual_validations?.total)}`, "manual validations"],
     ];
     $("#nightlySummary").innerHTML = items.map(([value, label]) => `<div><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>`).join("");
+
+    const egress = state.n8nEgress;
+    const observed = Number(egress?.observed_coverage_hours || 0);
+    const required = Number(egress?.required_observation_hours || 0);
+    const n8nCalls = Number(egress?.target?.calls || 0);
+    const egressStale = !egress?.valid_until || Date.parse(egress.valid_until) <= Date.now();
+    const egressCopy = !egress
+      ? "No published dependency-telemetry evidence."
+      : egressStale
+        ? "Published dependency telemetry is stale; retirement remains blocked until it is refreshed."
+      : egress.status === "passed"
+        ? `${observed} h observed with a healthy dependency sensor and no n8n calls.`
+        : egress.status === "failed"
+          ? `${n8nCalls} n8n dependency call${n8nCalls === 1 ? "" : "s"} observed; retirement is blocked.`
+          : egress.status === "insufficient_telemetry"
+            ? "Dependency or n8n workflow telemetry is incomplete; retirement remains blocked."
+            : `${observed} of ${required} required hours observed; no n8n calls so far, but the retirement gate remains open.`;
+    $("#n8nEgressStatus").textContent = egressCopy;
 
     const backlog = Array.isArray(nightly?.nightly_test_backlog) ? nightly.nightly_test_backlog : [];
     $("#nightlyBacklog").innerHTML = backlog.length
