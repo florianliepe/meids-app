@@ -96,7 +96,7 @@ flowchart LR
 
 ## Current rollout state
 
-- PRs #56-#97 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter, hardened the Azure-native Nightly verdict, added authoritative Learning dry-run domain proof, fenced reclaimed worker attempts, stopped uncertain lease redispatch and added bounded definitive-429 handling. The current backend revision is merge commit `cc6cbace8918222e2dd15422dfdd77e2b78e006e`, deployed by run `43301991388`; the native frontend remains active.
+- PRs #56-#99 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter, hardened the Azure-native Nightly verdict, added authoritative Learning dry-run domain proof, fenced reclaimed worker attempts, stopped uncertain lease redispatch and hardened bounded definitive-429 handling. The current backend revision is merge commit `5e85e3fefb59609ce44873eeb62ddc0048e7a590`, deployed by run `43305716378`; the native frontend remains active.
 - The browser talks only to authenticated App Service routes; direct n8n URLs are empty in production runtime configuration.
 - Direct-answer shadow and primary canaries passed from the real App Service web process. A 20-request soak returned 20/20 expected answers with p50 814 ms, p90 1,044 ms and max 1,402 ms.
 - Missing and forged knowledge tokens both return `401 blocked_auth_context`.
@@ -122,6 +122,7 @@ flowchart LR
 - Post-deploy no-write UAT on backend `11d5c944` passed 5/5 scenarios and 7/7 roles with no findings: direct 753 ms, retrieval 1,903 ms, conditional critique 1,740 ms, Butler/Skill/Task 2,545 ms and detached Learning 5,157 ms. Learning completed once on attempt 1 with matching non-empty authoritative domain digests.
 - Post-deploy no-write UAT on the final no-redispatch backend `0b810fa2` also passed 5/5 scenarios and 7/7 roles with no findings: direct 1,034 ms, retrieval 1,803 ms, conditional critique 1,957 ms, Butler/Skill/Task 3,409 ms and detached Learning 7,709 ms. Learning completed once on attempt 1 with unchanged authoritative domain fingerprints.
 - The first Azure-native route soak exposed the original deployment's 20 RPM bottleneck with 4/50 HTTP 429 responses. PR #97 added one deadline-bounded retry only for definitive 429 rejection; timeout remains unknown and non-retryable. Capacity was increased to 50 RPM/50k TPM without changing the model or version. The identical post-change serial window passed 50/50 with zero retry, timeout, cancellation, unknown completion or 429; the 100-sample multi-window maturity gate remains open.
+- PR #99 prevents an early retry when the provider's Retry-After exceeds the 5-second wait cap or remaining operation deadline. Its post-deploy no-write direct smoke completed Azure-native in 910 ms with zero throttle rejection or retry.
 
 ## Cutover gates
 
