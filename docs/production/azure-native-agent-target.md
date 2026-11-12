@@ -118,5 +118,6 @@ flowchart LR
 - Azure OpenAI access is private-network restricted and remains reachable only through the proven App Service path.
 - Route canaries passed in this order: direct, retrieval, synchronous work, background work, conditional critique, approval resume, voice preparation and detached Learning.
 - The Nightly harness now targets authenticated App Service routes and correlates fresh Azure-native root traces, provider/model metadata, role executions and an owner-scoped Learning job. Its Learning probe generates a real proposal in `dry_run` mode and proves `not_persisted`; historical n8n execution evidence remains rollback/audit evidence only.
-- Open before physical n8n removal: complete two-principal/guest RLS, run a measured rollback rehearsal, prove zero n8n egress during the observation window, publish successful Azure-native Nightly evidence, and satisfy audit retention.
+- Production Nightly evidence now passes all five scenarios and all seven Azure-native roles. The signed-token App Service exclusions are limited to the four application-authorized runtime routes and remain fail-closed in the backend.
+- Open before physical n8n removal: complete two-principal/guest RLS, run a measured rollback rehearsal, prove zero n8n egress during the observation window, and satisfy audit retention.
 - After those gates, remove n8n webhook settings, API credentials, workflow administration UI and retained workflow assets in one separately approved retirement release.

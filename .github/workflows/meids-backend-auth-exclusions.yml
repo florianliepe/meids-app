@@ -28,7 +28,7 @@ jobs:
       AZURE_WEBAPP_NAME: ${{ vars.AZURE_BACKEND_APP_NAME }}
       AZURE_RESOURCE_GROUP: ${{ vars.AZURE_BACKEND_RESOURCE_GROUP }}
       AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      EXCLUDED_PATH: /api/agents/work
+      EXCLUDED_PATHS: /api/agents/work,/api/agents/actor-twin/chat,/api/learning/post-turn,/api/learning/post-turn/status
     steps:
       - name: Sign in to Azure with GitHub OIDC
         uses: azure/login@v2
@@ -44,21 +44,25 @@ jobs:
         run: |
           set -euo pipefail
           uri="https://management.azure.com/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${AZURE_RESOURCE_GROUP}/providers/Microsoft.Web/sites/${AZURE_WEBAPP_NAME}/config/authsettingsV2?api-version=2022-03-01"
+          paths_json="$(printf '%s' "$EXCLUDED_PATHS" | jq -R 'split(",")')"
           az rest --method get --uri "$uri" > authsettings-before.json
           if [ "$OPERATION" = "apply" ]; then
-            jq --arg path "$EXCLUDED_PATH" \
-              '.properties.globalValidation.excludedPaths = (((.properties.globalValidation.excludedPaths // []) + [$path]) | unique) | {properties: .properties}' \
+            jq --argjson paths "$paths_json" \
+              '.properties.globalValidation.excludedPaths = (((.properties.globalValidation.excludedPaths // []) + $paths) | unique) | {properties: .properties}' \
               authsettings-before.json > authsettings-update.json
           else
-            jq --arg path "$EXCLUDED_PATH" \
-              '.properties.globalValidation.excludedPaths = ((.properties.globalValidation.excludedPaths // []) | map(select(. != $path))) | {properties: .properties}' \
+            jq --argjson paths "$paths_json" \
+              '.properties.globalValidation.excludedPaths = ((.properties.globalValidation.excludedPaths // []) | map(select(. as $path | ($paths | index($path) | not)))) | {properties: .properties}' \
               authsettings-before.json > authsettings-update.json
           fi
           az rest --method put --uri "$uri" --body @authsettings-update.json > authsettings-after.json
-          actual="$(jq -r --arg path "$EXCLUDED_PATH" '(.properties.globalValidation.excludedPaths // []) | index($path) != null' authsettings-after.json)"
-          if [ "$OPERATION" = "apply" ]; then test "$actual" = "true"; else test "$actual" = "false"; fi
           echo "Operation: $OPERATION" >> "$GITHUB_STEP_SUMMARY"
-          echo "Exact path: $EXCLUDED_PATH" >> "$GITHUB_STEP_SUMMARY"
+          IFS=',' read -ra paths <<< "$EXCLUDED_PATHS"
+          for path in "${paths[@]}"; do
+            actual="$(jq -r --arg path "$path" '(.properties.globalValidation.excludedPaths // []) | index($path) != null' authsettings-after.json)"
+            if [ "$OPERATION" = "apply" ]; then test "$actual" = "true"; else test "$actual" = "false"; fi
+            echo "Exact path: $path" >> "$GITHUB_STEP_SUMMARY"
+          done
           echo "Application-level signed-token authorization remains mandatory." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Retain rollback evidence

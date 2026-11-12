@@ -37,6 +37,9 @@ const negatedSideEffect = classifyAgentInteraction({ message: "Compare three opt
 assert.equal(negatedSideEffect.route, "execute_work_async");
 assert.equal(negatedSideEffect.gates.external_side_effect_approval, false);
 
+const negatedWriteOnly = classifyAgentInteraction({ message: "Synthetic no-write readiness probe. Confirm the direct path is ready." });
+assert.equal(negatedWriteOnly.route, "answer_direct");
+
 const adversativeSideEffect = classifyAgentInteraction({ message: "Do not send the draft, but publish the final report." });
 assert.equal(adversativeSideEffect.gates.external_side_effect_approval, true);
 
@@ -109,4 +112,4 @@ const untrustedBackgroundOverride = classifyAgentInteraction({
 assert.equal(untrustedBackgroundOverride.route, "execute_work_async");
 assert.equal(untrustedBackgroundOverride.worker_override, undefined);
 
-console.log(`Agent routing policy tests passed: ${cases.length + 9} cases`);
+console.log(`Agent routing policy tests passed: ${cases.length + 10} cases`);

@@ -2,6 +2,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { signKnowledgeAccessToken } = require("../backend/knowledgeAccess");
+const { REQUIRED_AGENTS, evaluateAzureNativeNightly } = require("./lib/azure-native-nightly-verdict.cjs");
 
 const root = path.resolve(__dirname, "..");
 const outputPath = path.join(root, "docs", "uat", "azure-native-seven-agent-no-write-uat.json");
@@ -125,6 +126,7 @@ async function runAgentScenario(scenario) {
       duration_ms: Date.now() - started,
       runtime,
       route: result.body?.response?.output?.route_decision?.route || "",
+      request_id: result.body?.response?.request_id || "",
       trace_id: result.body?.trace?.trace_id || result.body?.response?.trace?.trace_id || "",
       provider: result.body?.response?.trace?.provider || "",
       model: result.body?.response?.trace?.model || "",
@@ -187,6 +189,7 @@ async function runLearningScenario() {
       expected_roles: ["learning_agent"],
       missing_roles: completed ? [] : ["learning_agent"],
       persistence: result.review_state || "unknown",
+      result_status: result.status || "",
       error: completed ? "" : latest?.body?.error || "Learning job did not complete as a non-persisting proposal within 90 seconds.",
     };
   } catch (error) {
@@ -202,7 +205,7 @@ async function runLearningScenario() {
   }
   process.stdout.write("Running learning_agent...\n");
   results.push(await runLearningScenario());
-  const requiredAgents = ["actor_twin", "knowledge_fabric_agent", "agentic_butler", "skill_orchestrator", "task_agent", "critical_faculty", "learning_agent"];
+  const requiredAgents = REQUIRED_AGENTS;
   const observedAgents = [...new Set(results.flatMap((result) => result.role_executions || []).map((item) => item.agent))];
   const artifact = {
     schema_version: "1.0.0",
@@ -222,10 +225,9 @@ async function runLearningScenario() {
     boundary: "Public-safe execution metadata only. Tokens, prompts, answers, private knowledge, and identities are not stored.",
   };
   fs.writeFileSync(outputPath, `${JSON.stringify(artifact, null, 2)}\n`);
-  const passed = results.every((item) => item.status === "completed")
-    && requiredAgents.every((agent) => observedAgents.includes(agent));
-  console.log(JSON.stringify({ status: passed ? "completed" : "partial", output: path.relative(root, outputPath).replaceAll("\\", "/"), summary: artifact.summary }, null, 2));
-  if (!passed) process.exitCode = 1;
+  const verdict = evaluateAzureNativeNightly(artifact);
+  console.log(JSON.stringify({ status: verdict.passed ? "completed" : "partial", output: path.relative(root, outputPath).replaceAll("\\", "/"), summary: artifact.summary, issues: verdict.issues }, null, 2));
+  if (!verdict.passed) process.exitCode = 1;
 })().catch((error) => {
   console.error(error.stack || error.message);
   process.exit(1);
