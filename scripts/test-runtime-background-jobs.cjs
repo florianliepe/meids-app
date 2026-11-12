@@ -48,6 +48,8 @@ test("synthetic runtime job completes and purges binary payload", async () => {
   assert.ok(completion);
   assert.match(completion.sql, /binary_payload = NULL/);
   assert.equal(completion.params[2], "synthetic-worker");
+  assert.equal(completion.params[3], 1);
+  assert.match(completion.sql, /leased_by = \$3 AND attempts = \$4/);
 });
 
 test("synthetic runtime job schedules bounded retry", async () => {
@@ -63,6 +65,8 @@ test("synthetic runtime job schedules bounded retry", async () => {
   const failure = pool.calls.find((call) => call.scope === "pool" && call.sql.includes("SET status = $2"));
   assert.equal(failure.params[1], "failed");
   assert.equal(failure.params[3], 30);
+  assert.equal(failure.params[5], 2);
+  assert.match(failure.sql, /leased_by = \$5 AND attempts = \$6/);
   assert.equal(failures[0].failure.terminal, false);
 });
 
