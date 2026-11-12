@@ -185,13 +185,28 @@ function requestManagedIdentityToken(tokenUrl, identityHeader, timeoutMs = 10000
 function requestHttpText(targetUrl, options = {}, timeoutMs = 10000) {
   const client = targetUrl.protocol === "https:" ? https : http;
   return new Promise((resolve, reject) => {
+    if (options.signal?.aborted) {
+      const error = new Error("Azure AI Search request was cancelled before dispatch.");
+      error.code = "azure_search_cancelled";
+      error.statusCode = 499;
+      error.noRetry = true;
+      reject(error);
+      return;
+    }
+    let settled = false;
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      options.signal?.removeEventListener("abort", onAbort);
+      callback(value);
+    };
     const request = client.request(targetUrl, {
       method: options.method || "GET",
       headers: options.headers || {},
     }, (response) => {
       const chunks = [];
       response.on("data", (chunk) => chunks.push(chunk));
-      response.on("end", () => resolve({
+      response.on("end", () => finish(resolve, {
         status: response.statusCode || 500,
         text: Buffer.concat(chunks).toString("utf8"),
       }));
@@ -202,7 +217,15 @@ function requestHttpText(targetUrl, options = {}, timeoutMs = 10000) {
       error.statusCode = 504;
       request.destroy(error);
     });
-    request.on("error", reject);
+    function onAbort() {
+      const error = new Error("Azure AI Search request was cancelled.");
+      error.code = "azure_search_cancelled";
+      error.statusCode = 499;
+      error.noRetry = true;
+      request.destroy(error);
+    }
+    options.signal?.addEventListener("abort", onAbort, { once: true });
+    request.on("error", (error) => finish(reject, error));
     if (options.body) request.write(options.body);
     request.end();
   });
@@ -385,6 +408,7 @@ async function azureSearchRequest(path, options = {}, config = azureSearchConfig
       ...(options.headers || {}),
     },
     body: options.body,
+    signal: options.signal || config.retrievalSignal,
   }, Number(config.requestTimeoutMs || 10000));
   const text = response.text;
   let data = {};
@@ -407,6 +431,14 @@ async function azureSearchReadWithRetry(path, options = {}, config = azureSearch
   let retries = 0;
   let lastError;
   for (let attempt = 0; attempt <= maximumRetries; attempt += 1) {
+    if (config.retrievalSignal?.aborted) {
+      const error = new Error("Azure AI Search retrieval was cancelled.");
+      error.code = "azure_search_cancelled";
+      error.statusCode = 499;
+      error.noRetry = true;
+      error.searchRetries = retries;
+      throw error;
+    }
     const remainingMs = deadline - Date.now();
     if (remainingMs <= 250) break;
     const requestConfig = {
@@ -423,7 +455,24 @@ async function azureSearchReadWithRetry(path, options = {}, config = azureSearch
         throw error;
       }
       retries += 1;
-      await new Promise((resolve) => setTimeout(resolve, Math.min(100, Math.max(0, deadline - Date.now() - 250))));
+      const delayMs = Math.min(100, Math.max(0, deadline - Date.now() - 250));
+      await new Promise((resolve, reject) => {
+        const signal = config.retrievalSignal;
+        const onAbort = () => {
+          clearTimeout(timer);
+          const cancelled = new Error("Azure AI Search retry was cancelled before dispatch.");
+          cancelled.code = "azure_search_cancelled";
+          cancelled.statusCode = 499;
+          cancelled.noRetry = true;
+          cancelled.searchRetries = retries;
+          reject(cancelled);
+        };
+        const timer = setTimeout(() => {
+          signal?.removeEventListener("abort", onAbort);
+          resolve();
+        }, delayMs);
+        signal?.addEventListener("abort", onAbort, { once: true });
+      });
     }
   }
   const error = lastError || new Error("Azure AI Search exhausted the retrieval deadline before a safe retry could start.");

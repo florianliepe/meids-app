@@ -59,6 +59,7 @@ function appendWindow(existingWindows = [], artifact = {}) {
 function summarizeWindows(windows, targets, options = {}) {
   const minimumWindows = Number(options.minimumWindows || 3);
   const targetSamples = Number(options.targetSamples || 100);
+  const availabilityMinimumSuccessRate = Number(options.availabilityMinimumSuccessRate);
   const uniqueWindows = [];
   for (const window of Array.isArray(windows) ? windows : []) {
     if (window?.run_id && !uniqueWindows.some((item) => item.run_id === window.run_id)) uniqueWindows.push(window);
@@ -68,12 +69,26 @@ function summarizeWindows(windows, targets, options = {}) {
     minimumSamples: targetSamples,
     targetSamples,
   }));
+  const capacityCohortsMarked = uniqueWindows.every((window) => window?.candidate?.capacity_cohort && window.candidate.capacity_cohort !== "unspecified");
+  const samplingPassed = uniqueWindows.length >= minimumWindows
+    && capacityCohortsMarked
+    && routes.every((route) => route.sample_size >= targetSamples);
+  const availabilityPolicyDefined = Number.isFinite(availabilityMinimumSuccessRate)
+    && availabilityMinimumSuccessRate > 0
+    && availabilityMinimumSuccessRate <= 1;
+  const availabilityPassed = availabilityPolicyDefined
+    && routes.every((route) => route.success_rate >= availabilityMinimumSuccessRate);
   const issues = [];
   if (uniqueWindows.length < minimumWindows) issues.push("insufficient_windows");
-  if (uniqueWindows.some((window) => !window?.candidate?.capacity_cohort || window.candidate.capacity_cohort === "unspecified")) issues.push("unmarked_capacity_cohort");
-  if (routes.some((route) => route.status !== "passed")) issues.push("route_target_not_met");
+  if (!capacityCohortsMarked) issues.push("unmarked_capacity_cohort");
+  if (routes.some((route) => route.sample_size < targetSamples)) issues.push("insufficient_route_samples");
+  if (!availabilityPolicyDefined) issues.push("availability_policy_not_defined");
+  else if (!availabilityPassed) issues.push("availability_target_not_met");
   return {
-    status: issues.length ? "observation_in_progress" : "passed",
+    status: samplingPassed && availabilityPassed ? "passed" : "observation_in_progress",
+    sampling_status: samplingPassed ? "passed" : "observation_in_progress",
+    availability_status: availabilityPolicyDefined ? (availabilityPassed ? "passed" : "failed") : "policy_not_defined",
+    availability_minimum_success_rate: availabilityPolicyDefined ? availabilityMinimumSuccessRate : null,
     window_count: uniqueWindows.length,
     minimum_windows: minimumWindows,
     target_samples_per_route: targetSamples,

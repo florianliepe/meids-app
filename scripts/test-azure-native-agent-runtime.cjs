@@ -97,6 +97,7 @@ async function run() {
       throw error;
     },
   });
+  const modelCallsBeforeUnavailable = calls.length;
   const unavailable = await unavailableAdapter.execute(portableRequest({ request_id: "retrieve-unavailable", chatInput: "What reviewed evidence is available about my role?" }));
   assert.equal(unavailable.status, "blocked");
   assert.equal(unavailable.output.error_code, "retrieval_unavailable");
@@ -104,6 +105,7 @@ async function run() {
   assert.equal(unavailable.trace.retrieval_status, "unavailable");
   assert.equal(unavailable.trace.search_retry_count, 1);
   assert.deepEqual(unavailable.trace.role_executions.map((item) => item.status), ["unavailable"]);
+  assert.equal(calls.length, modelCallsBeforeUnavailable, "Retrieval exhaustion must not start Actor, Butler, or Critical Faculty model work");
 
   const retrieveWorkStart = calls.length;
   const retrieveWork = await adapter.execute(portableRequest({
