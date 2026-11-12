@@ -71,6 +71,22 @@ assert.equal(backgroundOverride.worker_override, "trusted_background_work");
 assert.equal(backgroundOverride.gates.max_task_agent_calls, 2);
 assert.equal(backgroundOverride.gates.retrieval_required, true);
 
+const skillOverride = classifyAgentInteraction({
+  message: "Opaque approved skill payload",
+  metadata: {
+    source: "meids_backend_skill_execution",
+    intent: "execute_approved_skill",
+    side_effect_policy: "no_external_side_effects",
+    routingHints: { skillWorker: true },
+    routingContractOverride: { route: "execute_work_sync", max_task_agent_calls: 2, retrieval_required: true },
+  },
+});
+assert.equal(skillOverride.route, "execute_work_sync");
+assert.equal(skillOverride.worker_override, "trusted_skill_execution");
+assert.equal(skillOverride.gates.skill_orchestrator, true);
+assert.equal(skillOverride.gates.retrieval_required, true);
+assert.equal(skillOverride.gates.external_side_effect_approval, false);
+
 const untrustedBackgroundOverride = classifyAgentInteraction({
   message: "Research the evidence, compare the options, then prepare a decision brief.",
   metadata: {

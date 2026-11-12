@@ -64,8 +64,8 @@ for (const route of [
 if (REVIEW_FROM_UI["pending-review"] !== "review_needed" || REVIEW_FROM_UI["needs-rework"] !== "updated") {
   throw new Error("Frontend and database review states are not mapped correctly.");
 }
-if (!source.includes("routing_policy: \"call_n8n_workflow_tool_first\"")) {
-  throw new Error("Interactive skill execution must preserve the Call n8n Workflow Tool hierarchy policy.");
+if (!source.includes("routing_policy: \"meids.agent-routing.v1\"")) {
+  throw new Error("Interactive skill execution must preserve the portable agent routing policy.");
 }
 const frontendSource = fs.readFileSync(path.join(root, "frontend", "app.js"), "utf8");
 for (const required of [
@@ -84,7 +84,11 @@ for (const required of [
   'chatInput:',
   'knowledgeAccessToken',
   'action IN (\'skill.run.queued\', \'skill.run\', \'skill.run.failed\')',
-  'call Agentic Butler first',
+  'source: "meids_backend_skill_execution"',
+  'max_task_agent_calls: 2',
+  'trace: response.trace || {}',
+  "claimApprovalDecision(approvalId, \"resuming\")",
+  "approval_operation_binding_mismatch",
 ]) {
   if (!source.includes(required)) throw new Error(`Backend-driven Actor Twin calls or skill-run history missing ${required}.`);
 }
