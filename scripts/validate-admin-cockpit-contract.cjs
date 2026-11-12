@@ -48,6 +48,8 @@ requireText("frontend/admin/admin.js", admin, "hasAdminAccess");
 requireText("frontend/admin/admin.js", admin, "/api/admin/overview");
 requireText("frontend/admin/admin.js", admin, "/api/admin/users/roles");
 requireText("frontend/admin/admin.js", admin, "nightly-readiness-status.json");
+requireText("frontend/admin/admin.js", admin, "n8n-egress-readiness-status.json");
+requireText("frontend/admin/index.html", adminHtml, 'id="n8nEgressStatus"');
 
 if (!nightly.summary || !Array.isArray(nightly.nightly_test_backlog) || !Array.isArray(nightly.manual_validations)) {
   failures.push("frontend/assets/nightly-readiness-status.json must expose summary, backlog, and manual validations");

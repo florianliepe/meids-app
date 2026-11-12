@@ -47,31 +47,28 @@ function configuredStatus(value) {
   return value ? "configured" : "awaiting_url";
 }
 
-const DEFAULT_ACTOR_TWIN_CHAT_URL = "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat";
-const LEGACY_ACTOR_TWIN_CHAT_URL = "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/actor-twin/chat";
-
 function actorTwinChatUrl(value) {
-  const candidate = String(value || "").trim();
-  if (!candidate || candidate === LEGACY_ACTOR_TWIN_CHAT_URL) return DEFAULT_ACTOR_TWIN_CHAT_URL;
-  return candidate;
+  return String(value || "").trim();
 }
 
 function buildConfig() {
   const hostLabel = env("MEIDS_FRONTEND_HOST_LABEL") || "GitHub Pages";
   const chatUrl = actorTwinChatUrl(env("GH_PAGES_N8N_CHAT_WEBHOOK_URL"));
   const actorUrl = actorTwinChatUrl(env("GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL") || chatUrl);
+  const nativeActorChat = !/^(0|false|no|off)$/i.test(String(process.env.MEIDS_NATIVE_ACTOR_CHAT || "true").trim());
+  const publicActorUrl = nativeActorChat ? "" : actorUrl;
   const knowledgeUrl = "";
   const butlerUrl = "";
   const voiceTranscriptionUrl = env("GH_PAGES_VOICE_TRANSCRIPTION_URL") || env("GH_PAGES_N8N_VOICE_TRANSCRIPTION_WEBHOOK_URL");
 
   return {
-    purpose: `${hostLabel} generated public runtime metadata. Actor Twin is the only browser-visible n8n endpoint; worker agents stay behind backend or internal workflow routes.`,
+    purpose: `${hostLabel} generated public runtime metadata. Actor Twin uses the authenticated backend composer; no n8n endpoint is browser-visible.`,
     generated_at: new Date().toISOString(),
     orchestration_mode: "actor_twin_embedded_chat",
     frontend_required_agents: ["actor_twin"],
     internal_n8n_tool_agents: ["knowledge_fabric_agent", "agentic_butler"],
     n8nAgentWebhooks: {
-      actor_twin: actorUrl,
+      actor_twin: publicActorUrl,
       knowledge_fabric_agent: knowledgeUrl,
       agentic_butler: butlerUrl,
     },
@@ -100,7 +97,7 @@ function buildConfig() {
           : "Verify the Actor Twin n8n workflow has the Agentic Butler workflow tool connected and published.",
       ),
     },
-    n8nActorTwinWebhookUrl: actorUrl,
+    n8nActorTwinWebhookUrl: publicActorUrl,
     n8nKnowledgeFabricWebhookUrl: knowledgeUrl,
     n8nAgenticButlerWebhookUrl: butlerUrl,
     voiceTranscriptionUrl,

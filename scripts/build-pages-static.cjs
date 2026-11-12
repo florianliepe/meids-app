@@ -97,13 +97,8 @@ function quoted(value) {
   return JSON.stringify(value || "");
 }
 
-const DEFAULT_ACTOR_TWIN_CHAT_URL = "https://eraneos-agentic-platform.azurewebsites.net/webhook/b4afb251-2ad1-43da-9d7c-6f6473fbd3db/chat";
-const LEGACY_ACTOR_TWIN_CHAT_URL = "https://eraneos-agentic-platform.azurewebsites.net/webhook/meids/actor-twin/chat";
-
 function actorTwinChatUrl(value) {
-  const candidate = String(value || "").trim();
-  if (!candidate || candidate === LEGACY_ACTOR_TWIN_CHAT_URL) return DEFAULT_ACTOR_TWIN_CHAT_URL;
-  return candidate;
+  return String(value || "").trim();
 }
 
 function runtimeConfigJs() {
@@ -117,7 +112,7 @@ function runtimeConfigJs() {
   const authEnabled = envFlag("MEIDS_FRONTEND_AUTH_ENABLED") || envFlag("GH_PAGES_AUTH_ENABLED");
   const staticPagesMode = envFlag("MEIDS_FRONTEND_STATIC_MODE", apiBaseUrl === "" && !authEnabled);
   const graphExplorerV2 = envFlag("MEIDS_GRAPH_UI_V2", false);
-  const nativeActorChat = envFlag("MEIDS_NATIVE_ACTOR_CHAT", false);
+  const nativeActorChat = envFlag("MEIDS_NATIVE_ACTOR_CHAT", true);
   const publicChatUrl = nativeActorChat ? "" : chatUrl;
   const publicActorUrl = nativeActorChat ? "" : actorUrl;
 
