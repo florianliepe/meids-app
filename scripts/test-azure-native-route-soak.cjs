@@ -56,9 +56,11 @@ test("multi-window maturity requires three unique windows and one hundred sample
   const third = { run_id: "window-3", generated_at: "2026-11-14T08:00:00Z", candidate, results: results(45) };
   const twoWindows = summarizeWindows([first, second], { direct: target });
   assert.equal(twoWindows.status, "observation_in_progress");
-  assert.deepEqual(twoWindows.issues, ["insufficient_windows", "route_target_not_met"]);
-  const mature = summarizeWindows([first, second, third], { direct: target });
+  assert.deepEqual(twoWindows.issues, ["insufficient_windows", "insufficient_route_samples", "availability_policy_not_defined"]);
+  const mature = summarizeWindows([first, second, third], { direct: target }, { availabilityMinimumSuccessRate: 1 });
   assert.equal(mature.status, "passed");
+  assert.equal(mature.sampling_status, "passed");
+  assert.equal(mature.availability_status, "passed");
   assert.equal(mature.window_count, 3);
   assert.equal(mature.routes[0].sample_size, 100);
   assert.equal(mature.routes[0].sample_maturity, "target");
@@ -76,6 +78,7 @@ test("window history is deduplicated and keeps failed results in the aggregate",
   assert.equal(aggregate.status, "observation_in_progress");
   assert.equal(aggregate.routes[0].sample_size, 101);
   assert.equal(aggregate.routes[0].counts.timeout, 1);
+  assert.equal(aggregate.availability_status, "policy_not_defined");
   assert.ok(aggregate.routes[0].issues.includes("non_success_result"));
 });
 
@@ -89,4 +92,27 @@ test("an unmarked capacity cohort can never satisfy maturity", () => {
   const aggregate = summarizeWindows(windows, { direct: target });
   assert.equal(aggregate.status, "observation_in_progress");
   assert.ok(aggregate.issues.includes("unmarked_capacity_cohort"));
+});
+
+test("sampling maturity can pass while availability remains unevaluated", () => {
+  const candidate = { capacity_cohort: "50rpm-50ktpm" };
+  const windows = [34, 33, 33].map((count, index) => ({
+    run_id: `window-${index + 1}`,
+    generated_at: `2026-11-${12 + index}T08:00:00Z`,
+    candidate,
+    results: Array.from({ length: count }, () => ({ route_id: "direct", status: "completed", duration_ms: 50 })),
+  }));
+  const aggregate = summarizeWindows(windows, { direct: target });
+  assert.equal(aggregate.status, "observation_in_progress");
+  assert.equal(aggregate.sampling_status, "passed");
+  assert.equal(aggregate.availability_status, "policy_not_defined");
+  assert.deepEqual(aggregate.issues, ["availability_policy_not_defined"]);
+});
+
+test("a governed retrieval unavailable response remains a failed functional outcome", () => {
+  const source = fs.readFileSync(path.join(__dirname, "run-azure-native-route-soak.cjs"), "utf8");
+  assert.match(source, /response\.status === "completed"/);
+  assert.match(source, /functional_status: String\(response\.status/);
+  assert.match(source, /error_code: String\(response\.output\?\.error_code/);
+  assert.match(source, /search_retry_count: Number\(response\.trace\?\.search_retry_count/);
 });
