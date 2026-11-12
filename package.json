@@ -24,6 +24,7 @@
     "db:verify:runtime-jobs": "node scripts/verify-runtime-background-jobs.cjs",
     "test:cancellation-race": "node scripts/test-runtime-cancellation-postgres-race.cjs",
     "test:approval-race": "node scripts/test-approval-postgres-race.cjs",
+    "uat:approval-race:live": "node scripts/run-azure-native-approval-race-uat.cjs",
     "db:bootstrap:production": "node scripts/bootstrap-production-postgres.cjs",
     "db:seed:production-identity": "node scripts/seed-production-identity.cjs",
     "setup:azure-search": "node scripts/setup-azure-search-indexes.cjs",
