@@ -278,6 +278,7 @@ function createAzureNativeAgentAdapter({ retrieveKnowledge }) {
         provider: completion.provider,
         model: completion.model,
         provider_throttle_retries: Number(completion.throttleRetries || 0),
+        provider_throttle_rejections: Number(completion.throttleRejections || 0),
         target_agent: routing.target,
         knowledge_retrieved: Boolean(retrieval),
         critical_faculty_applied: Boolean(critic),
