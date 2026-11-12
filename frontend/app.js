@@ -284,6 +284,10 @@
 };
 
 const runtimeConfig = window.INTELLECTUAL_TWIN_CONFIG || {};
+
+function actorChatEnabled() {
+  return Boolean(runtimeConfig.nativeActorChatEnabled || runtimeConfig.n8nChatEnabled);
+}
 const graphExplorerV2Enabled = Boolean(runtimeConfig.features?.graphExplorerV2 || runtimeConfig.graphExplorerV2);
 const apiBaseUrl = normalizeBaseUrl(runtimeConfig.apiBaseUrl || "");
 const agentBackendBaseUrl = normalizeBaseUrl(runtimeConfig.agentBackendBaseUrl || runtimeConfig.agentApiBaseUrl || "");
@@ -567,13 +571,13 @@ async function bootMeidsApp() {
   state.knowledgeFabricIngestQueue = readKnowledgeFabricIngestQueue();
   await refreshAll();
   applyAuthState();
-  if (runtimeConfig.n8nChatEnabled) void ensureN8nChat();
+  if (actorChatEnabled()) void ensureN8nChat();
   applyInitialRoute();
   if (!document.body.dataset.activeView) {
     const initialView = currentWorkspaceView();
     renderWorkspaceMode(initialView);
     if (initialView === "chat") {
-      if (runtimeConfig.n8nChatEnabled) renderChatSkillMode();
+      if (actorChatEnabled()) renderChatSkillMode();
       void refreshActorBackgroundWork().then(scheduleActorBackgroundWorkPolling);
     }
   }
@@ -8838,9 +8842,9 @@ function bindChat() {
       const suggestedPrompt = suggestion.dataset.chatSuggestion || "";
       setLegacyManualRequestValue(suggestedPrompt);
       renderSkillPreflight();
-      if (runtimeConfig.n8nChatEnabled) {
+      if (actorChatEnabled()) {
         $("#n8nChatMount")?.scrollIntoView({ block: "center", behavior: "smooth" });
-        showToast("Prompt prepared", "Paste or type it into the embedded n8n Actor Twin chat.", "success");
+        showToast("Prompt prepared", "Paste or type it into the Actor Twin chat.", "success");
         return;
       }
       return;
@@ -8850,8 +8854,8 @@ function bindChat() {
       const n8nMount = $("#n8nChatMount");
       n8nMount?.scrollIntoView({ block: "center", behavior: "smooth" });
       n8nMount?.querySelector("textarea, input, [contenteditable='true']")?.focus();
-      if (!runtimeConfig.n8nChatEnabled) {
-        showToast("n8n chat disabled", "Enable the embedded n8n Actor Twin chat in runtime config.", "error");
+      if (!actorChatEnabled()) {
+        showToast("Actor Twin chat disabled", "Enable an Actor Twin chat runtime in configuration.", "error");
       }
       return;
     }
@@ -16534,7 +16538,7 @@ function renderChatSkillMode() {
   $("#chatSkillContext").hidden = true;
   $("#chatSkillContext").classList.toggle("hidden", true);
   const n8nPanel = $("#n8nAgentPanel");
-  if (n8nPanel) n8nPanel.hidden = !runtimeConfig.n8nChatEnabled;
+  if (n8nPanel) n8nPanel.hidden = !actorChatEnabled();
   const outputShell = document.querySelector(".chat-output-shell");
   if (outputShell) outputShell.hidden = true;
   const interactionSetup = $("#chatInteractionSetup");
@@ -16566,11 +16570,11 @@ function renderChatSkillMode() {
   renderSkillRoutingPanel();
   renderChatContractSurfaces();
   renderSkillPreflight();
-  if (runtimeConfig.n8nChatEnabled) void ensureN8nChat();
+  if (actorChatEnabled()) void ensureN8nChat();
 }
 
 function removeLegacyActorTwinComposer() {
-  if (!runtimeConfig.n8nChatEnabled) return;
+  if (!actorChatEnabled()) return;
   $("#chatForm")?.remove();
   $("#queryInput")?.remove();
   document.querySelectorAll("#chat .legacy-chat-form, #chat .chat-output-shell").forEach((node) => {
@@ -16784,11 +16788,11 @@ function renderN8nInteractionContext() {
   const extraCount = Math.max(0, context.retrieval.conceptTypes.length - scopes.length);
   target.innerHTML = `
     <div>
-      <span class="badge">n8n routing context</span>
+      <span class="badge">Routing context</span>
       <strong>${escapeHtml(context.twinName)} · ${escapeHtml(context.posture)} posture · ${escapeHtml(context.retrieval.mode)}</strong>
       <p>Actor Twin receives these settings as chat metadata. Apply after changing keyword, vector cache, graph, websearch, voice, or source-scope settings.</p>
     </div>
-    <div class="n8n-context-chips" aria-label="n8n interaction context">
+    <div class="n8n-context-chips" aria-label="Actor Twin interaction context">
       <span>${escapeHtml(context.retrieval.websearch ? "websearch on" : "websearch off")}</span>
       <span>${escapeHtml(context.retrieval.voiceAnswerRequested ? "voice requested" : "voice off")}</span>
       <span>${escapeHtml(context.retrieval.keyword ? "keyword routing" : "keyword optional")}</span>
@@ -16845,7 +16849,7 @@ function installN8nChatBusyGuard(mount) {
 function placeActorChatControls(mount = $("#n8nChatMount")) {
   const controls = $("#actorChatControls");
   if (!mount || !controls) return false;
-  const composer = mount.querySelector(".chat-inputs, .chat-input, [data-test-id='chat-input-container']");
+  const composer = mount.querySelector(".native-chat-composer, .chat-inputs, .chat-input, [data-test-id='chat-input-container']");
   if (!composer) return false;
   const send = composer.querySelector("button[data-test-id='chat-input-send-button'], button.chat-input-send-button, .chat-input-send-button");
   const insertionParent = send?.parentElement || composer;
@@ -16867,7 +16871,7 @@ function parkActorChatControls(mount = $("#n8nChatMount")) {
 async function refreshN8nChatAuthorizationContext({ reconnect = false, reason = "refresh" } = {}) {
   await loadAuthSession();
   applyAuthState();
-  if (!runtimeConfig.n8nChatEnabled) return;
+  if (!actorChatEnabled()) return;
   renderN8nInteractionContext();
   if (reconnect && authenticatedSession()) {
     reloadN8nChatContext();
@@ -16894,7 +16898,7 @@ async function recoverN8nAuthContext() {
 }
 
 function scheduleN8nChatContextReload() {
-  if (!runtimeConfig.n8nChatEnabled || !state.n8nChatLoaded) return;
+  if (!actorChatEnabled() || !state.n8nChatLoaded) return;
   if (state.n8nContextReloadTimer) clearTimeout(state.n8nContextReloadTimer);
   state.n8nContextReloadTimer = setTimeout(() => {
     renderN8nInteractionContext();
@@ -16924,9 +16928,16 @@ async function ensureN8nChat() {
   const status = $("#n8nChatStatus");
   const mount = $("#n8nChatMount");
   const webhookUrl = runtimeConfig.n8nChatWebhookUrl || "";
+  mount?.closest("#n8nAgentPanel")?.classList.toggle("native-actor-chat-panel", Boolean(runtimeConfig.nativeActorChatEnabled));
   removeLegacyActorTwinComposer();
+  if (runtimeConfig.nativeActorChatEnabled) {
+    renderNativeActorChat();
+    state.n8nChatLoaded = true;
+    if (status) status.textContent = "Actor Twin connected through the authenticated backend.";
+    return;
+  }
   if (!runtimeConfig.n8nChatEnabled) {
-    if (status) status.textContent = "n8n chat is disabled in runtime config.";
+    if (status) status.textContent = "Actor Twin chat is disabled in runtime config.";
     return;
   }
   if (!webhookUrl) {
@@ -16968,6 +16979,93 @@ async function ensureN8nChat() {
     showToast("n8n chat unavailable", error.message, "error");
   } finally {
     state.n8nChatLoading = false;
+  }
+}
+
+function nativeActorChatMessages() {
+  if (!Array.isArray(state.nativeActorChatMessages)) state.nativeActorChatMessages = [];
+  return state.nativeActorChatMessages;
+}
+
+function renderNativeActorChat() {
+  const mount = $("#n8nChatMount");
+  if (!mount) return;
+  parkActorChatControls(mount);
+  const messages = nativeActorChatMessages();
+  mount.classList.add("native-actor-chat");
+  mount.innerHTML = `
+    <div class="native-chat-history" role="log" aria-live="polite" aria-label="Actor Twin conversation">
+      ${messages.length ? messages.map((message) => `
+        <article class="native-chat-message ${message.role === "user" ? "user" : "assistant"}">
+          <span class="sr-only">${message.role === "user" ? "You" : "Actor Twin"}</span>
+          <p>${escapeHtml(message.text)}</p>
+          ${message.evidence?.length ? `<details><summary>${message.evidence.length} source${message.evidence.length === 1 ? "" : "s"}</summary><ul>${message.evidence.map((item) => `<li>${escapeHtml(item.title || item.source || item.id || "Evidence")}</li>`).join("")}</ul></details>` : ""}
+        </article>`).join("") : '<p class="native-chat-empty">Ask a question or give your twin a task.</p>'}
+    </div>
+    <form class="native-chat-composer" id="nativeActorChatForm">
+      <label class="sr-only" for="nativeActorChatInput">Message</label>
+      <textarea id="nativeActorChatInput" data-test-id="chat-input" rows="1" placeholder="Ask the Actor Twin..." required></textarea>
+      <button class="primary icon-button" data-test-id="chat-input-send-button" type="submit" title="Send" aria-label="Send message">&#10148;</button>
+    </form>`;
+  mount.querySelector("#nativeActorChatForm")?.addEventListener("submit", submitNativeActorChat);
+  requestAnimationFrame(() => {
+    placeActorChatControls(mount);
+    const history = mount.querySelector(".native-chat-history");
+    if (history) history.scrollTop = history.scrollHeight;
+  });
+}
+
+async function submitNativeActorChat(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const input = form.querySelector("textarea");
+  const button = form.querySelector("button[type='submit']");
+  const message = input?.value.trim() || "";
+  if (!message || !state.activeTwin) return;
+  nativeActorChatMessages().push({ role: "user", text: message });
+  input.value = "";
+  input.disabled = true;
+  button.disabled = true;
+  renderNativeActorChat();
+  const status = $("#actorCaptureStatus");
+  if (status) status.textContent = "Actor Twin is working...";
+  try {
+    const result = await postJson("/api/agents/chat", {
+      twin_id: state.activeTwin,
+      message,
+      session_id: n8nChatSessionId(),
+    });
+    const response = result.response || result;
+    const output = response.output || {};
+    if (response.status === "queued" || output.enqueue_required) {
+      const queued = await apiRequestJson("/api/agents/work", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...knowledgeAccessHeaders() },
+        body: JSON.stringify({ twin_id: state.activeTwin, message, session_id: n8nChatSessionId() }),
+      });
+      nativeActorChatMessages().push({ role: "assistant", text: "I started this as background work. You can keep using the chat while it runs." });
+      state.actorBackgroundJobs = [queued, ...(state.actorBackgroundJobs || []).filter((job) => job.job_id !== queued.job_id)];
+      renderActorBackgroundWork();
+      scheduleActorBackgroundWorkPolling();
+    } else {
+      nativeActorChatMessages().push({
+        role: "assistant",
+        text: output.answer || output.summary || "The Actor Twin returned no answer.",
+        evidence: output.evidence || [],
+      });
+    }
+    if (status) status.textContent = "Ready.";
+  } catch (error) {
+    if (Number(error.status || 0) === 401 || blockedN8nAuthContext(error.details || error.message)) {
+      await recoverN8nAuthContext();
+      nativeActorChatMessages().push({ role: "assistant", text: "Your session was renewed. Your message was not replayed; please send it again." });
+    } else {
+      nativeActorChatMessages().push({ role: "assistant", text: `I could not complete that request. ${compactError(error.message)}` });
+      if (status) status.textContent = "Request failed. Try again or narrow the request.";
+    }
+  } finally {
+    renderNativeActorChat();
+    $("#nativeActorChatInput")?.focus();
   }
 }
 
@@ -22029,7 +22127,7 @@ function openSkillRunInChat(runId) {
   $("#chatSkillKnowledge").value = inputs.knowledge_context || "";
   renderSkillPreflight();
   showView("chat");
-  addMessage("assistant", `Loaded prior run ${run.run_id} as Actor Twin context. Use the embedded n8n chat to run it again.`);
+  addMessage("assistant", `Loaded prior run ${run.run_id} as Actor Twin context. Use the Actor Twin chat to run it again.`);
   return true;
 }
 

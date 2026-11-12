@@ -600,6 +600,7 @@ function createWorkspaceApi(deps) {
     promoteKnowledge,
     rejectKnowledge,
     proxyToN8n,
+    executeAgent = proxyToN8n,
     transcribeAudio,
     transcriptionConfig,
     issueKnowledgeAccessToken,
@@ -705,7 +706,8 @@ function createWorkspaceApi(deps) {
           started_at: new Date().toISOString(),
         });
         const configuredTimeout = Number(process.env.AGENT_WORK_TIMEOUT_MS || 180000);
-        const response = await proxyToN8n("actor_twin", request, {
+        const response = await executeAgent("actor_twin", request, {
+          mapping,
           timeoutMs: Number.isFinite(configuredTimeout) ? Math.max(30000, Math.min(configuredTimeout, 240000)) : 180000,
           maxTimeoutMs: 240000,
         });
@@ -756,7 +758,8 @@ function createWorkspaceApi(deps) {
           knowledgeAccessToken: issueKnowledgeAccessToken(mapping, job.twin_id),
         };
         const configuredTimeout = Number(process.env.SKILL_RUN_TIMEOUT_MS || 90000);
-        const response = await proxyToN8n("actor_twin", request, {
+        const response = await executeAgent("actor_twin", request, {
+          mapping,
           timeoutMs: Number.isFinite(configuredTimeout) ? Math.max(15000, Math.min(configuredTimeout, 120000)) : 90000,
         });
         const output = response.output || response;

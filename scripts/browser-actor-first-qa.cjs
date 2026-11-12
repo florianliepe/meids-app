@@ -127,9 +127,13 @@ async function run() {
       if (item.view === "twins" && (!metrics.setupPanel || metrics.setupOpen || metrics.advancedTwinOpen)) failures.push("Twin setup is not a visible collapsed disclosure");
       if (item.view === "skills" && metrics.skillApproval) failures.push("Skill approval remains in the daily skill view");
       if (item.view === "graph" && (metrics.graphCanvasHeight < 500 || metrics.graphSvgHeight < metrics.graphCanvasHeight * 0.72)) failures.push(`graph does not fill its initial canvas: ${metrics.graphSvgHeight}/${metrics.graphCanvasHeight}`);
+      const screenshot = path.join(outDir, `${item.name}.png`);
+      await page.screenshot({ path: screenshot, fullPage: true });
+      const screenshotRef = path.relative(process.cwd(), screenshot).replace(/\\/g, "/");
       if (item.view === "chat") {
         const composer = await page.evaluate(async () => {
           const mount = document.querySelector("#n8nChatMount");
+          parkActorChatControls(mount);
           if (!mount.querySelector(".chat-inputs")) mount.innerHTML = '<div class="chat-layout"><div class="chat-inputs"><textarea data-test-id="chat-input"></textarea><button data-test-id="chat-input-send-button">Send</button></div></div>';
           placeActorChatControls(mount);
           const controls = document.querySelector("#actorChatControls");
@@ -221,9 +225,6 @@ async function run() {
         if (!advancedVisible) failures.push("Graph Advanced does not reveal projection controls");
         await page.locator('[data-graph-explorer-action="advanced"]').click();
       }
-      const screenshot = path.join(outDir, `${item.name}.png`);
-      await page.screenshot({ path: screenshot, fullPage: true });
-      const screenshotRef = path.relative(process.cwd(), screenshot).replace(/\\/g, "/");
       results.push({ ...item, metrics, failures, status: failures.length ? "failed" : "passed", screenshot: screenshotRef });
       await context.close();
     }

@@ -26,6 +26,11 @@ const {
 } = require("./knowledgePersistence");
 const { createWorkspaceApi } = require("./workspaceApi");
 const { normalizeUploadFilename } = require("./documentExtraction");
+const {
+  portableRequest,
+  createAzureNativeAgentAdapter,
+  runtimeStatus: azureNativeRuntimeStatus,
+} = require("./azureNativeAgentRuntime");
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = path.resolve(process.env.MEIDS_DATA_DIR || path.join(process.cwd(), ".data"));
@@ -1133,6 +1138,152 @@ async function proxyToN8n(agentId, envelope, options = {}) {
   return normalizeAgentResponse(agentId, parseMaybeJson(raw), envelope);
 }
 
+function agentRuntimeMode() {
+  const mode = String(process.env.MEIDS_AGENT_RUNTIME || "n8n").trim().toLowerCase();
+  return ["azure_native", "hybrid"].includes(mode) ? mode : "n8n";
+}
+
+function azureNativeRoutes() {
+  return new Set(String(process.env.MEIDS_AZURE_NATIVE_ROUTES || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean));
+}
+
+function accessContextFromMapping(mapping = {}, twinId = "") {
+  return {
+    tenant_id: mapping.tenant_id || "",
+    user_id: mapping.user_id || "",
+    active_twin_id: twinId || mapping.active_twin_id || "",
+    allowed_twin_ids: mapping.allowed_twin_ids || [],
+    group_ids: mapping.group_ids || [],
+    roles: mapping.roles || [],
+    visibility_scopes: ["private", "twin_shared", "team_shared", "org_shared"],
+  };
+}
+
+async function retrieveForAzureNative(request, mapping = {}) {
+  const twinId = request.context?.active_twin_id
+    || request.metadata?.identity?.activeTwinId
+    || mapping.active_twin_id
+    || "";
+  const accessContext = accessContextFromMapping(mapping, twinId);
+  return searchVectorKnowledge({
+    query: request.message,
+    top: 8,
+    source_policy: "approved_only",
+    include_shared: true,
+    organization_id: mapping.tenant_id || request.principal?.tenant_id || "",
+    twin_id: twinId,
+    access_context: accessContext,
+  }, azureSearchConfigFromEnv());
+}
+
+async function executeAgentRuntime(agentId, envelope, options = {}) {
+  if (agentId !== "actor_twin") return proxyToN8n(agentId, envelope, options);
+  const request = portableRequest(envelope);
+  const mode = agentRuntimeMode();
+  const routeEnabled = azureNativeRoutes().has(request.routing_contract.route);
+  const useAzure = mode === "azure_native" || (mode === "hybrid" && routeEnabled);
+  const adapter = createAzureNativeAgentAdapter({
+    retrieveKnowledge: (portable) => retrieveForAzureNative(portable, options.mapping || {}),
+  });
+  if (!useAzure) {
+    const response = await proxyToN8n(agentId, envelope, options);
+    if (String(process.env.MEIDS_AGENT_SHADOW || "").toLowerCase() === "azure_native"
+      && !["ingest_or_stage_knowledge", "create_skill"].includes(request.routing_contract.route)) {
+      adapter.execute(request).then((shadow) => {
+        console.log(JSON.stringify({
+          event: "agent_shadow_result",
+          request_id: request.request_id,
+          route: request.routing_contract.route,
+          primary: "n8n",
+          shadow: shadow.adapter,
+          primary_status: response.status,
+          shadow_status: shadow.status,
+        }));
+      }).catch((error) => {
+        console.error(JSON.stringify({
+          event: "agent_shadow_failed",
+          request_id: request.request_id,
+          route: request.routing_contract.route,
+          error: error.message,
+        }));
+      });
+    }
+    return response;
+  }
+  try {
+    const result = await adapter.execute(request);
+    return normalizeAgentResponse(agentId, {
+      request_id: request.request_id,
+      agent_id: agentId,
+      status: result.status,
+      output: result.output,
+      trace: { ...result.trace, adapter: result.adapter, budget_ms: result.budget_ms },
+    }, envelope, "azure_native");
+  } catch (error) {
+    if (String(process.env.MEIDS_AGENT_AZURE_FALLBACK_TO_N8N || "true").toLowerCase() === "false") throw error;
+    console.error(JSON.stringify({
+      event: "azure_native_agent_fallback",
+      request_id: request.request_id,
+      route: request.routing_contract.route,
+      error: error.message,
+    }));
+    return proxyToN8n(agentId, envelope, options);
+  }
+}
+
+async function handleNativeAgentChat(req, res) {
+  const body = await readBody(req);
+  const mapping = await requireKnowledgeRequestMapping(req, body);
+  const twinId = String(body.twin_id || body.twin || mapping.active_twin_id || "").trim();
+  if (!twinId || !(mapping.allowed_twin_ids || []).includes(twinId)) {
+    const error = new Error("The requested Actor Twin is outside the authenticated scope.");
+    error.statusCode = 403;
+    throw error;
+  }
+  const message = String(body.message || body.chatInput || "").trim();
+  if (!message) {
+    const error = new Error("An Actor Twin message is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const envelope = {
+    envelope_version: "0.1.0",
+    request_id: body.request_id || makeId("chat"),
+    timestamp: new Date().toISOString(),
+    agent_id: "actor_twin",
+    intent: "answer_question",
+    principal: { tenant_id: mapping.tenant_id, user_id: mapping.user_id, roles: mapping.roles || [] },
+    input: { message },
+    chatInput: message,
+    context: {
+      active_twin_id: twinId,
+      allowed_twin_ids: mapping.allowed_twin_ids || [],
+      trace_chain_id: body.trace_chain_id || "",
+    },
+    metadata: {
+      source: "meids_native_actor_chat",
+      interfaceContract: "meids.actor_twin.embedded_chat.v1",
+      identity: { tenantId: mapping.tenant_id, userId: mapping.user_id, activeTwinId: twinId },
+    },
+  };
+  const response = await executeAgentRuntime("actor_twin", envelope, { mapping });
+  const traceRecords = buildTraceRecords("actor_twin", envelope, response);
+  for (const record of traceRecords) await appendTrace(record, {
+    tenant_id: mapping.tenant_id,
+    user_id: mapping.user_id,
+    twin_id: twinId,
+  });
+  await storeApproval(buildApprovalRecord("actor_twin", envelope, response, traceRecords[0]));
+  jsonResponse(res, response.status === "queued" ? 202 : 200, {
+    agent_id: "actor_twin",
+    response,
+    trace: traceRecords[0],
+  });
+}
+
 async function handleAgentProxy(req, res, agentId) {
   const envelope = await readBody(req);
   const response = await proxyToN8n(agentId, envelope);
@@ -1723,6 +1874,12 @@ function backendHealthPayload() {
         : "A gateway key alone does not enable speech-to-text. Configure an explicit transcription model exposed by the provider.",
     },
     vector_search: azureSearchStatusFromConfig(azureSearchConfigFromEnv()),
+    agent_runtime: {
+      mode: agentRuntimeMode(),
+      azure_native_routes: [...azureNativeRoutes()],
+      fallback_to_n8n: String(process.env.MEIDS_AGENT_AZURE_FALLBACK_TO_N8N || "true").toLowerCase() !== "false",
+      azure_native: azureNativeRuntimeStatus(),
+    },
     agents: Object.fromEntries(Object.values(AGENTS).map((agent) => [
       agent.id,
       { configured: Boolean(process.env[agent.urlEnv]), url_env: agent.urlEnv },
@@ -2789,6 +2946,7 @@ const handleWorkspaceApi = createWorkspaceApi({
   promoteKnowledge,
   rejectKnowledge,
   proxyToN8n,
+  executeAgent: executeAgentRuntime,
   transcribeAudio: transcribeAudioWithOpenAiCompatibleGateway,
   transcriptionConfig: openAiTranscriptionConfig,
   issueKnowledgeAccessToken(mapping, twinId) {
@@ -2876,6 +3034,10 @@ async function routeRequest(req, res) {
     }
     if (req.method === "POST" && url.pathname === "/api/twins/restore") {
       await handleTwinStatus(req, res, "active");
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/agents/chat") {
+      await handleNativeAgentChat(req, res);
       return;
     }
     if (req.method === "POST" && PATH_TO_AGENT[url.pathname]) {

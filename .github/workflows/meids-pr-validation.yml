@@ -50,6 +50,9 @@ jobs:
       - name: Validate backend contracts
         run: npm run check:backend
 
+      - name: Validate Azure-native agent adapter
+        run: npm run check:azure-native-agents
+
       - name: Validate agent contracts
         run: npm run check:agents
 

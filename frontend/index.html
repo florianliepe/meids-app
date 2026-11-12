@@ -202,15 +202,15 @@
           <div id="chatWorkspaceIntro" class="workspace-intro" hidden></div>
           <section class="chat-workspace-hero" aria-label="Agent interaction workspace" hidden>
             <span class="badge">Actor Twin</span>
-            <h2>Actor Twin, directly in n8n.</h2>
-            <p>The embedded n8n chat is the single interaction surface. Optional setup below is passed to n8n as routing metadata: keyword hints, vector cache, knowledge graph, voice preference, and source-scope signals.</p>
+            <h2>Ask your Actor Twin.</h2>
+            <p>Talk, type, or add a source. Optional interaction settings control knowledge scope, voice preference, and routing.</p>
             <div class="chat-quick-actions" aria-label="Workspace shortcuts">
               <button class="secondary small" type="button" data-chat-action="focus-query">Open Actor Twin chat</button>
               <button class="secondary small" type="button" data-cockpit-action="openVoice">Voice capture</button>
             </div>
           </section>
           <details id="chatInteractionSetup" class="chat-workspace-drawer n8n-context-drawer">
-            <summary>n8n interaction metadata</summary>
+            <summary>Interaction settings</summary>
             <section class="chat-workspace-settings" aria-label="Interaction setup">
               <div class="chat-skillbar" aria-label="Ask twin controls">
                 <label for="chatInteractionModeSelect" hidden>Mode</label>
@@ -230,7 +230,7 @@
                   <summary id="appliedSkillsSummary">Applied skills: none</summary>
                   <div id="appliedSkillsList" class="skills-menu-list"></div>
                 </details>
-                <span id="chatSkillStatus" class="muted-inline">These settings are sent to the embedded n8n Actor Twin as metadata.</span>
+                <span id="chatSkillStatus" class="muted-inline">These settings are applied to the next Actor Twin interaction.</span>
               </div>
               <label class="n8n-keyword-hints" for="n8nKeywordHints">
                 <span>Keyword hints</span>

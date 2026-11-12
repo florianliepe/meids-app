@@ -51,6 +51,9 @@ jobs:
       - name: Validate backend contract
         run: npm run check:backend
 
+      - name: Validate Azure-native agent adapter
+        run: npm run check:azure-native-agents
+
       - name: Validate and stamp build identity
         run: |
           node --test scripts/test-build-info.cjs
