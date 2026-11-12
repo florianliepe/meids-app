@@ -10,23 +10,26 @@ flowchart LR
   F --> API[App Service /api/agents/chat]
   API --> G[Routing gate meids.agent-routing.v1]
   G --> AD{Runtime adapter}
-  AD -->|direct and retrieval primary| AZ[Azure-native]
-  AD -. immediate fallback .-> N[n8n]
-  AD -->|remaining work routes| N
-  AZ --> AO[Private Azure OpenAI]
-  AZ --> AS[Azure AI Search]
-  N --> R[Deterministic routing v1]
-  R --> A[Actor Twin]
-  R --> K[Knowledge Fabric]
-  R --> B[Agentic Butler]
-  B --> S[Skill Orchestrator]
-  S --> T[Task Agent]
-  R -. conditional .-> C[Critical Faculty]
-  A -. post-turn .-> L[Learning Agent]
+  AD -->|active| AZ[Azure-native]
+  AD -. disabled rollback only .-> N[n8n]
+  AZ --> A[Actor response]
+  AZ --> K[Knowledge Fabric retrieval]
+  AZ --> B[Agentic Butler]
+  AZ --> Q[(PostgreSQL job queue)]
+  Q --> S[Skill Orchestrator]
+  S --> T[1-2 Task Agents]
+  T --> B
+  AZ -. high-risk only .-> C[Critical Faculty]
+  API -. detached durable job .-> L[Learning Agent]
+  A --> AO[Private Azure OpenAI]
+  B --> AO
+  C --> AO
   K --> AS[Azure AI Search]
-  K --> PG[(PostgreSQL)]
+  L --> PG[(Review-needed PostgreSQL staging)]
+  API --> AP[Approval CAS]
+  AP --> PG
+  K --> PG
   K --> BL[Private Blob]
-  B --> Q[(PostgreSQL job queue)]
 ```
 
 ## Target interaction and adapter boundary
@@ -79,25 +82,32 @@ flowchart LR
 | Retrieval | `srch-meids-prod-1853a19b` | Existing |
 | Artifacts | `stmeidsprod1853a19b` private Blob | Existing |
 | Browser composer | `MEIDS_NATIVE_ACTOR_CHAT=true` | Production; no n8n URL exposed |
-| Runtime canary | `MEIDS_AGENT_RUNTIME=hybrid` | `answer_direct,retrieve_knowledge` Azure-native; n8n fallback retained |
+| Runtime | `MEIDS_AGENT_RUNTIME=azure_native` | All classified Actor routes and canonical legacy aliases use Azure-native execution |
 | Model network | private endpoint and private DNS | Public Azure OpenAI access disabled after live App Service proof |
-| Rollback | `MEIDS_AGENT_AZURE_FALLBACK_TO_N8N=true` | Route-level immediate fallback during soak |
+| Runtime fallback | `MEIDS_AGENT_AZURE_FALLBACK_TO_N8N=false` | Disabled after fallback-off production canaries |
+| Rollback assets | n8n settings and workflows | Retained but dormant for the measured rollback/audit window |
 
 ## Current rollout state
 
-- PR #55 and merge commit `b487f2f1b4704796ad773b6d51cbb16847e339c7` are deployed to the backend; the native frontend remains active.
+- PRs #56-#64 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter. Backend merge commit `b6609a403af27b42b7b9958a9c5a1e7cb73a9eb2` is deployed by run `43257774929`; the native frontend remains active.
 - The browser talks only to authenticated App Service routes; direct n8n URLs are empty in production runtime configuration.
 - Direct-answer shadow and primary canaries passed from the real App Service web process. A 20-request soak returned 20/20 expected answers with p50 814 ms, p90 1,044 ms and max 1,402 ms.
 - Missing and forged knowledge tokens both return `401 blocked_auth_context`.
 - Retrieval shadow and primary canaries passed. No matching approved evidence returns `not_found` and one targeted question without speculation.
 - App Service managed identity continued to answer after Azure OpenAI public access was disabled, proving the private model path.
-- The next code candidate moves synchronous Butler work, background Skill/Task execution and detached Learning behind the same adapter and PostgreSQL queue. It remains unpromoted until protected CI and production canaries pass.
+- Migration 020 is applied. Async work acknowledged in 163 ms and completed in one attempt through Skill Orchestrator, two Task Agents and Butler synthesis with no fallback.
+- Conditional Critical Faculty completed an evidence-dependent production canary in 5,670 ms. Harmless direct and single-task paths did not invoke it.
+- Approval resume uses operation binding, expiry, owner/twin checks and PostgreSQL compare-and-set. Synthetic knowledge staged once as `review_needed`; synthetic skill staged once as `pending_approval`; duplicate decisions returned 409.
+- Signed Entra object IDs are resolved to canonical `identity.app_user` IDs and intersected with current twin grants before Search or persistence.
+- Voice handoff is Azure-native, prepare-only and approval-gated. Missing and forged signed tokens return 401.
+- Final `azure_native` smoke: direct 1,480 ms, unknown reviewed fact 2,557 ms, bounded work 671 ms, tacit interview 591 ms and clarification 63 ms; no fallback was recorded.
 
 ## Cutover gates
 
-- Shadow comparisons show no tenant, user, twin, evidence or approval drift.
+- Shadow and fallback-off comparisons show no observed tenant, user, twin, evidence or approval drift for the owner UAT identity.
 - Direct and retrieval p90 remain within 20/30 seconds; async acknowledgement remains below 10 seconds. Direct is currently 1.044 seconds p90 across 20 serial requests.
 - Native chat passes expired-auth no-replay, queued-only cancellation, keyboard and responsive-browser tests.
 - Azure OpenAI access is private-network restricted and remains reachable only through the proven App Service path.
-- Route canaries progress in this order: direct, retrieval, synchronous work, background work, detached Learning.
-- n8n credentials and workflows remain available for the rollback window and are removed only after audit retention expires.
+- Route canaries passed in this order: direct, retrieval, synchronous work, background work, conditional critique, approval resume, voice preparation and detached Learning.
+- Open before physical n8n removal: complete two-principal/guest RLS, run a measured rollback rehearsal, prove zero n8n egress during the observation window, update the Nightly harness to Azure-native canonical executions, and satisfy audit retention.
+- After those gates, remove n8n webhook settings, API credentials, workflow administration UI and retained workflow assets in one separately approved retirement release.
