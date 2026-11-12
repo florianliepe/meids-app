@@ -128,7 +128,10 @@ function classifyAgentInteraction(input = {}) {
     contract.gates.skill_orchestrator = override.skill_orchestrator !== false;
     contract.gates.max_task_agent_calls = Math.max(1, Math.min(Number(override.max_task_agent_calls) || 2, 2));
     contract.gates.critical_faculty = override.critical_faculty === true;
-    contract.gates.external_side_effect_approval = true;
+    // The background endpoint already rejects side-effecting requests before
+    // enqueueing. Keep the worker no-write, but do not turn that guard into an
+    // approval requirement that blocks every accepted background job.
+    contract.gates.external_side_effect_approval = false;
     contract.gates.external_side_effects_allowed = false;
     contract.budgets.response_ms = 90_000;
     contract.budgets.max_inline_specialists = 1;

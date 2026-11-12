@@ -719,11 +719,14 @@ function createWorkspaceApi(deps) {
           throw error;
         }
         const output = response.output || response;
+        const result = response.output
+          ? { ...output, trace: response.trace || {} }
+          : response;
         const completed = {
           ...queued,
           status: "completed",
-          summary: clean(typeof output === "string" ? output : response.message || "Background work completed.", 1_000),
-          result: output,
+          summary: clean(typeof output === "string" ? output : output.answer || response.message || "Background work completed.", 1_000),
+          result,
           attempts: Number(job.attempts),
           completed_at: new Date().toISOString(),
         };
