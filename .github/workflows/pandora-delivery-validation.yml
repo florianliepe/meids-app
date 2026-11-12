@@ -13,6 +13,7 @@ on:
       - "scripts/test-approval-snapshot-postgres.cjs"
       - "scripts/test-approval-reconciliation-postgres.cjs"
       - "scripts/approval-reconciliation-worker.cjs"
+      - "scripts/postgres-commit-response-proxy.cjs"
       - "docs/production/prod-readiness-continuous.md"
       - ".github/workflows/*"
   workflow_dispatch:

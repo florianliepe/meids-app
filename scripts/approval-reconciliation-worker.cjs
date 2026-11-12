@@ -4,7 +4,7 @@ const { reconcilePostgresApprovalDecision } = require("../backend/approvalPersis
 const connectionString = String(process.env.MEIDS_TEST_DATABASE_URL || "").trim();
 const approvalId = String(process.env.MEIDS_APPROVAL_ID || "").trim();
 const mode = String(process.env.MEIDS_RECONCILIATION_WORKER_MODE || "once").trim();
-if (!connectionString || !approvalId || !["once", "pause_after_read"].includes(mode) || typeof process.send !== "function") {
+if (!connectionString || !approvalId || !["once", "pause_before_read", "pause_after_read"].includes(mode) || typeof process.send !== "function") {
   throw new Error("Approval reconciliation worker requires an IPC parent, test database, Approval ID and supported mode.");
 }
 
@@ -12,6 +12,10 @@ const pool = new Pool({ connectionString, max: 1 });
 const mapping = { tenant_id: "tenant-a", user_id: "user-a", allowed_twin_ids: ["twin-a"], group_ids: [] };
 
 async function main() {
+  if (mode === "pause_before_read") {
+    process.send({ event: "ready_before_read" });
+    await new Promise(() => {});
+  }
   const result = await reconcilePostgresApprovalDecision(pool, {
     approvalId,
     mapping,

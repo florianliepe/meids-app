@@ -48,6 +48,8 @@ function fakePool({ failAction = false, commitErrorAfterApply = false } = {}) {
       }
       throw new Error(`Unexpected client query: ${sql}`);
     },
+    on() {},
+    off() {},
     release() {},
   };
   const pool = {
