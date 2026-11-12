@@ -91,17 +91,30 @@ async function completeChat(messages, options = {}) {
     url = `${config.endpoint}/chat/completions`;
     headers.Authorization = `Bearer ${config.apiKey}`;
   }
-  const response = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: config.deployment,
-      messages,
-      temperature: Number.isFinite(options.temperature) ? options.temperature : 0.2,
-      max_tokens: Math.min(Number(options.maxOutputTokens || config.maxOutputTokens), config.maxOutputTokens),
-    }),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: config.deployment,
+        messages,
+        temperature: Number.isFinite(options.temperature) ? options.temperature : 0.2,
+        max_tokens: Math.min(Number(options.maxOutputTokens || config.maxOutputTokens), config.maxOutputTokens),
+      }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (cause) {
+    if (["AbortError", "TimeoutError"].includes(String(cause?.name || ""))) {
+      const error = new Error(`Azure-native chat exceeded its ${timeoutMs} ms response budget; completion is unknown.`);
+      error.statusCode = 504;
+      error.code = "azure_chat_timeout";
+      error.noRetry = true;
+      error.unknownCompletion = true;
+      throw error;
+    }
+    throw cause;
+  }
   const raw = await response.text();
   let data = {};
   try { data = raw ? JSON.parse(raw) : {}; } catch { data = { raw }; }

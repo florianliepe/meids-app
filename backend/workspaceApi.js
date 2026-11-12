@@ -597,10 +597,12 @@ function createWorkspaceApi(deps) {
     readMultipartForm,
     jsonResponse,
     stageKnowledge,
+    stageLearning,
     promoteKnowledge,
     rejectKnowledge,
     proxyToN8n,
     executeAgent = proxyToN8n,
+    generateLearningProposal,
     transcribeAudio,
     transcriptionConfig,
     issueKnowledgeAccessToken,
@@ -745,6 +747,36 @@ function createWorkspaceApi(deps) {
             completed_at: failure.terminal ? new Date().toISOString() : undefined,
           },
         );
+      },
+    },
+    learning_post_turn: {
+      async run(job) {
+        if (typeof stageLearning !== "function" || typeof generateLearningProposal !== "function") {
+          const error = new Error("Azure-native Learning dependencies are unavailable.");
+          error.noRetry = true;
+          throw error;
+        }
+        const mapping = runtimeMapping(job);
+        const learning = job.payload.learning || {};
+        const proposal = await generateLearningProposal(learning);
+        const staged = await stageLearning(await getPgPool(), mapping, {
+          ...proposal,
+          twin_id: job.twin_id,
+          trace_id: learning.trace_id || learning.request_id || job.job_id,
+          payload: {
+            ...(proposal.payload || {}),
+            source_agent_id: learning.source_agent_id || "actor_twin",
+            source_type: learning.source_type || "agent_trace",
+            target_review_state: "review_needed",
+          },
+        });
+        return {
+          status: "staged",
+          runtime: "azure_native",
+          review_state: "review_needed",
+          increment_id: staged.increment_id,
+          trace_id: learning.trace_id || "",
+        };
       },
     },
     skill_execution: {

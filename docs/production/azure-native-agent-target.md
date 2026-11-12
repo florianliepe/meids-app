@@ -8,9 +8,13 @@ Last updated: 2026-11-12
 flowchart LR
   U[Authenticated user] --> F[Native Actor Twin composer]
   F --> API[App Service /api/agents/chat]
-  API --> AD{Runtime adapter}
-  AD -->|primary| N[n8n]
-  AD -. no-write shadow .-> AZ[Azure-native]
+  API --> G[Routing gate meids.agent-routing.v1]
+  G --> AD{Runtime adapter}
+  AD -->|direct and retrieval primary| AZ[Azure-native]
+  AD -. immediate fallback .-> N[n8n]
+  AD -->|remaining work routes| N
+  AZ --> AO[Private Azure OpenAI]
+  AZ --> AS[Azure AI Search]
   N --> R[Deterministic routing v1]
   R --> A[Actor Twin]
   R --> K[Knowledge Fabric]
@@ -37,12 +41,15 @@ flowchart LR
   G -->|single bounded task| B[Butler worker]
   G -->|multi-step| Q[(PostgreSQL job queue)]
   Q --> B
+  B -->|multi-step only| S[Skill Orchestrator]
+  S --> T[1-2 Task Agents]
+  T --> B
   K --> AS[Azure AI Search]
   A --> AO[Azure OpenAI]
   B --> AO
   G -. high risk only .-> C[Critical Faculty]
   C --> AO
-  API -. detached after response .-> L[Learning worker]
+  API -. durable detached job after response .-> L[Learning worker]
   L --> PG[(Review-needed PostgreSQL staging)]
   K --> PG
   K --> BL[Private Blob]
@@ -72,20 +79,25 @@ flowchart LR
 | Retrieval | `srch-meids-prod-1853a19b` | Existing |
 | Artifacts | `stmeidsprod1853a19b` private Blob | Existing |
 | Browser composer | `MEIDS_NATIVE_ACTOR_CHAT=true` | Production; no n8n URL exposed |
-| Rollback | `MEIDS_AGENT_RUNTIME=n8n` | Active during shadow soak |
+| Runtime canary | `MEIDS_AGENT_RUNTIME=hybrid` | `answer_direct,retrieve_knowledge` Azure-native; n8n fallback retained |
+| Model network | private endpoint and private DNS | Public Azure OpenAI access disabled after live App Service proof |
+| Rollback | `MEIDS_AGENT_AZURE_FALLBACK_TO_N8N=true` | Route-level immediate fallback during soak |
 
 ## Current rollout state
 
-- PR #53 and merge commit `386ee6c1141212bbdd9c7d5b1a56fba216e19205` are deployed to backend and frontend.
+- PR #55 and merge commit `b487f2f1b4704796ad773b6d51cbb16847e339c7` are deployed to the backend; the native frontend remains active.
 - The browser talks only to authenticated App Service routes; direct n8n URLs are empty in production runtime configuration.
-- n8n remains the authoritative provider while Azure-native no-write shadow results are compared.
-- An authenticated production browser session and correlated web-process trace are still required before enabling the first Azure route canary.
+- Direct-answer shadow and primary canaries passed from the real App Service web process. A 20-request soak returned 20/20 expected answers with p50 814 ms, p90 1,044 ms and max 1,402 ms.
+- Missing and forged knowledge tokens both return `401 blocked_auth_context`.
+- Retrieval shadow and primary canaries passed. No matching approved evidence returns `not_found` and one targeted question without speculation.
+- App Service managed identity continued to answer after Azure OpenAI public access was disabled, proving the private model path.
+- The next code candidate moves synchronous Butler work, background Skill/Task execution and detached Learning behind the same adapter and PostgreSQL queue. It remains unpromoted until protected CI and production canaries pass.
 
 ## Cutover gates
 
 - Shadow comparisons show no tenant, user, twin, evidence or approval drift.
-- Direct and retrieval p90 remain within 20/30 seconds; async acknowledgement remains below 10 seconds.
+- Direct and retrieval p90 remain within 20/30 seconds; async acknowledgement remains below 10 seconds. Direct is currently 1.044 seconds p90 across 20 serial requests.
 - Native chat passes expired-auth no-replay, queued-only cancellation, keyboard and responsive-browser tests.
-- Azure OpenAI access is private-network restricted after App Service connectivity is proven.
+- Azure OpenAI access is private-network restricted and remains reachable only through the proven App Service path.
 - Route canaries progress in this order: direct, retrieval, synchronous work, background work, detached Learning.
 - n8n credentials and workflows remain available for the rollback window and are removed only after audit retention expires.

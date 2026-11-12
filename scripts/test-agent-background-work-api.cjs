@@ -194,6 +194,64 @@ test("worker re-enters Actor Twin once with a trusted non-recursive no-write ove
   assert.equal(proxyCalls[0].request.metadata.authorization.knowledgeAccessToken, "fresh-worker-token");
 });
 
+test("Azure-native Learning runs detached and stages only review-needed output", async () => {
+  const job = {
+    job_id: "learning-worker-test",
+    job_type: "learning_post_turn",
+    tenant_id: mapping.tenant_id,
+    actor_user_id: mapping.user_id,
+    twin_id: mapping.active_twin_id,
+    attempts: 1,
+    max_attempts: 3,
+    leased_by: "worker-learning",
+    payload: {
+      mapping,
+      learning: {
+        request_id: "request-learning",
+        trace_id: "trace-learning",
+        source_interaction_summary: "The user corrected a durable preference.",
+      },
+    },
+  };
+  const calls = [];
+  const staged = [];
+  const client = {
+    async query(sql, params = []) {
+      calls.push({ sql: String(sql), params });
+      if (String(sql).includes("RETURNING job.*")) return { rowCount: 1, rows: [job] };
+      return { rowCount: 1, rows: [] };
+    },
+    release() {},
+  };
+  const pool = {
+    async connect() { return client; },
+    async query(sql, params = []) { calls.push({ sql: String(sql), params }); return { rowCount: 1, rows: [] }; },
+  };
+  const api = createWorkspaceApi({
+    async getPgPool() { return pool; },
+    async requireTwinRequestMapping() { return mapping; }, async requireKnowledgeRequestMapping() { return mapping; },
+    async readBody() { return {}; }, async readMultipartForm() { throw new Error("not used"); }, jsonResponse() {},
+    async stageKnowledge() {}, async promoteKnowledge() {}, async rejectKnowledge() {},
+    async stageLearning(_pool, suppliedMapping, body) {
+      staged.push({ suppliedMapping, body });
+      return { status: "staged", increment_id: "increment-learning", review_state: "review_needed" };
+    },
+    async generateLearningProposal(learning) {
+      assert.equal(learning.trace_id, "trace-learning");
+      return { summary: "Corrected preference", increment_type: "preference_correction", concept_deltas: [], payload: { target_review_state: "review_needed" } };
+    },
+    async proxyToN8n() { throw new Error("Learning must not call n8n"); },
+    async transcribeAudio() {}, transcriptionConfig() { return {}; }, issueKnowledgeAccessToken() { return "unused"; },
+  });
+  const result = await api.processRuntimeJobs({ workerId: "worker-learning" });
+  assert.equal(result.results[0].status, "completed");
+  assert.equal(staged.length, 1);
+  assert.equal(staged[0].suppliedMapping.user_id, mapping.user_id);
+  assert.equal(staged[0].body.trace_id, "trace-learning");
+  assert.equal(staged[0].body.payload.target_review_state, "review_needed");
+  assert.ok(calls.some((call) => call.sql.includes("status = 'completed'")));
+});
+
 test("worker does not report an n8n timeout fallback as completed or retry it automatically", async () => {
   const job = {
     job_id: "agent-work-timeout-test", job_type: "agent_work",
