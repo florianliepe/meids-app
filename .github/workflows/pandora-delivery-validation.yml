@@ -5,6 +5,7 @@ on:
     paths:
       - "backend/**"
       - "frontend/**"
+      - "scripts/**"
       - "scripts/build-pages-static.cjs"
       - "scripts/write-build-info.cjs"
       - "scripts/test-build-info.cjs"
