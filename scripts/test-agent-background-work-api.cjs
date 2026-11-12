@@ -148,6 +148,7 @@ test("owner-scoped cancellation does not reveal a missing or foreign job", async
 
 test("worker re-enters Actor Twin once with a trusted non-recursive no-write override", async () => {
   const proxyCalls = [];
+  const databaseCalls = [];
   const job = {
     job_id: "agent-work-worker-test",
     job_type: "agent_work",
@@ -164,7 +165,8 @@ test("worker re-enters Actor Twin once with a trusted non-recursive no-write ove
     },
   };
   const client = {
-    async query(sql) {
+    async query(sql, params = []) {
+      databaseCalls.push({ sql: String(sql), params });
       if (String(sql).includes("RETURNING job.*")) return { rowCount: 1, rows: [job] };
       if (String(sql).includes("UPDATE audit.event")) return { rowCount: 1, rows: [] };
       return { rowCount: 1, rows: [] };
@@ -181,7 +183,14 @@ test("worker re-enters Actor Twin once with a trusted non-recursive no-write ove
     async requireKnowledgeRequestMapping() { return mapping; },
     async readBody() { return {}; }, async readMultipartForm() { throw new Error("not used"); },
     jsonResponse() {}, async stageKnowledge() {}, async promoteKnowledge() {}, async rejectKnowledge() {},
-    async proxyToN8n(agent, request) { proxyCalls.push({ agent, request }); return { output: "finished" }; },
+    async proxyToN8n(agent, request) {
+      proxyCalls.push({ agent, request });
+      return {
+        status: "completed",
+        output: { answer: "finished" },
+        trace: { runtime: "azure_native", role_executions: [{ agent: "agentic_butler" }] },
+      };
+    },
     async transcribeAudio() {}, transcriptionConfig() { return {}; }, issueKnowledgeAccessToken() { return "fresh-worker-token"; },
   });
   const result = await api.processRuntimeJobs({ workerId: "worker-a" });
@@ -192,6 +201,11 @@ test("worker re-enters Actor Twin once with a trusted non-recursive no-write ove
   assert.equal(proxyCalls[0].request.metadata.routingContractOverride.route, "execute_work_sync");
   assert.equal(proxyCalls[0].request.metadata.side_effect_policy, "no_external_side_effects");
   assert.equal(proxyCalls[0].request.metadata.authorization.knowledgeAccessToken, "fresh-worker-token");
+  const completedLedger = databaseCalls.find((call) => call.sql.includes("UPDATE audit.event")
+    && String(call.params[2]) === "agent.work.completed");
+  const completed = JSON.parse(completedLedger.params[3]);
+  assert.equal(completed.result.trace.runtime, "azure_native");
+  assert.equal(completed.result.trace.role_executions[0].agent, "agentic_butler");
 });
 
 test("Azure-native Learning runs detached and stages only review-needed output", async () => {

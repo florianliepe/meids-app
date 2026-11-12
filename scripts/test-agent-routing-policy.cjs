@@ -65,9 +65,9 @@ const backgroundOverride = classifyAgentInteraction({
   },
 });
 assert.equal(backgroundOverride.route, "execute_work_sync");
-assert.equal(backgroundOverride.worker_override, "trusted_background_work");
-assert.equal(backgroundOverride.gates.external_side_effect_approval, true);
+assert.equal(backgroundOverride.gates.external_side_effect_approval, false);
 assert.equal(backgroundOverride.gates.external_side_effects_allowed, false);
+assert.equal(backgroundOverride.worker_override, "trusted_background_work");
 assert.equal(backgroundOverride.gates.max_task_agent_calls, 2);
 
 const untrustedBackgroundOverride = classifyAgentInteraction({
