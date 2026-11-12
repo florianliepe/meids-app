@@ -5,8 +5,10 @@
   "run_id": "azure_route_soak_20261112T204500",
   "candidate": {
     "backend": "https://meids-prod-backend-1853a19b.azurewebsites.net",
+    "backend_revision": "cc6cbace8918222e2dd15422dfdd77e2b78e006e",
     "runtime": "azure_native",
-    "slo_contract": "meids.agent-slo.v1"
+    "slo_contract": "meids.agent-slo.v1",
+    "capacity_cohort": "50rpm-50ktpm"
   },
   "window": {
     "mode": "serial_warm",
