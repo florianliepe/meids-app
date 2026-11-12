@@ -85,6 +85,17 @@ async function run() {
   assert.deepEqual(bounded.trace.role_executions.map((item) => item.agent), ["agentic_butler"]);
   assert.equal(bounded.trace.role_executions[0].mode, "single_task_bypass");
 
+  const criticStart = calls.length;
+  const reviewed = await adapter.execute(portableRequest({
+    request_id: "critic",
+    chatInput: "Draft a concise recommendation for an uncertain production security architecture decision.",
+  }));
+  assert.equal(reviewed.status, "completed");
+  assert.equal(reviewed.output.route_decision.gates.critical_faculty, true);
+  assert.equal(reviewed.trace.critical_faculty_applied, true);
+  assert.equal(calls.length - criticStart, 2, "Risk-gated synchronous work must call one Butler and one Critical Faculty");
+  assert.deepEqual(reviewed.trace.role_executions.map((item) => item.agent), ["agentic_butler", "critical_faculty"]);
+
   const chainStart = calls.length;
   const chain = await adapter.execute(portableRequest({
     request_id: "chain",
