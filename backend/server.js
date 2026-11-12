@@ -1239,6 +1239,7 @@ async function retrieveForAzureNative(request, mapping = {}, options = {}) {
     // request. Split the remaining route budget so their serial time stays
     // bounded by the caller contract.
     config.requestTimeoutMs = Math.max(1_000, Math.min(config.requestTimeoutMs, Math.floor(timeoutMs / 2)));
+    config.retrievalDeadlineMs = Date.now() + timeoutMs;
   }
   return searchVectorKnowledge({
     query: request.message,

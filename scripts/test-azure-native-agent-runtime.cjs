@@ -87,6 +87,24 @@ async function run() {
   assert.equal(retrievalCalls, 1);
   assert.equal(retrieval.output.evidence[0].review_state, "approved");
 
+  const unavailableAdapter = createAzureNativeAgentAdapter({
+    async retrieveKnowledge() {
+      const error = new Error("synthetic Search timeout");
+      error.code = "azure_search_unavailable";
+      error.statusCode = 503;
+      error.noRetry = true;
+      error.searchRetries = 1;
+      throw error;
+    },
+  });
+  const unavailable = await unavailableAdapter.execute(portableRequest({ request_id: "retrieve-unavailable", chatInput: "What reviewed evidence is available about my role?" }));
+  assert.equal(unavailable.status, "blocked");
+  assert.equal(unavailable.output.error_code, "retrieval_unavailable");
+  assert.equal(unavailable.output.evidence.length, 0);
+  assert.equal(unavailable.trace.retrieval_status, "unavailable");
+  assert.equal(unavailable.trace.search_retry_count, 1);
+  assert.deepEqual(unavailable.trace.role_executions.map((item) => item.status), ["unavailable"]);
+
   const retrieveWorkStart = calls.length;
   const retrieveWork = await adapter.execute(portableRequest({
     request_id: "retrieve-work",

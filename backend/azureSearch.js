@@ -197,7 +197,10 @@ function requestHttpText(targetUrl, options = {}, timeoutMs = 10000) {
       }));
     });
     request.setTimeout(timeoutMs, () => {
-      request.destroy(new Error(`HTTP request timed out after ${timeoutMs} ms`));
+      const error = new Error(`HTTP request timed out after ${timeoutMs} ms`);
+      error.code = "azure_search_timeout";
+      error.statusCode = 504;
+      request.destroy(error);
     });
     request.on("error", reject);
     if (options.body) request.write(options.body);
@@ -396,6 +399,39 @@ async function azureSearchRequest(path, options = {}, config = azureSearchConfig
     throw error;
   }
   return data;
+}
+
+async function azureSearchReadWithRetry(path, options = {}, config = azureSearchConfigFromEnv()) {
+  const deadline = Number(config.retrievalDeadlineMs) || (Date.now() + (Number(config.requestTimeoutMs || 10_000) * 2) + 250);
+  const maximumRetries = Math.max(0, Math.min(Number(config.searchReadMaxRetries ?? 1), 1));
+  let retries = 0;
+  let lastError;
+  for (let attempt = 0; attempt <= maximumRetries; attempt += 1) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 250) break;
+    const requestConfig = {
+      ...config,
+      requestTimeoutMs: Math.max(100, Math.min(Number(config.requestTimeoutMs || 10_000), remainingMs - 250)),
+    };
+    try {
+      const data = await azureSearchRequest(path, options, requestConfig);
+      return { data, retries };
+    } catch (error) {
+      lastError = error;
+      if (error.code !== "azure_search_timeout" || attempt >= maximumRetries || deadline - Date.now() <= 350) {
+        error.searchRetries = retries;
+        throw error;
+      }
+      retries += 1;
+      await new Promise((resolve) => setTimeout(resolve, Math.min(100, Math.max(0, deadline - Date.now() - 250))));
+    }
+  }
+  const error = lastError || new Error("Azure AI Search exhausted the retrieval deadline before a safe retry could start.");
+  error.statusCode = 503;
+  error.code = "azure_search_unavailable";
+  error.noRetry = true;
+  error.searchRetries = retries;
+  throw error;
 }
 
 const MAX_EMBEDDING_INPUT_CHARACTERS = 24_000;
@@ -620,11 +656,24 @@ async function searchVectorKnowledge(query = {}, config = azureSearchConfigFromE
     retrievalMode = "hybrid_deterministic_vector_keyword";
   }
   const results = [];
+  let searchRetries = 0;
   for (const indexName of indexes) {
-    const data = await azureSearchRequest(`/indexes/${encodeURIComponent(indexName)}/docs/search`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }, config);
+    let read;
+    try {
+      read = await azureSearchReadWithRetry(`/indexes/${encodeURIComponent(indexName)}/docs/search`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }, config);
+    } catch (error) {
+      if (error.code === "azure_search_timeout") {
+        error.statusCode = 503;
+        error.code = "azure_search_unavailable";
+        error.noRetry = true;
+      }
+      throw error;
+    }
+    const data = read.data;
+    searchRetries += Number(read.retries || 0);
     results.push({
       index: indexName,
       count: Array.isArray(data.value) ? data.value.length : 0,
@@ -637,6 +686,7 @@ async function searchVectorKnowledge(query = {}, config = azureSearchConfigFromE
     retrieval_mode: retrievalMode,
     source_policy: includePending ? "selected_pending" : "approved_only",
     filter: body.filter,
+    search_retry_count: searchRetries,
     results,
   };
 }
@@ -656,4 +706,5 @@ module.exports = {
   upsertVectorDocuments,
   deleteVectorDocuments,
   searchVectorKnowledge,
+  azureSearchReadWithRetry,
 };
