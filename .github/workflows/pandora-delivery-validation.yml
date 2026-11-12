@@ -11,6 +11,8 @@ on:
       - "scripts/test-approval-actions-postgres-faults.cjs"
       - "scripts/test-approval-grant-revocation-postgres.cjs"
       - "scripts/test-approval-snapshot-postgres.cjs"
+      - "scripts/test-approval-reconciliation-postgres.cjs"
+      - "scripts/approval-reconciliation-worker.cjs"
       - "docs/production/prod-readiness-continuous.md"
       - ".github/workflows/*"
   workflow_dispatch:

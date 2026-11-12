@@ -1,11 +1,19 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { runPostgresApprovalDecision } = require("../backend/approvalPersistence");
+const { reconcilePostgresApprovalDecision, runPostgresApprovalDecision } = require("../backend/approvalPersistence");
 
 function fakePool({ failAction = false, commitErrorAfterApply = false } = {}) {
   const state = {
     status: "pending_human_approval",
-    record: { approval_id: "approval-1", status: "pending_human_approval" },
+    record: {
+      approval_id: "approval-1",
+      status: "pending_human_approval",
+      timestamp: "2026-11-12T12:00:00.000Z",
+      original_request: {
+        principal: { tenant_id: "tenant-a", user_id: "user-a" },
+        context: { active_twin_id: "twin-a" },
+      },
+    },
     writes: 0,
   };
   let transaction = null;
@@ -16,10 +24,16 @@ function fakePool({ failAction = false, commitErrorAfterApply = false } = {}) {
       if (sql === "COMMIT") {
         Object.assign(state, transaction);
         transaction = null;
-        if (commitErrorAfterApply) throw new Error("connection lost after commit");
+        if (commitErrorAfterApply) {
+          commitErrorAfterApply = false;
+          throw new Error("connection lost after commit");
+        }
         return { rows: [] };
       }
       if (/set_config/.test(sql)) return { rows: [] };
+      if (/SELECT status, record/.test(sql) && /FOR UPDATE NOWAIT/.test(sql)) {
+        return { rows: [{ status: state.status, record: structuredClone(state.record) }] };
+      }
       if (/status = \$2/.test(sql) && /pending_human_approval/.test(sql)) {
         if (transaction.status !== "pending_human_approval") return { rows: [] };
         transaction.status = params[1];
@@ -100,5 +114,17 @@ test("lost commit acknowledgement is reconciled without replay", async () => {
   });
   assert.equal(result.commitConfirmedAfterError, true);
   assert.equal(fixture.state.status, "resumed");
+  assert.equal(fixture.state.writes, 1);
+});
+
+test("read-only reconciliation returns current terminal state without invoking an action", async () => {
+  const fixture = fakePool();
+  await runPostgresApprovalDecision(fixture.pool, {
+    approvalId: "approval-1", mapping, decisionStatus: "resuming", terminalStatus: "resumed", execute: fixture.execute,
+  });
+  const result = await reconcilePostgresApprovalDecision(fixture.pool, {
+    approvalId: "approval-1", mapping, expectedTerminalStatus: "resumed",
+  });
+  assert.equal(result.state, "confirmed_terminal");
   assert.equal(fixture.state.writes, 1);
 });

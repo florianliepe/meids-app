@@ -17,6 +17,59 @@ async function approvalState(pool, approvalId) {
   return result.rows[0] || null;
 }
 
+function approvalVisibleToMapping(approval = {}, mapping = {}) {
+  const owner = approvalOwnerAndTwin(approval);
+  return Boolean(
+    owner.tenantId
+    && owner.userId
+    && owner.twinId
+    && owner.tenantId === mapping.tenant_id
+    && owner.userId === mapping.user_id
+    && (mapping.allowed_twin_ids || []).includes(owner.twinId),
+  );
+}
+
+async function reconcilePostgresApprovalDecision(pool, options) {
+  const { approvalId, mapping, expectedTerminalStatus } = options;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await setRequestContext(client, mapping);
+    let result;
+    try {
+      result = await client.query(
+        `SELECT status, record
+         FROM agent_approval_queue
+         WHERE approval_id = $1
+         FOR UPDATE NOWAIT`,
+        [approvalId],
+      );
+    } catch (error) {
+      if (error.code !== "55P03") throw error;
+      await client.query("ROLLBACK");
+      return { state: "unknown_in_flight" };
+    }
+    const row = result.rows[0];
+    if (!row || !approvalVisibleToMapping(row.record, mapping)) {
+      await client.query("ROLLBACK");
+      return { state: "not_found" };
+    }
+    await client.query("COMMIT");
+    if (row.status === expectedTerminalStatus) {
+      return { state: "confirmed_terminal", status: row.status, approval: row.record };
+    }
+    if (row.status === "pending_human_approval") {
+      return { state: "confirmed_pending", status: row.status, approval: row.record };
+    }
+    return { state: "unknown_nonterminal", status: row.status, approval: row.record };
+  } catch (error) {
+    try { await client.query("ROLLBACK"); } catch {}
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function recordRolledBackFailure(pool, approvalId, error) {
   await pool.query(
     `UPDATE agent_approval_queue
@@ -129,10 +182,25 @@ async function runPostgresApprovalDecision(pool, options) {
     try {
       await client.query("ROLLBACK");
     } catch {}
-    const state = await approvalState(pool, approvalId).catch(() => null);
-    if (commitAttempted && state?.status === terminalStatus) {
-      return { claimed: true, approval: state.record, actionResult: state.record?.action_result, commitConfirmedAfterError: true };
+    if (commitAttempted) {
+      const reconciliation = await reconcilePostgresApprovalDecision(pool, {
+        approvalId,
+        mapping,
+        expectedTerminalStatus: terminalStatus,
+      }).catch(() => null);
+      if (reconciliation?.state === "confirmed_terminal") {
+        return {
+          claimed: true,
+          approval: reconciliation.approval,
+          actionResult: reconciliation.approval?.action_result,
+          commitConfirmedAfterError: true,
+        };
+      }
+      error.approvalCompletionUnknown = true;
+      error.approvalReconciliationState = reconciliation?.state || "unavailable";
+      throw error;
     }
+    const state = await approvalState(pool, approvalId).catch(() => null);
     if (state?.status === "pending_human_approval") {
       await recordRolledBackFailure(pool, approvalId, error).catch(() => {});
       error.approvalTransactionRolledBack = true;
@@ -147,5 +215,6 @@ async function runPostgresApprovalDecision(pool, options) {
 
 module.exports = {
   assertCurrentApprovalAuthorization,
+  reconcilePostgresApprovalDecision,
   runPostgresApprovalDecision,
 };
