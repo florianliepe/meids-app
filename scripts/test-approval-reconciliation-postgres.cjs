@@ -177,6 +177,7 @@ async function lostCommitResponseIsReconciledWithoutReplay() {
   proxyUrl.hostname = "127.0.0.1";
   proxyUrl.port = String(proxy.port);
   const proxyPool = new Pool({ connectionString: proxyUrl.toString(), max: 2 });
+  proxyPool.on("error", () => {});
   try {
     const result = await runPostgresApprovalDecision(proxyPool, {
       approvalId,
