@@ -18,7 +18,7 @@ const checks = [
   [app.includes('return canEnterWorkspace() || (viewId === "twins" && canCreateTwin())'), "authenticated users without twins can reach first-twin onboarding"],
   [app.includes('document.body.classList.toggle("auth-blocked", enabled && !authenticated)'), "first-time authenticated users are not pointer-blocked"],
   [/postJson\("\/api\/twins"[\s\S]{0,500}await loadAuthSession\(\);[\s\S]{0,100}applyAuthState\(\);/.test(app), "first twin creation refreshes authorization before workspace activation"],
-  [/await refreshAll\(\);[\s\S]{0,120}if \(runtimeConfig\.n8nChatEnabled\) void ensureN8nChat\(\);/.test(app), "n8n chat initializes after the active twin is loaded"],
+  [/await refreshAll\(\);[\s\S]{0,160}if \(actorChatEnabled\(\)\) void ensureN8nChat\(\);/.test(app), "Actor Twin chat initializes after the active twin is loaded"],
   [/postJson\("\/api\/twins\/active"[\s\S]{0,300}refreshN8nChatAuthorizationContext\(\)/.test(app), "twin switching refreshes the n8n authorization context"],
   [/async function refreshN8nChatAuthorizationContext\([\s\S]{0,300}await loadAuthSession\(\);[\s\S]{0,180}applyAuthState\(\);[\s\S]{0,180}renderN8nInteractionContext\(\);/.test(app), "n8n context refresh renews the signed token before rendering reconnect context"],
   [/async function refreshN8nChatAuthorizationContext\([\s\S]{0,500}reconnect[\s\S]{0,500}reloadN8nChatContext\(\)/.test(app), "authorization refresh can reconnect the embedded chat with renewed metadata"],
