@@ -62,11 +62,11 @@ function buildConfig() {
   const voiceTranscriptionUrl = env("GH_PAGES_VOICE_TRANSCRIPTION_URL") || env("GH_PAGES_N8N_VOICE_TRANSCRIPTION_WEBHOOK_URL");
 
   return {
-    purpose: `${hostLabel} generated public runtime metadata. Actor Twin uses the authenticated backend composer; no n8n endpoint is browser-visible.`,
+    purpose: `${hostLabel} generated public runtime metadata. Actor Twin and delegated agents use authenticated Azure-native backend routes; no worker endpoint is browser-visible.`,
     generated_at: new Date().toISOString(),
-    orchestration_mode: "actor_twin_embedded_chat",
+    orchestration_mode: "azure_native_backend_router",
     frontend_required_agents: ["actor_twin"],
-    internal_n8n_tool_agents: ["knowledge_fabric_agent", "agentic_butler"],
+    internal_backend_agents: ["knowledge_fabric_agent", "agentic_butler"],
     n8nAgentWebhooks: {
       actor_twin: publicActorUrl,
       knowledge_fabric_agent: knowledgeUrl,
@@ -74,27 +74,19 @@ function buildConfig() {
     },
     n8nAgentProbeSlots: {
       actor_twin: slot(
-        configuredStatus(actorUrl),
-        `${hostLabel} runtime config generated from repository secrets.`,
-        actorUrl ? "Run Actor Twin UAT and capture n8n trace evidence." : "Set GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL or GH_PAGES_N8N_CHAT_WEBHOOK_URL.",
+        nativeActorChat ? "azure_native_backend_route" : configuredStatus(actorUrl),
+        nativeActorChat ? "Actor Twin uses the authenticated backend agent route." : `${hostLabel} runtime config generated from repository secrets.`,
+        nativeActorChat ? "Validate the native Actor Twin route with authenticated no-write UAT." : "Configure the temporary rollback endpoint before enabling legacy chat.",
       ),
       knowledge_fabric_agent: slot(
-        knowledgeUrl ? "configured" : "internal_tool_via_actor_twin",
-        knowledgeUrl
-          ? "Optional direct public Knowledge Fabric webhook configured for UAT."
-          : "Knowledge Fabric Agent is expected to be called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional.",
-        knowledgeUrl
-          ? "Run Knowledge Fabric Agent direct UAT with upload/transcript fixture."
-          : "Verify the Actor Twin n8n workflow has the Knowledge Fabric workflow tool connected and published.",
+        "azure_native_backend_route",
+        "Knowledge Fabric is routed server-side through the authenticated Azure-native adapter.",
+        "Validate reviewed-evidence retrieval through the backend route.",
       ),
       agentic_butler: slot(
-        butlerUrl ? "configured" : "internal_tool_via_actor_twin",
-        butlerUrl
-          ? "Optional direct public Agentic Butler webhook configured for UAT."
-          : "Agentic Butler is expected to be called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional.",
-        butlerUrl
-          ? "Run Agentic Butler direct UAT with autonomous no-write work-artifact fixture."
-          : "Verify the Actor Twin n8n workflow has the Agentic Butler workflow tool connected and published.",
+        "azure_native_backend_route",
+        "Butler work is routed server-side through the authenticated Azure-native adapter and PostgreSQL queue.",
+        "Validate synchronous and queued work through the backend route.",
       ),
     },
     n8nActorTwinWebhookUrl: publicActorUrl,

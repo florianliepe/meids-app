@@ -13,6 +13,8 @@ const assetBuilder = fs.readFileSync(path.join(root, "scripts/write-pages-agent-
 assert.match(runtime, /n8nChatWebhookUrl:\s*""/, "The browser must not expose an n8n chat endpoint");
 assert.match(runtime, /n8nActorTwinWebhookUrl:\s*""/, "The browser must not expose an n8n Actor endpoint");
 assert.match(runtime, /nativeActorChatEnabled:\s*true/, "The authenticated native Actor composer must be enabled");
+assert.match(runtime, /orchestrationMode:\s*"azure_native_backend_router"/);
+assert.doesNotMatch(runtime, /inside n8n|internal_tool_via_actor_twin|Set GH_PAGES_N8N/);
 assert.match(runtime, /n8nKnowledgeFabricWebhookUrl:\s*""/);
 assert.match(runtime, /n8nAgenticButlerWebhookUrl:\s*""/);
 assert.equal(asset.n8nAgentWebhooks.knowledge_fabric_agent, "");
@@ -21,6 +23,9 @@ assert.equal(asset.n8nAgentWebhooks.actor_twin, "");
 assert.equal(asset.n8nActorTwinWebhookUrl, "");
 assert.equal(asset.n8nKnowledgeFabricWebhookUrl, "");
 assert.equal(asset.n8nAgenticButlerWebhookUrl, "");
+assert.equal(asset.orchestration_mode, "azure_native_backend_router");
+assert.deepEqual(asset.internal_backend_agents, ["knowledge_fabric_agent", "agentic_butler"]);
+assert.doesNotMatch(JSON.stringify(asset), /inside n8n|internal_tool_via_actor_twin|Set GH_PAGES_N8N/);
 assert.match(builder, /const knowledgeUrl = "";/);
 assert.match(builder, /const butlerUrl = "";/);
 assert.match(assetBuilder, /const knowledgeUrl = "";/);
@@ -49,6 +54,9 @@ try {
   assert.match(builtRuntime, /n8nActorTwinWebhookUrl:\s*""/);
   assert.match(builtRuntime, /n8nKnowledgeFabricWebhookUrl:\s*""/);
   assert.match(builtRuntime, /n8nAgenticButlerWebhookUrl:\s*""/);
+  assert.match(builtRuntime, /orchestrationMode:\s*"azure_native_backend_router"/);
+  assert.doesNotMatch(builtRuntime, /inside n8n|internal_tool_via_actor_twin|Set GH_PAGES_N8N/);
+  assert.doesNotMatch(builtAsset, /inside n8n|internal_tool_via_actor_twin|Set GH_PAGES_N8N/);
 } finally {
   fs.rmSync(buildDir, { recursive: true, force: true });
 }
