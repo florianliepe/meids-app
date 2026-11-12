@@ -10,6 +10,7 @@ on:
       - "scripts/test-build-info.cjs"
       - "scripts/test-approval-actions-postgres-faults.cjs"
       - "scripts/test-approval-grant-revocation-postgres.cjs"
+      - "scripts/test-approval-snapshot-postgres.cjs"
       - "docs/production/prod-readiness-continuous.md"
       - ".github/workflows/*"
   workflow_dispatch:

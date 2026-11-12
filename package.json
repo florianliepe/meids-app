@@ -27,6 +27,7 @@
     "test:approval-process-termination": "node scripts/test-approval-process-termination-postgres.cjs",
     "test:approval-action-faults": "node scripts/test-approval-actions-postgres-faults.cjs",
     "test:approval-grant-revocation": "node scripts/test-approval-grant-revocation-postgres.cjs",
+    "test:approval-snapshot": "node scripts/test-approval-snapshot-postgres.cjs",
     "uat:approval-race:live": "node scripts/run-azure-native-approval-race-uat.cjs",
     "uat:approval-mutation:live": "node scripts/run-azure-native-approval-mutation-uat.cjs",
     "db:bootstrap:production": "node scripts/bootstrap-production-postgres.cjs",
