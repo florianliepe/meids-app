@@ -6,8 +6,11 @@ Last updated: 2026-11-12
 
 ```mermaid
 flowchart LR
-  U[Authenticated user] --> F[Azure Static Web App]
-  F --> N[n8n embedded chat webhook]
+  U[Authenticated user] --> F[Native Actor Twin composer]
+  F --> API[App Service /api/agents/chat]
+  API --> AD{Runtime adapter}
+  AD -->|primary| N[n8n]
+  AD -. no-write shadow .-> AZ[Azure-native]
   N --> R[Deterministic routing v1]
   R --> A[Actor Twin]
   R --> K[Knowledge Fabric]
@@ -68,7 +71,15 @@ flowchart LR
 | Model | `aoai-meids-prod-1853a19b` / `meids-gpt-4-1-mini` | Provisioned, managed-identity RBAC |
 | Retrieval | `srch-meids-prod-1853a19b` | Existing |
 | Artifacts | `stmeidsprod1853a19b` private Blob | Existing |
+| Browser composer | `MEIDS_NATIVE_ACTOR_CHAT=true` | Production; no n8n URL exposed |
 | Rollback | `MEIDS_AGENT_RUNTIME=n8n` | Active during shadow soak |
+
+## Current rollout state
+
+- PR #53 and merge commit `386ee6c1141212bbdd9c7d5b1a56fba216e19205` are deployed to backend and frontend.
+- The browser talks only to authenticated App Service routes; direct n8n URLs are empty in production runtime configuration.
+- n8n remains the authoritative provider while Azure-native no-write shadow results are compared.
+- An authenticated production browser session and correlated web-process trace are still required before enabling the first Azure route canary.
 
 ## Cutover gates
 
