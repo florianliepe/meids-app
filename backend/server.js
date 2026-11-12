@@ -36,6 +36,7 @@ const { enqueueRuntimeJob } = require("./runtimeJobs");
 const {
   approvalRoute,
   approvalTwinId,
+  assertBoundApprovalResumeBody,
   knowledgeStagePayload,
   skillProposalPayload,
   stageSkillProposal,
@@ -1467,6 +1468,7 @@ async function handleResumeApproval(req, res, approvalId, suppliedBody = null) {
     jsonResponse(res, 200, { status: "rejected", approval: updated });
     return;
   }
+  if (nativeApproval) assertBoundApprovalResumeBody(body);
   const route = approvalRoute(approval);
   if (nativeApproval) {
     if (postgresEnabled()) {

@@ -39,22 +39,35 @@ function compactTitle(message, fallback) {
   return clean(first || fallback, 160);
 }
 
+function assertBoundApprovalResumeBody(body = {}) {
+  const mutationKeys = [
+    "concept", "title", "topic", "summary", "what_else_to_know", "evidence",
+    "name", "skill_name", "description", "risk_class", "spec",
+    "operation", "operation_id", "target", "target_agent", "revision", "route", "routing_contract",
+  ];
+  const supplied = mutationKeys.filter((key) => Object.prototype.hasOwnProperty.call(body, key));
+  const input = body.input && typeof body.input === "object" ? body.input : {};
+  supplied.push(...mutationKeys.filter((key) => Object.prototype.hasOwnProperty.call(input, key)).map((key) => `input.${key}`));
+  if (!supplied.length) return;
+  const error = new Error(`Approval resume cannot change the approved operation snapshot (${supplied.join(", ")}). Create a new approval.`);
+  error.statusCode = 409;
+  error.code = "approval_operation_binding_mismatch";
+  throw error;
+}
+
 function knowledgeStagePayload(approval = {}, body = {}) {
   const message = approvalMessage(approval);
   const twinId = approvalTwinId(approval);
-  const supplied = body.concept && typeof body.concept === "object" ? body.concept : {};
-  const title = clean(supplied.title || body.title || compactTitle(message, "Actor Twin knowledge proposal"), 300);
+  const title = clean(compactTitle(message, "Actor Twin knowledge proposal"), 300);
   return {
     twin_id: twinId,
     concept: {
-      ...supplied,
       title,
-      topic: clean(supplied.topic || title, 1_000),
-      summary: clean(supplied.summary || message, 10_000),
-      what_else_to_know: clean(supplied.what_else_to_know || supplied.notes || message, 40_000),
-      visibility_scope: supplied.visibility_scope || "private",
+      topic: clean(title, 1_000),
+      summary: clean(message, 10_000),
+      what_else_to_know: clean(message, 40_000),
+      visibility_scope: "private",
       raw: {
-        ...(supplied.raw && typeof supplied.raw === "object" ? supplied.raw : {}),
         source_request_id: approval.request_id || "",
         source_trace_id: approval.trace_id || "",
         source_message: message,
@@ -72,16 +85,16 @@ function knowledgeStagePayload(approval = {}, body = {}) {
 function skillProposalPayload(approval = {}, body = {}) {
   const message = approvalMessage(approval);
   const twinId = approvalTwinId(approval);
-  const name = clean(body.name || body.skill_name || compactTitle(message, "Actor Twin skill proposal"), 160);
+  const name = clean(compactTitle(message, "Actor Twin skill proposal"), 160);
   return {
     skill_id: `${name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "skill"}-${crypto.randomBytes(3).toString("hex")}`,
     twin_id: twinId,
     name,
-    description: clean(body.description || message, 30_000),
-    risk_class: ["low", "medium", "high", "critical"].includes(body.risk_class) ? body.risk_class : "medium",
+    description: clean(message, 30_000),
+    risk_class: "medium",
     spec: {
       name,
-      description: clean(body.description || message, 30_000),
+      description: clean(message, 30_000),
       elicitation_questions: [
         "When should this skill trigger, and when should it not?",
         "Which inputs and tools are required?",
@@ -136,6 +149,7 @@ module.exports = {
   approvalRoute,
   approvalMessage,
   approvalTwinId,
+  assertBoundApprovalResumeBody,
   knowledgeStagePayload,
   skillProposalPayload,
   stageSkillProposal,
