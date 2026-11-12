@@ -3,6 +3,7 @@ const {
   approvalRoute,
   approvalMessage,
   approvalTwinId,
+  assertBoundApprovalResumeBody,
   knowledgeStagePayload,
   skillProposalPayload,
   stageSkillProposal,
@@ -32,6 +33,15 @@ assert.equal(knowledge.twin_id, "twin-a");
 assert.equal(knowledge.concept.visibility_scope, "private");
 assert.match(knowledge.concept.summary, /concise answers/);
 assert.equal(knowledge.evidence.length, 1);
+assert.doesNotThrow(() => assertBoundApprovalResumeBody({ approved: true, approval_note: "reviewed" }));
+assert.throws(
+  () => assertBoundApprovalResumeBody({ approved: true, concept: { title: "Changed after approval" } }),
+  (error) => error.statusCode === 409 && error.code === "approval_operation_binding_mismatch",
+);
+assert.throws(
+  () => assertBoundApprovalResumeBody({ approved: true, input: { revision: 2 } }),
+  (error) => error.statusCode === 409 && error.code === "approval_operation_binding_mismatch",
+);
 
 const skillApproval = structuredClone(approval);
 skillApproval.original_request.chatInput = "Create a new reusable meeting preparation skill.";
@@ -40,6 +50,9 @@ const skill = skillProposalPayload(skillApproval, {});
 assert.equal(skill.twin_id, "twin-a");
 assert.match(skill.name, /meeting preparation/i);
 assert.equal(skill.spec.approval_policy, "never_auto_approve_generated_skills");
+const attemptedSkillMutation = skillProposalPayload(skillApproval, { name: "Silently changed", risk_class: "low" });
+assert.equal(attemptedSkillMutation.name, skill.name);
+assert.equal(attemptedSkillMutation.risk_class, "medium");
 
 const approvalRecord = buildApprovalRecord("actor_twin", approval.original_request, {
   request_id: approval.request_id,
