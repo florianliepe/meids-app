@@ -90,11 +90,12 @@ function normalizedConcept(body, mapping) {
   };
 }
 
-async function stageKnowledge(pool, mapping, body = {}) {
+async function stageKnowledge(pool, mapping, body = {}, options = {}) {
   const conceptInput = normalizedConcept(body, mapping);
-  const client = await pool.connect();
+  const externalClient = options.client || null;
+  const client = externalClient || await pool.connect();
   try {
-    await client.query("BEGIN");
+    if (!externalClient) await client.query("BEGIN");
     await setRequestContext(client, mapping);
     const existing = await client.query(
       `SELECT * FROM knowledge.concept WHERE tenant_id = $1 AND twin_id = $2 AND canonical_key = $3 FOR UPDATE`,
@@ -198,13 +199,13 @@ async function stageKnowledge(pool, mapping, body = {}) {
        VALUES ($1, $2, 'knowledge.stage', 'knowledge.concept', $3, $4::jsonb)`,
       [mapping.tenant_id, mapping.user_id, concept.concept_id, JSON.stringify({ revision, review_state: state })],
     );
-    await client.query("COMMIT");
+    if (!externalClient) await client.query("COMMIT");
     return { status: "staged", concept_id: concept.concept_id, revision, review_state: state, outbox_status: "pending" };
   } catch (error) {
-    await client.query("ROLLBACK");
+    if (!externalClient) await client.query("ROLLBACK");
     throw error;
   } finally {
-    client.release();
+    if (!externalClient) client.release();
   }
 }
 

@@ -40,6 +40,7 @@ const {
   skillProposalPayload,
   stageSkillProposal,
 } = require("./agentApprovalActions");
+const { runPostgresApprovalDecision } = require("./approvalPersistence");
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = path.resolve(process.env.MEIDS_DATA_DIR || path.join(process.cwd(), ".data"));
@@ -1442,6 +1443,21 @@ async function handleResumeApproval(req, res, approvalId, suppliedBody = null) {
     }
   }
   if (body?.input?.approved === false || body?.approved === false) {
+    if (nativeApproval && postgresEnabled()) {
+      const decision = await runPostgresApprovalDecision(await getPgPool(), {
+        approvalId,
+        mapping,
+        decisionStatus: "rejecting",
+        terminalStatus: "rejected",
+        terminalPatch: { rejected_at: new Date().toISOString() },
+      });
+      if (!decision.claimed) {
+        jsonResponse(res, 409, { status: approval.status, approval, error: "This approval was already claimed by another decision." });
+        return;
+      }
+      jsonResponse(res, 200, { status: "rejected", approval: decision.approval });
+      return;
+    }
     const claimed = await claimApprovalDecision(approvalId, "rejecting");
     if (!claimed) {
       jsonResponse(res, 409, { status: approval.status, approval, error: "This approval was already claimed by another decision." });
@@ -1453,6 +1469,71 @@ async function handleResumeApproval(req, res, approvalId, suppliedBody = null) {
   }
   const route = approvalRoute(approval);
   if (nativeApproval) {
+    if (postgresEnabled()) {
+      const decision = await runPostgresApprovalDecision(await getPgPool(), {
+        approvalId,
+        mapping,
+        decisionStatus: "resuming",
+        terminalStatus: "resumed",
+        terminalPatch: { resumed_at: new Date().toISOString(), runtime: "azure_native" },
+        execute: async (client, claimedApproval) => {
+          const claimedOwner = claimedApproval.original_request?.principal || {};
+          const claimedTwinId = approvalTwinId(claimedApproval);
+          if (claimedOwner.tenant_id !== mapping.tenant_id
+            || claimedOwner.user_id !== mapping.user_id
+            || !mapping.allowed_twin_ids.includes(claimedTwinId)) {
+            const error = new Error("Approval authorization changed before execution.");
+            error.statusCode = 409;
+            throw error;
+          }
+          if (!claimedApproval.operation_sha256
+            || claimedApproval.operation_sha256 !== approvalOperationHash(claimedApproval)) {
+            const error = new Error("The approval operation binding changed before execution.");
+            error.statusCode = 409;
+            throw error;
+          }
+          const claimedRoute = approvalRoute(claimedApproval);
+          if (claimedRoute === "ingest_or_stage_knowledge") {
+            return stageKnowledge(await getPgPool(), mapping, knowledgeStagePayload(claimedApproval, body), { client });
+          }
+          if (claimedRoute === "create_skill") {
+            return stageSkillProposal(await getPgPool(), mapping, skillProposalPayload(claimedApproval, body), { client });
+          }
+          const error = new Error("This Azure-native approval has no bounded persistence action.");
+          error.statusCode = 409;
+          throw error;
+        },
+      });
+      if (!decision.claimed) {
+        jsonResponse(res, 409, { status: approval.status, approval, error: "This approval was already claimed by another decision." });
+        return;
+      }
+      const actionResult = decision.actionResult;
+      const traceRecord = buildTraceRecord("actor_twin", approval.original_request || {}, {
+        envelope_version: "0.1.0",
+        request_id: body.request_id || makeId("resume"),
+        agent_id: route === "create_skill" ? "agentic_butler" : "knowledge_fabric_agent",
+        status: "completed",
+        output: { answer: route === "create_skill" ? "Skill proposal staged for review." : "Knowledge staged for review.", route_decision: { route }, action_result: actionResult },
+        trace: { runtime: "azure_native", target_agent: route === "create_skill" ? "agentic_butler" : "knowledge_fabric_agent", approval_id: approval.approval_id },
+        runtime: "azure_native",
+      });
+      await appendTrace(traceRecord, {
+        tenant_id: mapping.tenant_id,
+        user_id: mapping.user_id,
+        twin_id: twinId,
+        allowed_twin_ids: mapping.allowed_twin_ids,
+        group_ids: mapping.group_ids || [],
+        roles: mapping.roles || [],
+        organization_id: mapping.tenant_id,
+      });
+      const updated = await updateApproval(approvalId, {
+        resumed_trace_id: traceRecord.trace_id,
+        resumed_at: decision.approval.resumed_at || new Date().toISOString(),
+      });
+      jsonResponse(res, 200, { status: "resumed", approval: updated, result: actionResult, trace: traceRecord });
+      return;
+    }
     const claimed = await claimApprovalDecision(approvalId, "resuming");
     if (!claimed) {
       jsonResponse(res, 409, { status: approval.status, approval, error: "This approval was already claimed by another decision." });
