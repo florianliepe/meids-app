@@ -3,15 +3,17 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { signKnowledgeAccessToken } = require("../backend/knowledgeAccess");
 const { ROUTE_SLOS } = require("../backend/agentSloPolicy");
-const { summarizeRoute } = require("./lib/azure-native-route-soak.cjs");
+const { appendWindow, summarizeRoute, summarizeWindows } = require("./lib/azure-native-route-soak.cjs");
 
 const root = path.resolve(__dirname, "..");
 const outputPath = path.join(root, "docs", "uat", "azure-native-route-soak.json");
+const historyPath = path.join(root, "docs", "uat", "azure-native-route-soak-history.json");
 const baseUrl = String(process.env.MEIDS_BACKEND_BASE_URL || "https://meids-prod-backend-1853a19b.azurewebsites.net").replace(/\/+$/, "");
 const tenantId = String(process.env.MEIDS_UAT_TENANT_ID || "eraneos").trim();
 const userId = String(process.env.MEIDS_UAT_USER_ID || "").trim();
 const twinId = String(process.env.MEIDS_UAT_TWIN_ID || "").trim();
 const samples = Math.max(1, Math.min(Number(process.env.MEIDS_SOAK_SAMPLES || 10), 100));
+const capacityCohort = String(process.env.MEIDS_SOAK_CAPACITY_COHORT || "unspecified").trim() || "unspecified";
 const runId = `azure_route_soak_${new Date().toISOString().replace(/[-:.]/g, "").slice(0, 15)}`;
 if (!userId || !twinId) throw new Error("MEIDS_UAT_USER_ID and MEIDS_UAT_TWIN_ID are required.");
 
@@ -130,6 +132,12 @@ async function runLearning(index) {
 
 (async () => {
   const generatedAt = new Date().toISOString();
+  const buildInfoResponse = await fetch(`${baseUrl}/api/build-info`, { signal: AbortSignal.timeout(10_000) });
+  const buildInfo = buildInfoResponse.ok ? await buildInfoResponse.json() : {};
+  let existingHistory = { windows: [] };
+  let previousArtifact = null;
+  try { existingHistory = JSON.parse(fs.readFileSync(historyPath, "utf8")); } catch { existingHistory = { windows: [] }; }
+  try { previousArtifact = JSON.parse(fs.readFileSync(outputPath, "utf8")); } catch { previousArtifact = null; }
   const results = [];
   for (let index = 0; index < samples; index += 1) {
     for (const definition of routeDefinitions) results.push(await runForeground(definition, index));
@@ -142,7 +150,7 @@ async function runLearning(index) {
     .map((route) => summarizeRoute(route, results, targets[route]));
   const artifact = {
     schema_version: "1.0.0", contract: "meids.azure-native-route-soak.v1", generated_at: generatedAt, run_id: runId,
-    candidate: { backend: baseUrl, runtime: "azure_native", slo_contract: "meids.agent-slo.v1" },
+    candidate: { backend: baseUrl, backend_revision: String(buildInfo.commit || "unknown"), runtime: "azure_native", slo_contract: "meids.agent-slo.v1", capacity_cohort: capacityCohort },
     window: { mode: "serial_warm", samples_per_route: samples, target_samples_per_route: 100, route_count: summaries.length },
     summary: { status: summaries.every((item) => item.status === "passed") ? "passed" : "failed", routes_passed: summaries.filter((item) => item.status === "passed").length, routes_total: summaries.length },
     routes: summaries,
@@ -150,6 +158,20 @@ async function runLearning(index) {
     boundary: "Public-safe synthetic no-write performance metadata. No prompts, answers, tokens, identities, private knowledge, or job identifiers are stored.",
   };
   fs.writeFileSync(outputPath, `${JSON.stringify(artifact, null, 2)}\n`);
-  console.log(JSON.stringify({ status: artifact.summary.status, output: path.relative(root, outputPath).replaceAll("\\", "/"), window: artifact.window, routes: summaries }, null, 2));
+  let windows = Array.isArray(existingHistory.windows) ? existingHistory.windows : [];
+  windows = appendWindow(windows, previousArtifact);
+  windows = appendWindow(windows, artifact);
+  const aggregate = summarizeWindows(windows, targets);
+  const historyArtifact = {
+    schema_version: "1.0.0",
+    contract: "meids.azure-native-route-soak-history.v1",
+    generated_at: generatedAt,
+    candidate_boundary: "Post-capacity Azure-native production windows. Cohort changes remain explicit per window and are never merged without provenance.",
+    aggregate,
+    windows,
+    boundary: artifact.boundary,
+  };
+  fs.writeFileSync(historyPath, `${JSON.stringify(historyArtifact, null, 2)}\n`);
+  console.log(JSON.stringify({ status: artifact.summary.status, output: path.relative(root, outputPath).replaceAll("\\", "/"), history: path.relative(root, historyPath).replaceAll("\\", "/"), window: artifact.window, routes: summaries, aggregate }, null, 2));
   if (artifact.summary.status !== "passed") process.exitCode = 1;
 })().catch((error) => { console.error(error.stack || error.message); process.exit(1); });

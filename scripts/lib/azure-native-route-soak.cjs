@@ -41,4 +41,45 @@ function summarizeRoute(route, results, target, options = {}) {
   };
 }
 
-module.exports = { percentile, summarizeRoute };
+function appendWindow(existingWindows = [], artifact = {}) {
+  const windows = [...existingWindows];
+  if (!artifact?.run_id || windows.some((item) => item.run_id === artifact.run_id)) return windows;
+  windows.push({
+    run_id: artifact.run_id,
+    generated_at: artifact.generated_at,
+    candidate: artifact.candidate,
+    window: artifact.window,
+    summary: artifact.summary,
+    routes: artifact.routes,
+    results: artifact.results,
+  });
+  return windows.sort((a, b) => String(a.generated_at).localeCompare(String(b.generated_at)));
+}
+
+function summarizeWindows(windows, targets, options = {}) {
+  const minimumWindows = Number(options.minimumWindows || 3);
+  const targetSamples = Number(options.targetSamples || 100);
+  const uniqueWindows = [];
+  for (const window of Array.isArray(windows) ? windows : []) {
+    if (window?.run_id && !uniqueWindows.some((item) => item.run_id === window.run_id)) uniqueWindows.push(window);
+  }
+  const results = uniqueWindows.flatMap((item) => Array.isArray(item.results) ? item.results : []);
+  const routes = Object.entries(targets).map(([route, target]) => summarizeRoute(route, results, target, {
+    minimumSamples: targetSamples,
+    targetSamples,
+  }));
+  const issues = [];
+  if (uniqueWindows.length < minimumWindows) issues.push("insufficient_windows");
+  if (uniqueWindows.some((window) => !window?.candidate?.capacity_cohort || window.candidate.capacity_cohort === "unspecified")) issues.push("unmarked_capacity_cohort");
+  if (routes.some((route) => route.status !== "passed")) issues.push("route_target_not_met");
+  return {
+    status: issues.length ? "observation_in_progress" : "passed",
+    window_count: uniqueWindows.length,
+    minimum_windows: minimumWindows,
+    target_samples_per_route: targetSamples,
+    routes,
+    issues,
+  };
+}
+
+module.exports = { appendWindow, percentile, summarizeRoute, summarizeWindows };
