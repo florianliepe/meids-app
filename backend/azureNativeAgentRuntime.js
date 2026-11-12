@@ -277,6 +277,7 @@ function createAzureNativeAgentAdapter({ retrieveKnowledge }) {
         runtime: "azure_native",
         provider: completion.provider,
         model: completion.model,
+        provider_throttle_retries: Number(completion.throttleRetries || 0),
         target_agent: routing.target,
         knowledge_retrieved: Boolean(retrieval),
         critical_faculty_applied: Boolean(critic),
