@@ -1,5 +1,10 @@
 {
-  "purpose": "Public-safe Me.IDs runtime metadata. Actor Twin uses the authenticated backend composer; no n8n endpoint is browser-visible.",
+  "purpose": "Public-safe Me.IDs runtime metadata. Actor Twin and delegated agents use authenticated Azure-native backend routes; no worker endpoint is browser-visible.",
+  "orchestration_mode": "azure_native_backend_router",
+  "internal_backend_agents": [
+    "knowledge_fabric_agent",
+    "agentic_butler"
+  ],
   "n8nAgentWebhooks": {
     "actor_twin": "",
     "knowledge_fabric_agent": "",
@@ -7,19 +12,19 @@
   },
   "n8nAgentProbeSlots": {
     "actor_twin": {
-      "status": "backend_only",
-      "probe_boundary": "Actor Twin uses the authenticated backend composer; no n8n endpoint is published to the browser.",
-      "next_action": "Use backend runtime and trace evidence for Actor Twin readiness."
+      "status": "azure_native_backend_route",
+      "probe_boundary": "Actor Twin uses the authenticated backend agent route.",
+      "next_action": "Validate the native Actor Twin route with authenticated no-write UAT."
     },
     "knowledge_fabric_agent": {
-      "status": "internal_tool_via_actor_twin",
-      "probe_boundary": "Knowledge Fabric Agent is called by Actor Twin inside n8n through a workflow tool. Use direct public URL only for explicit probe/UAT evidence.",
-      "next_action": "Verify Actor Twin has the Knowledge Fabric workflow tool connected and published."
+      "status": "azure_native_backend_route",
+      "probe_boundary": "Knowledge Fabric is routed server-side through the authenticated Azure-native adapter.",
+      "next_action": "Validate reviewed-evidence retrieval through the backend route."
     },
     "agentic_butler": {
-      "status": "internal_tool_via_actor_twin",
-      "probe_boundary": "Agentic Butler is called by Actor Twin inside n8n through a workflow tool. Use direct public URL only for explicit probe/UAT evidence.",
-      "next_action": "Verify Actor Twin has the Agentic Butler workflow tool connected and published."
+      "status": "azure_native_backend_route",
+      "probe_boundary": "Butler work is routed server-side through the authenticated Azure-native adapter and PostgreSQL queue.",
+      "next_action": "Validate synchronous and queued work through the backend route."
     }
   },
   "n8nActorTwinWebhookUrl": "",

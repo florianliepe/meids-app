@@ -123,7 +123,7 @@ function runtimeConfigJs() {
   return `window.INTELLECTUAL_TWIN_CONFIG = {
   apiBaseUrl: ${quoted(apiBaseUrl)},
   assetBaseUrl: "",
-  orchestrationMode: "actor_twin_embedded_chat",
+  orchestrationMode: "azure_native_backend_router",
   n8nChatWebhookUrl: ${quoted(publicChatUrl)},
   n8nActorTwinWebhookUrl: ${quoted(publicActorUrl)},
   n8nKnowledgeFabricWebhookUrl: ${quoted(knowledgeUrl)},
@@ -137,19 +137,19 @@ function runtimeConfigJs() {
   },
   n8nAgentProbeSlots: {
     actor_twin: {
-      status: ${quoted(status(actorUrl))},
-      probe_boundary: ${quoted(`${hostLabel} runtime config generated from repository secrets.`)},
-      next_action: ${quoted(actorUrl ? "Run Actor Twin UAT and capture n8n trace evidence." : "Set GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL or GH_PAGES_N8N_CHAT_WEBHOOK_URL.")}
+      status: ${quoted(nativeActorChat ? "azure_native_backend_route" : status(actorUrl))},
+      probe_boundary: ${quoted(nativeActorChat ? "Actor Twin uses the authenticated backend agent route." : `${hostLabel} runtime config generated from repository secrets.`)},
+      next_action: ${quoted(nativeActorChat ? "Validate the native Actor Twin route with authenticated no-write UAT." : "Configure the temporary rollback endpoint before enabling legacy chat.")}
     },
     knowledge_fabric_agent: {
-      status: ${quoted(knowledgeUrl ? "configured" : "internal_tool_via_actor_twin")},
-      probe_boundary: ${quoted(knowledgeUrl ? "Optional direct public Knowledge Fabric webhook configured for UAT." : "Knowledge Fabric Agent is called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional.")},
-      next_action: ${quoted(knowledgeUrl ? "Run Knowledge Fabric Agent direct UAT with upload/transcript fixture." : "Verify the Actor Twin n8n workflow has the Knowledge Fabric workflow tool connected and published.")}
+      status: "azure_native_backend_route",
+      probe_boundary: "Knowledge Fabric is routed server-side through the authenticated Azure-native adapter.",
+      next_action: "Validate reviewed-evidence retrieval through the backend route."
     },
     agentic_butler: {
-      status: ${quoted(butlerUrl ? "configured" : "internal_tool_via_actor_twin")},
-      probe_boundary: ${quoted(butlerUrl ? "Optional direct public Agentic Butler webhook configured for UAT." : "Agentic Butler is called by Actor Twin inside n8n through a workflow tool. A direct public Pages URL is optional.")},
-      next_action: ${quoted(butlerUrl ? "Run Agentic Butler direct UAT with autonomous no-write work-artifact fixture." : "Verify the Actor Twin n8n workflow has the Agentic Butler workflow tool connected and published.")}
+      status: "azure_native_backend_route",
+      probe_boundary: "Butler work is routed server-side through the authenticated Azure-native adapter and PostgreSQL queue.",
+      next_action: "Validate synchronous and queued work through the backend route."
     }
   },
   n8nChatEnabled: ${Boolean(!nativeActorChat && (chatUrl || actorUrl))},
