@@ -9,6 +9,7 @@ on:
       - "scripts/write-build-info.cjs"
       - "scripts/test-build-info.cjs"
       - "scripts/test-approval-actions-postgres-faults.cjs"
+      - "scripts/test-approval-grant-revocation-postgres.cjs"
       - "docs/production/prod-readiness-continuous.md"
       - ".github/workflows/*"
   workflow_dispatch:

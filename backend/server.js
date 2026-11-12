@@ -41,7 +41,7 @@ const {
   skillProposalPayload,
   stageSkillProposal,
 } = require("./agentApprovalActions");
-const { runPostgresApprovalDecision } = require("./approvalPersistence");
+const { assertCurrentApprovalAuthorization, runPostgresApprovalDecision } = require("./approvalPersistence");
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = path.resolve(process.env.MEIDS_DATA_DIR || path.join(process.cwd(), ".data"));
@@ -1479,15 +1479,7 @@ async function handleResumeApproval(req, res, approvalId, suppliedBody = null) {
         terminalStatus: "resumed",
         terminalPatch: { resumed_at: new Date().toISOString(), runtime: "azure_native" },
         execute: async (client, claimedApproval) => {
-          const claimedOwner = claimedApproval.original_request?.principal || {};
-          const claimedTwinId = approvalTwinId(claimedApproval);
-          if (claimedOwner.tenant_id !== mapping.tenant_id
-            || claimedOwner.user_id !== mapping.user_id
-            || !mapping.allowed_twin_ids.includes(claimedTwinId)) {
-            const error = new Error("Approval authorization changed before execution.");
-            error.statusCode = 409;
-            throw error;
-          }
+          await assertCurrentApprovalAuthorization(client, mapping, claimedApproval);
           if (!claimedApproval.operation_sha256
             || claimedApproval.operation_sha256 !== approvalOperationHash(claimedApproval)) {
             const error = new Error("The approval operation binding changed before execution.");
