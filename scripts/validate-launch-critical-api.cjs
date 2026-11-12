@@ -89,6 +89,7 @@ for (const required of [
   'trace: response.trace || {}',
   "claimApprovalDecision(approvalId, \"resuming\")",
   "approval_operation_binding_mismatch",
+  'url.pathname === "/api/agents/approvals/resume"',
 ]) {
   if (!source.includes(required)) throw new Error(`Backend-driven Actor Twin calls or skill-run history missing ${required}.`);
 }
