@@ -32,6 +32,7 @@ window.INTELLECTUAL_TWIN_CONFIG = {
     },
   },
   n8nChatEnabled: true,
+  nativeActorChatEnabled: false,
   staticPagesMode: true,
   features: {
     graphExplorerV2: false,

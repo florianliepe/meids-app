@@ -35790,3 +35790,96 @@ body.actor-first-ui.graph-explorer-v2 .graph-topology-svg {
   overflow: auto;
   white-space: pre-wrap;
 }
+.actor-first-ui .n8n-chat-mount.native-actor-chat {
+  min-height: min(64vh, 680px);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  background: var(--surface, #fff);
+}
+
+.native-chat-history {
+  grid-row: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+.native-chat-empty {
+  margin: auto;
+  color: var(--muted, #686868);
+}
+
+.native-chat-message {
+  max-width: min(78%, 48rem);
+  padding: .75rem .9rem;
+  border: 1px solid var(--line, #ddd);
+  background: var(--surface-soft, #f6f6f4);
+  border-radius: 8px;
+}
+
+.native-chat-message.user {
+  align-self: flex-end;
+  background: var(--accent-soft, #eef5f3);
+}
+
+.native-chat-message p { margin: 0; white-space: pre-wrap; }
+
+.native-chat-composer {
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem;
+  border-top: 1px solid var(--line, #ddd);
+}
+
+.native-chat-composer textarea {
+  grid-column: 1;
+  width: 100%;
+  min-height: 2.75rem;
+  max-height: 10rem;
+  resize: vertical;
+  margin: 0;
+}
+
+.actor-first-ui .native-chat-composer #actorChatControls.actor-chat-controls-docked {
+  grid-column: 2;
+  margin: 0;
+  order: initial;
+}
+
+.actor-first-ui .native-chat-composer [data-test-id="chat-input-send-button"] {
+  grid-column: 3;
+  margin: 0;
+}
+
+.actor-first-ui .native-actor-chat-panel .actor-chat-status {
+  bottom: 78px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  padding: 2px 5px;
+}
+
+@media (max-width: 640px) {
+  .actor-first-ui .n8n-chat-mount.native-actor-chat { min-height: 58vh; }
+  .native-chat-message { max-width: 92%; }
+
+  .native-chat-composer {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .native-chat-composer textarea {
+    grid-column: 1 / -1;
+  }
+
+  .actor-first-ui .native-chat-composer #actorChatControls.actor-chat-controls-docked {
+    grid-column: 1;
+  }
+
+  .actor-first-ui .native-chat-composer [data-test-id="chat-input-send-button"] {
+    grid-column: 2;
+  }
+}

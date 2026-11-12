@@ -1,6 +1,6 @@
 # Me.IDs Continuous PROD Readiness
 
-Last updated: 2026-11-11
+Last updated: 2026-11-12
 
 This document is the canonical, continuously maintained production-readiness backlog for Me.IDs. Every production fix, live finding, accepted risk, and release gate must be reconciled here. Detailed evidence remains in `docs/uat/` and the focused production runbooks.
 
@@ -17,9 +17,9 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | Backend contracts | Pass | `npm run check:backend`; 58 launch-critical routes |
 | Agent contracts | Pass | `npm run check:agents`; routing, grounding, learning, Knowledge Fabric contracts |
 | Deterministic agent routing | Production v1 active | `meids.agent-routing.v1` classifies before Actor reasoning; synchronous Learning removed; async work is intercepted before the LLM and cannot fall through to an inline Butler chain |
-| Generic background work | Authenticated E2E and visible Ready-state pass; queued-only cancellation candidate validated | `meids.agent-work.v1`, migration 019, owner/twin status polling, idempotency and bounded retry are deployed. Migration 020 and the scoped DELETE/UI candidate pass atomic cancel-before-lease and reject-after-lease tests; production migration/deployment remains required. |
+| Generic background work | Production migration and deployment complete | `meids.agent-work.v1`, migration 020, owner/twin polling, atomic queued-only cancellation, idempotency and bounded retry are deployed by PR #52. |
 | Vector/Search static readiness | Pass | Azure Search readiness artifacts report active semantic production |
-| Deployed revisions | Pass | Frontend `73245a4c7dbe7cae6b89b7b98a602cc456f11da7`; backend `66f80dc89a1c97dcc0155ab0eca1caa783f23c86` (no backend delta in PR #49) |
+| Deployed revisions | Pass | Frontend and backend production pipelines deployed merge commit `4a0e89570a4214a40d1c8319ed83356aeb35e1e8` from PR #52. |
 | Governed visual recall | Owner/anonymous boundary pass | Migration 018 applied; private Blob upload/read, SHA-256 parity, approval/rejection cascade and anonymous HTTP 401 verified; `docs/uat/governed-visual-recall-live-uat-20261030.json` |
 | Seven-agent execution history | Pass | 2026-11-11 no-write UAT passed every scenario after the workflow-label cleanup. Actor direct 9.3 s, reviewed retrieval 11.7 s, Critical Faculty 36.3 s, Butler/Skill/Task 39.8 s; Learning dispatch correlated to fresh canonical execution `104301`. |
 | Azure authentication edge | Pass | Anonymous and forged-principal `/api/session` probes both returned 401; `docs/uat/azure-auth-edge-probe.json` |
@@ -55,8 +55,9 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | PROD-021 | P1 | Nightly heartbeat and Admin summary active; live-browser assertions need expansion | Detect contract, routing, latency, expected-answer and frontend regressions every night without production mutations. | The runner now uses route-specific budgets, requires a fresh canonical Learning execution, and recovers delegated results only from an exact workflow, parent execution and Actor session match. Add queue/outbox drift thresholds and a reusable authenticated Playwright identity/session. |
 | PROD-022 | P2 | Complete | Promote the actor-first frontend refinement: Actor Twin as the primary surface, compact Voice and Source intake, progressive Twin/Skill settings, lean Knowledge/Review, and operator-only Traces/Production links in Admin Cockpit. | The adversarial review found four P2 issues; Graph Advanced/rollback, Guided Setup, readable Voice status and direct Production routing were fixed. Sixteen responsive views plus Graph V1 rollback passed. PR #35 merged as `7aafabca5edb564b79dcd506c07730049522781b`; Azure Static Web Apps, backend and sandbox deployments passed. Live static verification confirms Actor-first markup, direct Voice/Source actions, visible Guided Setup, restored Graph controls and `graphExplorerV2=true`. |
 | PROD-023 | P2 | Candidate validated; promotion pending | Complete the end-user refinement: reveal Knowledge detail on hover/focus, select one Review queue/lane at a time, make Graph fill its first viewport, and dock Talk/source actions in the n8n composer without duplicate chat branding. | Frontend contract, Graph contract, 16 responsive browser cases, Graph V1 rollback, backend, agent, access, Admin, API parity and upload/device suites pass. QA also found and fixed an idempotency defect in composer docking that could otherwise trigger a DOM mutation loop. Promote only through the protected PR pipeline. |
-| PROD-024 | P1 | Queued-only cancellation code and migrated-schema PostgreSQL race test pass; production migration pending | Complete the durable no-write background lifecycle with safe cancellation. | Migration 020 adds `cancelled`; owner/twin-scoped DELETE locks and compare-and-sets only `pending`/`failed`, purges binary payload, updates the audit ledger and returns 404/409 for foreign, repeated or post-lease requests. The Actor UI exposes Cancel only while queued. 25 focused lifecycle tests pass. A run-owned PostgreSQL 16 database applies migrations 012/017/019/020, proves effective owner/tenant RLS and transaction rollback, observes the lock barrier, and proves claim-wins plus cancellation-wins against the real claim function. Apply migration before deploying code. |
+| PROD-024 | P1 | Complete | Complete the durable no-write background lifecycle with safe cancellation. | Migration 020 was applied through the temporary Entra PostgreSQL administrator path, PR #52 was merged, and frontend/backend production pipelines deployed merge commit `4a0e895`. Atomic claim-wins and cancellation-wins tests remain green. |
 | PROD-025 | P1 | Complete | Permit n8n to reach the token-verifying background-work endpoint without weakening other backend routes. | Protected OIDC run `42899200928` added only `/api/agents/work` to the EasyAuth exclusion and retained before/after artifacts. Missing and forged tokens return 401, side-effect language returns 409, and authenticated job execution completes. |
+| PROD-026 | P0 | Azure-native shadow candidate | Replace browser and internal n8n execution incrementally without changing routing, authorization, review or queue contracts. | Azure OpenAI account and `gpt-4.1-mini` EU data-zone deployment are provisioned; App Service managed identity has model-user RBAC; native backend/chat adapter and flag rollback are under protected-pipeline validation. Shadow, canary and private-network evidence remain required before route cutover. |
 
 ## Decisions
 
@@ -120,6 +121,8 @@ use controlled promises and timers without production requests or mutations.
 | 2026-11-11 | Correlate Nightly transport failures with canonical n8n executions before classifying an agent failure. | A locally interrupted HTTP client reported Critical Faculty as failed even though child `102473` and Actor parent `102472` both succeeded with a stored answer. | Delegated recovery requires an exact workflow ID, parent execution, Actor session ID and successful final answer; route-specific client budgets remain finite and transport recovery stays visible in the artifact. |
 | 2026-11-11 | Treat workflow execution latency and user-visible route latency as separate SLO layers. | Actor and Learning workflow timings include delegated or post-turn work and cannot be judged against the direct-answer budget. | Route critical limits remain 20 s direct, 30 s retrieval, 90 s synchronous work and 10 s async acknowledgement; workflow and queue warnings remain visible without falsely failing detached background work. |
 | 2026-11-11 | Permit cancellation only before a runtime job obtains a lease. | Cancelling processing work cannot prove that downstream n8n side effects stopped and could misreport an uncertain completion. | A transactional compare-and-set cancels only pending/failed jobs; processing/completed jobs return 409 and retain their authoritative result. |
+| 2026-11-12 | Introduce Azure-native execution behind the provider-neutral adapter before retiring n8n. | The proven n8n architecture contains valuable routing, approval and learning boundaries, but browser webhooks and serial workflow-tool calls limit performance and portability. | Azure uses the same routing/work/SLO contracts, starts with no-write shadow traffic, canaries routes individually, and retains `MEIDS_AGENT_RUNTIME=n8n` as rollback until the audit window closes. |
+| 2026-11-12 | Use App Service managed identity for Azure OpenAI. | Production model credentials must not be copied into app settings or browser assets. | `aoai-meids-prod-1853a19b` exposes `meids-gpt-4-1-mini`; the backend identity has only Cognitive Services OpenAI User. Private-network restriction remains a cutover gate. |
 
 ## Release sequence
 
@@ -133,11 +136,11 @@ use controlled promises and timers without production requests or mutations.
 
 ## Current production release
 
-- Pull request: `https://github.com/florianliepe/meids-app/pull/49`
-- Frontend production revision: `73245a4c7dbe7cae6b89b7b98a602cc456f11da7`; backend remains `66f80dc89a1c97dcc0155ab0eca1caa783f23c86` because PR #49 had no backend delta.
-- PR evidence: Me.IDs validation `43008611595`, delivery validation `43008611627`, and Static Web App preview `43008611598` passed.
-- Deployment evidence: Azure Static Web Apps `43008806697` and GitHub Pages sandbox `43008806609` passed.
-- Live build verification returned frontend revision `73245a4c7dbe7cae6b89b7b98a602cc456f11da7`; an authenticated direct-entry reload initialized `activeView=chat` and changed completed job `agent-work-50540f2f4d88f6388ffe7315ce4e5c2e` from the stale `Queued` presentation to `Ready` without a navigation click.
+- Pull request: `https://github.com/florianliepe/meids-app/pull/52`
+- Frontend and backend production revision: `4a0e89570a4214a40d1c8319ed83356aeb35e1e8`.
+- Deployment evidence: backend run `43222995024`, GitHub Pages run `43222995056`, and Azure Static Web Apps run `43222995198` passed.
+- Migration 020 was applied before code deployment; temporary PostgreSQL administrator settings were removed and `MEIDS_AUTO_MIGRATE=false` remains set.
+- Azure-native runtime work is a subsequent shadow candidate and does not alter the current n8n-primary production route until its canary gates pass.
 
 ## Human or privileged gates
 

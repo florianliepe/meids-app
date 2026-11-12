@@ -117,6 +117,9 @@ function runtimeConfigJs() {
   const authEnabled = envFlag("MEIDS_FRONTEND_AUTH_ENABLED") || envFlag("GH_PAGES_AUTH_ENABLED");
   const staticPagesMode = envFlag("MEIDS_FRONTEND_STATIC_MODE", apiBaseUrl === "" && !authEnabled);
   const graphExplorerV2 = envFlag("MEIDS_GRAPH_UI_V2", false);
+  const nativeActorChat = envFlag("MEIDS_NATIVE_ACTOR_CHAT", false);
+  const publicChatUrl = nativeActorChat ? "" : chatUrl;
+  const publicActorUrl = nativeActorChat ? "" : actorUrl;
 
   function status(value) {
     return value ? "configured" : "awaiting_url";
@@ -126,14 +129,14 @@ function runtimeConfigJs() {
   apiBaseUrl: ${quoted(apiBaseUrl)},
   assetBaseUrl: "",
   orchestrationMode: "actor_twin_embedded_chat",
-  n8nChatWebhookUrl: ${quoted(chatUrl)},
-  n8nActorTwinWebhookUrl: ${quoted(actorUrl)},
+  n8nChatWebhookUrl: ${quoted(publicChatUrl)},
+  n8nActorTwinWebhookUrl: ${quoted(publicActorUrl)},
   n8nKnowledgeFabricWebhookUrl: ${quoted(knowledgeUrl)},
   n8nAgenticButlerWebhookUrl: ${quoted(butlerUrl)},
   voiceTranscriptionUrl: ${quoted(voiceTranscriptionUrl)},
   n8nVoiceTranscriptionWebhookUrl: ${quoted(voiceTranscriptionUrl)},
   n8nAgentWebhooks: {
-    actor_twin: ${quoted(actorUrl)},
+    actor_twin: ${quoted(publicActorUrl)},
     knowledge_fabric_agent: ${quoted(knowledgeUrl)},
     agentic_butler: ${quoted(butlerUrl)}
   },
@@ -154,7 +157,8 @@ function runtimeConfigJs() {
       next_action: ${quoted(butlerUrl ? "Run Agentic Butler direct UAT with autonomous no-write work-artifact fixture." : "Verify the Actor Twin n8n workflow has the Agentic Butler workflow tool connected and published.")}
     }
   },
-  n8nChatEnabled: ${Boolean(chatUrl || actorUrl)},
+  n8nChatEnabled: ${Boolean(!nativeActorChat && (chatUrl || actorUrl))},
+  nativeActorChatEnabled: ${nativeActorChat},
   staticPagesMode: ${staticPagesMode},
   features: {
     graphExplorerV2: ${graphExplorerV2}
