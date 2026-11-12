@@ -72,7 +72,7 @@ async function runForeground(definition, index) {
   const route = response.output?.route_decision?.route || "";
   const valid = result.response.ok && response.status === "completed" && response.trace?.runtime === "azure_native"
     && route === definition.id && definition.expected.every((role) => observed.has(role));
-  return { route_id: definition.id, status: valid ? "completed" : "failed", duration_ms: result.duration_ms, http_status: result.response.status, observed_route: route, runtime: response.trace?.runtime || "", provider_throttle_retries: Number(response.trace?.provider_throttle_retries || 0), roles: [...observed] };
+  return { route_id: definition.id, status: valid ? "completed" : "failed", duration_ms: result.duration_ms, http_status: result.response.status, observed_route: route, runtime: response.trace?.runtime || "", provider_throttle_retries: Number(response.trace?.provider_throttle_retries || 0), provider_throttle_rejections: Number(response.trace?.provider_throttle_rejections || 0), roles: [...observed] };
 }
 
 async function runAsync(index) {

@@ -72,16 +72,32 @@ function responseText(data = {}) {
   return String(data.output_text || data.text || "").trim();
 }
 
-function throttleDelayMs(response, attempt) {
-  const millisecondHeader = Number(response.headers?.get?.("x-ms-retry-after-ms") || response.headers?.get?.("retry-after-ms"));
-  if (Number.isFinite(millisecondHeader) && millisecondHeader >= 0) return Math.min(millisecondHeader, 5_000);
-  const secondsHeader = Number(response.headers?.get?.("retry-after"));
-  if (Number.isFinite(secondsHeader) && secondsHeader >= 0) return Math.min(secondsHeader * 1_000, 5_000);
+function throttleDelayMs(response, attempt, now = Date.now()) {
+  const rawMilliseconds = response.headers?.get?.("x-ms-retry-after-ms") || response.headers?.get?.("retry-after-ms");
+  const millisecondHeader = Number(rawMilliseconds);
+  if (String(rawMilliseconds || "").trim() && Number.isFinite(millisecondHeader) && millisecondHeader >= 0) return millisecondHeader;
+  const rawRetryAfter = String(response.headers?.get?.("retry-after") || "").trim();
+  const secondsHeader = Number(rawRetryAfter);
+  if (rawRetryAfter && Number.isFinite(secondsHeader) && secondsHeader >= 0) return secondsHeader * 1_000;
+  const retryAt = rawRetryAfter ? Date.parse(rawRetryAfter) : Number.NaN;
+  if (Number.isFinite(retryAt)) return Math.max(0, retryAt - now);
   return Math.min(500 * (2 ** attempt), 2_000);
 }
 
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function wait(ms, signal) {
+  if (!signal) return new Promise((resolve) => setTimeout(resolve, ms));
+  if (signal.aborted) return Promise.reject(signal.reason || new DOMException("Aborted", "AbortError"));
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    function onAbort() {
+      clearTimeout(timer);
+      reject(signal.reason || new DOMException("Aborted", "AbortError"));
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 async function completeChat(messages, options = {}) {
@@ -109,11 +125,13 @@ async function completeChat(messages, options = {}) {
     temperature: Number.isFinite(options.temperature) ? options.temperature : 0.2,
     max_tokens: Math.min(Number(options.maxOutputTokens || config.maxOutputTokens), config.maxOutputTokens),
   });
-  const maximumThrottleRetries = Math.max(0, Math.min(Number(options.maxThrottleRetries ?? 1), 2));
+  const maximumThrottleRetries = Math.max(0, Math.min(Number(options.maxThrottleRetries ?? 1), 1));
+  const maximumThrottleWaitMs = 5_000;
   const deadline = Date.now() + timeoutMs;
   let response;
   let data = {};
   let throttleRetries = 0;
+  let throttleRejections = 0;
   for (let attempt = 0; attempt <= maximumThrottleRetries; attempt += 1) {
     const remainingMs = deadline - Date.now();
     if (remainingMs < 1_000) break;
@@ -137,11 +155,23 @@ async function completeChat(messages, options = {}) {
     }
     const raw = await response.text();
     try { data = raw ? JSON.parse(raw) : {}; } catch { data = { raw }; }
+    if (response.status === 429) throttleRejections += 1;
     if (response.status !== 429 || attempt >= maximumThrottleRetries) break;
     const delayMs = throttleDelayMs(response, attempt);
-    if (Date.now() + delayMs + 1_000 >= deadline) break;
+    if (delayMs > maximumThrottleWaitMs || Date.now() + delayMs + 1_000 >= deadline) break;
+    try {
+      await wait(delayMs, options.signal);
+    } catch (cause) {
+      const error = new Error("Azure-native chat retry was cancelled before another provider request was sent.");
+      error.statusCode = 499;
+      error.code = "azure_chat_cancelled";
+      error.noRetry = true;
+      error.throttleRetries = throttleRetries;
+      error.throttleRejections = throttleRejections;
+      error.cause = cause;
+      throw error;
+    }
     throttleRetries += 1;
-    await wait(delayMs);
   }
   if (!response?.ok) {
     const status = Number(response?.status || 503);
@@ -150,6 +180,7 @@ async function completeChat(messages, options = {}) {
     error.code = status === 429 ? "azure_chat_throttled" : "azure_chat_failed";
     error.retryAfterMs = status === 429 && response ? throttleDelayMs(response, throttleRetries) : 0;
     error.throttleRetries = throttleRetries;
+    error.throttleRejections = throttleRejections;
     throw error;
   }
   const text = responseText(data);
@@ -165,7 +196,8 @@ async function completeChat(messages, options = {}) {
     model: config.deployment,
     usage: data.usage || null,
     throttleRetries,
+    throttleRejections,
   };
 }
 
-module.exports = { azureOpenAiChatConfigFromEnv, completeChat };
+module.exports = { azureOpenAiChatConfigFromEnv, completeChat, throttleDelayMs };
