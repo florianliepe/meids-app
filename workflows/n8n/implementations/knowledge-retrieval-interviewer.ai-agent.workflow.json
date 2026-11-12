@@ -3,7 +3,7 @@
   "exported_at": "2026-09-03T11:20:00.000Z",
   "source": "Codex generated staging workflow scaffold",
   "workflow_id": "",
-  "name": "Me.IDs Knowledge Retrieval Interviewer - staging",
+  "name": "Me.IDs Knowledge Retrieval Interviewer - Production",
   "active": false,
   "boundary": "Public-safe workflow structure. Contains node names, parameters, and credential references only; no secret values.",
   "nodes": [

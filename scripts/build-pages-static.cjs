@@ -110,8 +110,8 @@ function runtimeConfigJs() {
   const hostLabel = env("MEIDS_FRONTEND_HOST_LABEL") || "GitHub Pages";
   const chatUrl = actorTwinChatUrl(env("GH_PAGES_N8N_CHAT_WEBHOOK_URL"));
   const actorUrl = actorTwinChatUrl(env("GH_PAGES_N8N_ACTOR_TWIN_WEBHOOK_URL") || chatUrl);
-  const knowledgeUrl = env("GH_PAGES_N8N_KNOWLEDGE_FABRIC_WEBHOOK_URL");
-  const butlerUrl = env("GH_PAGES_N8N_AGENTIC_BUTLER_WEBHOOK_URL");
+  const knowledgeUrl = "";
+  const butlerUrl = "";
   const voiceTranscriptionUrl = env("GH_PAGES_VOICE_TRANSCRIPTION_URL") || env("GH_PAGES_N8N_VOICE_TRANSCRIPTION_WEBHOOK_URL");
   const apiBaseUrl = env("GH_PAGES_API_BASE_URL") || env("MEIDS_FRONTEND_API_BASE_URL");
   const authEnabled = envFlag("MEIDS_FRONTEND_AUTH_ENABLED") || envFlag("GH_PAGES_AUTH_ENABLED");

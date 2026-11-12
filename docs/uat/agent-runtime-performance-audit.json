@@ -1,11 +1,22 @@
 {
   "schema_version": "0.1.0",
-  "generated_at": "2026-11-10T18:50:01.078Z",
+  "generated_at": "2026-11-11T16:55:44.248Z",
   "scope": "Agent prompt size and n8n execution duration audit. No secrets are stored.",
+  "slo_contract": {
+    "version": "meids.agent-slo.v1",
+    "queue": {
+      "acknowledgement_warning_ms": 5000,
+      "acknowledgement_critical_ms": 10000,
+      "queued_age_warning_ms": 30000,
+      "queued_age_critical_ms": 90000,
+      "processing_age_warning_ms": 180000,
+      "processing_age_critical_ms": 240000
+    }
+  },
   "filters": {
     "since": null,
     "agent": null,
-    "limit": 30
+    "limit": 50
   },
   "prompt_metrics": [
     {
@@ -63,98 +74,170 @@
       "agent": "actor_twin",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 30,
-      "sample_size": 30,
-      "success_count": 30,
-      "failure_count": 0,
-      "avg_ms": 20342,
-      "p50_ms": 9839,
-      "p90_ms": 41727,
-      "max_ms": 85804
+      "fetched_sample_size": 50,
+      "sample_size": 50,
+      "success_count": 49,
+      "failure_count": 1,
+      "avg_ms": 26507,
+      "p50_ms": 10352,
+      "p90_ms": 75906,
+      "max_ms": 134746,
+      "slo": {
+        "status": "met",
+        "target": {
+          "p50_warning_ms": 20000,
+          "p90_warning_ms": 90000,
+          "p90_critical_ms": 120000,
+          "minimum_samples": 10
+        },
+        "warnings": []
+      }
     },
     {
       "id": "dUkrCHpkLmqmFc7I",
       "agent": "knowledge_fabric_agent",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 30,
-      "sample_size": 30,
-      "success_count": 29,
-      "failure_count": 1,
-      "avg_ms": 7912,
-      "p50_ms": 1624,
-      "p90_ms": 31698,
-      "max_ms": 44141
+      "fetched_sample_size": 44,
+      "sample_size": 44,
+      "success_count": 40,
+      "failure_count": 4,
+      "avg_ms": 10201,
+      "p50_ms": 1937,
+      "p90_ms": 33788,
+      "max_ms": 44141,
+      "slo": {
+        "status": "met",
+        "target": {
+          "p50_warning_ms": 15000,
+          "p90_warning_ms": 45000,
+          "p90_critical_ms": 60000,
+          "minimum_samples": 10
+        },
+        "warnings": []
+      }
     },
     {
       "id": "elbiGicaFmQQW4w8",
       "agent": "agentic_butler",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 21,
-      "sample_size": 21,
-      "success_count": 21,
+      "fetched_sample_size": 25,
+      "sample_size": 25,
+      "success_count": 25,
       "failure_count": 0,
-      "avg_ms": 42587,
+      "avg_ms": 44447,
       "p50_ms": 34296,
-      "p90_ms": 85391,
-      "max_ms": 104538
+      "p90_ms": 79670,
+      "max_ms": 108362,
+      "slo": {
+        "status": "met",
+        "target": {
+          "p50_warning_ms": 60000,
+          "p90_warning_ms": 90000,
+          "p90_critical_ms": 120000,
+          "minimum_samples": 10
+        },
+        "warnings": []
+      }
     },
     {
       "id": "8ER9laJuKS6UrQJF",
       "agent": "skill_orchestrator",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 14,
-      "sample_size": 14,
-      "success_count": 14,
+      "fetched_sample_size": 18,
+      "sample_size": 18,
+      "success_count": 18,
       "failure_count": 0,
-      "avg_ms": 28565,
-      "p50_ms": 21568,
-      "p90_ms": 60910,
-      "max_ms": 79608
+      "avg_ms": 30354,
+      "p50_ms": 22211,
+      "p90_ms": 53581,
+      "max_ms": 89272,
+      "slo": {
+        "status": "met",
+        "target": {
+          "p50_warning_ms": 60000,
+          "p90_warning_ms": 90000,
+          "p90_critical_ms": 120000,
+          "minimum_samples": 10
+        },
+        "warnings": []
+      }
     },
     {
       "id": "YXcl8Wb68Oup3Z8n",
       "agent": "task_agent",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 14,
-      "sample_size": 14,
-      "success_count": 14,
+      "fetched_sample_size": 19,
+      "sample_size": 19,
+      "success_count": 19,
       "failure_count": 0,
-      "avg_ms": 7561,
-      "p50_ms": 6541,
-      "p90_ms": 12259,
-      "max_ms": 14141
+      "avg_ms": 10666,
+      "p50_ms": 7790,
+      "p90_ms": 19063,
+      "max_ms": 28610,
+      "slo": {
+        "status": "met",
+        "target": {
+          "p50_warning_ms": 45000,
+          "p90_warning_ms": 75000,
+          "p90_critical_ms": 90000,
+          "minimum_samples": 10
+        },
+        "warnings": []
+      }
     },
     {
       "id": "MH1nWMs8IFyNKN1E",
       "agent": "critical_faculty",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 17,
-      "sample_size": 17,
-      "success_count": 17,
+      "fetched_sample_size": 20,
+      "sample_size": 20,
+      "success_count": 20,
       "failure_count": 0,
-      "avg_ms": 21724,
-      "p50_ms": 20988,
-      "p90_ms": 41366,
-      "max_ms": 51055
+      "avg_ms": 22375,
+      "p50_ms": 20673,
+      "p90_ms": 38673,
+      "max_ms": 51055,
+      "slo": {
+        "status": "met",
+        "target": {
+          "p50_warning_ms": 35000,
+          "p90_warning_ms": 50000,
+          "p90_critical_ms": 75000,
+          "minimum_samples": 10
+        },
+        "warnings": []
+      }
     },
     {
       "id": "zX0s3hOByJ4HWQye",
       "agent": "learning_agent",
       "status": "measured",
       "filtered_since": null,
-      "fetched_sample_size": 22,
-      "sample_size": 22,
-      "success_count": 22,
+      "fetched_sample_size": 25,
+      "sample_size": 25,
+      "success_count": 25,
       "failure_count": 0,
-      "avg_ms": 34244,
-      "p50_ms": 15292,
+      "avg_ms": 36373,
+      "p50_ms": 16274,
       "p90_ms": 88675,
-      "max_ms": 163064
+      "max_ms": 114262,
+      "slo": {
+        "status": "warning",
+        "target": {
+          "p50_warning_ms": 30000,
+          "p90_warning_ms": 60000,
+          "p90_critical_ms": 120000,
+          "minimum_samples": 10
+        },
+        "warnings": [
+          "p90_ms"
+        ]
+      }
     }
   ],
   "recommendations": [

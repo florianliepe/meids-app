@@ -22,6 +22,13 @@ if (!source) throw new Error("knowledgeAccessHeaders helper is missing from fron
 if (!activeViewSource) throw new Error("currentWorkspaceView helper is missing from frontend/app.js");
 if (!scopeSource || !refreshSource || !scheduleSource) throw new Error("background lifecycle sources are missing from frontend/app.js");
 
+test("queued-only cancellation is exposed with scoped DELETE and never for processing jobs", () => {
+  assert.match(app, /job\.status === "queued"[\s\S]{0,220}cancel-background-work/);
+  assert.match(app, /async function cancelActorBackgroundWork[\s\S]{0,700}method: "DELETE"/);
+  assert.match(app, /body: JSON\.stringify\(\{ twin_id: state\.activeTwin, job_id: jobId \}\)/);
+  assert.match(app, /if \(status === "cancelled"\) return "Cancelled"/);
+});
+
 function headersFor(session) {
   const context = { session, result: null };
   vm.runInNewContext(`${source}\nresult = knowledgeAccessHeaders(session);`, context);

@@ -75,3 +75,21 @@ BG-LIFE-03/04/05 are **implemented and passing**; the other newly listed cases
 remain defined but not executed. The current aggregate is 18 passing Background
 Job tests. Existing cancellation, SLO, authenticated Nightly, KG isolation,
 revocation, recovery and Learning evidence gaps remain unchanged.
+
+## 2026-11-11 final hardening evidence
+
+- The focused runtime, API and frontend lifecycle set passes 25/25.
+- The PostgreSQL race harness accepts only a run-owned loopback database named
+  from its explicit run ID and destructive-test opt-in.
+- The harness applies migrations 012, 017, 019 and 020, proves owner/tenant RLS
+  isolation and rollback behavior, and observes the waiting lock in
+  `pg_stat_activity` rather than relying on a fixed delay.
+- Claim-first preserves `processing` and its payload. Cancellation-first purges
+  the payload and the exported production claim function returns no work.
+- Portable adapter tests now reject unknown statuses, malformed output shapes,
+  invalid budgets and rejected providers. Synthetic wrapper parity is not a claim
+  of live n8n/Azure provider parity.
+
+Migration 020 in the private production network, the authenticated synthetic
+production cancellation smoke, route/queue telemetry and live provider parity
+remain explicit release gates.

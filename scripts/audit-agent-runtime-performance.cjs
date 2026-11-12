@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const fs = require("node:fs");
 const path = require("node:path");
+const { SLO_VERSION, QUEUE_SLOS, evaluateWorkflowSlo } = require("../backend/agentSloPolicy");
 
 const root = path.resolve(__dirname, "..");
 const defaultOutput = path.join(root, "docs", "uat", "agent-runtime-performance-audit.json");
@@ -8,7 +9,7 @@ const defaultOutput = path.join(root, "docs", "uat", "agent-runtime-performance-
 const fallbackIds = {
   actor_twin: process.env.N8N_ACTOR_TWIN_WORKFLOW_ID || "eKI3qM7nyCNn9r1q",
   knowledge_fabric_agent: process.env.N8N_KNOWLEDGE_FABRIC_WORKFLOW_ID || "oPs77Qzrg9Repzgp",
-  agentic_butler: process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "KZOqZRUAnVfFEAYJ",
+  agentic_butler: process.env.N8N_AGENTIC_BUTLER_WORKFLOW_ID || "elbiGicaFmQQW4w8",
   skill_orchestrator: process.env.N8N_SKILL_ORCHESTRATOR_WORKFLOW_ID || "8ER9laJuKS6UrQJF",
   task_agent: process.env.N8N_TASK_AGENT_WORKFLOW_ID || "YXcl8Wb68Oup3Z8n",
   critical_faculty: process.env.N8N_CRITICAL_FACULTY_WORKFLOW_ID || "MH1nWMs8IFyNKN1E",
@@ -165,7 +166,7 @@ async function executionMetrics(workflows, limit, { since = "", agent = "" } = {
       max_ms: durations.length ? Math.max(...durations) : null,
     });
   }
-  return rows;
+  return rows.map((row) => ({ ...row, slo: row.status === "measured" ? evaluateWorkflowSlo(row.agent, row) : null }));
 }
 
 function recommendations(promptRows, executionRows) {
@@ -192,6 +193,7 @@ async function main() {
     schema_version: "0.1.0",
     generated_at: new Date().toISOString(),
     scope: "Agent prompt size and n8n execution duration audit. No secrets are stored.",
+    slo_contract: { version: SLO_VERSION, queue: QUEUE_SLOS },
     filters: {
       since: args.since || null,
       agent: args.agent || null,
@@ -210,6 +212,10 @@ async function main() {
     output: path.relative(root, args.output).replaceAll("\\", "/"),
     prompt_count: prompts.length,
     measured_workflow_count: executions.filter((item) => item.status === "measured").length,
+    slo_met: executions.filter((item) => item.slo?.status === "met").length,
+    slo_warning: executions.filter((item) => item.slo?.status === "warning").map((item) => item.agent),
+    slo_critical: executions.filter((item) => item.slo?.status === "critical").map((item) => item.agent),
+    insufficient_samples: executions.filter((item) => item.slo?.status === "insufficient_samples").map((item) => item.agent),
   }, null, 2));
 }
 

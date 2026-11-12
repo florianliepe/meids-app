@@ -6,6 +6,7 @@ const runtimeJobs = fs.readFileSync(path.join(root, "backend", "runtimeJobs.js")
 const workspaceApi = fs.readFileSync(path.join(root, "backend", "workspaceApi.js"), "utf8");
 const server = fs.readFileSync(path.join(root, "backend", "server.js"), "utf8");
 const migration = fs.readFileSync(path.join(root, "backend", "migrations", "017_runtime_background_jobs.sql"), "utf8");
+const cancellationMigration = fs.readFileSync(path.join(root, "backend", "migrations", "020_runtime_background_job_cancellation.sql"), "utf8");
 
 function requireText(source, text, message) {
   if (!source.includes(text)) throw new Error(message || `Missing ${text}`);
@@ -42,6 +43,10 @@ for (const required of [
   "dead_letter",
   "idx_background_job_claim",
 ]) requireText(migration, required, `Runtime job migration is missing ${required}.`);
+
+for (const required of ["cancelled", "agent.work.cancelled", "background_job_status_check"]) {
+  requireText(cancellationMigration, required, `Runtime cancellation migration is missing ${required}.`);
+}
 
 for (const required of [
   "MEIDS_RUNTIME_JOB_WORKER_ENABLED",

@@ -1,5 +1,5 @@
 {
-  "name": "Me.IDs Learning Agent - staging",
+  "name": "Me.IDs Learning Agent - Production",
   "nodes": [
     {
       "id": "54a5b44e-5f67-4efd-b31d-5d325a3c440e",
@@ -101,7 +101,7 @@
           "value": "dUkrCHpkLmqmFc7I",
           "mode": "list",
           "cachedResultUrl": "/workflow/dUkrCHpkLmqmFc7I",
-          "cachedResultName": "MeIDs Knowledge Fabric Agent - staging v4"
+          "cachedResultName": "MeIDs Knowledge Fabric Agent - Production v4"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
