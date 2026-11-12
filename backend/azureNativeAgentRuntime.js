@@ -138,8 +138,9 @@ async function runSkillTaskChain(request, evidence, roleExecutions, deadline) {
   return { answer: synthesis.text, completion: synthesis, plan: { objective: parsedPlan.objective || request.message, tasks }, taskResults };
 }
 
-function needsRetrieval(route) {
-  return ["retrieve_knowledge", "retrieve_then_work"].includes(route);
+function needsRetrieval(route, routing = {}) {
+  return ["retrieve_knowledge", "retrieve_then_work"].includes(route)
+    || routing.gates?.retrieval_required === true;
 }
 
 function requiresApproval(route, routing) {
@@ -190,8 +191,10 @@ function createAzureNativeAgentAdapter({ retrieveKnowledge }) {
     }
     let retrieval = null;
     let evidence = [];
-    if (needsRetrieval(route)) {
-      retrieval = await retrieveKnowledge(request);
+    if (needsRetrieval(route, routing)) {
+      retrieval = await retrieveKnowledge(request, {
+        timeoutMs: remainingStageBudget(primaryDeadline, 20_000, "azure_retrieval_budget_exhausted"),
+      });
       evidence = formatEvidence(retrieval);
     }
     const roleExecutions = [];
@@ -205,7 +208,7 @@ function createAzureNativeAgentAdapter({ retrieveKnowledge }) {
       answer = chained.answer;
       skillPlan = chained.plan;
       taskResults = chained.taskResults;
-    } else if (route === "execute_work_sync") {
+    } else if (["execute_work_sync", "retrieve_then_work"].includes(route)) {
       const bounded = await runBoundedButler(request, evidence, roleExecutions, primaryDeadline);
       completion = bounded.completion;
       answer = bounded.answer;
@@ -219,8 +222,8 @@ function createAzureNativeAgentAdapter({ retrieveKnowledge }) {
       ], { timeoutMs: remainingStageBudget(primaryDeadline, 25_000) });
       answer = completion.text;
       roleExecutions.push({
-        agent: needsRetrieval(route) ? "knowledge_fabric_agent" : "actor_twin",
-        mode: needsRetrieval(route) ? "retrieve_and_answer" : "direct",
+        agent: needsRetrieval(route, routing) ? "knowledge_fabric_agent" : "actor_twin",
+        mode: needsRetrieval(route, routing) ? "retrieve_and_answer" : "direct",
         duration_ms: elapsedMs(startedAt),
       });
     }

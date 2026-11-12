@@ -7,7 +7,7 @@ const cases = [
   ["Show the reviewed sources for our negotiation approach.", "retrieve_knowledge"],
   ["Remember this as knowledge: I prefer concise evidence summaries.", "ingest_or_stage_knowledge"],
   ["Draft a short internal email from the supplied text.", "execute_work_sync"],
-  ["Research the evidence, compare three options, then prepare a decision brief.", "retrieve_then_work"],
+  ["Research the evidence, compare three options, then prepare a decision brief.", "execute_work_async"],
   ["Create a new reusable meeting preparation skill.", "create_skill"],
   ["Interview me to extract my implicit decision criteria.", "elicit_tacit_knowledge"],
   ["Draft", "request_human_clarification"],
@@ -69,6 +69,7 @@ assert.equal(backgroundOverride.gates.external_side_effect_approval, false);
 assert.equal(backgroundOverride.gates.external_side_effects_allowed, false);
 assert.equal(backgroundOverride.worker_override, "trusted_background_work");
 assert.equal(backgroundOverride.gates.max_task_agent_calls, 2);
+assert.equal(backgroundOverride.gates.retrieval_required, true);
 
 const untrustedBackgroundOverride = classifyAgentInteraction({
   message: "Research the evidence, compare the options, then prepare a decision brief.",
@@ -77,7 +78,7 @@ const untrustedBackgroundOverride = classifyAgentInteraction({
     routingContractOverride: { route: "execute_work_sync" },
   },
 });
-assert.equal(untrustedBackgroundOverride.route, "retrieve_then_work");
+assert.equal(untrustedBackgroundOverride.route, "execute_work_async");
 assert.equal(untrustedBackgroundOverride.worker_override, undefined);
 
 console.log(`Agent routing policy tests passed: ${cases.length + 8} cases`);
