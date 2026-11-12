@@ -85,7 +85,7 @@ flowchart LR
 | --- | --- | --- |
 | Runtime API | `meids-prod-backend-1853a19b` | Existing |
 | Durable queue | PostgreSQL `runtime.background_job`, migration 020 | Applied |
-| Model | `aoai-meids-prod-1853a19b` / `meids-gpt-4-1-mini` | Provisioned, managed-identity RBAC |
+| Model | `aoai-meids-prod-1853a19b` / `meids-gpt-4-1-mini` | Provisioned, managed-identity RBAC, 50 RPM / 50k TPM |
 | Retrieval | `srch-meids-prod-1853a19b` | Existing |
 | Artifacts | `stmeidsprod1853a19b` private Blob | Existing |
 | Browser composer | `MEIDS_NATIVE_ACTOR_CHAT=true` | Production; no n8n URL exposed |
@@ -96,7 +96,7 @@ flowchart LR
 
 ## Current rollout state
 
-- PRs #56-#91 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter, hardened the Azure-native Nightly verdict, added authoritative Learning dry-run domain proof, fenced reclaimed worker attempts and stopped uncertain lease redispatch. The current backend revision is merge commit `0b810fa2738275bd1a885bc13753465aaf682647`, deployed by run `43290598653`; the native frontend remains active.
+- PRs #56-#97 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter, hardened the Azure-native Nightly verdict, added authoritative Learning dry-run domain proof, fenced reclaimed worker attempts, stopped uncertain lease redispatch and added bounded definitive-429 handling. The current backend revision is merge commit `cc6cbace8918222e2dd15422dfdd77e2b78e006e`, deployed by run `43301991388`; the native frontend remains active.
 - The browser talks only to authenticated App Service routes; direct n8n URLs are empty in production runtime configuration.
 - Direct-answer shadow and primary canaries passed from the real App Service web process. A 20-request soak returned 20/20 expected answers with p50 814 ms, p90 1,044 ms and max 1,402 ms.
 - Missing and forged knowledge tokens both return `401 blocked_auth_context`.
@@ -121,6 +121,7 @@ flowchart LR
 - `meids.runtime-worker-termination.v1` now proves the boundary with a real child process, PostgreSQL 16 and a receiving provider proxy: the first provider request is observed, the worker is killed before a response, the lease is expired, and a replacement worker makes zero claims. The final evidence is one provider invocation, zero redispatches and terminal `unknown_completion`.
 - Post-deploy no-write UAT on backend `11d5c944` passed 5/5 scenarios and 7/7 roles with no findings: direct 753 ms, retrieval 1,903 ms, conditional critique 1,740 ms, Butler/Skill/Task 2,545 ms and detached Learning 5,157 ms. Learning completed once on attempt 1 with matching non-empty authoritative domain digests.
 - Post-deploy no-write UAT on the final no-redispatch backend `0b810fa2` also passed 5/5 scenarios and 7/7 roles with no findings: direct 1,034 ms, retrieval 1,803 ms, conditional critique 1,957 ms, Butler/Skill/Task 3,409 ms and detached Learning 7,709 ms. Learning completed once on attempt 1 with unchanged authoritative domain fingerprints.
+- The first Azure-native route soak exposed the original deployment's 20 RPM bottleneck with 4/50 HTTP 429 responses. PR #97 added one deadline-bounded retry only for definitive 429 rejection; timeout remains unknown and non-retryable. Capacity was increased to 50 RPM/50k TPM without changing the model or version. The identical post-change serial window passed 50/50 with zero retry, timeout, cancellation, unknown completion or 429; the 100-sample multi-window maturity gate remains open.
 
 ## Cutover gates
 

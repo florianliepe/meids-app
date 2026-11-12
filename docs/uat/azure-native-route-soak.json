@@ -1,0 +1,687 @@
+{
+  "schema_version": "1.0.0",
+  "contract": "meids.azure-native-route-soak.v1",
+  "generated_at": "2026-11-12T20:45:00.899Z",
+  "run_id": "azure_route_soak_20261112T204500",
+  "candidate": {
+    "backend": "https://meids-prod-backend-1853a19b.azurewebsites.net",
+    "runtime": "azure_native",
+    "slo_contract": "meids.agent-slo.v1"
+  },
+  "window": {
+    "mode": "serial_warm",
+    "samples_per_route": 10,
+    "target_samples_per_route": 100,
+    "route_count": 5
+  },
+  "summary": {
+    "status": "passed",
+    "routes_passed": 5,
+    "routes_total": 5
+  },
+  "routes": [
+    {
+      "route": "answer_direct",
+      "sample_size": 10,
+      "sample_maturity": "provisional",
+      "counts": {
+        "completed": 10,
+        "failed": 0,
+        "timeout": 0,
+        "cancelled": 0,
+        "unknown": 0
+      },
+      "success_rate": 1,
+      "p50_ms": 361,
+      "p90_ms": 573,
+      "max_ms": 666,
+      "target": {
+        "p90_warning_ms": 15000,
+        "p90_critical_ms": 20000
+      },
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "route": "retrieve_knowledge",
+      "sample_size": 10,
+      "sample_maturity": "provisional",
+      "counts": {
+        "completed": 10,
+        "failed": 0,
+        "timeout": 0,
+        "cancelled": 0,
+        "unknown": 0
+      },
+      "success_rate": 1,
+      "p50_ms": 1739,
+      "p90_ms": 2121,
+      "max_ms": 2241,
+      "target": {
+        "p90_warning_ms": 20000,
+        "p90_critical_ms": 30000
+      },
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "route": "execute_work_sync",
+      "sample_size": 10,
+      "sample_maturity": "provisional",
+      "counts": {
+        "completed": 10,
+        "failed": 0,
+        "timeout": 0,
+        "cancelled": 0,
+        "unknown": 0
+      },
+      "success_rate": 1,
+      "p50_ms": 483,
+      "p90_ms": 586,
+      "max_ms": 600,
+      "target": {
+        "p90_warning_ms": 60000,
+        "p90_critical_ms": 90000
+      },
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "route": "execute_work_async_ack",
+      "sample_size": 10,
+      "sample_maturity": "provisional",
+      "counts": {
+        "completed": 10,
+        "failed": 0,
+        "timeout": 0,
+        "cancelled": 0,
+        "unknown": 0
+      },
+      "success_rate": 1,
+      "p50_ms": 52,
+      "p90_ms": 52,
+      "max_ms": 53,
+      "target": {
+        "p90_warning_ms": 5000,
+        "p90_critical_ms": 10000
+      },
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "route": "detached_learning",
+      "sample_size": 10,
+      "sample_maturity": "provisional",
+      "counts": {
+        "completed": 10,
+        "failed": 0,
+        "timeout": 0,
+        "cancelled": 0,
+        "unknown": 0
+      },
+      "success_rate": 1,
+      "p50_ms": 4266,
+      "p90_ms": 8427,
+      "max_ms": 8434,
+      "target": {
+        "p90_warning_ms": 60000,
+        "p90_critical_ms": 120000
+      },
+      "status": "passed",
+      "issues": []
+    }
+  ],
+  "results": [
+    {
+      "route_id": "answer_direct",
+      "status": "completed",
+      "duration_ms": 666,
+      "http_status": 200,
+      "observed_route": "answer_direct",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "actor_twin"
+      ]
+    },
+    {
+      "route_id": "retrieve_knowledge",
+      "status": "completed",
+      "duration_ms": 1881,
+      "http_status": 200,
+      "observed_route": "retrieve_knowledge",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "knowledge_fabric_agent",
+        "critical_faculty"
+      ]
+    },
+    {
+      "route_id": "execute_work_sync",
+      "status": "completed",
+      "duration_ms": 580,
+      "http_status": 200,
+      "observed_route": "execute_work_sync",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "agentic_butler"
+      ]
+    },
+    {
+      "route_id": "execute_work_async_ack",
+      "status": "completed",
+      "duration_ms": 52,
+      "acknowledgement_ms": 52,
+      "completion_ms": 12709,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "detached_learning",
+      "status": "completed",
+      "duration_ms": 4233,
+      "acknowledgement_ms": 33,
+      "completion_ms": 4200,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "answer_direct",
+      "status": "completed",
+      "duration_ms": 316,
+      "http_status": 200,
+      "observed_route": "answer_direct",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "actor_twin"
+      ]
+    },
+    {
+      "route_id": "retrieve_knowledge",
+      "status": "completed",
+      "duration_ms": 1574,
+      "http_status": 200,
+      "observed_route": "retrieve_knowledge",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "knowledge_fabric_agent",
+        "critical_faculty"
+      ]
+    },
+    {
+      "route_id": "execute_work_sync",
+      "status": "completed",
+      "duration_ms": 517,
+      "http_status": 200,
+      "observed_route": "execute_work_sync",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "agentic_butler"
+      ]
+    },
+    {
+      "route_id": "execute_work_async_ack",
+      "status": "completed",
+      "duration_ms": 49,
+      "acknowledgement_ms": 49,
+      "completion_ms": 15814,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "detached_learning",
+      "status": "completed",
+      "duration_ms": 8427,
+      "acknowledgement_ms": 38,
+      "completion_ms": 8389,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "answer_direct",
+      "status": "completed",
+      "duration_ms": 361,
+      "http_status": 200,
+      "observed_route": "answer_direct",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "actor_twin"
+      ]
+    },
+    {
+      "route_id": "retrieve_knowledge",
+      "status": "completed",
+      "duration_ms": 1718,
+      "http_status": 200,
+      "observed_route": "retrieve_knowledge",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "knowledge_fabric_agent",
+        "critical_faculty"
+      ]
+    },
+    {
+      "route_id": "execute_work_sync",
+      "status": "completed",
+      "duration_ms": 437,
+      "http_status": 200,
+      "observed_route": "execute_work_sync",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "agentic_butler"
+      ]
+    },
+    {
+      "route_id": "execute_work_async_ack",
+      "status": "completed",
+      "duration_ms": 48,
+      "acknowledgement_ms": 48,
+      "completion_ms": 13832,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "detached_learning",
+      "status": "completed",
+      "duration_ms": 8379,
+      "acknowledgement_ms": 38,
+      "completion_ms": 8341,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "answer_direct",
+      "status": "completed",
+      "duration_ms": 573,
+      "http_status": 200,
+      "observed_route": "answer_direct",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "actor_twin"
+      ]
+    },
+    {
+      "route_id": "retrieve_knowledge",
+      "status": "completed",
+      "duration_ms": 1739,
+      "http_status": 200,
+      "observed_route": "retrieve_knowledge",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "knowledge_fabric_agent",
+        "critical_faculty"
+      ]
+    },
+    {
+      "route_id": "execute_work_sync",
+      "status": "completed",
+      "duration_ms": 482,
+      "http_status": 200,
+      "observed_route": "execute_work_sync",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "agentic_butler"
+      ]
+    },
+    {
+      "route_id": "execute_work_async_ack",
+      "status": "completed",
+      "duration_ms": 52,
+      "acknowledgement_ms": 52,
+      "completion_ms": 11564,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "detached_learning",
+      "status": "completed",
+      "duration_ms": 4228,
+      "acknowledgement_ms": 34,
+      "completion_ms": 4194,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "answer_direct",
+      "status": "completed",
+      "duration_ms": 422,
+      "http_status": 200,
+      "observed_route": "answer_direct",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "actor_twin"
+      ]
+    },
+    {
+      "route_id": "retrieve_knowledge",
+      "status": "completed",
+      "duration_ms": 1786,
+      "http_status": 200,
+      "observed_route": "retrieve_knowledge",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "knowledge_fabric_agent",
+        "critical_faculty"
+      ]
+    },
+    {
+      "route_id": "execute_work_sync",
+      "status": "completed",
+      "duration_ms": 586,
+      "http_status": 200,
+      "observed_route": "execute_work_sync",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "agentic_butler"
+      ]
+    },
+    {
+      "route_id": "execute_work_async_ack",
+      "status": "completed",
+      "duration_ms": 52,
+      "acknowledgement_ms": 52,
+      "completion_ms": 13703,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "detached_learning",
+      "status": "completed",
+      "duration_ms": 3188,
+      "acknowledgement_ms": 35,
+      "completion_ms": 3153,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "answer_direct",
+      "status": "completed",
+      "duration_ms": 309,
+      "http_status": 200,
+      "observed_route": "answer_direct",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "actor_twin"
+      ]
+    },
+    {
+      "route_id": "retrieve_knowledge",
+      "status": "completed",
+      "duration_ms": 1550,
+      "http_status": 200,
+      "observed_route": "retrieve_knowledge",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "knowledge_fabric_agent",
+        "critical_faculty"
+      ]
+    },
+    {
+      "route_id": "execute_work_sync",
+      "status": "completed",
+      "duration_ms": 600,
+      "http_status": 200,
+      "observed_route": "execute_work_sync",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "agentic_butler"
+      ]
+    },
+    {
+      "route_id": "execute_work_async_ack",
+      "status": "completed",
+      "duration_ms": 53,
+      "acknowledgement_ms": 53,
+      "completion_ms": 9520,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "detached_learning",
+      "status": "completed",
+      "duration_ms": 4213,
+      "acknowledgement_ms": 33,
+      "completion_ms": 4180,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "answer_direct",
+      "status": "completed",
+      "duration_ms": 422,
+      "http_status": 200,
+      "observed_route": "answer_direct",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "actor_twin"
+      ]
+    },
+    {
+      "route_id": "retrieve_knowledge",
+      "status": "completed",
+      "duration_ms": 2121,
+      "http_status": 200,
+      "observed_route": "retrieve_knowledge",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "knowledge_fabric_agent",
+        "critical_faculty"
+      ]
+    },
+    {
+      "route_id": "execute_work_sync",
+      "status": "completed",
+      "duration_ms": 424,
+      "http_status": 200,
+      "observed_route": "execute_work_sync",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "agentic_butler"
+      ]
+    },
+    {
+      "route_id": "execute_work_async_ack",
+      "status": "completed",
+      "duration_ms": 52,
+      "acknowledgement_ms": 52,
+      "completion_ms": 13690,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "detached_learning",
+      "status": "completed",
+      "duration_ms": 8434,
+      "acknowledgement_ms": 33,
+      "completion_ms": 8401,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "answer_direct",
+      "status": "completed",
+      "duration_ms": 329,
+      "http_status": 200,
+      "observed_route": "answer_direct",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "actor_twin"
+      ]
+    },
+    {
+      "route_id": "retrieve_knowledge",
+      "status": "completed",
+      "duration_ms": 2241,
+      "http_status": 200,
+      "observed_route": "retrieve_knowledge",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "knowledge_fabric_agent",
+        "critical_faculty"
+      ]
+    },
+    {
+      "route_id": "execute_work_sync",
+      "status": "completed",
+      "duration_ms": 483,
+      "http_status": 200,
+      "observed_route": "execute_work_sync",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "agentic_butler"
+      ]
+    },
+    {
+      "route_id": "execute_work_async_ack",
+      "status": "completed",
+      "duration_ms": 52,
+      "acknowledgement_ms": 52,
+      "completion_ms": 10539,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "detached_learning",
+      "status": "completed",
+      "duration_ms": 6348,
+      "acknowledgement_ms": 34,
+      "completion_ms": 6314,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "answer_direct",
+      "status": "completed",
+      "duration_ms": 360,
+      "http_status": 200,
+      "observed_route": "answer_direct",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "actor_twin"
+      ]
+    },
+    {
+      "route_id": "retrieve_knowledge",
+      "status": "completed",
+      "duration_ms": 1477,
+      "http_status": 200,
+      "observed_route": "retrieve_knowledge",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "knowledge_fabric_agent",
+        "critical_faculty"
+      ]
+    },
+    {
+      "route_id": "execute_work_sync",
+      "status": "completed",
+      "duration_ms": 416,
+      "http_status": 200,
+      "observed_route": "execute_work_sync",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "agentic_butler"
+      ]
+    },
+    {
+      "route_id": "execute_work_async_ack",
+      "status": "completed",
+      "duration_ms": 49,
+      "acknowledgement_ms": 49,
+      "completion_ms": 12709,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "detached_learning",
+      "status": "completed",
+      "duration_ms": 4266,
+      "acknowledgement_ms": 35,
+      "completion_ms": 4231,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "answer_direct",
+      "status": "completed",
+      "duration_ms": 393,
+      "http_status": 200,
+      "observed_route": "answer_direct",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "actor_twin"
+      ]
+    },
+    {
+      "route_id": "retrieve_knowledge",
+      "status": "completed",
+      "duration_ms": 1881,
+      "http_status": 200,
+      "observed_route": "retrieve_knowledge",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "knowledge_fabric_agent",
+        "critical_faculty"
+      ]
+    },
+    {
+      "route_id": "execute_work_sync",
+      "status": "completed",
+      "duration_ms": 532,
+      "http_status": 200,
+      "observed_route": "execute_work_sync",
+      "runtime": "azure_native",
+      "provider_throttle_retries": 0,
+      "roles": [
+        "agentic_butler"
+      ]
+    },
+    {
+      "route_id": "execute_work_async_ack",
+      "status": "completed",
+      "duration_ms": 46,
+      "acknowledgement_ms": 46,
+      "completion_ms": 13736,
+      "http_status": 202,
+      "attempts": 1
+    },
+    {
+      "route_id": "detached_learning",
+      "status": "completed",
+      "duration_ms": 4298,
+      "acknowledgement_ms": 34,
+      "completion_ms": 4264,
+      "http_status": 202,
+      "attempts": 1
+    }
+  ],
+  "boundary": "Public-safe synthetic no-write performance metadata. No prompts, answers, tokens, identities, private knowledge, or job identifiers are stored."
+}
