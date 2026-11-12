@@ -1,10 +1,17 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const { portableRequest, createAzureNativeAgentAdapter } = require("../backend/azureNativeAgentRuntime");
 
 const originalFetch = global.fetch;
 const originalEnv = { ...process.env };
 
 async function run() {
+  const serverSource = fs.readFileSync(path.join(__dirname, "..", "backend", "server.js"), "utf8");
+  assert.match(serverSource, /action:\s*"sendMessage"/);
+  assert.match(serverSource, /sessionId:\s*String\(body\.session_id \|\| body\.sessionId \|\| requestId\)/);
+  assert.match(serverSource, /knowledgeAccessToken,\s*\n\s*knowledgeScope:\s*"active_twin"/);
+
   process.env.AZURE_OPENAI_ENDPOINT = "";
   process.env.AZURE_OPENAI_CHAT_DEPLOYMENT = "";
   process.env.ERANEOS_AI_GATEWAY_BASE_URL = "https://gateway.example/v1";

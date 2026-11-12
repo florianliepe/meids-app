@@ -1234,6 +1234,19 @@ async function executeAgentRuntime(agentId, envelope, options = {}) {
   }
 }
 
+function issueKnowledgeAccessTokenForMapping(mapping, twinId) {
+  return signKnowledgeAccessToken({
+    tenant_id: mapping.tenant_id,
+    user_id: mapping.user_id,
+    active_twin_id: twinId,
+    allowed_twin_ids: mapping.allowed_twin_ids || [],
+    group_ids: mapping.group_ids || [],
+    roles: mapping.roles || [],
+    visibility_scopes: ["private", "twin_shared", "team_shared", "org_shared"],
+    knowledge_scope: "active_twin",
+  }, { ttlSeconds: Math.max(300, Math.min(Number(process.env.MEIDS_KNOWLEDGE_ACCESS_TOKEN_TTL_SECONDS || 3600), 28_800)) });
+}
+
 async function handleNativeAgentChat(req, res) {
   const body = await readBody(req);
   const mapping = await requireKnowledgeRequestMapping(req, body);
@@ -1249,12 +1262,16 @@ async function handleNativeAgentChat(req, res) {
     error.statusCode = 400;
     throw error;
   }
+  const requestId = body.request_id || makeId("chat");
+  const knowledgeAccessToken = issueKnowledgeAccessTokenForMapping(mapping, twinId);
   const envelope = {
     envelope_version: "0.1.0",
-    request_id: body.request_id || makeId("chat"),
+    request_id: requestId,
     timestamp: new Date().toISOString(),
     agent_id: "actor_twin",
     intent: "answer_question",
+    action: "sendMessage",
+    sessionId: String(body.session_id || body.sessionId || requestId).trim().slice(0, 256),
     principal: { tenant_id: mapping.tenant_id, user_id: mapping.user_id, roles: mapping.roles || [] },
     input: { message },
     chatInput: message,
@@ -1267,6 +1284,12 @@ async function handleNativeAgentChat(req, res) {
       source: "meids_native_actor_chat",
       interfaceContract: "meids.actor_twin.embedded_chat.v1",
       identity: { tenantId: mapping.tenant_id, userId: mapping.user_id, activeTwinId: twinId },
+      authorization: {
+        contract: "meids.knowledge-access.v1",
+        knowledgeAccessToken,
+        knowledgeScope: "active_twin",
+        handling: "opaque_backend_credential_do_not_prompt_or_log",
+      },
     },
   };
   const response = await executeAgentRuntime("actor_twin", envelope, { mapping });
@@ -2950,16 +2973,7 @@ const handleWorkspaceApi = createWorkspaceApi({
   transcribeAudio: transcribeAudioWithOpenAiCompatibleGateway,
   transcriptionConfig: openAiTranscriptionConfig,
   issueKnowledgeAccessToken(mapping, twinId) {
-    return signKnowledgeAccessToken({
-      tenant_id: mapping.tenant_id,
-      user_id: mapping.user_id,
-      active_twin_id: twinId,
-      allowed_twin_ids: mapping.allowed_twin_ids || [],
-      group_ids: mapping.group_ids || [],
-      roles: mapping.roles || [],
-      visibility_scopes: ["private", "twin_shared", "team_shared", "org_shared"],
-      knowledge_scope: "active_twin",
-    }, { ttlSeconds: Math.max(300, Math.min(Number(process.env.MEIDS_KNOWLEDGE_ACCESS_TOKEN_TTL_SECONDS || 3600), 28_800)) });
+    return issueKnowledgeAccessTokenForMapping(mapping, twinId);
   },
 });
 
