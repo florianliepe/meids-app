@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { cancelQueuedRuntimeJob, processRuntimeJobBatch } = require("../backend/runtimeJobs");
+const { cancelQueuedRuntimeJob, expireUncertainRuntimeJobs, processRuntimeJobBatch } = require("../backend/runtimeJobs");
 
 function fakePool(job) {
   const calls = [];
@@ -96,6 +96,27 @@ test("uncertain timeout is terminal without an automatic duplicate retry", async
   const failure = pool.calls.find((call) => call.scope === "pool" && call.sql.includes("SET status = $2"));
   assert.equal(failure.params[1], "dead_letter");
   assert.equal(failures[0].failure.terminal, true);
+});
+
+test("expired processing lease becomes unknown completion without redispatch", async () => {
+  const calls = [];
+  const pool = {
+    async query(sql, params) {
+      calls.push({ sql: String(sql), params });
+      return { rowCount: 1, rows: [{ job_id: "uncertain-job", attempts: 1 }] };
+    },
+  };
+  const expired = await expireUncertainRuntimeJobs(pool);
+  assert.deepEqual(expired, [{ job_id: "uncertain-job", attempts: 1 }]);
+  assert.match(calls[0].sql, /status = 'processing' AND lease_expires_at < now\(\)/);
+  assert.match(calls[0].sql, /status = 'dead_letter'/);
+  assert.match(calls[0].sql, /binary_payload = NULL/);
+  assert.deepEqual(JSON.parse(calls[0].params[0]), {
+    status: "unknown_completion",
+    code: "runtime_lease_expired_unknown_completion",
+    retryable: false,
+    reconciliation_required: true,
+  });
 });
 
 test("queued cancellation is atomic, owner-scoped, and purges binary payload", async () => {

@@ -70,10 +70,43 @@ async function cancelQueuedRuntimeJob(client, scope) {
   return result.rows[0] || null;
 }
 
+async function expireUncertainRuntimeJobs(pool) {
+  const result = await pool.query(
+    `UPDATE runtime.background_job
+     SET status = 'dead_letter',
+         result = $1::jsonb,
+         last_error = $2,
+         completed_at = now(),
+         leased_at = NULL, lease_expires_at = NULL, leased_by = NULL,
+         binary_payload = NULL, updated_at = now()
+     WHERE status = 'processing' AND lease_expires_at < now()
+     RETURNING job_id, attempts`,
+    [
+      JSON.stringify({
+        status: "unknown_completion",
+        code: "runtime_lease_expired_unknown_completion",
+        retryable: false,
+        reconciliation_required: true,
+      }),
+      "Worker lease expired while execution may have been in flight; completion is unknown and was not retried.",
+    ],
+  );
+  for (const job of result.rows) {
+    console.warn(JSON.stringify({
+      event: "runtime_job_unknown_completion",
+      job_id: job.job_id,
+      attempts: Number(job.attempts),
+      retry_suppressed: true,
+    }));
+  }
+  return result.rows;
+}
+
 async function claimRuntimeJobs(pool, options = {}) {
   const batchSize = Math.max(1, Math.min(Number(options.batchSize || process.env.MEIDS_RUNTIME_JOB_BATCH_SIZE || 4), 25));
   const leaseSeconds = Math.max(60, Math.min(Number(options.leaseSeconds || process.env.MEIDS_RUNTIME_JOB_LEASE_SECONDS || DEFAULT_LEASE_SECONDS), 1_800));
   const claimedBy = clean(options.workerId || workerId(), 256);
+  await expireUncertainRuntimeJobs(pool);
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -81,10 +114,7 @@ async function claimRuntimeJobs(pool, options = {}) {
       `WITH candidates AS (
          SELECT job_id
          FROM runtime.background_job
-         WHERE (
-           (status IN ('pending', 'failed') AND next_attempt_at <= now())
-           OR (status = 'processing' AND lease_expires_at < now())
-         )
+         WHERE status IN ('pending', 'failed') AND next_attempt_at <= now()
            AND attempts < max_attempts
          ORDER BY created_at
          FOR UPDATE SKIP LOCKED
@@ -193,6 +223,7 @@ async function processRuntimeJobBatch(pool, handlers, options = {}) {
 module.exports = {
   enqueueRuntimeJob,
   cancelQueuedRuntimeJob,
+  expireUncertainRuntimeJobs,
   claimRuntimeJobs,
   completeRuntimeJob,
   failRuntimeJob,

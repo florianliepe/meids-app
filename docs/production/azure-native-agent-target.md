@@ -75,7 +75,7 @@ flowchart LR
 4. One bounded, no-side-effect task bypasses Skill Orchestrator. Multi-step work is acknowledged and queued before generative work begins.
 5. Critical Faculty runs only for high-risk or uncertain evidence-dependent decisions.
 6. Learning is detached from the user response and may create only review-needed proposals.
-7. Unknown completion is never retried automatically. Cancellation is allowed only before a worker lease is acquired. Every claimed PostgreSQL job uses its incremented `attempts` value as a fencing generation, so a late completion or failure from an expired lease cannot overwrite a reclaimed attempt even when the App Service instance reuses the same worker ID.
+7. Unknown completion is never retried automatically. Cancellation is allowed only before a worker lease is acquired. Every claimed PostgreSQL job uses its incremented `attempts` value as a fencing generation. An expired `processing` lease becomes terminal `unknown_completion` with reconciliation required; it is never automatically reclaimed or redispatched. A late completion or failure cannot overwrite that terminal state.
 8. The browser receives no n8n worker URL in native mode. Authentication, retrieval, progress, cancellation and result reads go through App Service routes.
 9. A Learning `dry_run` succeeds only when owner/twin-scoped PostgreSQL fingerprints for Learning, Knowledge, Graph and domain outbox state are identical before and after proposal generation. Operational job and trace persistence is outside this domain fingerprint.
 
@@ -117,6 +117,7 @@ flowchart LR
 - Voice handoff is Azure-native, prepare-only and approval-gated. Missing and forged signed tokens return 401.
 - Final `azure_native` smoke: direct 1,480 ms, unknown reviewed fact 2,557 ms, bounded work 671 ms, tacit interview 591 ms and clarification 63 ms; no fallback was recorded.
 - Runtime recovery hardening uses the atomic PostgreSQL claim counter as a lease generation. Completion and failure compare job ID, processing state, worker ID and generation. Isolated PostgreSQL validation reclaims an expired lease with the same worker ID, rejects both stale completion and stale failure, and proves the accepted terminal result cannot regress. Azure OpenAI timeout validation marks completion unknown and non-retryable.
+- Worker recovery is fail-closed at the provider boundary: pending/failed jobs retain bounded retry, while an expired processing lease is persisted as `runtime_lease_expired_unknown_completion`, purges transient binary data and requires reconciliation. The worker never sends that uncertain operation to Azure OpenAI, n8n or another adapter again automatically.
 - Post-deploy no-write UAT on backend `11d5c944` passed 5/5 scenarios and 7/7 roles with no findings: direct 753 ms, retrieval 1,903 ms, conditional critique 1,740 ms, Butler/Skill/Task 2,545 ms and detached Learning 5,157 ms. Learning completed once on attempt 1 with matching non-empty authoritative domain digests.
 
 ## Cutover gates

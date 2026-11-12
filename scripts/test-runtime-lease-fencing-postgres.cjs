@@ -76,7 +76,14 @@ async function verifySameWorkerReclaimFence() {
   const first = (await claimRuntimeJobs(pool, { workerId: "stable-worker-id", batchSize: 1, leaseSeconds: 60 }))[0];
   assert.equal(first.attempts, 1);
   await expireLease(first.job_id);
-  const second = (await claimRuntimeJobs(pool, { workerId: "stable-worker-id", batchSize: 1, leaseSeconds: 60 }))[0];
+  const reclaimed = await pool.query(
+    `UPDATE runtime.background_job
+     SET attempts = attempts + 1, leased_at = now(), lease_expires_at = now() + interval '60 seconds'
+     WHERE job_id = $1 AND status = 'processing'
+     RETURNING *`,
+    [first.job_id],
+  );
+  const second = reclaimed.rows[0];
   assert.equal(second.job_id, first.job_id);
   assert.equal(second.attempts, 2);
 
@@ -107,6 +114,32 @@ async function verifySameWorkerReclaimFence() {
   });
 }
 
+async function verifyExpiredLeaseStopsWithoutRedispatch() {
+  await enqueue("lease-expired-unknown");
+  const first = (await claimRuntimeJobs(pool, { workerId: "uncertain-worker", batchSize: 1, leaseSeconds: 60 }))[0];
+  assert.equal(first.attempts, 1);
+  await expireLease(first.job_id);
+  const secondClaim = await claimRuntimeJobs(pool, { workerId: "replacement-worker", batchSize: 1, leaseSeconds: 60 });
+  assert.equal(secondClaim.length, 0);
+  const stored = await pool.query(
+    `SELECT status, attempts, result, leased_by, binary_payload IS NULL AS binary_purged
+     FROM runtime.background_job WHERE job_id = $1`,
+    [first.job_id],
+  );
+  assert.deepEqual(stored.rows[0], {
+    status: "dead_letter",
+    attempts: 1,
+    result: {
+      status: "unknown_completion",
+      code: "runtime_lease_expired_unknown_completion",
+      retryable: false,
+      reconciliation_required: true,
+    },
+    leased_by: null,
+    binary_purged: true,
+  });
+}
+
 async function verifyCurrentFailureGeneration() {
   await enqueue("lease-fence-failure");
   const job = (await claimRuntimeJobs(pool, { workerId: "failure-worker", batchSize: 1, leaseSeconds: 60 }))[0];
@@ -127,6 +160,7 @@ async function verifyCurrentFailureGeneration() {
 Promise.resolve()
   .then(prepareMigratedSchema)
   .then(verifySameWorkerReclaimFence)
+  .then(verifyExpiredLeaseStopsWithoutRedispatch)
   .then(verifyCurrentFailureGeneration)
   .then(() => console.log(JSON.stringify({
     status: "passed",
@@ -136,6 +170,7 @@ Promise.resolve()
       "stale_completion_rejected",
       "stale_failure_rejected",
       "terminal_state_cannot_regress",
+      "expired_processing_lease_stops_without_redispatch",
       "current_failure_generation_succeeds",
     ],
   }, null, 2)))
