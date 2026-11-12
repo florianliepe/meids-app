@@ -46,9 +46,9 @@ function classifyAgentInteraction(input = {}) {
     target = "agentic_butler";
     operation = "interview";
   } else if ((evidenceRequest || storedFactRequest) && workIntent) {
-    route = "retrieve_then_work";
+    route = likelyMultiStep ? "execute_work_async" : "retrieve_then_work";
     target = "knowledge_fabric_agent_then_agentic_butler";
-    operation = "retrieve_then_execute";
+    operation = likelyMultiStep ? "retrieve_then_execute_async" : "retrieve_then_execute";
   } else if (evidenceRequest || storedFactRequest) {
     route = "retrieve_knowledge";
     target = "knowledge_fabric_agent";
@@ -91,6 +91,7 @@ function classifyAgentInteraction(input = {}) {
       critical_faculty: criticalFaculty,
       learning_mode: learningMode,
       external_side_effect_approval: externalSideEffect,
+      retrieval_required: knowledgeDependency >= 3,
       skill_orchestrator: likelyMultiStep,
       max_task_agent_calls: likelyMultiStep ? 2 : 0,
     },

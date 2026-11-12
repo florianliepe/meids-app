@@ -65,17 +65,30 @@ async function run() {
   assert.equal(retrievalCalls, 1);
   assert.equal(retrieval.output.evidence[0].review_state, "approved");
 
+  const retrieveWorkStart = calls.length;
+  const retrieveWork = await adapter.execute(portableRequest({
+    request_id: "retrieve-work",
+    chatInput: "Draft a concise summary from the reviewed evidence.",
+  }));
+  assert.equal(retrieveWork.status, "completed");
+  assert.equal(retrieveWork.route, "retrieve_then_work");
+  assert.equal(retrievalCalls, 2);
+  assert.equal(calls.length - retrieveWorkStart, 1, "Bounded evidence work must retrieve then call one Butler");
+  assert.deepEqual(retrieveWork.trace.role_executions.map((item) => item.agent), ["agentic_butler"]);
+
+  const approvalStart = calls.length;
   const approval = await adapter.execute(portableRequest({ request_id: "write", chatInput: "Remember this as knowledge" }));
   assert.equal(approval.status, "approval_required");
-  assert.equal(calls.length, 2, "Approval-gated knowledge intake must not call the model");
+  assert.equal(calls.length - approvalStart, 0, "Approval-gated knowledge intake must not call the model");
 
+  const queuedStart = calls.length;
   const queued = await adapter.execute(portableRequest({
     request_id: "async",
     chatInput: "First analyse the plan, then compare the options, and after that prepare a recommendation",
   }));
   assert.equal(queued.status, "queued");
   assert.equal(queued.output.enqueue_required, true);
-  assert.equal(calls.length, 2, "Async acknowledgement must not call the model inline");
+  assert.equal(calls.length - queuedStart, 0, "Async acknowledgement must not call the model inline");
 
   const boundedStart = calls.length;
   const bounded = await adapter.execute(portableRequest({ request_id: "bounded", chatInput: "Draft a concise greeting" }));
@@ -113,6 +126,23 @@ async function run() {
   assert.equal(calls.length - chainStart, 3, "Skill work must plan, execute one task, and synthesize");
   assert.deepEqual(chain.trace.role_executions.map((item) => item.agent), ["skill_orchestrator", "task_agent", "agentic_butler"]);
   assert.equal(chain.output.task_results.length, 1);
+
+  const evidenceChainStart = calls.length;
+  const evidenceChain = await adapter.execute(portableRequest({
+    request_id: "evidence-chain",
+    chatInput: "Research the reviewed evidence, compare the options, then prepare a decision brief.",
+    metadata: {
+      source: "meids_backend_background_work",
+      intent: "execute_background_work",
+      side_effect_policy: "no_external_side_effects",
+      routingHints: { backgroundWorker: true },
+      routingContractOverride: { route: "execute_work_sync", skill_orchestrator: true, max_task_agent_calls: 1 },
+    },
+  }));
+  assert.equal(evidenceChain.status, "completed");
+  assert.equal(retrievalCalls, 3);
+  assert.equal(calls.length - evidenceChainStart, 3);
+  assert.deepEqual(evidenceChain.trace.role_executions.map((item) => item.agent), ["skill_orchestrator", "task_agent", "agentic_butler"]);
 
   const learning = await createAzureNativeLearningProposal({
     request_id: "learning",

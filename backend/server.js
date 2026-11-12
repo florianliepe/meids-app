@@ -1172,12 +1172,20 @@ function agentRuntimeFallbackAllowed(error = {}) {
   return true;
 }
 
-async function retrieveForAzureNative(request, mapping = {}) {
+async function retrieveForAzureNative(request, mapping = {}, options = {}) {
   const twinId = request.context?.active_twin_id
     || request.metadata?.identity?.activeTwinId
     || mapping.active_twin_id
     || "";
   const accessContext = accessContextFromMapping(mapping, twinId);
+  const config = azureSearchConfigFromEnv();
+  const timeoutMs = Number(options.timeoutMs);
+  if (Number.isFinite(timeoutMs) && timeoutMs > 0) {
+    // Hybrid retrieval performs at most an embedding request and one Search
+    // request. Split the remaining route budget so their serial time stays
+    // bounded by the caller contract.
+    config.requestTimeoutMs = Math.max(1_000, Math.min(config.requestTimeoutMs, Math.floor(timeoutMs / 2)));
+  }
   return searchVectorKnowledge({
     query: request.message,
     top: 8,
@@ -1186,7 +1194,7 @@ async function retrieveForAzureNative(request, mapping = {}) {
     organization_id: mapping.tenant_id || request.principal?.tenant_id || "",
     twin_id: twinId,
     access_context: accessContext,
-  }, azureSearchConfigFromEnv());
+  }, config);
 }
 
 async function executeAgentRuntime(agentId, envelope, options = {}) {
@@ -1196,7 +1204,7 @@ async function executeAgentRuntime(agentId, envelope, options = {}) {
   const routeEnabled = azureNativeRoutes().has(request.routing_contract.route);
   const useAzure = mode === "azure_native" || (mode === "hybrid" && routeEnabled);
   const adapter = createAzureNativeAgentAdapter({
-    retrieveKnowledge: (portable) => retrieveForAzureNative(portable, options.mapping || {}),
+    retrieveKnowledge: (portable, retrievalOptions) => retrieveForAzureNative(portable, options.mapping || {}, retrievalOptions),
   });
   if (!useAzure) {
     const response = await proxyToN8n(agentId, envelope, options);
