@@ -15,6 +15,8 @@ function requireText(source, text, message) {
 for (const required of [
   "FOR UPDATE SKIP LOCKED",
   "lease_expires_at < now()",
+  'status: "unknown_completion"',
+  "reconciliation_required: true",
   "attempts < max_attempts",
   "binary_payload = NULL",
   "idempotency_key",
@@ -58,7 +60,7 @@ console.log(JSON.stringify({
   contract: "durable-runtime-background-jobs",
   guarantees: [
     "transactional enqueue",
-    "lease recovery",
+    "uncertain lease expiry stops without redispatch",
     "bounded retries",
     "idempotency key",
     "binary payload purge",
