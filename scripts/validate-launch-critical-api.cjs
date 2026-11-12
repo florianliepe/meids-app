@@ -88,6 +88,7 @@ for (const required of [
   'max_task_agent_calls: 2',
   'trace: response.trace || {}',
   "claimApprovalDecision(approvalId, \"resuming\")",
+  "jsonb_build_object('status', $2::text",
   "approval_operation_binding_mismatch",
   'url.pathname === "/api/agents/approvals/resume"',
 ]) {
