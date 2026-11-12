@@ -120,7 +120,7 @@ function classifyAgentInteraction(input = {}) {
     contract.operation = "execute_work";
     contract.gates.skill_orchestrator = override.skill_orchestrator === true;
     contract.gates.max_task_agent_calls = Math.max(0, Math.min(Number(override.max_task_agent_calls) || 0, 2));
-    contract.gates.critical_faculty = false;
+    contract.gates.critical_faculty = override.critical_faculty === true;
     contract.gates.external_side_effect_approval = false;
     contract.budgets.response_ms = 90_000;
     contract.budgets.max_inline_specialists = 1;

@@ -266,6 +266,64 @@ test("Azure-native Learning runs detached and stages only review-needed output",
   assert.ok(calls.some((call) => call.sql.includes("status = 'completed'")));
 });
 
+test("Azure-native Learning dry run executes the proposal without staging knowledge", async () => {
+  const job = {
+    job_id: "learning-dry-run-test",
+    job_type: "learning_post_turn",
+    tenant_id: mapping.tenant_id,
+    actor_user_id: mapping.user_id,
+    twin_id: mapping.active_twin_id,
+    attempts: 1,
+    max_attempts: 3,
+    leased_by: "worker-learning-dry",
+    payload: {
+      mapping,
+      learning: {
+        request_id: "request-learning-dry",
+        trace_id: "trace-learning-dry",
+        source_interaction_summary: "Synthetic no-write learning probe.",
+        dry_run: true,
+      },
+    },
+  };
+  const calls = [];
+  let staged = false;
+  const client = {
+    async query(sql, params = []) {
+      calls.push({ sql: String(sql), params });
+      if (String(sql).includes("RETURNING job.*")) return { rowCount: 1, rows: [job] };
+      return { rowCount: 1, rows: [] };
+    },
+    release() {},
+  };
+  const pool = {
+    async connect() { return client; },
+    async query(sql, params = []) { calls.push({ sql: String(sql), params }); return { rowCount: 1, rows: [] }; },
+  };
+  const api = createWorkspaceApi({
+    async getPgPool() { return pool; },
+    async requireTwinRequestMapping() { return mapping; },
+    async requireKnowledgeRequestMapping() { return mapping; },
+    async readBody() { return {}; }, async readMultipartForm() { throw new Error("not used"); },
+    jsonResponse() {}, async stageKnowledge() {}, async promoteKnowledge() {}, async rejectKnowledge() {},
+    async stageLearning() { staged = true; throw new Error("dry run must not stage"); },
+    async generateLearningProposal() {
+      return { summary: "Synthetic proposal", increment_type: "probe", concept_deltas: [{ operation: "create" }] };
+    },
+    async proxyToN8n() { throw new Error("Learning must not call n8n"); },
+    async transcribeAudio() {}, transcriptionConfig() { return {}; }, issueKnowledgeAccessToken() { return "unused"; },
+  });
+  const result = await api.processRuntimeJobs({ workerId: "worker-learning-dry" });
+  assert.equal(result.results[0].status, "completed");
+  assert.equal(staged, false);
+  const completion = calls.find((call) => call.sql.includes("status = 'completed'"));
+  assert.ok(completion);
+  const stored = JSON.parse(completion.params[1]);
+  assert.equal(stored.status, "proposed_no_write");
+  assert.equal(stored.review_state, "not_persisted");
+  assert.equal(stored.role_executions[0].agent, "learning_agent");
+});
+
 test("worker does not report an n8n timeout fallback as completed or retry it automatically", async () => {
   const job = {
     job_id: "agent-work-timeout-test", job_type: "agent_work",

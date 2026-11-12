@@ -762,6 +762,21 @@ function createWorkspaceApi(deps) {
         const mapping = runtimeMapping(job);
         const learning = job.payload.learning || {};
         const proposal = await generateLearningProposal(learning);
+        if (learning.dry_run === true) {
+          return {
+            status: "proposed_no_write",
+            runtime: "azure_native",
+            review_state: "not_persisted",
+            trace_id: learning.trace_id || "",
+            dry_run: true,
+            role_executions: [{ agent: "learning_agent", mode: "proposal_no_write" }],
+            proposal: {
+              summary: clean(proposal.summary, 1_000),
+              increment_type: clean(proposal.increment_type, 100),
+              concept_delta_count: Array.isArray(proposal.concept_deltas) ? proposal.concept_deltas.length : 0,
+            },
+          };
+        }
         const staged = await stageLearning(await getPgPool(), mapping, {
           ...proposal,
           twin_id: job.twin_id,

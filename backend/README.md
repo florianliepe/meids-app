@@ -21,6 +21,7 @@ This backend is the production boundary for agent runtime calls. GitHub Pages ma
 - `POST /api/knowledge/promote` with `decision: "approve"` (default) or `decision: "reject"`
 - `POST /api/learning/increments`
 - `POST /api/learning/post-turn`
+- `GET /api/learning/post-turn/status?twin=...&job=...` (owner-scoped Azure-native job status)
 
 ## Environment Variables
 

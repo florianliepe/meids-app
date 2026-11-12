@@ -29,6 +29,7 @@ The MeIDs frontend should not call private n8n production webhooks directly. The
 | Endpoint | Purpose | Boundary |
 |---|---|---|
 | `POST /api/learning/post-turn` | Fire-and-forget dispatch to the Learning Agent after Actor Twin has already answered. | Returns `202 accepted`; normal chat must not wait for learning synthesis. |
+| `GET /api/learning/post-turn/status` | Read one Azure-native Learning job by job, tenant, owner and twin scope. | Returns sanitized job/result metadata; foreign or unknown jobs are not exposed. |
 | `POST /api/knowledge/duplicate-check` | Creates duplicate/merge evidence from vector, lexical, graph, and scope signals before Knowledge Fabric creates or updates an OKF concept. | If Azure Search is not configured, returns `duplicate_check.status=insufficient_evidence`. |
 | `POST /api/vector-index/search` | Retrieves approved or selected pending vector context. | Backend-only secrets; browser must not receive Azure keys. |
 | `POST /api/vector-index/rebuild` | Upserts approved/reviewable OKF chunks into Azure AI Search. | Trusted refresh requires review policy. |
