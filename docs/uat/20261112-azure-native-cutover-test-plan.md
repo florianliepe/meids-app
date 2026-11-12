@@ -51,6 +51,18 @@ Queued work and detached Learning now have production evidence. Concurrency, com
 
 Current budgets remain: direct 20 s critical p90, retrieval 30 s, synchronous work 90 s, async acknowledgement 10 s, queued age 90 s and processing age 240 s. Detached Learning has separate dispatch and execution windows.
 
+## Recovery and soak follow-up from issue tracking
+
+PR #89 proves stale terminal writes cannot win, but attempt fencing alone does not prove that a reclaimed worker will avoid a second provider invocation after the original process dies. The remaining tests therefore distinguish database-state safety from external invocation safety:
+
+1. **RW-01 - worker termination at provider acceptance (P0 on duplicate effect):** in an isolated worker/queue environment, kill before dispatch, after dispatch becomes uncertain, after provider result but before terminal commit, and after terminal commit. Record provider invocation count separately from queue attempts. An expired `processing` lease must become visible unknown/reconciliation work and must not auto-dispatch again.
+2. **RW-02 - real principal and grant revocation while polling (P0):** use two dedicated employees, a guest and isolated twins. Revoke after the poll begins, switch twin scope while a response is delayed, and prove current grants remain authoritative without replay or existence leakage.
+3. **RW-03 - measured zero-n8n egress (P1; P0 on egress):** passive production observation with sensor positive control and coverage of every App Service/worker instance, scheduler and legacy alias. Missing or sampled logs are not proof of zero.
+4. **RW-04 - isolated rollback rehearsal (P0 on replay):** switch Azure-native to n8n and back for queued, processing, unknown and terminal work. New work needs one linear cutover point; processing/unknown work remains provider-bound and is never redispatched by a global flag change.
+5. **RW-05 - route soak including failures (P1):** report `n`, window, p50/p90, timeout, cancellation, unknown and error rates per route. Separate async acknowledgement, queue wait, provider time and completion; never remove failed or censored requests from the SLO verdict.
+
+RW-01 and RW-02 are first. RW-03 can run passively in parallel; RW-04 follows the explicit recovery policy; RW-05 runs within a predeclared cost and request budget. Successful single probes remain canary evidence, not soak evidence.
+
 ## Post-cutover adversarial status
 
 The Project Issue Tracking review classifies AZ-13 through AZ-21 as partial or open despite the successful cutover canaries. Deployment and positive route evidence are not substitutes for fault injection.
