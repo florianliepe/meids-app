@@ -98,6 +98,7 @@ flowchart LR
 - Migration 020 is applied. Async work acknowledged in 163 ms and completed in one attempt through Skill Orchestrator, two Task Agents and Butler synthesis with no fallback.
 - Conditional Critical Faculty completed an evidence-dependent production canary in 5,670 ms. Harmless direct and single-task paths did not invoke it.
 - Approval resume uses operation binding, expiry and owner/twin checks. PR #66 moved the claim, bounded Knowledge/Skill write and terminal status into one PostgreSQL transaction. Ephemeral PostgreSQL races passed in both directions, action failure restored pending with no effect, and PROD accepted exactly one of two concurrent decisions.
+- PR #68 makes the server-held Approval snapshot authoritative. Resume accepts decision and review note only; changed Knowledge, Skill, target, operation or revision fields return `409 approval_operation_binding_mismatch` before the Approval is claimed.
 - Signed Entra object IDs are resolved to canonical `identity.app_user` IDs and intersected with current twin grants before Search or persistence.
 - Voice handoff is Azure-native, prepare-only and approval-gated. Missing and forged signed tokens return 401.
 - Final `azure_native` smoke: direct 1,480 ms, unknown reviewed fact 2,557 ms, bounded work 671 ms, tacit interview 591 ms and clarification 63 ms; no fallback was recorded.
