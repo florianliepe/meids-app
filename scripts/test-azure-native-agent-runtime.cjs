@@ -12,6 +12,28 @@ const { agentRuntimeFallbackAllowed } = require("../backend/server");
 const originalFetch = global.fetch;
 const originalEnv = { ...process.env };
 
+const directKnowledgeAlias = portableRequest({
+  agent_id: "knowledge_fabric_agent",
+  intent: "retrieve_context",
+  input: { query: "Synthetic direct Knowledge Fabric lookup" },
+}, { agentId: "knowledge_fabric_agent" });
+assert.equal(directKnowledgeAlias.routing_contract.route, "retrieve_knowledge");
+assert.equal(directKnowledgeAlias.routing_contract.target, "knowledge_fabric_agent");
+
+const directKnowledgeWriteAlias = portableRequest({
+  agent_id: "knowledge_fabric_agent",
+  intent: "ingest_concept",
+  input: { operation: "stage", query: "Synthetic direct Knowledge Fabric staging" },
+}, { agentId: "knowledge_fabric_agent" });
+assert.equal(directKnowledgeWriteAlias.routing_contract.route, "ingest_or_stage_knowledge");
+
+const directButlerAlias = portableRequest({
+  agent_id: "agentic_butler",
+  input: { query: "Synthetic bounded Butler request" },
+}, { agentId: "agentic_butler" });
+assert.equal(directButlerAlias.routing_contract.route, "execute_work_sync");
+assert.equal(directButlerAlias.routing_contract.gates.skill_orchestrator, false);
+
 async function run() {
   const serverSource = fs.readFileSync(path.join(__dirname, "..", "backend", "server.js"), "utf8");
   assert.match(serverSource, /action:\s*"sendMessage"/);

@@ -89,6 +89,8 @@ for (const required of [
   'trace: response.trace || {}',
   "claimApprovalDecision(approvalId, \"resuming\")",
   "jsonb_build_object('status', $2::text",
+  'portableRequest(envelope, { agentId })',
+  'azure_native_configured: azureNativeReady',
   "approval_operation_binding_mismatch",
   'url.pathname === "/api/agents/approvals/resume"',
 ]) {

@@ -1830,16 +1830,19 @@ function createWorkspaceApi(deps) {
   async function voicePreflight(req, res, url) {
     const { mapping } = await context(req, {}, true);
     const twinId = assertTwin(mapping, url.searchParams.get("twin"));
-    const n8nReady = Boolean(process.env.N8N_ACTOR_TWIN_WEBHOOK_URL);
+    const agentRuntime = String(process.env.MEIDS_AGENT_RUNTIME || "n8n").trim().toLowerCase();
+    const azureNativeReady = ["azure_native", "hybrid"].includes(agentRuntime)
+      && Boolean(process.env.AZURE_OPENAI_ENDPOINT)
+      && Boolean(process.env.AZURE_OPENAI_CHAT_DEPLOYMENT);
     jsonResponse(res, 200, {
-      status: n8nReady ? "ready" : "degraded",
+      status: azureNativeReady ? "ready" : "degraded",
       criteria: { approval_state: "approved", version: "circular-w-questions-v1" },
-      agent: { mode: "actor_twin_routed", n8n_configured: n8nReady },
-      summary: { local_uat_ready: true, n8n_ready: n8nReady, twin_id: twinId },
+      agent: { mode: "actor_twin_routed", runtime: agentRuntime, azure_native_configured: azureNativeReady },
+      summary: { local_uat_ready: true, agent_runtime_ready: azureNativeReady, twin_id: twinId },
       checks: [
         { key: "identity_scope", label: "Identity and twin scope", state: "ready", message: "Entra identity, tenant, and selected twin are enforced by the backend." },
         { key: "quality_gate", label: "Circular interview gate", state: "ready", message: "What, how, why, who, and what-then dimensions are scored before commit." },
-        { key: "agent_route", label: "Actor Twin route", state: n8nReady ? "ready" : "warning", message: n8nReady ? "Agent handoffs enter through Actor Twin and use workflow-tool delegation." : "Actor Twin webhook is not configured in this backend instance." },
+        { key: "agent_route", label: "Actor Twin route", state: azureNativeReady ? "ready" : "warning", message: azureNativeReady ? "Agent handoffs enter through the Azure-native Actor Twin runtime." : "The Azure-native Actor Twin runtime is not fully configured in this backend instance." },
       ],
     });
   }

@@ -7,9 +7,29 @@ function messageFromEnvelope(envelope = {}) {
   return String(envelope.chatInput || envelope.input?.message || envelope.input?.query || "").trim();
 }
 
-function portableRequest(envelope = {}) {
+function portableRequest(envelope = {}, options = {}) {
   const message = messageFromEnvelope(envelope);
   const routing = classifyAgentInteraction({ message, metadata: envelope.metadata || {} });
+  const agentId = String(options.agentId || envelope.agent_id || "actor_twin").trim();
+  if (agentId === "knowledge_fabric_agent") {
+    const operation = String(envelope.input?.operation || envelope.intent || envelope.action || "retrieve").toLowerCase();
+    const mutating = /\b(stage|ingest|update|merge|upsert|store|save)\b/.test(operation);
+    routing.route = mutating ? "ingest_or_stage_knowledge" : "retrieve_knowledge";
+    routing.target = "knowledge_fabric_agent";
+    routing.operation = mutating ? "stage" : "retrieve";
+    routing.gates.retrieval_required = !mutating;
+    routing.gates.external_side_effect_approval = false;
+    routing.budgets.response_ms = mutating ? 15_000 : 12_000;
+    routing.legacy_alias = "knowledge_fabric_agent";
+  } else if (agentId === "agentic_butler" && routing.route === "answer_direct") {
+    routing.route = "execute_work_sync";
+    routing.target = "agentic_butler";
+    routing.operation = "execute_work";
+    routing.gates.skill_orchestrator = false;
+    routing.gates.max_task_agent_calls = 0;
+    routing.budgets.response_ms = 20_000;
+    routing.legacy_alias = "agentic_butler";
+  }
   return {
     interface_contract: INPUT_CONTRACT,
     request_id: envelope.request_id || crypto.randomUUID(),

@@ -1250,8 +1250,7 @@ async function retrieveForAzureNative(request, mapping = {}, options = {}) {
 }
 
 async function executeAgentRuntime(agentId, envelope, options = {}) {
-  if (agentId !== "actor_twin") return proxyToN8n(agentId, envelope, options);
-  const request = portableRequest(envelope);
+  const request = portableRequest(envelope, { agentId });
   const mode = agentRuntimeMode();
   const routeEnabled = azureNativeRoutes().has(request.routing_contract.route);
   const useAzure = mode === "azure_native" || (mode === "hybrid" && routeEnabled);
@@ -1260,7 +1259,8 @@ async function executeAgentRuntime(agentId, envelope, options = {}) {
   });
   if (!useAzure) {
     const response = await proxyToN8n(agentId, envelope, options);
-    if (String(process.env.MEIDS_AGENT_SHADOW || "").toLowerCase() === "azure_native"
+    if (agentId === "actor_twin"
+      && String(process.env.MEIDS_AGENT_SHADOW || "").toLowerCase() === "azure_native"
       && !["ingest_or_stage_knowledge", "create_skill"].includes(request.routing_contract.route)) {
       adapter.execute(request).then((shadow) => {
         console.log(JSON.stringify({
