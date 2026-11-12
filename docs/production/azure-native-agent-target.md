@@ -89,7 +89,7 @@ flowchart LR
 
 ## Current rollout state
 
-- PRs #56-#64 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter. Backend merge commit `b6609a403af27b42b7b9958a9c5a1e7cb73a9eb2` is deployed by run `43257774929`; the native frontend remains active.
+- PRs #56-#64 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter. The current backend revision is merge commit `1e34aa83713e021e54078dcc00d376c25134ed73`, deployed by run `43267976986`; the native frontend remains active.
 - The browser talks only to authenticated App Service routes; direct n8n URLs are empty in production runtime configuration.
 - Direct-answer shadow and primary canaries passed from the real App Service web process. A 20-request soak returned 20/20 expected answers with p50 814 ms, p90 1,044 ms and max 1,402 ms.
 - Missing and forged knowledge tokens both return `401 blocked_auth_context`.
@@ -100,6 +100,7 @@ flowchart LR
 - Approval resume uses operation binding, expiry and owner/twin checks. PR #66 moved the claim, bounded Knowledge/Skill write and terminal status into one PostgreSQL transaction. Ephemeral PostgreSQL races passed in both directions, action failure restored pending with no effect, and PROD accepted exactly one of two concurrent decisions.
 - PR #68 makes the server-held Approval snapshot authoritative. Resume accepts decision and review note only; changed Knowledge, Skill, target, operation or revision fields return `409 approval_operation_binding_mismatch` before the Approval is claimed.
 - PR #70 validates crash boundaries with a separate worker and disposable PostgreSQL: termination after the action but before commit rolls back the effect and claim; termination after commit but before acknowledgement leaves one terminal effect and refuses replay.
+- PR #72 injects failures at every Knowledge write (`concept`, `source`, revision, chunk, evidence, outbox and audit) and every Skill proposal write (spec and audit). All writes and the Approval claim roll back together to retryable pending; success traces prove one PostgreSQL process and transaction.
 - Signed Entra object IDs are resolved to canonical `identity.app_user` IDs and intersected with current twin grants before Search or persistence.
 - Voice handoff is Azure-native, prepare-only and approval-gated. Missing and forged signed tokens return 401.
 - Final `azure_native` smoke: direct 1,480 ms, unknown reviewed fact 2,557 ms, bounded work 671 ms, tacit interview 591 ms and clarification 63 ms; no fallback was recorded.
