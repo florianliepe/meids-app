@@ -72,6 +72,18 @@ function responseText(data = {}) {
   return String(data.output_text || data.text || "").trim();
 }
 
+function throttleDelayMs(response, attempt) {
+  const millisecondHeader = Number(response.headers?.get?.("x-ms-retry-after-ms") || response.headers?.get?.("retry-after-ms"));
+  if (Number.isFinite(millisecondHeader) && millisecondHeader >= 0) return Math.min(millisecondHeader, 5_000);
+  const secondsHeader = Number(response.headers?.get?.("retry-after"));
+  if (Number.isFinite(secondsHeader) && secondsHeader >= 0) return Math.min(secondsHeader * 1_000, 5_000);
+  return Math.min(500 * (2 ** attempt), 2_000);
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function completeChat(messages, options = {}) {
   const config = options.config || azureOpenAiChatConfigFromEnv();
   if (!config.configured) {
@@ -91,37 +103,53 @@ async function completeChat(messages, options = {}) {
     url = `${config.endpoint}/chat/completions`;
     headers.Authorization = `Bearer ${config.apiKey}`;
   }
+  const body = JSON.stringify({
+    model: config.deployment,
+    messages,
+    temperature: Number.isFinite(options.temperature) ? options.temperature : 0.2,
+    max_tokens: Math.min(Number(options.maxOutputTokens || config.maxOutputTokens), config.maxOutputTokens),
+  });
+  const maximumThrottleRetries = Math.max(0, Math.min(Number(options.maxThrottleRetries ?? 1), 2));
+  const deadline = Date.now() + timeoutMs;
   let response;
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: config.deployment,
-        messages,
-        temperature: Number.isFinite(options.temperature) ? options.temperature : 0.2,
-        max_tokens: Math.min(Number(options.maxOutputTokens || config.maxOutputTokens), config.maxOutputTokens),
-      }),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-  } catch (cause) {
-    if (["AbortError", "TimeoutError"].includes(String(cause?.name || ""))) {
-      const error = new Error(`Azure-native chat exceeded its ${timeoutMs} ms response budget; completion is unknown.`);
-      error.statusCode = 504;
-      error.code = "azure_chat_timeout";
-      error.noRetry = true;
-      error.unknownCompletion = true;
-      throw error;
-    }
-    throw cause;
-  }
-  const raw = await response.text();
   let data = {};
-  try { data = raw ? JSON.parse(raw) : {}; } catch { data = { raw }; }
-  if (!response.ok) {
-    const error = new Error(data.error?.message || data.message || data.raw || `Chat provider returned ${response.status}`);
-    error.statusCode = response.status;
-    error.code = "azure_chat_failed";
+  let throttleRetries = 0;
+  for (let attempt = 0; attempt <= maximumThrottleRetries; attempt += 1) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs < 1_000) break;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers,
+        body,
+        signal: AbortSignal.timeout(remainingMs),
+      });
+    } catch (cause) {
+      if (["AbortError", "TimeoutError"].includes(String(cause?.name || ""))) {
+        const error = new Error(`Azure-native chat exceeded its ${timeoutMs} ms response budget; completion is unknown.`);
+        error.statusCode = 504;
+        error.code = "azure_chat_timeout";
+        error.noRetry = true;
+        error.unknownCompletion = true;
+        throw error;
+      }
+      throw cause;
+    }
+    const raw = await response.text();
+    try { data = raw ? JSON.parse(raw) : {}; } catch { data = { raw }; }
+    if (response.status !== 429 || attempt >= maximumThrottleRetries) break;
+    const delayMs = throttleDelayMs(response, attempt);
+    if (Date.now() + delayMs + 1_000 >= deadline) break;
+    throttleRetries += 1;
+    await wait(delayMs);
+  }
+  if (!response?.ok) {
+    const status = Number(response?.status || 503);
+    const error = new Error(data.error?.message || data.message || data.raw || `Chat provider returned ${status}`);
+    error.statusCode = status;
+    error.code = status === 429 ? "azure_chat_throttled" : "azure_chat_failed";
+    error.retryAfterMs = status === 429 && response ? throttleDelayMs(response, throttleRetries) : 0;
+    error.throttleRetries = throttleRetries;
     throw error;
   }
   const text = responseText(data);
@@ -136,6 +164,7 @@ async function completeChat(messages, options = {}) {
     provider: config.provider,
     model: config.deployment,
     usage: data.usage || null,
+    throttleRetries,
   };
 }
 
