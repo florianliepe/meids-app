@@ -96,7 +96,7 @@ flowchart LR
 
 ## Current rollout state
 
-- PRs #56-#87 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter, hardened the Azure-native Nightly verdict and added authoritative Learning dry-run domain proof. The current backend revision is merge commit `088303a591d67044b0ae207685f27a93247a0eaa`, deployed by run `43286637969`; the native frontend remains active.
+- PRs #56-#89 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter, hardened the Azure-native Nightly verdict, added authoritative Learning dry-run domain proof and fenced reclaimed worker attempts. The current backend revision is merge commit `11d5c944454b58058a1aaf74432dcad3cf2720f6`, deployed by run `43288844451`; the native frontend remains active.
 - The browser talks only to authenticated App Service routes; direct n8n URLs are empty in production runtime configuration.
 - Direct-answer shadow and primary canaries passed from the real App Service web process. A 20-request soak returned 20/20 expected answers with p50 814 ms, p90 1,044 ms and max 1,402 ms.
 - Missing and forged knowledge tokens both return `401 blocked_auth_context`.
@@ -117,6 +117,7 @@ flowchart LR
 - Voice handoff is Azure-native, prepare-only and approval-gated. Missing and forged signed tokens return 401.
 - Final `azure_native` smoke: direct 1,480 ms, unknown reviewed fact 2,557 ms, bounded work 671 ms, tacit interview 591 ms and clarification 63 ms; no fallback was recorded.
 - Runtime recovery hardening uses the atomic PostgreSQL claim counter as a lease generation. Completion and failure compare job ID, processing state, worker ID and generation. Isolated PostgreSQL validation reclaims an expired lease with the same worker ID, rejects both stale completion and stale failure, and proves the accepted terminal result cannot regress. Azure OpenAI timeout validation marks completion unknown and non-retryable.
+- Post-deploy no-write UAT on backend `11d5c944` passed 5/5 scenarios and 7/7 roles with no findings: direct 753 ms, retrieval 1,903 ms, conditional critique 1,740 ms, Butler/Skill/Task 2,545 ms and detached Learning 5,157 ms. Learning completed once on attempt 1 with matching non-empty authoritative domain digests.
 
 ## Cutover gates
 
