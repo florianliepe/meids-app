@@ -75,7 +75,7 @@ flowchart LR
 4. One bounded, no-side-effect task bypasses Skill Orchestrator. Multi-step work is acknowledged and queued before generative work begins.
 5. Critical Faculty runs only for high-risk or uncertain evidence-dependent decisions.
 6. Learning is detached from the user response and may create only review-needed proposals.
-7. Unknown completion is never retried automatically. Cancellation is allowed only before a worker lease is acquired.
+7. Unknown completion is never retried automatically. Cancellation is allowed only before a worker lease is acquired. Every claimed PostgreSQL job uses its incremented `attempts` value as a fencing generation, so a late completion or failure from an expired lease cannot overwrite a reclaimed attempt even when the App Service instance reuses the same worker ID.
 8. The browser receives no n8n worker URL in native mode. Authentication, retrieval, progress, cancellation and result reads go through App Service routes.
 9. A Learning `dry_run` succeeds only when owner/twin-scoped PostgreSQL fingerprints for Learning, Knowledge, Graph and domain outbox state are identical before and after proposal generation. Operational job and trace persistence is outside this domain fingerprint.
 
@@ -116,6 +116,7 @@ flowchart LR
 - Signed Entra object IDs are resolved to canonical `identity.app_user` IDs and intersected with current twin grants before Search or persistence.
 - Voice handoff is Azure-native, prepare-only and approval-gated. Missing and forged signed tokens return 401.
 - Final `azure_native` smoke: direct 1,480 ms, unknown reviewed fact 2,557 ms, bounded work 671 ms, tacit interview 591 ms and clarification 63 ms; no fallback was recorded.
+- Runtime recovery hardening uses the atomic PostgreSQL claim counter as a lease generation. Completion and failure compare job ID, processing state, worker ID and generation. Isolated PostgreSQL validation reclaims an expired lease with the same worker ID, rejects both stale completion and stale failure, and proves the accepted terminal result cannot regress. Azure OpenAI timeout validation marks completion unknown and non-retryable.
 
 ## Cutover gates
 

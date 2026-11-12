@@ -119,8 +119,8 @@ async function completeRuntimeJob(pool, job, result) {
      SET status = 'completed', result = $2::jsonb, last_error = NULL,
          completed_at = now(), leased_at = NULL, lease_expires_at = NULL,
          leased_by = NULL, binary_payload = NULL, updated_at = now()
-     WHERE job_id = $1 AND status = 'processing' AND leased_by = $3`,
-    [job.job_id, JSON.stringify(result || {}), job.leased_by],
+     WHERE job_id = $1 AND status = 'processing' AND leased_by = $3 AND attempts = $4`,
+    [job.job_id, JSON.stringify(result || {}), job.leased_by, Number(job.attempts)],
   );
   if (update.rowCount !== 1) throw new Error(`Runtime job completion lease was lost for ${job.job_id}.`);
 }
@@ -138,8 +138,15 @@ async function failRuntimeJob(pool, job, error) {
          leased_at = NULL, lease_expires_at = NULL, leased_by = NULL,
          binary_payload = CASE WHEN $2 = 'dead_letter' THEN NULL ELSE binary_payload END,
          updated_at = now()
-     WHERE job_id = $1 AND status = 'processing' AND leased_by = $5`,
-    [job.job_id, terminal ? "dead_letter" : "failed", clean(error?.message || error, 4_000), delaySeconds, job.leased_by],
+     WHERE job_id = $1 AND status = 'processing' AND leased_by = $5 AND attempts = $6`,
+    [
+      job.job_id,
+      terminal ? "dead_letter" : "failed",
+      clean(error?.message || error, 4_000),
+      delaySeconds,
+      job.leased_by,
+      Number(job.attempts),
+    ],
   );
   if (update.rowCount !== 1) throw new Error(`Runtime job failure lease was lost for ${job.job_id}.`);
   return { terminal, delay_seconds: terminal ? 0 : delaySeconds };
@@ -187,5 +194,7 @@ module.exports = {
   enqueueRuntimeJob,
   cancelQueuedRuntimeJob,
   claimRuntimeJobs,
+  completeRuntimeJob,
+  failRuntimeJob,
   processRuntimeJobBatch,
 };
