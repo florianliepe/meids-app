@@ -31,6 +31,52 @@ async function recordRolledBackFailure(pool, approvalId, error) {
   );
 }
 
+function approvalOwnerAndTwin(approval = {}) {
+  const request = approval.original_request || {};
+  return {
+    tenantId: String(request.principal?.tenant_id || "").trim(),
+    userId: String(request.principal?.user_id || "").trim(),
+    twinId: String(request.context?.active_twin_id || request.metadata?.identity?.activeTwinId || "").trim(),
+    approvedAt: String(approval.timestamp || "").trim(),
+  };
+}
+
+async function assertCurrentApprovalAuthorization(client, mapping, approval) {
+  const owner = approvalOwnerAndTwin(approval);
+  if (!owner.tenantId || !owner.userId || !owner.twinId || !owner.approvedAt
+    || owner.tenantId !== mapping.tenant_id || owner.userId !== mapping.user_id) {
+    const error = new Error("Approval authorization binding is invalid.");
+    error.statusCode = 403;
+    error.code = "approval_authorization_revoked";
+    error.noRetry = true;
+    throw error;
+  }
+  const current = await client.query(
+    `SELECT access.access_role, access.created_at
+     FROM identity.app_user app_user
+     JOIN twin.user_twin_access access
+       ON access.tenant_id = app_user.tenant_id AND access.user_id = app_user.user_id
+     JOIN twin.twin twin_row
+       ON twin_row.tenant_id = access.tenant_id AND twin_row.twin_id = access.twin_id
+     WHERE app_user.tenant_id = $1
+       AND app_user.user_id = $2
+       AND app_user.status = 'active'
+       AND access.twin_id = $3
+       AND twin_row.status = 'active'
+       AND access.created_at <= $4::timestamptz
+     FOR SHARE OF app_user, access, twin_row`,
+    [owner.tenantId, owner.userId, owner.twinId, owner.approvedAt],
+  );
+  if (!current.rowCount) {
+    const error = new Error("Approval authorization changed before execution.");
+    error.statusCode = 403;
+    error.code = "approval_authorization_revoked";
+    error.noRetry = true;
+    throw error;
+  }
+  return { ...owner, accessRole: current.rows[0].access_role, grantCreatedAt: current.rows[0].created_at };
+}
+
 async function runPostgresApprovalDecision(pool, options) {
   const {
     approvalId,
@@ -100,5 +146,6 @@ async function runPostgresApprovalDecision(pool, options) {
 }
 
 module.exports = {
+  assertCurrentApprovalAuthorization,
   runPostgresApprovalDecision,
 };
