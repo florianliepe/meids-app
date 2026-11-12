@@ -2197,6 +2197,54 @@ async function handlePostTurnLearning(req, res) {
   });
 }
 
+async function handlePostTurnLearningStatus(req, res, url) {
+  if (!azureNativeLearningEnabled()) {
+    jsonResponse(res, 409, { status: "unavailable", error: "Azure-native Learning is not active." });
+    return;
+  }
+  const mapping = await requireKnowledgeRequestMapping(req, {});
+  const jobId = String(url.searchParams.get("job") || "").trim().slice(0, 128);
+  const twinId = cleanTwinId(url.searchParams.get("twin") || mapping.active_twin_id);
+  if (!jobId) {
+    const error = new Error("A Learning job ID is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!twinId || !mapping.allowed_twin_ids.includes(twinId)) {
+    const error = new Error("The requested Learning job is outside the authenticated scope.");
+    error.statusCode = 403;
+    throw error;
+  }
+  const result = await (await getPgPool()).query(
+    `SELECT job_id, status, attempts, max_attempts, result, last_error,
+            created_at, started_at, completed_at, updated_at
+     FROM runtime.background_job
+     WHERE job_id = $1 AND job_type = 'learning_post_turn'
+       AND tenant_id = $2 AND actor_user_id = $3 AND twin_id = $4
+     LIMIT 1`,
+    [jobId, mapping.tenant_id, mapping.user_id, twinId],
+  );
+  if (!result.rowCount) {
+    const error = new Error("Learning job not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+  const job = result.rows[0];
+  jsonResponse(res, 200, {
+    job_id: job.job_id,
+    status: job.status === "pending" ? "queued" : job.status,
+    runtime: "azure_native",
+    attempts: Number(job.attempts || 0),
+    max_attempts: Number(job.max_attempts || 0),
+    result: job.result || null,
+    error: job.last_error || "",
+    created_at: job.created_at,
+    started_at: job.started_at,
+    completed_at: job.completed_at,
+    updated_at: job.updated_at,
+  });
+}
+
 function backendHealthPayload() {
   const adminGate = n8nAdminGate();
   const transcription = openAiTranscriptionConfig();
@@ -3528,6 +3576,10 @@ async function routeRequest(req, res) {
     }
     if (req.method === "POST" && url.pathname === "/api/learning/post-turn") {
       await handlePostTurnLearning(req, res);
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/learning/post-turn/status") {
+      await handlePostTurnLearningStatus(req, res, url);
       return;
     }
     if (await handleWorkspaceApi(req, res, url)) return;

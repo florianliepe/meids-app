@@ -54,6 +54,18 @@ assert.equal(probeOverride.gates.skill_orchestrator, true);
 assert.equal(probeOverride.gates.max_task_agent_calls, 1);
 assert.equal(probeOverride.gates.critical_faculty, false);
 
+const criticalProbeOverride = classifyAgentInteraction({
+  message: "Review synthetic option A.",
+  metadata: {
+    source: "run-seven-agent-no-write-uat",
+    intent: "live_probe",
+    side_effect_policy: "no_write_probe",
+    routingHints: { noWriteProbe: true },
+    routingContractOverride: { route: "execute_work_sync", critical_faculty: true },
+  },
+});
+assert.equal(criticalProbeOverride.gates.critical_faculty, true);
+
 const backgroundOverride = classifyAgentInteraction({
   message: "Research the evidence, compare the options, then prepare a decision brief.",
   metadata: {
@@ -97,4 +109,4 @@ const untrustedBackgroundOverride = classifyAgentInteraction({
 assert.equal(untrustedBackgroundOverride.route, "execute_work_async");
 assert.equal(untrustedBackgroundOverride.worker_override, undefined);
 
-console.log(`Agent routing policy tests passed: ${cases.length + 8} cases`);
+console.log(`Agent routing policy tests passed: ${cases.length + 9} cases`);
