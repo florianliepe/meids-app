@@ -2581,6 +2581,72 @@ async function resolveAuthorizationMapping(principal) {
   };
 }
 
+async function resolveSignedAuthorizationMapping(access, suppliedPool = null) {
+  const pool = suppliedPool || await getPgPool();
+  if (!pool) {
+    const error = new Error("Database authorization is enabled but PostgreSQL is unavailable.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const result = await pool.query(`
+    SELECT
+      app_user.user_id,
+      app_user.email,
+      app_user.display_name,
+      app_user.tenant_id,
+      app_user.active_twin_id,
+      COALESCE((
+        SELECT array_agg(DISTINCT twin_access.twin_id ORDER BY twin_access.twin_id)
+        FROM twin.user_twin_access twin_access
+        WHERE twin_access.tenant_id = app_user.tenant_id
+          AND twin_access.user_id = app_user.user_id
+      ), ARRAY[]::text[]) AS allowed_twin_ids,
+      COALESCE((
+        SELECT array_agg(DISTINCT app_role.role ORDER BY app_role.role)
+        FROM identity.user_application_role app_role
+        WHERE app_role.tenant_id = app_user.tenant_id
+          AND app_role.user_id = app_user.user_id
+      ), ARRAY['user']::text[]) AS roles,
+      COALESCE((
+        SELECT array_agg(DISTINCT user_group.group_id ORDER BY user_group.group_id)
+        FROM identity.user_group user_group
+        WHERE user_group.tenant_id = app_user.tenant_id
+          AND user_group.user_id = app_user.user_id
+      ), ARRAY[]::text[]) AS group_ids
+    FROM identity.app_user app_user
+    WHERE app_user.tenant_id = $1
+      AND app_user.status = 'active'
+      AND (
+        app_user.user_id = $2
+        OR lower(app_user.entra_object_id) = lower($2)
+      )
+    LIMIT 1
+  `, [access.tenant_id, access.user_id]);
+  const user = result.rows[0];
+  if (!user) {
+    const error = new Error("The signed identity has no active Me.IDs production mapping.");
+    error.statusCode = 403;
+    throw error;
+  }
+  const tokenTwins = new Set(access.allowed_twin_ids || []);
+  const allowedTwinIds = (user.allowed_twin_ids || []).filter((twinId) => tokenTwins.has(twinId));
+  if (!allowedTwinIds.length || !allowedTwinIds.includes(access.active_twin_id)) {
+    const error = new Error("The signed identity no longer has access to the requested twin.");
+    error.statusCode = 403;
+    throw error;
+  }
+  return {
+    ...user,
+    active_twin_id: access.active_twin_id,
+    allowed_twin_ids: allowedTwinIds,
+    roles: user.roles || [],
+    group_ids: user.group_ids || [],
+    visibility_scopes: access.visibility_scopes || [],
+    knowledge_scope: access.knowledge_scope || "active_twin",
+    external_user_id: access.user_id,
+  };
+}
+
 const TWIN_PROFILE_FIELDS = [
   "organization",
   "default_language",
@@ -2678,6 +2744,7 @@ async function requireKnowledgeRequestMapping(req, body = {}) {
   if (principal) return resolveAuthorizationMapping(principal);
   const access = knowledgeAccessContextFromRequest(req, body);
   if (access?.tenant_id && access?.user_id && access?.allowed_twin_ids?.length) {
+    if (databaseAuthorizationEnabled()) return resolveSignedAuthorizationMapping(access);
     return {
       tenant_id: access.tenant_id,
       user_id: access.user_id,
@@ -3528,6 +3595,7 @@ module.exports = {
   buildTraceRecord,
   buildApprovalRecord,
   agentRuntimeFallbackAllowed,
+  resolveSignedAuthorizationMapping,
   routeRequest,
   decodeMultipartFilename,
 };
