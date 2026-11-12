@@ -32,6 +32,8 @@ function approvalVisibleToMapping(approval = {}, mapping = {}) {
 async function reconcilePostgresApprovalDecision(pool, options) {
   const { approvalId, mapping, expectedTerminalStatus } = options;
   const client = await pool.connect();
+  const absorbConnectionErrorEvent = () => {};
+  client.on("error", absorbConnectionErrorEvent);
   try {
     await client.query("BEGIN");
     await setRequestContext(client, mapping);
@@ -67,6 +69,7 @@ async function reconcilePostgresApprovalDecision(pool, options) {
     throw error;
   } finally {
     client.release();
+    client.off("error", absorbConnectionErrorEvent);
   }
 }
 
@@ -140,6 +143,8 @@ async function runPostgresApprovalDecision(pool, options) {
     terminalPatch = {},
   } = options;
   const client = await pool.connect();
+  const absorbConnectionErrorEvent = () => {};
+  client.on("error", absorbConnectionErrorEvent);
   let commitAttempted = false;
   try {
     await client.query("BEGIN");
@@ -210,6 +215,7 @@ async function runPostgresApprovalDecision(pool, options) {
     throw error;
   } finally {
     client.release();
+    client.off("error", absorbConnectionErrorEvent);
   }
 }
 
