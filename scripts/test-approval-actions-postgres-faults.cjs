@@ -81,6 +81,9 @@ async function prepare() {
   await pool.query(`CREATE TABLE test_tx_trace (
     table_name text NOT NULL, backend_pid integer NOT NULL, transaction_id bigint NOT NULL
   )`);
+  await pool.query(`CREATE TABLE approval_effect (
+    approval_id text PRIMARY KEY, effect text NOT NULL
+  )`);
   await pool.query(`CREATE FUNCTION test_record_or_fail() RETURNS trigger LANGUAGE plpgsql AS $$
     DECLARE target text := TG_TABLE_SCHEMA || '.' || TG_TABLE_NAME;
     BEGIN
@@ -102,7 +105,8 @@ async function prepare() {
 async function reset(approvalId) {
   await pool.query(`TRUNCATE
     agent_approval_queue, knowledge.concept, knowledge.source, knowledge.concept_revision,
-    knowledge.chunk, knowledge.evidence, runtime.outbox_event, agent.skill_spec, audit.event, test_tx_trace`);
+    knowledge.chunk, knowledge.evidence, runtime.outbox_event, agent.skill_spec, audit.event,
+    test_tx_trace, approval_effect`);
   await pool.query(
     `INSERT INTO agent_approval_queue (approval_id, status, record)
      VALUES ($1, 'pending_human_approval', $2::jsonb)`,
@@ -138,6 +142,17 @@ function skillPayload(suffix) {
 async function tableCount(table) {
   const result = await pool.query(`SELECT count(*)::int AS count FROM ${table}`);
   return result.rows[0].count;
+}
+
+async function waitForLockWait() {
+  const deadline = Date.now() + 2_000;
+  while (Date.now() < deadline) {
+    const result = await pool.query(`SELECT pid FROM pg_stat_activity
+      WHERE datname = current_database() AND wait_event_type = 'Lock' AND state = 'active'`);
+    if (result.rows.length) return result.rows.map(({ pid }) => pid);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error("Approval action did not reach the observed PostgreSQL lock wait.");
 }
 
 async function assertNoDomainWrites() {
@@ -227,6 +242,96 @@ async function successfulSkillApproval() {
   await assertSingleTransaction(["agent.skill_spec", "audit.event"]);
 }
 
+async function lockTimeoutRestoresPending() {
+  const approvalId = "knowledge-lock-timeout";
+  await reset(approvalId);
+  await pool.query(`INSERT INTO knowledge.concept
+    (tenant_id, owner_user_id, twin_id, canonical_key, title, visibility_scope, review_state, current_revision)
+    VALUES ('tenant-a', 'user-a', 'twin-a', 'fault-safe-knowledge-lock-timeout', 'Seeded locked concept',
+      'private', 'review_needed', 1)`);
+  await pool.query("TRUNCATE test_tx_trace");
+  const blocker = await pool.connect();
+  try {
+    await blocker.query("BEGIN");
+    await blocker.query(`SELECT concept_id FROM knowledge.concept
+      WHERE canonical_key = 'fault-safe-knowledge-lock-timeout' FOR UPDATE`);
+    const timedDecision = runPostgresApprovalDecision(pool, {
+      approvalId,
+      mapping,
+      decisionStatus: "resuming",
+      terminalStatus: "resumed",
+      execute: async (client) => {
+        await client.query("SET LOCAL lock_timeout = '750ms'");
+        return stageKnowledge(pool, mapping, knowledgePayload("lock-timeout"), { client });
+      },
+    });
+    const waitingPids = await waitForLockWait();
+    assert.equal(waitingPids.length, 1);
+    await assert.rejects(timedDecision, (error) => error.code === "55P03" && error.approvalTransactionRolledBack === true);
+  } finally {
+    await blocker.query("ROLLBACK").catch(() => {});
+    blocker.release();
+  }
+  const state = await pool.query("SELECT status, record FROM agent_approval_queue WHERE approval_id = $1", [approvalId]);
+  assert.equal(state.rows[0].status, "pending_human_approval");
+  assert.equal(state.rows[0].record.last_failure_rolled_back, true);
+  const concept = await pool.query("SELECT title, current_revision FROM knowledge.concept");
+  assert.deepEqual(concept.rows, [{ title: "Seeded locked concept", current_revision: 1 }]);
+  for (const table of domainTables.filter((table) => table !== "knowledge.concept")) {
+    assert.equal(await tableCount(table), 0, `${table} must remain empty after lock timeout`);
+  }
+}
+
+async function deadlockAbortsOneDecisionWithoutReplay() {
+  await reset("deadlock-a");
+  await pool.query(
+    `INSERT INTO agent_approval_queue (approval_id, status, record)
+     VALUES ('deadlock-b', 'pending_human_approval', $1::jsonb)`,
+    [JSON.stringify({ approval_id: "deadlock-b", status: "pending_human_approval" })],
+  );
+  await pool.query(`INSERT INTO knowledge.concept
+    (tenant_id, owner_user_id, twin_id, canonical_key, title, visibility_scope, review_state, current_revision)
+    VALUES
+      ('tenant-a', 'user-a', 'twin-a', 'deadlock-a', 'Deadlock A', 'private', 'review_needed', 1),
+      ('tenant-a', 'user-a', 'twin-a', 'deadlock-b', 'Deadlock B', 'private', 'review_needed', 1)`);
+  await pool.query("TRUNCATE test_tx_trace");
+  let ready = 0;
+  let release;
+  const bothLocked = new Promise((resolve) => { release = resolve; });
+  const decision = (approvalId, firstKey, secondKey) => runPostgresApprovalDecision(pool, {
+    approvalId,
+    mapping,
+    decisionStatus: "resuming",
+    terminalStatus: "resumed",
+    execute: async (client) => {
+      await client.query("SET LOCAL deadlock_timeout = '50ms'");
+      await client.query("SELECT concept_id FROM knowledge.concept WHERE canonical_key = $1 FOR UPDATE", [firstKey]);
+      ready += 1;
+      if (ready === 2) release();
+      await bothLocked;
+      await client.query("SELECT concept_id FROM knowledge.concept WHERE canonical_key = $1 FOR UPDATE", [secondKey]);
+      await client.query("INSERT INTO approval_effect (approval_id, effect) VALUES ($1, 'governed-write')", [approvalId]);
+      return { persisted: true };
+    },
+  });
+  const settled = await Promise.allSettled([
+    decision("deadlock-a", "deadlock-a", "deadlock-b"),
+    decision("deadlock-b", "deadlock-b", "deadlock-a"),
+  ]);
+  const fulfilled = settled.filter((item) => item.status === "fulfilled");
+  const rejected = settled.filter((item) => item.status === "rejected");
+  assert.equal(fulfilled.length, 1);
+  assert.equal(fulfilled[0].value.claimed, true);
+  assert.equal(rejected.length, 1);
+  assert.equal(rejected[0].reason.code, "40P01");
+  assert.equal(rejected[0].reason.approvalTransactionRolledBack, true);
+  const states = await pool.query("SELECT status, record FROM agent_approval_queue ORDER BY approval_id");
+  assert.deepEqual(states.rows.map(({ status }) => status).sort(), ["pending_human_approval", "resumed"]);
+  const pending = states.rows.find(({ status }) => status === "pending_human_approval");
+  assert.equal(pending.record.last_failure_rolled_back, true);
+  assert.equal(await tableCount("approval_effect"), 1);
+}
+
 const knowledgeFailpoints = [
   "knowledge.concept", "knowledge.source", "knowledge.concept_revision", "knowledge.chunk",
   "knowledge.evidence", "runtime.outbox_event", "audit.event",
@@ -241,12 +346,16 @@ Promise.resolve()
   })
   .then(successfulKnowledgeApproval)
   .then(successfulSkillApproval)
+  .then(lockTimeoutRestoresPending)
+  .then(deadlockAbortsOneDecisionWithoutReplay)
   .then(() => console.log(JSON.stringify({
     status: "passed",
     scenarios: {
       knowledge_failpoints: knowledgeFailpoints,
       skill_failpoints: skillFailpoints,
       same_connection_and_transaction: true,
+      lock_timeout_restores_pending: true,
+      deadlock_aborts_one_without_replay: true,
     },
   }, null, 2)))
   .finally(() => pool.end())
