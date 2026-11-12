@@ -212,15 +212,38 @@ function createAzureNativeAgentAdapter({ retrieveKnowledge }) {
         trace: { runtime: "azure_native", target_agent: routing.target },
       };
     }
+    const roleExecutions = [];
     let retrieval = null;
     let evidence = [];
     if (needsRetrieval(route, routing)) {
-      retrieval = await retrieveKnowledge(request, {
-        timeoutMs: remainingStageBudget(primaryDeadline, 20_000, "azure_retrieval_budget_exhausted"),
-      });
+      const retrievalStartedAt = Date.now();
+      try {
+        retrieval = await retrieveKnowledge(request, {
+          timeoutMs: remainingStageBudget(primaryDeadline, 20_000, "azure_retrieval_budget_exhausted"),
+        });
+      } catch (error) {
+        if (!["azure_search_timeout", "azure_search_unavailable"].includes(String(error.code || ""))) throw error;
+        roleExecutions.push({ agent: "knowledge_fabric_agent", mode: "retrieve", status: "unavailable", duration_ms: elapsedMs(retrievalStartedAt) });
+        return {
+          status: "blocked",
+          output: {
+            answer: "Reviewed knowledge is temporarily unavailable. Please retry in a moment.",
+            error_code: "retrieval_unavailable",
+            route_decision: routing,
+            evidence: [],
+          },
+          trace: {
+            runtime: "azure_native",
+            target_agent: "knowledge_fabric_agent",
+            knowledge_retrieved: false,
+            retrieval_status: "unavailable",
+            search_retry_count: Number(error.searchRetries || 0),
+            role_executions: roleExecutions,
+          },
+        };
+      }
       evidence = formatEvidence(retrieval);
     }
-    const roleExecutions = [];
     let completion;
     let answer;
     let skillPlan = null;
@@ -281,6 +304,7 @@ function createAzureNativeAgentAdapter({ retrieveKnowledge }) {
         provider_throttle_rejections: Number(completion.throttleRejections || 0),
         target_agent: routing.target,
         knowledge_retrieved: Boolean(retrieval),
+        search_retry_count: Number(retrieval?.search_retry_count || 0),
         critical_faculty_applied: Boolean(critic),
         learning_mode: routing.gates?.learning_mode || "post_turn_only",
         trace_learning_recommended: recommendLearning

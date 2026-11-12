@@ -123,6 +123,7 @@ flowchart LR
 - Post-deploy no-write UAT on the final no-redispatch backend `0b810fa2` also passed 5/5 scenarios and 7/7 roles with no findings: direct 1,034 ms, retrieval 1,803 ms, conditional critique 1,957 ms, Butler/Skill/Task 3,409 ms and detached Learning 7,709 ms. Learning completed once on attempt 1 with unchanged authoritative domain fingerprints.
 - The first Azure-native route soak exposed the original deployment's 20 RPM bottleneck with 4/50 HTTP 429 responses. PR #97 added one deadline-bounded retry only for definitive 429 rejection; timeout remains unknown and non-retryable. Capacity was increased to 50 RPM/50k TPM without changing the model or version. The identical post-change serial window passed 50/50 with zero retry, timeout, cancellation, unknown completion or 429; the 100-sample multi-window maturity gate remains open.
 - PR #99 prevents an early retry when the provider's Retry-After exceeds the 5-second wait cap or remaining operation deadline. Its post-deploy no-write direct smoke completed Azure-native in 910 ms with zero throttle rejection or retry.
+- Multi-window route-soak window 2 exposed one Azure AI Search timeout in 45 Retrieval requests. The target boundary permits one idempotent Search-read retry inside the original route deadline; exhaustion must return `retrieval_unavailable`, never false `not_found`, whole-agent replay or n8n fallback.
 
 ## Cutover gates
 
