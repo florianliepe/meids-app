@@ -1020,7 +1020,7 @@ async function claimApprovalDecision(approvalId, nextStatus) {
     const result = await pool.query(
       `UPDATE agent_approval_queue
        SET status = $2,
-           record = record || jsonb_build_object('status', $2, 'decision_started_at', now()::text),
+           record = record || jsonb_build_object('status', $2::text, 'decision_started_at', now()::text),
            updated_at = now()
        WHERE approval_id = $1 AND status = 'pending_human_approval'
        RETURNING record`,
