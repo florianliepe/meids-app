@@ -100,6 +100,54 @@ async function withContext(pool, mapping, callback) {
   }
 }
 
+const LEARNING_DRY_RUN_DOMAIN_QUERIES = [
+  ["learning.increment", "increment_id", `SELECT * FROM learning.increment WHERE tenant_id = $1 AND owner_user_id = $2 AND twin_id = $3`],
+  ["learning.concept_delta", "delta_id", `SELECT delta.* FROM learning.concept_delta delta JOIN learning.increment increment ON increment.increment_id = delta.increment_id WHERE increment.tenant_id = $1 AND increment.owner_user_id = $2 AND increment.twin_id = $3`],
+  ["knowledge.source", "source_id", `SELECT * FROM knowledge.source WHERE tenant_id = $1 AND owner_user_id = $2 AND twin_id = $3`],
+  ["knowledge.concept", "concept_id", `SELECT * FROM knowledge.concept WHERE tenant_id = $1 AND owner_user_id = $2 AND twin_id = $3`],
+  ["knowledge.concept_revision", "concept_id::text || ':' || revision::text", `SELECT * FROM knowledge.concept_revision WHERE tenant_id = $1 AND owner_user_id = $2 AND twin_id = $3`],
+  ["knowledge.evidence", "evidence_id", `SELECT * FROM knowledge.evidence WHERE tenant_id = $1 AND owner_user_id = $2 AND twin_id = $3`],
+  ["knowledge.chunk", "chunk_id", `SELECT * FROM knowledge.chunk WHERE tenant_id = $1 AND owner_user_id = $2 AND twin_id = $3`],
+  ["knowledge.graph_node", "node_key", `SELECT * FROM knowledge.graph_node WHERE tenant_id = $1 AND twin_id = $3`],
+  ["knowledge.graph_edge", "edge_key", `SELECT * FROM knowledge.graph_edge WHERE tenant_id = $1 AND twin_id = $3`],
+  ["knowledge.graph_edge_review", "review_id", `SELECT * FROM knowledge.graph_edge_review WHERE tenant_id = $1 AND twin_id = $3`],
+  ["knowledge.graph_projection_run", "run_id", `SELECT * FROM knowledge.graph_projection_run WHERE tenant_id = $1 AND twin_id = $3`],
+  ["runtime.outbox_event", "event_id", `SELECT * FROM runtime.outbox_event WHERE tenant_id = $1 AND (payload->>'user_id' = $2 OR payload->>'owner_user_id' = $2) AND (payload->>'twin_id' = $3 OR payload->>'active_twin_id' = $3)`],
+];
+
+async function learningDryRunDomainFingerprint(pool, mapping, twinId) {
+  const fingerprints = await withContext(pool, mapping, async (client) => {
+    const values = [];
+    for (const [entity, orderExpression, scopedQuery] of LEARNING_DRY_RUN_DOMAIN_QUERIES) {
+      const result = await client.query(
+        `SELECT count(*)::int AS row_count,
+                md5(COALESCE(string_agg(md5(to_jsonb(scoped_row)::text), '' ORDER BY ${orderExpression}), '')) AS content_hash
+           FROM (${scopedQuery}) scoped_row`,
+        [mapping.tenant_id, mapping.user_id, twinId],
+      );
+      values.push({ entity, row_count: Number(result.rows[0]?.row_count || 0), content_hash: result.rows[0]?.content_hash || "" });
+    }
+    return values;
+  });
+  return {
+    contract: "meids.learning-dry-run-domain-proof.v1",
+    algorithm: "sha256-over-postgresql-row-fingerprints",
+    entity_count: fingerprints.length,
+    digest: crypto.createHash("sha256").update(JSON.stringify(fingerprints)).digest("hex"),
+  };
+}
+
+function learningDryRunDomainProof(before, after) {
+  const unchanged = Boolean(before?.digest) && before.digest === after?.digest;
+  return {
+    contract: "meids.learning-dry-run-domain-proof.v1",
+    entity_count: Number(after?.entity_count || 0),
+    before_digest: before?.digest || "",
+    after_digest: after?.digest || "",
+    unchanged,
+  };
+}
+
 async function audit(client, mapping, action, resourceType, resourceId, details = {}) {
   await client.query(
     `INSERT INTO audit.event (tenant_id, actor_user_id, action, resource_type, resource_id, details)
@@ -761,14 +809,26 @@ function createWorkspaceApi(deps) {
         }
         const mapping = runtimeMapping(job);
         const learning = job.payload.learning || {};
+        const pool = await getPgPool();
+        const domainStateBefore = learning.dry_run === true
+          ? await learningDryRunDomainFingerprint(pool, mapping, job.twin_id)
+          : null;
         const proposal = await generateLearningProposal(learning);
         if (learning.dry_run === true) {
+          const domainStateAfter = await learningDryRunDomainFingerprint(pool, mapping, job.twin_id);
+          const domainWriteGuard = learningDryRunDomainProof(domainStateBefore, domainStateAfter);
+          if (!domainWriteGuard.unchanged) {
+            const error = new Error("Learning dry-run changed authoritative domain state.");
+            error.noRetry = true;
+            throw error;
+          }
           return {
             status: "proposed_no_write",
             runtime: "azure_native",
             review_state: "not_persisted",
             trace_id: learning.trace_id || "",
             dry_run: true,
+            domain_write_guard: domainWriteGuard,
             role_executions: [{ agent: "learning_agent", mode: "proposal_no_write" }],
             proposal: {
               summary: clean(proposal.summary, 1_000),
@@ -2425,6 +2485,8 @@ function createWorkspaceApi(deps) {
 
 module.exports = {
   createWorkspaceApi,
+  learningDryRunDomainFingerprint,
+  learningDryRunDomainProof,
   qualityAssessment,
   graphConceptId,
   conceptGraphNode,
