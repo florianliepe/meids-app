@@ -170,10 +170,15 @@ async function runLearningScenario() {
       await new Promise((resolve) => setTimeout(resolve, 2_500));
     }
     const result = latest?.body?.result || {};
+    const domainWriteGuard = result.domain_write_guard || {};
     const completed = latest?.body?.status === "completed"
       && result.status === "proposed_no_write"
       && result.review_state === "not_persisted"
       && result.dry_run === true
+      && domainWriteGuard.contract === "meids.learning-dry-run-domain-proof.v1"
+      && domainWriteGuard.unchanged === true
+      && domainWriteGuard.before_digest
+      && domainWriteGuard.before_digest === domainWriteGuard.after_digest
       && result.role_executions?.some((item) => item.agent === "learning_agent");
     return {
       id: "learning_agent",
@@ -190,6 +195,10 @@ async function runLearningScenario() {
       missing_roles: completed ? [] : ["learning_agent"],
       persistence: result.review_state || "unknown",
       result_status: result.status || "",
+      domain_proof_contract: domainWriteGuard.contract || "",
+      domain_state_unchanged: domainWriteGuard.unchanged === true,
+      domain_before_digest: domainWriteGuard.before_digest || "",
+      domain_after_digest: domainWriteGuard.after_digest || "",
       error: completed ? "" : latest?.body?.error || "Learning job did not complete as a non-persisting proposal within 90 seconds.",
     };
   } catch (error) {

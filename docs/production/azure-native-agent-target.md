@@ -25,7 +25,10 @@ flowchart LR
   B --> AO
   C --> AO
   K --> AS[Azure AI Search]
-  L --> PG[(Review-needed PostgreSQL staging)]
+  L --> LD{Dry-run?}
+  LD -->|yes| FP[Scoped PostgreSQL before/after fingerprint]
+  LD -->|no| PG[(Review-needed PostgreSQL staging)]
+  FP --> NW[No domain write / operational result only]
   API --> AP[Approval CAS]
   AP --> PG
   K --> PG
@@ -53,7 +56,10 @@ flowchart LR
   G -. high risk only .-> C[Critical Faculty]
   C --> AO
   API -. durable detached job after response .-> L[Learning worker]
-  L --> PG[(Review-needed PostgreSQL staging)]
+  L --> LD{Dry-run?}
+  LD -->|yes| FP[Authoritative domain fingerprint guard]
+  LD -->|no| PG[(Review-needed PostgreSQL staging)]
+  FP --> NW[No domain write / operational result only]
   K --> PG
   K --> BL[Private Blob]
   G --> AD{Runtime adapter}
@@ -71,6 +77,7 @@ flowchart LR
 6. Learning is detached from the user response and may create only review-needed proposals.
 7. Unknown completion is never retried automatically. Cancellation is allowed only before a worker lease is acquired.
 8. The browser receives no n8n worker URL in native mode. Authentication, retrieval, progress, cancellation and result reads go through App Service routes.
+9. A Learning `dry_run` succeeds only when owner/twin-scoped PostgreSQL fingerprints for Learning, Knowledge, Graph and domain outbox state are identical before and after proposal generation. Operational job and trace persistence is outside this domain fingerprint.
 
 ## Azure production resources
 
@@ -89,7 +96,7 @@ flowchart LR
 
 ## Current rollout state
 
-- PRs #56-#64 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter. The current backend revision is merge commit `1e34aa83713e021e54078dcc00d376c25134ed73`, deployed by run `43267976986`; the native frontend remains active.
+- PRs #56-#85 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter and hardened the Azure-native Nightly verdict. The current backend revision is merge commit `3e2a6c63fb457f888dc00ae8d7d28571bda56354`, deployed by run `43283060350`; the native frontend remains active.
 - The browser talks only to authenticated App Service routes; direct n8n URLs are empty in production runtime configuration.
 - Direct-answer shadow and primary canaries passed from the real App Service web process. A 20-request soak returned 20/20 expected answers with p50 814 ms, p90 1,044 ms and max 1,402 ms.
 - Missing and forged knowledge tokens both return `401 blocked_auth_context`.
@@ -117,7 +124,7 @@ flowchart LR
 - Native chat passes expired-auth no-replay, queued-only cancellation, keyboard and responsive-browser tests.
 - Azure OpenAI access is private-network restricted and remains reachable only through the proven App Service path.
 - Route canaries passed in this order: direct, retrieval, synchronous work, background work, conditional critique, approval resume, voice preparation and detached Learning.
-- The Nightly harness now targets authenticated App Service routes and correlates fresh Azure-native root traces, provider/model metadata, role executions and an owner-scoped Learning job. Its Learning probe generates a real proposal in `dry_run` mode and proves `not_persisted`; historical n8n execution evidence remains rollback/audit evidence only.
+- The Nightly harness now targets authenticated App Service routes and correlates fresh Azure-native root traces, provider/model metadata, role executions and an owner-scoped Learning job. Its Learning probe generates a real proposal in `dry_run` mode; after the domain-proof release it also requires matching authoritative PostgreSQL before/after fingerprints rather than trusting `not_persisted` alone. Historical n8n execution evidence remains rollback/audit evidence only.
 - Production Nightly evidence now passes all five scenarios and all seven Azure-native roles. The signed-token App Service exclusions are limited to the four application-authorized runtime routes and remain fail-closed in the backend.
 - Open before physical n8n removal: complete two-principal/guest RLS, run a measured rollback rehearsal, prove zero n8n egress during the observation window, and satisfy audit retention.
 - After those gates, remove n8n webhook settings, API credentials, workflow administration UI and retained workflow assets in one separately approved retirement release.

@@ -12,7 +12,7 @@ function passingArtifact() {
       { id: "knowledge_retrieval", status: "completed", runtime: "azure_native", provider: "azure_openai", model: "model", trace_id: "trace-k", request_id: `${runId}_knowledge_retrieval`, role_executions: [{ agent: "knowledge_fabric_agent" }] },
       { id: "conditional_critical_faculty", status: "completed", runtime: "azure_native", provider: "azure_openai", model: "model", trace_id: "trace-c", request_id: `${runId}_conditional_critical_faculty`, role_executions: [{ agent: "agentic_butler" }, { agent: "critical_faculty" }] },
       { id: "butler_skill_task_chain", status: "completed", runtime: "azure_native", provider: "azure_openai", model: "model", trace_id: "trace-b", request_id: `${runId}_butler_skill_task_chain`, role_executions: [{ agent: "skill_orchestrator" }, { agent: "task_agent" }] },
-      { id: "learning_agent", status: "completed", runtime: "azure_native", http_status: 202, job_id: "job-1", job_status: "completed", trace_id: `${runId}_learning`, persistence: "not_persisted", result_status: "proposed_no_write", role_executions: [{ agent: "learning_agent" }] },
+      { id: "learning_agent", status: "completed", runtime: "azure_native", http_status: 202, job_id: "job-1", job_status: "completed", trace_id: `${runId}_learning`, persistence: "not_persisted", result_status: "proposed_no_write", domain_proof_contract: "meids.learning-dry-run-domain-proof.v1", domain_state_unchanged: true, domain_before_digest: "a".repeat(64), domain_after_digest: "a".repeat(64), role_executions: [{ agent: "learning_agent" }] },
     ],
   };
 }
@@ -31,6 +31,9 @@ for (const [name, mutate, expected] of [
   ["wrong provider", (a) => { a.results[1].provider = "n8n"; }, "unexpected_provider:knowledge_retrieval"],
   ["foreign trace correlation", (a) => { a.results.at(-1).trace_id = "another_run_learning"; }, "learning_trace_mismatch"],
   ["persisted dry run", (a) => { a.results.at(-1).persistence = "review_needed"; }, "learning_persistence_not_proven"],
+  ["missing domain proof", (a) => { a.results.at(-1).domain_proof_contract = ""; }, "learning_domain_proof_missing"],
+  ["changed domain state", (a) => { a.results.at(-1).domain_state_unchanged = false; }, "learning_domain_state_changed"],
+  ["mismatched domain digests", (a) => { a.results.at(-1).domain_after_digest = "b".repeat(64); }, "learning_domain_digest_mismatch"],
 ]) {
   test(`${name} fails closed`, () => {
     const artifact = passingArtifact();

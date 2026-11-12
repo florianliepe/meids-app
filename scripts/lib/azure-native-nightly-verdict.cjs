@@ -54,6 +54,9 @@ function evaluateAzureNativeNightly(artifact = {}) {
     if (learning.trace_id !== `${runId}_learning`) issues.push("learning_trace_mismatch");
     if (learning.persistence !== "not_persisted") issues.push("learning_persistence_not_proven");
     if (learning.result_status !== "proposed_no_write") issues.push("learning_result_not_no_write");
+    if (learning.domain_proof_contract !== "meids.learning-dry-run-domain-proof.v1") issues.push("learning_domain_proof_missing");
+    if (learning.domain_state_unchanged !== true) issues.push("learning_domain_state_changed");
+    if (!learning.domain_before_digest || learning.domain_before_digest !== learning.domain_after_digest) issues.push("learning_domain_digest_mismatch");
   }
   return { passed: issues.length === 0, issues, observed_agents: [...observedAgents] };
 }

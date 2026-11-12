@@ -322,6 +322,10 @@ test("Azure-native Learning dry run executes the proposal without staging knowle
   assert.equal(stored.status, "proposed_no_write");
   assert.equal(stored.review_state, "not_persisted");
   assert.equal(stored.role_executions[0].agent, "learning_agent");
+  assert.equal(stored.domain_write_guard.contract, "meids.learning-dry-run-domain-proof.v1");
+  assert.equal(stored.domain_write_guard.entity_count, 12);
+  assert.equal(stored.domain_write_guard.unchanged, true);
+  assert.equal(stored.domain_write_guard.before_digest, stored.domain_write_guard.after_digest);
 });
 
 test("worker does not report an n8n timeout fallback as completed or retry it automatically", async () => {
