@@ -1406,8 +1406,8 @@ async function handleAgentProxy(req, res, agentId) {
   jsonResponse(res, 200, { agent_id: agentId, response, trace: traceRecord });
 }
 
-async function handleResumeApproval(req, res, approvalId) {
-  const body = await readBody(req);
+async function handleResumeApproval(req, res, approvalId, suppliedBody = null) {
+  const body = suppliedBody || await readBody(req);
   const mapping = await requireKnowledgeRequestMapping(req, body);
   const approvals = await readApprovals();
   const approval = approvals.find((item) => item.approval_id === approvalId);
@@ -3327,6 +3327,17 @@ async function routeRequest(req, res) {
     }
     if (req.method === "GET" && ["/api/agents/approvals", "/api/approvals"].includes(url.pathname)) {
       jsonResponse(res, 200, { approvals: await readApprovals() });
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/agents/approvals/resume") {
+      const body = await readBody(req);
+      const approvalId = String(body.approval_id || "").trim();
+      if (!approvalId) {
+        const error = new Error("approval_id is required.");
+        error.statusCode = 400;
+        throw error;
+      }
+      await handleResumeApproval(req, res, approvalId, body);
       return;
     }
     if (req.method === "POST" && ["/api/agents/approvals", "/api/approvals"].includes(url.pathname)) {
