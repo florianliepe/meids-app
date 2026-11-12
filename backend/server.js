@@ -33,6 +33,13 @@ const {
   runtimeStatus: azureNativeRuntimeStatus,
 } = require("./azureNativeAgentRuntime");
 const { enqueueRuntimeJob } = require("./runtimeJobs");
+const {
+  approvalRoute,
+  approvalTwinId,
+  knowledgeStagePayload,
+  skillProposalPayload,
+  stageSkillProposal,
+} = require("./agentApprovalActions");
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = path.resolve(process.env.MEIDS_DATA_DIR || path.join(process.cwd(), ".data"));
@@ -934,6 +941,14 @@ function buildApprovalRecord(agentId, envelope, response, traceRecord) {
     ? response.output.delegate_result
     : null;
   const delegateTrace = delegate?.trace || {};
+  const operationBinding = {
+    request_id: response.request_id || envelope.request_id || "",
+    route: response.output?.route_decision?.route || trace.route_decision?.route || trace.route_decision || "",
+    tenant_id: envelope.principal?.tenant_id || "",
+    user_id: envelope.principal?.user_id || "",
+    twin_id: envelope.context?.active_twin_id || envelope.metadata?.identity?.activeTwinId || "",
+    input: envelope.input || { message: envelope.chatInput || "" },
+  };
   return {
     approval_id: `appr_${traceId || response.request_id}`.replace(/[^\w-]/g, "_"),
     timestamp: new Date().toISOString(),
@@ -950,10 +965,27 @@ function buildApprovalRecord(agentId, envelope, response, traceRecord) {
     summary: approval.summary || "Human approval is required before this action can continue.",
     proposed_action: approval.proposed_action || "Resume the gated run after approval.",
     status: "pending_human_approval",
+    operation_sha256: crypto.createHash("sha256").update(JSON.stringify(operationBinding)).digest("hex"),
+    expires_at: new Date(Date.now() + 24 * 60 * 60_000).toISOString(),
     original_request: envelope,
     original_response: response,
     delegate_result: delegate,
   };
+}
+
+function approvalOperationHash(approval = {}) {
+  const envelope = approval.original_request || {};
+  const response = approval.original_response || {};
+  const trace = response.trace || {};
+  const operationBinding = {
+    request_id: response.request_id || envelope.request_id || "",
+    route: response.output?.route_decision?.route || trace.route_decision?.route || trace.route_decision || "",
+    tenant_id: envelope.principal?.tenant_id || "",
+    user_id: envelope.principal?.user_id || "",
+    twin_id: envelope.context?.active_twin_id || envelope.metadata?.identity?.activeTwinId || "",
+    input: envelope.input || { message: envelope.chatInput || "" },
+  };
+  return crypto.createHash("sha256").update(JSON.stringify(operationBinding)).digest("hex");
 }
 
 async function storeApproval(record) {
@@ -980,6 +1012,26 @@ async function updateApproval(approvalId, patch) {
   const next = approvals.map((item) => item.approval_id === approvalId ? { ...item, ...patch, updated_at: new Date().toISOString() } : item);
   await writeApprovals(next);
   return next.find((item) => item.approval_id === approvalId) || null;
+}
+
+async function claimApprovalDecision(approvalId, nextStatus) {
+  if (postgresEnabled()) {
+    const pool = await getPgPool();
+    const result = await pool.query(
+      `UPDATE agent_approval_queue
+       SET status = $2,
+           record = record || jsonb_build_object('status', $2, 'decision_started_at', now()::text),
+           updated_at = now()
+       WHERE approval_id = $1 AND status = 'pending_human_approval'
+       RETURNING record`,
+      [approvalId, nextStatus],
+    );
+    return result.rows[0]?.record || null;
+  }
+  const approvals = await readApprovals();
+  const current = approvals.find((item) => item.approval_id === approvalId && item.status === "pending_human_approval");
+  if (!current) return null;
+  return updateApproval(approvalId, { status: nextStatus, decision_started_at: new Date().toISOString() });
 }
 
 async function upsertPostgresApproval(record) {
@@ -1345,7 +1397,8 @@ async function handleNativeAgentChat(req, res) {
 
 async function handleAgentProxy(req, res, agentId) {
   const envelope = await readBody(req);
-  const response = await proxyToN8n(agentId, envelope);
+  const mapping = await requireKnowledgeRequestMapping(req, envelope);
+  const response = await executeAgentRuntime(agentId, envelope, { mapping });
   const traceRecords = buildTraceRecords(agentId, envelope, response);
   const traceRecord = traceRecords[0];
   for (const record of traceRecords) await appendTrace(record);
@@ -1355,15 +1408,104 @@ async function handleAgentProxy(req, res, agentId) {
 
 async function handleResumeApproval(req, res, approvalId) {
   const body = await readBody(req);
+  const mapping = await requireKnowledgeRequestMapping(req, body);
   const approvals = await readApprovals();
   const approval = approvals.find((item) => item.approval_id === approvalId);
   if (!approval) {
     jsonResponse(res, 404, { status: "failed", error: `Approval not found: ${approvalId}` });
     return;
   }
+  const owner = approval.original_request?.principal || {};
+  const twinId = approvalTwinId(approval);
+  if (owner.tenant_id !== mapping.tenant_id || owner.user_id !== mapping.user_id || !mapping.allowed_twin_ids.includes(twinId)) {
+    const error = new Error("Approval not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+  if (approval.status !== "pending_human_approval") {
+    jsonResponse(res, 409, { status: approval.status, approval, error: "This approval has already reached a terminal state." });
+    return;
+  }
+  const nativeApproval = approval.original_response?.runtime === "azure_native"
+    || approval.original_response?.trace?.runtime === "azure_native";
+  if (nativeApproval) {
+    if (!approval.operation_sha256 || approval.operation_sha256 !== approvalOperationHash(approval)) {
+      await updateApproval(approvalId, { status: "blocked", blocked_reason: "approval_operation_binding_mismatch" });
+      jsonResponse(res, 409, { status: "blocked", error: "The approval operation binding is invalid." });
+      return;
+    }
+    const expiresAt = Date.parse(approval.expires_at || "");
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      await updateApproval(approvalId, { status: "expired", expired_at: new Date().toISOString() });
+      jsonResponse(res, 409, { status: "expired", error: "This approval has expired and was not executed." });
+      return;
+    }
+  }
   if (body?.input?.approved === false || body?.approved === false) {
+    const claimed = await claimApprovalDecision(approvalId, "rejecting");
+    if (!claimed) {
+      jsonResponse(res, 409, { status: approval.status, approval, error: "This approval was already claimed by another decision." });
+      return;
+    }
     const updated = await updateApproval(approvalId, { status: "rejected" });
     jsonResponse(res, 200, { status: "rejected", approval: updated });
+    return;
+  }
+  const route = approvalRoute(approval);
+  if (nativeApproval) {
+    const claimed = await claimApprovalDecision(approvalId, "resuming");
+    if (!claimed) {
+      jsonResponse(res, 409, { status: approval.status, approval, error: "This approval was already claimed by another decision." });
+      return;
+    }
+    let actionResult;
+    try {
+      if (route === "ingest_or_stage_knowledge") {
+        actionResult = await stageKnowledge(await getPgPool(), mapping, knowledgeStagePayload(approval, body));
+      } else if (route === "create_skill") {
+        actionResult = await stageSkillProposal(await getPgPool(), mapping, skillProposalPayload(approval, body));
+      } else {
+        await updateApproval(approvalId, { status: "blocked", blocked_reason: "unsupported_native_approval_action" });
+        jsonResponse(res, 409, {
+          status: "blocked",
+          approval,
+          error: "This Azure-native approval has no bounded persistence action. External effects remain blocked.",
+        });
+        return;
+      }
+    } catch (error) {
+      await updateApproval(approvalId, {
+        status: "resume_failed",
+        failure_reason: String(error.message || "Native approval action failed.").slice(0, 1_000),
+      });
+      throw error;
+    }
+    const traceRecord = buildTraceRecord("actor_twin", approval.original_request || {}, {
+      envelope_version: "0.1.0",
+      request_id: body.request_id || makeId("resume"),
+      agent_id: route === "create_skill" ? "agentic_butler" : "knowledge_fabric_agent",
+      status: "completed",
+      output: { answer: route === "create_skill" ? "Skill proposal staged for review." : "Knowledge staged for review.", route_decision: { route }, action_result: actionResult },
+      trace: { runtime: "azure_native", target_agent: route === "create_skill" ? "agentic_butler" : "knowledge_fabric_agent", approval_id: approval.approval_id },
+      runtime: "azure_native",
+    });
+    await appendTrace(traceRecord, {
+      tenant_id: mapping.tenant_id,
+      user_id: mapping.user_id,
+      twin_id: twinId,
+      allowed_twin_ids: mapping.allowed_twin_ids,
+      group_ids: mapping.group_ids || [],
+      roles: mapping.roles || [],
+      organization_id: mapping.tenant_id,
+    });
+    const updated = await updateApproval(approvalId, {
+      status: "resumed",
+      resumed_trace_id: traceRecord.trace_id,
+      resumed_at: new Date().toISOString(),
+      action_result: actionResult,
+      runtime: "azure_native",
+    });
+    jsonResponse(res, 200, { status: "resumed", approval: updated, result: actionResult, trace: traceRecord });
     return;
   }
   const resumeEnvelope = {
@@ -2042,10 +2184,10 @@ function frontendStatusPayload() {
       binary_document_extraction: { status: "unavailable", reason: "Document extraction worker is not deployed." },
       knowledge: { status: "ready", persistence: "postgresql_outbox" },
       voice_concepts: { status: "ready", transcription: health.voice_transcription.status },
-      skills: { status: "ready", routing: "actor_twin_to_butler_workflow_tool" },
+      skills: { status: "ready", routing: "meids.agent-routing.v1" },
       graph: { status: "ready", source: "governed_okf_concepts" },
       activity: { status: "ready", source: "tenant_scoped_audit" },
-      agents: { status: "ready", delegation: "call_n8n_workflow_tool_first" },
+      agents: { status: "ready", delegation: "azure_native_adapter" },
     },
   };
 }

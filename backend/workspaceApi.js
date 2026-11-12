@@ -565,7 +565,7 @@ function skillDetailRecord(row) {
       actor_agent: { persona_ref: row.twin_id },
       orchestrator: {
         mode: "skill_orchestrator",
-        model: "Call n8n Workflow Tool",
+        model: "Azure-native agent runtime",
         max_steps: skill.spec.max_steps || 8,
         actor_checkpoints: skill.spec.actor_checkpoints || ["before_external_side_effect", "before_irreversible_action"],
       },
@@ -787,7 +787,20 @@ function createWorkspaceApi(deps) {
         const mapping = runtimeMapping(job);
         const queued = job.payload.queued || {};
         const request = structuredClone(job.payload.request || {});
-        request.metadata = request.metadata || {};
+        request.metadata = {
+          ...(request.metadata || {}),
+          source: "meids_backend_skill_execution",
+          intent: "execute_approved_skill",
+          side_effect_policy: "no_external_side_effects",
+          routingHints: { skillWorker: true },
+          routingContractOverride: {
+            route: "execute_work_sync",
+            skill_orchestrator: true,
+            max_task_agent_calls: 2,
+            critical_faculty: ["high", "critical"].includes(queued.risk_class),
+            retrieval_required: Boolean(queued.knowledge_context_supplied),
+          },
+        };
         request.metadata.authorization = {
           ...(request.metadata.authorization || {}),
           knowledgeAccessToken: issueKnowledgeAccessToken(mapping, job.twin_id),
@@ -801,8 +814,8 @@ function createWorkspaceApi(deps) {
         const completed = {
           ...queued,
           status: response.status || "completed",
-          summary: clean(typeof output === "string" ? output : response.message || "Skill run completed.", 1_000),
-          result: output,
+          summary: clean(typeof output === "string" ? output : output.answer || response.message || "Skill run completed.", 1_000),
+          result: response.output ? { ...output, trace: response.trace || {} } : response,
           attempts: Number(job.attempts),
           completed_at: new Date().toISOString(),
         };
@@ -1487,13 +1500,13 @@ function createWorkspaceApi(deps) {
       intent: "execute_approved_skill",
       principal: { tenant_id: mapping.tenant_id, user_id: mapping.user_id, roles: mapping.roles || [] },
       input: { message: clean(body.manual_request, 20_000), skill_id: skillId, skill_spec: skill.spec, source_inputs: body },
-      context: { active_twin_id: skill.twin_id, allowed_twin_ids: mapping.allowed_twin_ids, routing_policy: "call_n8n_workflow_tool_first", target_capability: "agentic_butler" },
+      context: { active_twin_id: skill.twin_id, allowed_twin_ids: mapping.allowed_twin_ids, routing_policy: "meids.agent-routing.v1", target_capability: "agentic_butler" },
     };
     const manualRequest = envelope.input.message || "Run the approved skill with the supplied context.";
     const knowledgeContext = clean(body.knowledge_context, 20_000);
     const skillPrompt = [
-      `Execute the approved skill "${skill.name}" through Agentic Butler using the Call n8n Workflow Tool.`,
-      "This is approved-skill execution: call Agentic Butler first and let it use Skill Orchestrator/Task Agent as configured.",
+      `Execute the approved skill "${skill.name}" through the governed Azure-native agent runtime.`,
+      "This is approved-skill execution: Agentic Butler uses Skill Orchestrator and at most two bounded Task Agents.",
       "Treat all supplied knowledge as read-only. If Knowledge Fabric is needed, operation must be retrieve. Do not stage, update, or create knowledge unless the user's manual request explicitly asks for a write.",
       `Manual request: ${manualRequest}`,
       knowledgeContext ? `Approved knowledge context: ${knowledgeContext}` : "",
@@ -1501,10 +1514,11 @@ function createWorkspaceApi(deps) {
     ].filter(Boolean).join("\n\n");
     const request = actorChatRequest(envelope, mapping, skill.twin_id, skillPrompt, body.session_id);
     const queued = {
-      status: "queued", run_id: requestId, skill_id: skillId, skill_name: skill.name,
+      status: "queued", run_id: requestId, skill_id: skillId, skill_name: skill.name, risk_class: skill.risk_class,
       twin: skill.twin_id, summary: "Approved skill run queued for Actor Twin orchestration.",
       review_state: "unreviewed", inputs: body, created_at: new Date().toISOString(),
-      orchestration: { entry_agent: "actor_twin", delegation: "Call n8n Workflow Tool", target: "agentic_butler" },
+      knowledge_context_supplied: Boolean(knowledgeContext),
+      orchestration: { entry_agent: "actor_twin", delegation: "meids.agent-routing.v1", target: "agentic_butler" },
     };
     await withContext(pool, mapping, async (client) => {
       await audit(client, mapping, "skill.run.queued", "agent.skill_run", requestId, queued);
@@ -1836,9 +1850,8 @@ function createWorkspaceApi(deps) {
     const twinId = assertTwin(mapping, body.twin || body.twin_id);
     const transcript = clean(body.transcript, 50_000);
     if (!transcript) throw httpError(400, "Transcript is required.");
-    const target = ["mcp", "n8n", "github"].includes(clean(body.target, 20).toLowerCase())
-      ? clean(body.target, 20).toLowerCase()
-      : "n8n";
+    const requestedTarget = clean(body.target, 20).toLowerCase();
+    const target = requestedTarget === "github" ? "github" : "knowledge";
     const requestId = `voice-handoff-${Date.now().toString(36)}-${crypto.randomBytes(3).toString("hex")}`;
     const envelope = {
       envelope_version: "0.1.0",
@@ -1858,14 +1871,25 @@ function createWorkspaceApi(deps) {
       context: {
         active_twin_id: twinId,
         allowed_twin_ids: mapping.allowed_twin_ids,
-        routing_policy: "call_n8n_workflow_tool_first",
+        routing_policy: "meids.agent-routing.v1",
         target_capability: "knowledge_fabric_agent",
         side_effect_policy: "prepare_only",
       },
     };
-    const delegated = await proxyToN8n("actor_twin", actorChatRequest(
-      envelope, mapping, twinId, envelope.input.query, body.session_id,
-    ));
+    const voiceContext = [
+      envelope.input.query,
+      `Transcript:\n${transcript}`,
+      envelope.input.replies.length ? `Clarifications:\n${JSON.stringify(envelope.input.replies)}` : "",
+      envelope.input.human_note ? `Human note:\n${envelope.input.human_note}` : "",
+    ].filter(Boolean).join("\n\n");
+    const request = actorChatRequest(envelope, mapping, twinId, voiceContext, body.session_id);
+    request.metadata = {
+      ...(request.metadata || {}),
+      source: "meids_backend_voice_handoff",
+      intent: "prepare_governed_voice_context",
+      side_effect_policy: "prepare_only",
+    };
+    const delegated = await executeAgent("actor_twin", request, { mapping, timeoutMs: 30_000, maxTimeoutMs: 30_000 });
     const payloadHash = crypto.createHash("sha256").update(JSON.stringify(envelope.input)).digest("hex");
     await withContext(pool, mapping, (client) => audit(client, mapping, "voice.agent_handoff", "runtime.voice_handoff", requestId, {
       twin_id: twinId,
@@ -1880,7 +1904,7 @@ function createWorkspaceApi(deps) {
       payload_hash: payloadHash,
       evidence: { path: clean(body.evidence_path, 500) || `voice-handoff:${requestId}` },
       approval_boundary: "Prepared through Actor Twin; external execution remains approval-gated.",
-      orchestration: { entry_agent: "actor_twin", delegation: "Call n8n Workflow Tool" },
+      orchestration: { entry_agent: "actor_twin", delegation: "meids.agent-routing.v1" },
       result: delegated.output || delegated,
     });
   }

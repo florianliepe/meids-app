@@ -81,6 +81,14 @@ async function run() {
   assert.equal(approval.status, "approval_required");
   assert.equal(calls.length - approvalStart, 0, "Approval-gated knowledge intake must not call the model");
 
+  const tacitStart = calls.length;
+  const tacit = await adapter.execute(portableRequest({ request_id: "tacit", chatInput: "Interview me to extract my implicit decision criteria." }));
+  assert.equal(tacit.status, "completed");
+  assert.equal(tacit.output.route_decision.route, "elicit_tacit_knowledge");
+  assert.equal(calls.length - tacitStart, 1);
+  const tacitSystem = calls.at(-1).body.messages.filter((message) => message.role === "system").map((message) => message.content).join("\n");
+  assert.match(tacitSystem, /Ask exactly one concise/);
+
   const queuedStart = calls.length;
   const queued = await adapter.execute(portableRequest({
     request_id: "async",
@@ -128,6 +136,7 @@ async function run() {
   assert.equal(chain.output.task_results.length, 1);
 
   const evidenceChainStart = calls.length;
+  const evidenceRetrievalStart = retrievalCalls;
   const evidenceChain = await adapter.execute(portableRequest({
     request_id: "evidence-chain",
     chatInput: "Research the reviewed evidence, compare the options, then prepare a decision brief.",
@@ -140,7 +149,7 @@ async function run() {
     },
   }));
   assert.equal(evidenceChain.status, "completed");
-  assert.equal(retrievalCalls, 3);
+  assert.equal(retrievalCalls - evidenceRetrievalStart, 1);
   assert.equal(calls.length - evidenceChainStart, 3);
   assert.deepEqual(evidenceChain.trace.role_executions.map((item) => item.agent), ["skill_orchestrator", "task_agent", "agentic_butler"]);
 

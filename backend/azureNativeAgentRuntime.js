@@ -56,6 +56,9 @@ function routeInstruction(route, evidence) {
   if (route === "execute_work_sync") {
     return "Produce the requested no-side-effect work artifact. This is one bounded task, so do not simulate extra agents or claim tool execution.";
   }
+  if (route === "elicit_tacit_knowledge") {
+    return "Act as the Agentic Butler conducting a tacit-knowledge interview. Ask exactly one concise, context-specific question. Do not summarize, stage, approve, or persist knowledge in this turn.";
+  }
   return "Respond directly. Avoid unnecessary orchestration narration.";
 }
 
