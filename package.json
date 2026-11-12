@@ -25,6 +25,7 @@
     "test:cancellation-race": "node scripts/test-runtime-cancellation-postgres-race.cjs",
     "test:approval-race": "node scripts/test-approval-postgres-race.cjs",
     "test:approval-process-termination": "node scripts/test-approval-process-termination-postgres.cjs",
+    "test:approval-action-faults": "node scripts/test-approval-actions-postgres-faults.cjs",
     "uat:approval-race:live": "node scripts/run-azure-native-approval-race-uat.cjs",
     "uat:approval-mutation:live": "node scripts/run-azure-native-approval-mutation-uat.cjs",
     "db:bootstrap:production": "node scripts/bootstrap-production-postgres.cjs",
