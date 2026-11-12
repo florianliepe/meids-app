@@ -96,7 +96,7 @@ flowchart LR
 
 ## Current rollout state
 
-- PRs #56-#102 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter, hardened the Azure-native Nightly verdict, added authoritative Learning dry-run domain proof, fenced reclaimed worker attempts, stopped uncertain lease redispatch and bounded Azure OpenAI/Search retry handling. The current backend revision is merge commit `e2b063d2ae39565d1704119c8d704cf8130668f3`, deployed by run `43311322712`; the native frontend remains active.
+- PRs #56-#103 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter, hardened the Azure-native Nightly verdict, added authoritative Learning dry-run domain proof, fenced reclaimed worker attempts, stopped uncertain lease redispatch and bounded Azure OpenAI/Search retry handling. The current backend revision is merge commit `e6e1b7b3c6da68fb31e0f28e7ba8112fc564655a`, deployed by run `43315387390`; the native frontend remains active on the same revision.
 - The browser talks only to authenticated App Service routes; direct n8n URLs are empty in production runtime configuration.
 - Direct-answer shadow and primary canaries passed from the real App Service web process. A 20-request soak returned 20/20 expected answers with p50 814 ms, p90 1,044 ms and max 1,402 ms.
 - Missing and forged knowledge tokens both return `401 blocked_auth_context`.
@@ -124,6 +124,7 @@ flowchart LR
 - The first Azure-native route soak exposed the original deployment's 20 RPM bottleneck with 4/50 HTTP 429 responses. PR #97 added one deadline-bounded retry only for definitive 429 rejection; timeout remains unknown and non-retryable. Capacity was increased to 50 RPM/50k TPM without changing the model or version. Three marked post-capacity windows now provide 100 samples per route. Sampling maturity is complete; availability remains unevaluated until a prospective policy is approved.
 - PR #99 prevents an early retry when the provider's Retry-After exceeds the 5-second wait cap or remaining operation deadline. Its post-deploy no-write direct smoke completed Azure-native in 910 ms with zero throttle rejection or retry.
 - Multi-window route-soak window 2 exposed one Azure AI Search timeout in 45 Retrieval requests. PR #102 deployed one idempotent Search-read retry inside the original route deadline; exhaustion returns `retrieval_unavailable`, never false `not_found`, whole-agent replay or n8n fallback. Window 3 then passed Retrieval 45/45 and all routes 225/225. Aggregate Retrieval remains 99/100 because the historical failure is retained.
+- PR #103 added cancellation-aware Search transport and retry waiting, explicit soak functional/search telemetry and separate sampling/availability verdicts. A post-deploy native Composer smoke completed Retrieval through Knowledge Fabric and conditional Critical Faculty in 2,146 ms with `not_found`, one targeted question and zero Search retries.
 
 ## Cutover gates
 
