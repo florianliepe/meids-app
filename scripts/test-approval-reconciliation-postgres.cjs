@@ -3,6 +3,7 @@ const path = require("node:path");
 const { fork } = require("node:child_process");
 const { once } = require("node:events");
 const { Pool } = require("pg");
+const { startPostgresCommitResponseProxy } = require("./postgres-commit-response-proxy.cjs");
 const {
   reconcilePostgresApprovalDecision,
   runPostgresApprovalDecision,
@@ -167,18 +168,93 @@ async function foreignScopeIsNotVisible() {
   assert.equal(result.state, "not_found");
 }
 
+async function lostCommitResponseIsReconciledWithoutReplay() {
+  const approvalId = "lost-commit-response";
+  await reset(approvalId);
+  const targetUrl = new URL(connectionString);
+  const proxy = await startPostgresCommitResponseProxy({ hostname: targetUrl.hostname, port: targetUrl.port || 5432 });
+  const proxyUrl = new URL(connectionString);
+  proxyUrl.hostname = "127.0.0.1";
+  proxyUrl.port = String(proxy.port);
+  const proxyPool = new Pool({ connectionString: proxyUrl.toString(), max: 2 });
+  try {
+    const result = await runPostgresApprovalDecision(proxyPool, {
+      approvalId,
+      mapping,
+      decisionStatus: "resuming",
+      terminalStatus: "resumed",
+      execute: async (client) => {
+        await client.query("INSERT INTO approval_effect (approval_id, effect) VALUES ($1, 'commit-response-lost')", [approvalId]);
+        return { persisted: true };
+      },
+    });
+    assert.equal(proxy.state.commitIntercepted, true);
+    assert.equal(proxy.state.commitReadyObserved, true);
+    assert.equal(result.commitConfirmedAfterError, true);
+    const approval = await pool.query("SELECT status FROM agent_approval_queue WHERE approval_id = $1", [approvalId]);
+    const effects = await pool.query("SELECT count(*)::int AS count FROM approval_effect WHERE approval_id = $1", [approvalId]);
+    assert.equal(approval.rows[0].status, "resumed");
+    assert.equal(effects.rows[0].count, 1);
+  } finally {
+    await proxyPool.end().catch(() => {});
+    await proxy.close();
+  }
+}
+
+async function preReadKillAndStaleDualReconcilerStayReadOnly() {
+  const approvalId = "reconciler-ordering";
+  await reset(approvalId);
+
+  const beforeRead = startReconciler(approvalId, "pause_before_read");
+  await waitForMessage(beforeRead, "ready_before_read");
+  await killAndWait(beforeRead);
+
+  const stale = startReconciler(approvalId, "pause_after_read");
+  const staleObservation = await waitForMessage(stale, "observed");
+  assert.equal(staleObservation.result.state, "confirmed_pending");
+
+  const decision = await runPostgresApprovalDecision(pool, {
+    approvalId,
+    mapping,
+    decisionStatus: "resuming",
+    terminalStatus: "resumed",
+    execute: async (client) => {
+      await client.query("INSERT INTO approval_effect (approval_id, effect) VALUES ($1, 'after-stale-read')", [approvalId]);
+      return { persisted: true };
+    },
+  });
+  assert.equal(decision.claimed, true);
+  const fresh = await reconcilePostgresApprovalDecision(pool, {
+    approvalId,
+    mapping,
+    expectedTerminalStatus: "resumed",
+  });
+  assert.equal(fresh.state, "confirmed_terminal");
+  await killAndWait(stale);
+
+  const approval = await pool.query("SELECT status FROM agent_approval_queue WHERE approval_id = $1", [approvalId]);
+  const effects = await pool.query("SELECT count(*)::int AS count FROM approval_effect WHERE approval_id = $1", [approvalId]);
+  assert.equal(approval.rows[0].status, "resumed");
+  assert.equal(effects.rows[0].count, 1);
+}
+
 async function main() {
   try {
     await prepare();
     await statementTimeoutRollsBackEverything();
     await inFlightAndInterruptedReconciliationNeverReplay();
     await foreignScopeIsNotVisible();
+    await lostCommitResponseIsReconciledWithoutReplay();
+    await preReadKillAndStaleDualReconcilerStayReadOnly();
     process.stdout.write(`${JSON.stringify({
       status: "passed",
       statement_timeout: "full_rollback_and_pool_reuse",
       in_flight_reconciliation: "unknown_without_replay",
       interrupted_reconciliation: "repeatable_read_only_terminal_result",
       foreign_scope: "not_found",
+      lost_commit_response: "terminal_commit_reconciled_once",
+      pre_read_kill: "no_state_change",
+      stale_dual_reconciler: "terminal_state_not_regressed",
     }, null, 2)}\n`);
   } finally {
     await pool.end();
