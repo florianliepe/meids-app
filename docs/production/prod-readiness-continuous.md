@@ -19,7 +19,10 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | Deterministic agent routing | Production v1 active | `meids.agent-routing.v1` classifies before Actor reasoning; synchronous Learning removed; async work is intercepted before the LLM and cannot fall through to an inline Butler chain |
 | Generic background work | Production migration and deployment complete | `meids.agent-work.v1`, migration 020, owner/twin polling, atomic queued-only cancellation, idempotency and bounded retry are deployed by PR #52. |
 | Vector/Search static readiness | Pass | Azure Search readiness artifacts report active semantic production |
-| Deployed revisions | Pass | Backend and frontend production pipelines deployed merge commit `386ee6c1141212bbdd9c7d5b1a56fba216e19205` from PR #53. The Azure Static Web App was then rebuilt from the same commit with native Actor chat enabled. |
+| Deployed revisions | Pass with split revisions recorded | Backend is `b487f2f1b4704796ad773b6d51cbb16847e339c7` from PR #55. Frontend is the docs-restamped `c0d5c93153628b06788049357cc96c7a5af32c41`; its native Actor composer remains enabled and exposes no n8n URL. |
+| Azure-native direct route | Pass | Hybrid production canary uses Azure OpenAI through App Service managed identity. 20/20 exact-answer requests passed with p50 814 ms, p90 1,044 ms and max 1,402 ms; missing and forged tokens returned 401. |
+| Azure-native retrieval route | Pass for scoped no-hit behavior | Shadow and primary requests completed through Azure AI Search and Azure OpenAI. A no-hit request returned `not_found` plus one targeted question and no fabricated citation. |
+| Azure OpenAI network boundary | Pass | App Service retained successful Azure-native answers after the model account public network was disabled; private endpoint, private DNS and VNet integration are active. |
 | Governed visual recall | Owner/anonymous boundary pass | Migration 018 applied; private Blob upload/read, SHA-256 parity, approval/rejection cascade and anonymous HTTP 401 verified; `docs/uat/governed-visual-recall-live-uat-20261030.json` |
 | Seven-agent execution history | Pass | 2026-11-11 no-write UAT passed every scenario after the workflow-label cleanup. Actor direct 9.3 s, reviewed retrieval 11.7 s, Critical Faculty 36.3 s, Butler/Skill/Task 39.8 s; Learning dispatch correlated to fresh canonical execution `104301`. |
 | Azure authentication edge | Pass | Anonymous and forged-principal `/api/session` probes both returned 401; `docs/uat/azure-auth-edge-probe.json` |
@@ -57,9 +60,13 @@ The platform is suitable for controlled authenticated UAT. Public production pro
 | PROD-023 | P2 | Complete | Complete the end-user refinement: reveal Knowledge detail on hover/focus, select one Review queue/lane at a time, make Graph fill its first viewport, and dock Talk/source actions in the composer without duplicate chat branding. | PR #53 deployed the reconciled native composer and responsive evidence. Frontend contract, Graph contract, 16 responsive browser cases, Graph V1 rollback, backend, agent, access and API parity pass. |
 | PROD-024 | P1 | Complete | Complete the durable no-write background lifecycle with safe cancellation. | Migration 020 was applied through the temporary Entra PostgreSQL administrator path, PR #52 was merged, and frontend/backend production pipelines deployed merge commit `4a0e895`. Atomic claim-wins and cancellation-wins tests remain green. |
 | PROD-025 | P1 | Complete | Permit n8n to reach the token-verifying background-work endpoint without weakening other backend routes. | Protected OIDC run `42899200928` added only `/api/agents/work` to the EasyAuth exclusion and retained before/after artifacts. Missing and forged tokens return 401, side-effect language returns 409, and authenticated job execution completes. |
-| PROD-026 | P0 | Native browser deployed; n8n primary with Azure shadow | Replace browser and internal n8n execution incrementally without changing routing, authorization, review or queue contracts. | PR #53 deployed the Azure adapter and native backend composer at `386ee6c`. Static runtime configuration exposes no n8n URL and reports `nativeActorChatEnabled=true`. App Service remains `MEIDS_AGENT_RUNTIME=n8n`, `MEIDS_AGENT_SHADOW=azure_native`, with immediate fallback. Renew an authenticated browser session, prove shadow model invocation from the web process, compare answer/evidence/latency, then canary routes individually. |
+| PROD-026 | P0 | Direct and retrieval canaries active; work and Learning candidate under protected promotion | Replace browser and internal n8n execution incrementally without changing routing, authorization, review or queue contracts. | Native browser and backend boundary are live. Production is `MEIDS_AGENT_RUNTIME=hybrid`; `answer_direct,retrieve_knowledge` run Azure-native with n8n fallback. Direct 20-request latency soak, token-negative tests, retrieval no-hit semantics and private Azure OpenAI path pass. Promote the tested Butler/Skill/Task/Learning candidate, then canary synchronous work, queued work and detached Learning before removing fallback. |
+| PROD-027 | P0 | Candidate passes local contracts; production canary pending | Move Butler, Skill Orchestrator, Task Agent, conditional Critical Faculty and detached Learning into Azure code using the n8n-proven boundaries. | Single bounded tasks make one Butler model call and bypass Skill Orchestrator. Multi-step jobs use PostgreSQL queue then Skill Orchestrator, at most two Task Agents and Butler synthesis. Learning is a distinct durable job and stages only `review_needed`. Local Azure runtime, backend, agent, access, Entra, frontend and API parity suites pass; protected CI, production work soak and correlated Learning staging remain. |
 
 ## Decisions
+
+The current Azure-native adversarial cases and exit criteria are consolidated in
+[Azure-native agent cutover test plan](../uat/20261112-azure-native-cutover-test-plan.md).
 
 ### Background lifecycle follow-up (2026-11-11)
 
@@ -125,6 +132,9 @@ use controlled promises and timers without production requests or mutations.
 | 2026-11-12 | Use App Service managed identity for Azure OpenAI. | Production model credentials must not be copied into app settings or browser assets. | `aoai-meids-prod-1853a19b` exposes `meids-gpt-4-1-mini`; the backend identity has only Cognitive Services OpenAI User. Private-network restriction remains a cutover gate. |
 | 2026-11-12 | Remove n8n endpoints from the production browser before changing the execution provider. | Browser decoupling can be validated independently while the proven n8n adapter remains authoritative. | `MEIDS_NATIVE_ACTOR_CHAT=true` routes the composer through authenticated `/api/agents/...` endpoints; the backend stays n8n-primary with Azure shadow and flag-only rollback. |
 | 2026-11-12 | Do not accept an SCM/Kudu model probe as App Service managed-identity evidence. | The SCM process does not expose the web process managed-identity endpoint and returned the expected unavailable-identity result. | Managed-identity and private-DNS proof must come from an authenticated backend request handled by the production web process and its correlated shadow trace. |
+| 2026-11-12 | Canary Azure-native routes individually and preserve n8n only as a backend fallback. | Direct and retrieval can be proven without exposing provider endpoints or changing the browser contract. | Production runs `answer_direct,retrieve_knowledge` through Azure-native code; all other routes remain on n8n until their own canary gates pass. |
+| 2026-11-12 | Preserve the n8n role boundaries in Azure code, not its serial latency. | The proven hierarchy separates routing, retrieval, work, critique and learning, while unconditional serial calls caused excessive delay. | Single bounded tasks bypass Skill Orchestrator; multi-step work is durable and backgrounded; Critical Faculty is conditional; Learning is detached and review-only. |
+| 2026-11-12 | Disable public Azure OpenAI access only after a real App Service request succeeds. | Private DNS configuration alone does not prove that the web process can obtain a token and reach the private endpoint. | Three Azure-primary requests succeeded after public access was disabled; the model account remains private. |
 
 ## Release sequence
 
@@ -138,11 +148,10 @@ use controlled promises and timers without production requests or mutations.
 
 ## Current production release
 
-- Pull request: `https://github.com/florianliepe/meids-app/pull/53`
-- Frontend and backend production revision: `386ee6c1141212bbdd9c7d5b1a56fba216e19205`.
-- Deployment evidence: backend run `43229190479`, GitHub Pages run `43229187603`, and Azure Static Web Apps run `43229188074` passed. Native Actor chat activation rebuilt Azure Static Web Apps from the same revision in run `43229715550`.
+- Backend pull request: `https://github.com/florianliepe/meids-app/pull/55`; revision `b487f2f1b4704796ad773b6d51cbb16847e339c7`; deployment run `43232383158` passed.
+- Frontend revision: `c0d5c93153628b06788049357cc96c7a5af32c41`; Azure Static Web Apps run `43230936172` passed. Native Actor chat remains enabled.
 - Migration 020 was applied before code deployment; temporary PostgreSQL administrator settings were removed and `MEIDS_AUTO_MIGRATE=false` remains set.
-- The browser now uses the native authenticated backend composer and publishes no n8n endpoint. Execution remains n8n-primary with Azure shadow until authenticated parity and latency gates pass.
+- The browser uses the native authenticated backend composer and publishes no n8n endpoint. Direct and retrieval routes are Azure-native primary in hybrid mode; n8n remains fallback and serves unpromoted work routes.
 
 ## Human or privileged gates
 

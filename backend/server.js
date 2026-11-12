@@ -29,8 +29,10 @@ const { normalizeUploadFilename } = require("./documentExtraction");
 const {
   portableRequest,
   createAzureNativeAgentAdapter,
+  createAzureNativeLearningProposal,
   runtimeStatus: azureNativeRuntimeStatus,
 } = require("./azureNativeAgentRuntime");
+const { enqueueRuntimeJob } = require("./runtimeJobs");
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = path.resolve(process.env.MEIDS_DATA_DIR || path.join(process.cwd(), ".data"));
@@ -1162,6 +1164,14 @@ function accessContextFromMapping(mapping = {}, twinId = "") {
   };
 }
 
+function agentRuntimeFallbackAllowed(error = {}) {
+  if (error.noRetry === true || error.unknownCompletion === true || error.code === "azure_chat_timeout") return false;
+  if (["blocked_auth_context", "auth_configuration_error", "access_denied", "policy_blocked"].includes(String(error.code || ""))) return false;
+  const status = Number(error.statusCode || error.status || 0);
+  if ([400, 401, 403, 409, 422].includes(status)) return false;
+  return true;
+}
+
 async function retrieveForAzureNative(request, mapping = {}) {
   const twinId = request.context?.active_twin_id
     || request.metadata?.identity?.activeTwinId
@@ -1223,14 +1233,27 @@ async function executeAgentRuntime(agentId, envelope, options = {}) {
       trace: { ...result.trace, adapter: result.adapter, budget_ms: result.budget_ms },
     }, envelope, "azure_native");
   } catch (error) {
-    if (String(process.env.MEIDS_AGENT_AZURE_FALLBACK_TO_N8N || "true").toLowerCase() === "false") throw error;
+    if (String(process.env.MEIDS_AGENT_AZURE_FALLBACK_TO_N8N || "true").toLowerCase() === "false"
+      || !agentRuntimeFallbackAllowed(error)) throw error;
     console.error(JSON.stringify({
       event: "azure_native_agent_fallback",
       request_id: request.request_id,
       route: request.routing_contract.route,
       error: error.message,
     }));
-    return proxyToN8n(agentId, envelope, options);
+    const fallback = await proxyToN8n(agentId, envelope, options);
+    return {
+      ...fallback,
+      trace: {
+        ...(fallback.trace || {}),
+        fallback: {
+          from: "azure_native",
+          to: "n8n",
+          reason_code: error.code || "azure_native_failure",
+          status_code: Number(error.statusCode || error.status || 0) || null,
+        },
+      },
+    };
   }
 }
 
@@ -1295,9 +1318,14 @@ async function handleNativeAgentChat(req, res) {
   const response = await executeAgentRuntime("actor_twin", envelope, { mapping });
   const traceRecords = buildTraceRecords("actor_twin", envelope, response);
   for (const record of traceRecords) await appendTrace(record, {
+    knowledge_access_token: knowledgeAccessToken,
     tenant_id: mapping.tenant_id,
     user_id: mapping.user_id,
     twin_id: twinId,
+    allowed_twin_ids: mapping.allowed_twin_ids || [],
+    group_ids: mapping.group_ids || [],
+    roles: mapping.roles || [],
+    organization_id: mapping.tenant_id,
   });
   await storeApproval(buildApprovalRecord("actor_twin", envelope, response, traceRecords[0]));
   jsonResponse(res, response.status === "queued" ? 202 : 200, {
@@ -1845,16 +1873,90 @@ async function dispatchPostTurnLearning(payload) {
   }
 }
 
+function azureNativeLearningEnabled() {
+  const configured = String(process.env.MEIDS_LEARNING_RUNTIME || "").trim().toLowerCase();
+  if (configured === "n8n") return false;
+  if (configured === "azure_native") return true;
+  return agentRuntimeMode() === "azure_native"
+    || (agentRuntimeMode() === "hybrid" && azureNativeRoutes().has("post_turn_learning"));
+}
+
+async function enqueueAzureNativeLearning(payload) {
+  const twinId = String(payload.twin_id || "").trim();
+  const tenantId = String(payload.tenant_id || payload.organization_id || "").trim();
+  const userId = String(payload.user_id || "").trim();
+  if (!tenantId || !userId || !twinId) throw new Error("Azure-native Learning requires tenant, user, and twin scope.");
+  const { knowledge_access_token: omittedToken, ...safePayload } = payload;
+  const traceId = String(payload.trace_id || payload.request_id || makeId("learn")).trim().slice(0, 256);
+  const mapping = {
+    tenant_id: tenantId,
+    user_id: userId,
+    active_twin_id: twinId,
+    allowed_twin_ids: Array.isArray(payload.allowed_twin_ids) && payload.allowed_twin_ids.includes(twinId)
+      ? payload.allowed_twin_ids
+      : [twinId],
+    group_ids: Array.isArray(payload.group_ids) ? payload.group_ids : [],
+    roles: Array.isArray(payload.roles) ? payload.roles : [],
+  };
+  const job = await enqueueRuntimeJob(await getPgPool(), {
+    tenant_id: tenantId,
+    actor_user_id: userId,
+    twin_id: twinId,
+    job_type: "learning_post_turn",
+    idempotency_key: `learning:${tenantId}:${twinId}:${traceId}`,
+    max_attempts: 3,
+    payload: { mapping, learning: safePayload },
+  });
+  console.log(JSON.stringify({ event: "azure_native_learning_queued", trace_id: traceId, job_id: job.job_id, status: job.status }));
+  return job;
+}
+
 function queuePostTurnLearning(record) {
   if (!postTurnLearningEnabled()) return;
   if (record?.agent_id === "learning_agent") return;
   const payload = postTurnLearningPayloadFromTrace(record);
   if (!payload) return;
+  if (azureNativeLearningEnabled()) {
+    const context = record._learning_context && typeof record._learning_context === "object"
+      ? record._learning_context
+      : {};
+    enqueueAzureNativeLearning({ ...payload, ...context }).catch((error) => {
+      console.error(JSON.stringify({ event: "azure_native_learning_queue_failed", trace_id: payload.trace_id || "", error: error.message }));
+    });
+    return;
+  }
   dispatchPostTurnLearning(payload).catch(() => {});
 }
 
 async function handlePostTurnLearning(req, res) {
   const body = await readBody(req);
+  if (azureNativeLearningEnabled()) {
+    const mapping = await requireKnowledgeRequestMapping(req, body);
+    const twinId = cleanTwinId(body.twin_id || body.twin || mapping.active_twin_id);
+    if (!twinId || !mapping.allowed_twin_ids.includes(twinId)) {
+      const error = new Error("Post-turn Learning must target an assigned twin.");
+      error.statusCode = 403;
+      throw error;
+    }
+    const job = await enqueueAzureNativeLearning({
+      ...body,
+      tenant_id: mapping.tenant_id,
+      organization_id: mapping.tenant_id,
+      user_id: mapping.user_id,
+      twin_id: twinId,
+      allowed_twin_ids: mapping.allowed_twin_ids || [],
+      group_ids: mapping.group_ids || [],
+      roles: mapping.roles || [],
+    });
+    jsonResponse(res, 202, {
+      status: "accepted",
+      dispatch: "post_turn_learning",
+      target: "learning_agent",
+      runtime: "azure_native",
+      job_id: job.job_id,
+    });
+    return;
+  }
   if (!learningDispatchUrl()) {
     jsonResponse(res, 503, {
       status: "blocked",
@@ -1900,6 +2002,7 @@ function backendHealthPayload() {
     agent_runtime: {
       mode: agentRuntimeMode(),
       azure_native_routes: [...azureNativeRoutes()],
+      learning_runtime: azureNativeLearningEnabled() ? "azure_native" : "n8n",
       fallback_to_n8n: String(process.env.MEIDS_AGENT_AZURE_FALLBACK_TO_N8N || "true").toLowerCase() !== "false",
       azure_native: azureNativeRuntimeStatus(),
     },
@@ -2966,10 +3069,12 @@ const handleWorkspaceApi = createWorkspaceApi({
   readMultipartForm,
   jsonResponse,
   stageKnowledge,
+  stageLearning,
   promoteKnowledge,
   rejectKnowledge,
   proxyToN8n,
   executeAgent: executeAgentRuntime,
+  generateLearningProposal: createAzureNativeLearningProposal,
   transcribeAudio: transcribeAudioWithOpenAiCompatibleGateway,
   transcriptionConfig: openAiTranscriptionConfig,
   issueKnowledgeAccessToken(mapping, twinId) {
@@ -3261,6 +3366,7 @@ module.exports = {
   normalizeAgentResponse,
   buildTraceRecord,
   buildApprovalRecord,
+  agentRuntimeFallbackAllowed,
   routeRequest,
   decodeMultipartFilename,
 };

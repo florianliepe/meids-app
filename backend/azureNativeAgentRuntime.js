@@ -59,6 +59,73 @@ function routeInstruction(route, evidence) {
   return "Respond directly. Avoid unnecessary orchestration narration.";
 }
 
+function elapsedMs(startedAt) {
+  return Math.max(0, Date.now() - startedAt);
+}
+
+function parseJsonObject(value, fallback = {}) {
+  const text = String(value || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function learningRecommended(request, answer) {
+  if (request.metadata?.side_effect_policy === "no_write_probe") return false;
+  const text = `${request.message}\n${answer}`.toLowerCase();
+  return /\b(remember|retain|lesson|learned|correction|corrected|decision rationale|preference|merke|behalte|lektion|gelernt|korrektur|korrigiert|entscheidungsgrund|pr[aä]ferenz)\b/i.test(text);
+}
+
+async function runBoundedButler(request, evidence, roleExecutions) {
+  const startedAt = Date.now();
+  const completion = await completeChat([
+    { role: "system", content: baseSystemPrompt() },
+    { role: "system", content: "You are the Agentic Butler for one bounded, no-side-effect task. Produce the requested artifact directly. Do not invoke or simulate a Skill Orchestrator, Task Agent, external action, persistence, or approval." },
+    ...(evidence.length ? [{ role: "system", content: `Reviewed evidence:\n${JSON.stringify(evidence)}` }] : []),
+    { role: "user", content: request.message },
+  ], { timeoutMs: Math.min(request.routing_contract.budgets.response_ms, 25_000) });
+  roleExecutions.push({ agent: "agentic_butler", mode: "single_task_bypass", duration_ms: elapsedMs(startedAt) });
+  return { answer: completion.text, completion };
+}
+
+async function runSkillTaskChain(request, evidence, roleExecutions) {
+  const maximumTasks = Math.max(1, Math.min(Number(request.routing_contract.gates?.max_task_agent_calls || 1), 2));
+  const planStartedAt = Date.now();
+  const planCompletion = await completeChat([
+    { role: "system", content: `You are the Skill Orchestrator. Return only JSON with keys objective and tasks. tasks must contain 1-${maximumTasks} independent, no-side-effect task strings. Never include sending, publishing, scheduling, approval, persistence, deployment, or other external effects.` },
+    { role: "user", content: request.message },
+  ], { timeoutMs: Math.min(12_000, request.routing_contract.budgets.response_ms), maxOutputTokens: 800 });
+  const parsedPlan = parseJsonObject(planCompletion.text, {});
+  const tasks = (Array.isArray(parsedPlan.tasks) ? parsedPlan.tasks : [request.message])
+    .map((task) => String(typeof task === "string" ? task : task?.task || task?.description || "").trim())
+    .filter(Boolean)
+    .slice(0, maximumTasks);
+  roleExecutions.push({ agent: "skill_orchestrator", mode: "plan", duration_ms: elapsedMs(planStartedAt), task_count: tasks.length });
+
+  const taskResults = [];
+  for (const [index, task] of tasks.entries()) {
+    const taskStartedAt = Date.now();
+    const taskCompletion = await completeChat([
+      { role: "system", content: "You are a bounded Task Agent. Complete only the assigned in-memory task. Do not perform or claim external actions, persistence, approval, deployment, or additional agent calls." },
+      ...(evidence.length ? [{ role: "system", content: `Reviewed evidence:\n${JSON.stringify(evidence)}` }] : []),
+      { role: "user", content: task },
+    ], { timeoutMs: Math.min(25_000, request.routing_contract.budgets.response_ms), maxOutputTokens: 1_800 });
+    taskResults.push({ task, result: taskCompletion.text });
+    roleExecutions.push({ agent: "task_agent", mode: "execute", task_index: index, duration_ms: elapsedMs(taskStartedAt) });
+  }
+
+  const synthesisStartedAt = Date.now();
+  const synthesis = await completeChat([
+    { role: "system", content: `${baseSystemPrompt()}\nYou are the Agentic Butler. Synthesize the task results into one concise final answer. Do not claim external effects.` },
+    { role: "user", content: `Original request:\n${request.message}\n\nTask results:\n${JSON.stringify(taskResults)}` },
+  ], { timeoutMs: Math.min(25_000, request.routing_contract.budgets.response_ms), maxOutputTokens: 2_500 });
+  roleExecutions.push({ agent: "agentic_butler", mode: "synthesize", duration_ms: elapsedMs(synthesisStartedAt) });
+  return { answer: synthesis.text, completion: synthesis, plan: { objective: parsedPlan.objective || request.message, tasks }, taskResults };
+}
+
 function needsRetrieval(route) {
   return ["retrieve_knowledge", "retrieve_then_work"].includes(route);
 }
@@ -108,21 +175,47 @@ function createAzureNativeAgentAdapter({ retrieveKnowledge }) {
       retrieval = await retrieveKnowledge(request);
       evidence = formatEvidence(retrieval);
     }
-    const completion = await completeChat([
-      { role: "system", content: baseSystemPrompt() },
-      { role: "system", content: routeInstruction(route, evidence) },
-      ...(evidence.length ? [{ role: "system", content: `Reviewed evidence:\n${JSON.stringify(evidence)}` }] : []),
-      { role: "user", content: request.message },
-    ], { timeoutMs: Math.min(routing.budgets.response_ms, 25_000) });
-    let answer = completion.text;
+    const roleExecutions = [];
+    let completion;
+    let answer;
+    let skillPlan = null;
+    let taskResults = [];
+    if (route === "execute_work_sync" && routing.gates?.skill_orchestrator === true) {
+      const chained = await runSkillTaskChain(request, evidence, roleExecutions);
+      completion = chained.completion;
+      answer = chained.answer;
+      skillPlan = chained.plan;
+      taskResults = chained.taskResults;
+    } else if (route === "execute_work_sync") {
+      const bounded = await runBoundedButler(request, evidence, roleExecutions);
+      completion = bounded.completion;
+      answer = bounded.answer;
+    } else {
+      const startedAt = Date.now();
+      completion = await completeChat([
+        { role: "system", content: baseSystemPrompt() },
+        { role: "system", content: routeInstruction(route, evidence) },
+        ...(evidence.length ? [{ role: "system", content: `Reviewed evidence:\n${JSON.stringify(evidence)}` }] : []),
+        { role: "user", content: request.message },
+      ], { timeoutMs: Math.min(routing.budgets.response_ms, 25_000) });
+      answer = completion.text;
+      roleExecutions.push({
+        agent: needsRetrieval(route) ? "knowledge_fabric_agent" : "actor_twin",
+        mode: needsRetrieval(route) ? "retrieve_and_answer" : "direct",
+        duration_ms: elapsedMs(startedAt),
+      });
+    }
     let critic = null;
     if (routing.gates?.critical_faculty === true) {
+      const criticStartedAt = Date.now();
       critic = await completeChat([
         { role: "system", content: "Act as a concise Critical Faculty. Return only a corrected final answer. Remove unsupported claims, preserve citations, and retain approval boundaries." },
         { role: "user", content: `Question:\n${request.message}\n\nDraft answer:\n${answer}\n\nEvidence:\n${JSON.stringify(evidence)}` },
       ], { timeoutMs: Math.min(8_000, routing.budgets.response_ms), maxOutputTokens: 1_200 });
       answer = critic.text;
+      roleExecutions.push({ agent: "critical_faculty", mode: "conditional_review", duration_ms: elapsedMs(criticStartedAt) });
     }
+    const recommendLearning = learningRecommended(request, answer);
     return {
       status: "completed",
       output: {
@@ -130,6 +223,7 @@ function createAzureNativeAgentAdapter({ retrieveKnowledge }) {
         summary: answer.slice(0, 1_000),
         route_decision: routing,
         evidence: evidence.map(({ id, title, source, review_state, score }) => ({ id, title, source, review_state, score })),
+        ...(skillPlan ? { skill_plan: skillPlan, task_results: taskResults } : {}),
       },
       trace: {
         runtime: "azure_native",
@@ -139,9 +233,43 @@ function createAzureNativeAgentAdapter({ retrieveKnowledge }) {
         knowledge_retrieved: Boolean(retrieval),
         critical_faculty_applied: Boolean(critic),
         learning_mode: routing.gates?.learning_mode || "post_turn_only",
+        trace_learning_recommended: recommendLearning
+          ? { recommended: true, review_state: "review_needed", summary: "The interaction contains an explicit correction, preference, decision rationale, or learning signal." }
+          : null,
+        role_executions: roleExecutions,
       },
     };
   });
+}
+
+async function createAzureNativeLearningProposal(payload = {}) {
+  const source = String(payload.source_interaction_summary || payload.query || "").trim();
+  if (!source) throw new Error("Learning proposal requires a source interaction summary.");
+  const completion = await completeChat([
+    { role: "system", content: [
+      "You are the Me.IDs Learning Agent running asynchronously after the user-visible answer.",
+      "Return only JSON with summary, increment_type, and concept_deltas.",
+      "Create a proposal only; its review state is always review_needed.",
+      "Preserve uncertainty and provenance. Do not approve, publish, activate, or claim persistence.",
+      "concept_deltas is an array of at most 3 objects with operation=create|update|merge|relate and delta.",
+    ].join("\n") },
+    { role: "user", content: source },
+  ], { timeoutMs: 25_000, maxOutputTokens: 1_500 });
+  const proposal = parseJsonObject(completion.text, { summary: completion.text, increment_type: "agent_learning", concept_deltas: [] });
+  return {
+    summary: String(proposal.summary || source).slice(0, 20_000),
+    increment_type: String(proposal.increment_type || "agent_learning").slice(0, 100),
+    concept_deltas: (Array.isArray(proposal.concept_deltas) ? proposal.concept_deltas : []).slice(0, 3),
+    payload: {
+      source_trace_id: payload.trace_id || "",
+      source_request_id: payload.request_id || "",
+      source_interaction_summary: source,
+      proposal,
+      provider: completion.provider,
+      model: completion.model,
+      target_review_state: "review_needed",
+    },
+  };
 }
 
 function runtimeStatus() {
@@ -155,4 +283,10 @@ function runtimeStatus() {
   };
 }
 
-module.exports = { portableRequest, createAzureNativeAgentAdapter, runtimeStatus };
+module.exports = {
+  portableRequest,
+  createAzureNativeAgentAdapter,
+  createAzureNativeLearningProposal,
+  learningRecommended,
+  runtimeStatus,
+};
