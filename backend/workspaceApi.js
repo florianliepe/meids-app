@@ -9,6 +9,7 @@ const {
 } = require("./artifactStorage");
 const { enqueueRuntimeJob, cancelQueuedRuntimeJob, processRuntimeJobBatch } = require("./runtimeJobs");
 const { classifyAgentInteraction } = require("./agentRoutingPolicy");
+const { assertRuntimeProvider } = require("./agentRuntimeSelection");
 const {
   persistGraphProjection,
   latestEdgeReviews,
@@ -650,6 +651,7 @@ function createWorkspaceApi(deps) {
     rejectKnowledge,
     proxyToN8n,
     executeAgent = proxyToN8n,
+    agentRuntimeProvider = () => "n8n",
     generateLearningProposal,
     transcribeAudio,
     transcriptionConfig,
@@ -701,6 +703,11 @@ function createWorkspaceApi(deps) {
     return mapping;
   }
 
+  function runtimeProviderForJob(job, route) {
+    const legacyProvider = route === "post_turn_learning" ? "azure_native" : agentRuntimeProvider(route);
+    return assertRuntimeProvider(job.payload?.runtime_provider || legacyProvider);
+  }
+
   async function persistSkillRunResult(pool, mapping, runId, action, details) {
     await withContext(pool, mapping, async (client) => {
       const updated = await client.query(
@@ -729,6 +736,7 @@ function createWorkspaceApi(deps) {
     agent_work: {
       async run(job) {
         const mapping = runtimeMapping(job);
+        const runtimeProvider = runtimeProviderForJob(job, "execute_work_sync");
         const queued = job.payload.queued || {};
         const request = structuredClone(job.payload.request || {});
         request.metadata = {
@@ -758,6 +766,7 @@ function createWorkspaceApi(deps) {
         const configuredTimeout = Number(process.env.AGENT_WORK_TIMEOUT_MS || 180000);
         const response = await executeAgent("actor_twin", request, {
           mapping,
+          runtimeProvider,
           timeoutMs: Number.isFinite(configuredTimeout) ? Math.max(30000, Math.min(configuredTimeout, 240000)) : 180000,
           maxTimeoutMs: 240000,
         });
@@ -808,6 +817,11 @@ function createWorkspaceApi(deps) {
           throw error;
         }
         const mapping = runtimeMapping(job);
+        if (runtimeProviderForJob(job, "post_turn_learning") !== "azure_native") {
+          const error = new Error("Detached Learning job is not pinned to the Azure-native provider.");
+          error.noRetry = true;
+          throw error;
+        }
         const learning = job.payload.learning || {};
         const pool = await getPgPool();
         const domainStateBefore = learning.dry_run === true
@@ -860,6 +874,7 @@ function createWorkspaceApi(deps) {
     skill_execution: {
       async run(job) {
         const mapping = runtimeMapping(job);
+        const runtimeProvider = runtimeProviderForJob(job, "execute_work_sync");
         const queued = job.payload.queued || {};
         const request = structuredClone(job.payload.request || {});
         request.metadata = {
@@ -883,6 +898,7 @@ function createWorkspaceApi(deps) {
         const configuredTimeout = Number(process.env.SKILL_RUN_TIMEOUT_MS || 90000);
         const response = await executeAgent("actor_twin", request, {
           mapping,
+          runtimeProvider,
           timeoutMs: Number.isFinite(configuredTimeout) ? Math.max(15000, Math.min(configuredTimeout, 120000)) : 90000,
         });
         const output = response.output || response;
@@ -1579,6 +1595,7 @@ function createWorkspaceApi(deps) {
     };
     const manualRequest = envelope.input.message || "Run the approved skill with the supplied context.";
     const knowledgeContext = clean(body.knowledge_context, 20_000);
+    const runtimeProvider = assertRuntimeProvider(agentRuntimeProvider("execute_work_sync"));
     const skillPrompt = [
       `Execute the approved skill "${skill.name}" through the governed Azure-native agent runtime.`,
       "This is approved-skill execution: Agentic Butler uses Skill Orchestrator and at most two bounded Task Agents.",
@@ -1593,6 +1610,7 @@ function createWorkspaceApi(deps) {
       twin: skill.twin_id, summary: "Approved skill run queued for Actor Twin orchestration.",
       review_state: "unreviewed", inputs: body, created_at: new Date().toISOString(),
       knowledge_context_supplied: Boolean(knowledgeContext),
+      runtime_provider: runtimeProvider,
       orchestration: { entry_agent: "actor_twin", delegation: "meids.agent-routing.v1", target: "agentic_butler" },
     };
     await withContext(pool, mapping, async (client) => {
@@ -1606,7 +1624,7 @@ function createWorkspaceApi(deps) {
         actor_user_id: mapping.user_id,
         twin_id: skill.twin_id,
         job_type: "skill_execution",
-        payload: { mapping, request: queuedRequest, queued },
+        payload: { mapping, request: queuedRequest, queued, runtime_provider: runtimeProvider },
       });
     });
     jsonResponse(res, 202, queued);
@@ -1628,6 +1646,7 @@ function createWorkspaceApi(deps) {
     const idempotencyMaterial = suppliedKey || `${body.session_id || "sessionless"}:${requestHash}:${timeBucket}`;
     const idempotencyHash = crypto.createHash("sha256").update(idempotencyMaterial).digest("hex");
     const jobId = `agent-work-${idempotencyHash.slice(0, 32)}`;
+    const runtimeProvider = assertRuntimeProvider(agentRuntimeProvider("execute_work_sync"));
     const queued = {
       contract: "meids.agent-work.v1",
       status: "queued",
@@ -1638,6 +1657,7 @@ function createWorkspaceApi(deps) {
       side_effect_policy: "no_external_side_effects",
       critical_faculty: body.critical_faculty === true,
       classified_route: classified.route,
+      runtime_provider: runtimeProvider,
       created_at: new Date().toISOString(),
     };
     const envelope = {
@@ -1661,7 +1681,7 @@ function createWorkspaceApi(deps) {
         actor_user_id: mapping.user_id,
         twin_id: twinId,
         job_type: "agent_work",
-        payload: { mapping, request: queuedRequest, queued },
+        payload: { mapping, request: queuedRequest, queued, runtime_provider: runtimeProvider },
         max_attempts: 3,
       });
       const existingLedger = await client.query(

@@ -25,6 +25,7 @@ const {
   processOutboxBatch,
 } = require("./knowledgePersistence");
 const { createWorkspaceApi } = require("./workspaceApi");
+const { normalizeRuntimeMode, selectRuntimeProvider, assertRuntimeProvider } = require("./agentRuntimeSelection");
 const { normalizeUploadFilename } = require("./documentExtraction");
 const {
   portableRequest,
@@ -1195,8 +1196,7 @@ async function proxyToN8n(agentId, envelope, options = {}) {
 }
 
 function agentRuntimeMode() {
-  const mode = String(process.env.MEIDS_AGENT_RUNTIME || "n8n").trim().toLowerCase();
-  return ["azure_native", "hybrid"].includes(mode) ? mode : "n8n";
+  return normalizeRuntimeMode(process.env.MEIDS_AGENT_RUNTIME);
 }
 
 function azureNativeRoutes() {
@@ -1254,9 +1254,13 @@ async function retrieveForAzureNative(request, mapping = {}, options = {}) {
 
 async function executeAgentRuntime(agentId, envelope, options = {}) {
   const request = portableRequest(envelope, { agentId });
-  const mode = agentRuntimeMode();
-  const routeEnabled = azureNativeRoutes().has(request.routing_contract.route);
-  const useAzure = mode === "azure_native" || (mode === "hybrid" && routeEnabled);
+  const pinnedProvider = options.runtimeProvider ? assertRuntimeProvider(options.runtimeProvider) : "";
+  const selectedProvider = pinnedProvider || selectRuntimeProvider({
+    mode: agentRuntimeMode(),
+    route: request.routing_contract.route,
+    azureRoutes: azureNativeRoutes(),
+  });
+  const useAzure = selectedProvider === "azure_native";
   const adapter = createAzureNativeAgentAdapter({
     retrieveKnowledge: (portable, retrievalOptions) => retrieveForAzureNative(portable, options.mapping || {}, retrievalOptions),
   });
@@ -1296,7 +1300,8 @@ async function executeAgentRuntime(agentId, envelope, options = {}) {
       trace: { ...result.trace, adapter: result.adapter, budget_ms: result.budget_ms },
     }, envelope, "azure_native");
   } catch (error) {
-    if (String(process.env.MEIDS_AGENT_AZURE_FALLBACK_TO_N8N || "true").toLowerCase() === "false"
+    if (pinnedProvider
+      || String(process.env.MEIDS_AGENT_AZURE_FALLBACK_TO_N8N || "true").toLowerCase() === "false"
       || !agentRuntimeFallbackAllowed(error)) throw error;
     console.error(JSON.stringify({
       event: "azure_native_agent_fallback",
@@ -2131,7 +2136,7 @@ async function enqueueAzureNativeLearning(payload) {
     job_type: "learning_post_turn",
     idempotency_key: `learning:${tenantId}:${twinId}:${traceId}`,
     max_attempts: 3,
-    payload: { mapping, learning: safePayload },
+    payload: { mapping, learning: safePayload, runtime_provider: "azure_native" },
   });
   console.log(JSON.stringify({ event: "azure_native_learning_queued", trace_id: traceId, job_id: job.job_id, status: job.status }));
   return job;
@@ -3415,6 +3420,9 @@ const handleWorkspaceApi = createWorkspaceApi({
   rejectKnowledge,
   proxyToN8n,
   executeAgent: executeAgentRuntime,
+  agentRuntimeProvider(route) {
+    return selectRuntimeProvider({ mode: agentRuntimeMode(), route, azureRoutes: azureNativeRoutes() });
+  },
   generateLearningProposal: createAzureNativeLearningProposal,
   transcribeAudio: transcribeAudioWithOpenAiCompatibleGateway,
   transcriptionConfig: openAiTranscriptionConfig,
