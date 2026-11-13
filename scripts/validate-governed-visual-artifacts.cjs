@@ -8,6 +8,7 @@ const storage = read("backend/artifactStorage.js");
 const migration = read("backend/migrations/018_governed_visual_artifacts.sql");
 const frontend = read("frontend/app.js");
 const html = read("frontend/index.html");
+const storageInfra = read("infra/azure/knowledge-storage.bicep");
 
 for (const route of [
   "POST /api/artifacts",
@@ -34,8 +35,19 @@ for (const required of [
   "x-ms-blob-type",
   "ensurePrivateContainer",
   "Artifact URI is outside the configured private storage account",
+  "readPrivateArtifactScanStatus",
 ]) {
   if (!storage.includes(required)) throw new Error(`Private Blob storage guardrail missing: ${required}`);
+}
+
+for (const required of [
+  "Microsoft.Security/defenderForStorageSettings@2025-06-01",
+  "isEnabled: true",
+  "capGBPerMonth: malwareScanCapGbPerMonth",
+  "source-artifacts/",
+  "publicAccess: 'None'",
+]) {
+  if (!storageInfra.includes(required)) throw new Error(`Production Blob security posture missing: ${required}`);
 }
 
 for (const required of [
@@ -46,6 +58,9 @@ for (const required of [
   "cascadeArtifactReview",
   "visualSignatureMatches",
   "markArtifactPersistenceFailure",
+  "requireCleanArtifactScan",
+  "requireConceptArtifactsClean",
+  "malware_scan_status",
 ]) {
   if (!api.includes(required)) throw new Error(`Governed recall guardrail missing: ${required}`);
 }
@@ -64,4 +79,4 @@ if (api.includes("blob_uri: row.blob_uri") || api.includes("blob_uri: artifact.b
   throw new Error("Private Blob URI must not be returned in artifact metadata responses.");
 }
 
-process.stdout.write("Governed visual artifact contract valid: private Blob, RLS, review gate, and recall UI present.\n");
+process.stdout.write("Governed visual artifact contract valid: private Blob, Defender scan gate, RLS, review gate, and recall UI present.\n");

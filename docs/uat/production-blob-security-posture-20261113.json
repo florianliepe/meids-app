@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-11-13T07:59:45.748Z",
+  "scope": {
+    "resource_group": "rg-ai-intellectual-twin",
+    "storage_account": "stmeidsprod1853a19b",
+    "container": "source-artifacts"
+  },
+  "storage_posture": {
+    "public_access": "None",
+    "blob_soft_delete_days": 14,
+    "container_soft_delete_days": 14,
+    "versioning_enabled": true,
+    "shared_key_access": false,
+    "public_network_access": "Disabled",
+    "noncurrent_source_artifact_retention_days": 90
+  },
+  "defender_for_storage": {
+    "plan_enabled": true,
+    "on_upload_malware_scanning_enabled": false,
+    "scan_result_mode": "BlobIndexTags",
+    "operation_status": "MissingPermissions",
+    "missing_action": "Microsoft.Security/datascanners/write",
+    "required_scope": "/subscriptions/25c9ce59-90a1-4e8a-a2d4-1853a19bce22",
+    "required_operator_role": "Security Admin",
+    "deployment_reported_succeeded_but_scanner_verified_inactive": true
+  },
+  "application_gate": {
+    "status": "ready_not_deployed",
+    "behavior": "Artifact approval, concept promotion, and content recall fail closed unless the Defender Blob tag is No threats found.",
+    "reason_not_deployed": "Deploying the gate before the Azure scanner is active would lock existing and new source artifacts."
+  },
+  "next_actions": [
+    "Grant the production operator Security Admin at subscription scope or perform the Defender enablement with an identity that has Microsoft.Security/datascanners/write.",
+    "Re-run the Defender setting and verify operationStatus=Succeeded and onUpload.isEnabled=true.",
+    "Run a benign on-upload scan and a filtered on-demand baseline scan for source-artifacts.",
+    "Merge and deploy the fail-closed application gate only after both scan checks pass."
+  ],
+  "boundary": "Public-safe posture evidence; no credentials, blob names, user content, or private knowledge are included."
+}

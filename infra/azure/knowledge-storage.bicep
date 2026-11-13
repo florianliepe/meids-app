@@ -3,6 +3,9 @@ targetScope = 'resourceGroup'
 @description('Existing production storage account name.')
 param storageAccountName string
 
+@description('Monthly Defender on-upload malware scanning cap in GB. Use -1 for no cap.')
+param malwareScanCapGbPerMonth int = 1000
+
 @description('Tags applied to the managed containers.')
 param tags object = {
   application: 'meids'
@@ -18,6 +21,30 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
 resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' existing = {
   parent: storage
   name: 'default'
+}
+
+resource defenderForStorage 'Microsoft.Security/defenderForStorageSettings@2025-06-01' = {
+  name: 'current'
+  scope: storage
+  properties: {
+    isEnabled: true
+    malwareScanning: {
+      onUpload: {
+        capGBPerMonth: malwareScanCapGbPerMonth
+        isEnabled: true
+      }
+    }
+    overrideSubscriptionLevelSettings: true
+    sensitiveDataDiscovery: {
+      isEnabled: false
+    }
+  }
+}
+
+resource sourceArtifacts 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobService
+  name: 'source-artifacts'
+  properties: { publicAccess: 'None' }
 }
 
 resource knowledgeSources 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
@@ -107,7 +134,7 @@ resource lifecycle 'Microsoft.Storage/storageAccounts/managementPolicies@2023-05
           definition: {
             filters: {
               blobTypes: ['blockBlob']
-              prefixMatch: ['knowledge-sources/', 'okf-working/', 'learning-artifacts/']
+              prefixMatch: ['knowledge-sources/', 'okf-working/', 'learning-artifacts/', 'source-artifacts/']
             }
             actions: {
               version: {
@@ -125,6 +152,7 @@ resource lifecycle 'Microsoft.Storage/storageAccounts/managementPolicies@2023-05
 }
 
 output containers array = [
+  sourceArtifacts.name
   knowledgeSources.name
   okfWorking.name
   okfApproved.name
