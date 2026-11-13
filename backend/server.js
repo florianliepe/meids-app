@@ -26,6 +26,7 @@ const {
 } = require("./knowledgePersistence");
 const { createWorkspaceApi } = require("./workspaceApi");
 const { normalizeRuntimeMode, selectRuntimeProvider, assertRuntimeProvider } = require("./agentRuntimeSelection");
+const { n8nAgentEnvelope } = require("./n8nAgentAdapter");
 const { normalizeUploadFilename } = require("./documentExtraction");
 const {
   portableRequest,
@@ -1175,7 +1176,7 @@ async function proxyToN8n(agentId, envelope, options = {}) {
     response = await fetch(webhookUrl, {
       method: "POST",
       headers,
-      body: JSON.stringify(envelope),
+      body: JSON.stringify(n8nAgentEnvelope(agentId, envelope)),
       signal: controller.signal,
     });
   } catch (error) {
