@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0.0",
+  "contract": "meids.agent-runtime-live-rollback.v1",
+  "generated_at": "2026-11-13T09:07:00.000Z",
+  "status": "passed_with_adapter_finding",
+  "production_boundary": {
+    "route": "/api/agents/chat",
+    "side_effect_policy": "no_write_probe",
+    "runtime_after_test": "azure_native",
+    "shadow_after_test": "disabled",
+    "fallback_after_test": false,
+    "postgres_auth_after_test": "managed_identity"
+  },
+  "results": [
+    {
+      "phase": "azure_native_before_switch",
+      "http_status": 200,
+      "duration_ms": 1189,
+      "runtime": "azure_native",
+      "status": "completed"
+    },
+    {
+      "phase": "n8n_rollback",
+      "http_status": 200,
+      "duration_ms": 17123,
+      "runtime": "backend proxy",
+      "status": "completed",
+      "canonical_n8n_execution_id": "112280"
+    },
+    {
+      "phase": "azure_native_restored",
+      "http_status": 200,
+      "duration_ms": 26713,
+      "runtime": "azure_native",
+      "status": "completed"
+    }
+  ],
+  "finding": {
+    "severity": "P1",
+    "status": "fixed_in_candidate",
+    "summary": "The generic Actor proxy envelope did not guarantee the sessionId required by n8n Simple Memory.",
+    "observed_executions": ["112257", "112261"],
+    "observed_error": "Error in sub-node Simple Memory: No session ID found",
+    "remediation": "Normalize every Actor request at the n8n adapter boundary to include action, a tenant/user/twin-bound opaque sessionId and chatInput, independent of the calling backend route. Invalid IDs, malformed text, missing scope and missing correlation fail before n8n dispatch."
+  },
+  "observation_restart_at": "2026-11-13T09:04:54.654Z",
+  "boundary": "Synthetic no-write prompts only. No knowledge, approval, publication, activation, learning increment or external effect was created. Tokens, prompts and answers are omitted."
+}
