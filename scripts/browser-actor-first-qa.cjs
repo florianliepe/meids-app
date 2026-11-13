@@ -162,9 +162,12 @@ async function run() {
           parkActorChatControls(mount);
           mount.innerHTML = '<div class="chat-layout"><div class="chat-inputs"><textarea data-test-id="chat-input"></textarea><button data-test-id="chat-input-send-button">Send</button></div></div>';
           const reconnected = placeActorChatControls(mount) && mount.querySelectorAll("#actorChatControls").length === 1;
-          return { ...initial, nested, reconnected };
+          const readableAnswer = actorChatReadableText('A concise grounded answer.\n{\n  "trace": { "adapter": "azure_native" }\n}');
+          const traceOnly = actorChatReadableText('{"trace":{"adapter":"azure_native"}}', "No readable answer.");
+          return { ...initial, nested, reconnected, readableAnswer, traceOnly };
         });
         if (!composer.docked || !composer.talkBeforeSend || composer.headerVisible || !composer.nested.docked || composer.nested.count !== 1 || composer.nested.mutationCount !== 0 || !composer.reconnected) failures.push("Actor Twin controls are not stable beside Send across nested DOM and reconnect");
+        if (composer.readableAnswer !== "A concise grounded answer." || composer.traceOnly !== "No readable answer.") failures.push("Actor Twin exposes technical trace content instead of a readable answer");
       }
       if (item.view === "concepts") {
         const row = page.locator(".knowledge-increment").first();

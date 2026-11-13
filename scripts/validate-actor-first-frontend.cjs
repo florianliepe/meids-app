@@ -36,6 +36,9 @@ assert.match(app, /function parkActorChatControls/, "Actor controls must survive
 assert.match(app, /dashboardLaneTargetId/, "Targeted review navigation must select the intended lane");
 assert.match(app, /aria-describedby/, "Knowledge hover detail must remain available to assistive technology");
 assert.match(app, /voiceReadiness.*aria-label/s, "Compact voice readiness must retain an accessible label");
+assert.match(app, /function actorChatReadableText/, "Actor chat must sanitize technical response payloads");
+assert.match(app, /trace_chain\|adapter\|provider\|runtime\|budget_ms\|agent_id/, "Actor chat sanitizer must recognize runtime trace fields");
+assert.doesNotMatch(app, /job\.status === "completed" && job\.result \? `<pre>/, "Background results must not expose raw result JSON");
 assert.match(css, /#chat\.view\.active[\s\S]*display: flex/, "Actor Twin view must use the actor-first layout");
 assert.match(css, /#voiceReadiness[\s\S]*display: inline-flex/, "Voice readiness must keep concise visible text");
 assert.match(css, /#voiceReadiness::before[\s\S]*width: 10px/, "Voice readiness must retain a compact redundant status dot");
@@ -43,6 +46,7 @@ assert.match(css, /#ingest \.source-capture-grid[\s\S]*repeat\(2/, "Source intak
 assert.match(css, /knowledge-increment:hover/, "Knowledge rows must provide a clear hover state");
 assert.match(css, /knowledge-hover-preview/, "Knowledge rows must reveal compact detail on hover or focus");
 assert.match(css, /#dashboard \.dashboard-filterbar[\s\S]*grid-template-columns/, "Review must use compact queue and issue selectors");
+assert.match(css, /review-lane-active \.activity-list[\s\S]*height: clamp\(420px/, "Review must expose a useful scrollable queue height");
 assert.match(css, /graph-explorer-v2 \.graph-cockpit-head[\s\S]*display: none/, "Graph Explorer must place the map in the initial viewport");
 assert.match(css, /skill-detail-grid > article:nth-child\(2\)/, "Skill approval must leave the daily skill page");
 assert.match(runtimeConfig, /graphExplorerV2: false/, "Graph Explorer V2 must retain its rollback-safe source default");

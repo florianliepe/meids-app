@@ -28,6 +28,12 @@ const checks = [
   [app.includes('return "evidence"') && app.includes('return "candidate"'), "trusted/evidence/candidate node classification is incomplete"],
   [app.includes('width: "0.65px"') && styles.includes("--graph-edge-trusted"), "compact edge styling is missing"],
   [styles.includes(".graph-svg-label-wrap.quiet-label rect") && styles.includes("opacity: 0"), "labels are not quiet at rest"],
+  [app.includes("graphNodeSemanticLabel") && app.includes("graphNodeTopicSummary"), "semantic end-user node labels are missing"],
+  [app.includes("renderGraphEndUserNodeDetail") && app.includes("Knowledge readiness"), "end-user knowledge detail is missing"],
+  [html.includes("data-graph-detail-close") && html.includes("Knowledge detail"), "large detail overlay close control is missing"],
+  [styles.includes("width: min(680px, 68vw)"), "selected knowledge detail is still too narrow"],
+  [app.includes("${readiness.score}% ready") && styles.includes(".graph-explorer-tooltip p"), "hover/focus summary does not expose readiness and meaning"],
+  [!app.match(/renderGraphEndUserNodeDetail[\s\S]*?data-graph-edge-action[\s\S]*?function renderGraphNodeDetail/), "end-user graph detail must not contain governance actions"],
 ];
 
 const failures = checks.filter(([passed]) => !passed).map(([, message]) => message);

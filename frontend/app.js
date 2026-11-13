@@ -38,6 +38,7 @@
   okfGraphNodeDetail: null,
   selectedGraphNodeKey: "",
   selectedGraphEdgeKey: "",
+  graphDetailOpen: false,
   graphEdgeSelectionSource: "",
   lastGraphEdgeReview: null,
   graphEdgeReviews: [],
@@ -1389,6 +1390,9 @@ function bindGraph() {
       return;
     }
   });
+  $(".graph-detail-panel")?.addEventListener("click", (event) => {
+    if (event.target.closest("[data-graph-detail-close]")) clearGraphExplorerSelection();
+  });
   $("#graphGovernanceQueue")?.addEventListener("click", (event) => {
     const edgeAction = event.target.closest("[data-graph-edge-action]");
     if (edgeAction) {
@@ -2516,6 +2520,7 @@ function setGraphLocalDepth(depth) {
       .sort((a, b) => graphNodeDegree(b, graph.edges || []) - graphNodeDegree(a, graph.edges || []))[0];
     state.selectedGraphNodeKey = topNode?.node_key || "";
     state.okfGraphNodeDetail = topNode ? buildStaticGraphNodeDetail(topNode.node_key) : null;
+    state.graphDetailOpen = false;
   }
   state.graphLocalDepth = normalized;
   state.graphFocusMode = normalized > 0;
@@ -2538,6 +2543,7 @@ function clearGraphExplorerSelection() {
   state.hoveredGraphNodeKey = "";
   state.hoveredGraphEdgeKey = "";
   state.okfGraphNodeDetail = null;
+  state.graphDetailOpen = false;
   if (state.graphLocalDepth > 0) {
     state.graphLocalDepth = 0;
     state.graphFocusMode = false;
@@ -2797,7 +2803,7 @@ function focusGraphOverviewNode(nodeKey) {
 function renderGraphCockpit() {
   const graph = state.okfGraph;
   const graphView = $("#graph");
-  graphView?.classList.toggle("graph-has-selection", Boolean(state.selectedGraphNodeKey || state.selectedGraphEdgeKey));
+  graphView?.classList.toggle("graph-has-selection", Boolean(state.graphDetailOpen && (state.selectedGraphNodeKey || state.selectedGraphEdgeKey)));
   graphView?.classList.toggle("graph-advanced-open", Boolean(state.graphAdvancedOpen));
   $("#graph")?.classList.toggle("graph-story-active", state.graphLayoutMode === "story");
   $("#graph")?.classList.toggle("graph-decision-active", state.graphLayoutMode === "decision");
@@ -4636,8 +4642,9 @@ function renderGraphHoverInspectorMarkup(nodes, edges) {
     .length;
   return `
     <span class="badge">${escapeHtml(labelizeGraph(node.node_type || "node"))}</span>
-    <strong>${escapeHtml(node.title || node.node_key)}</strong>
-    <small>${escapeHtml(node.review_state || "unknown")} · ${degree} links · ${evidenceLinks} evidence paths</small>
+    <strong>${escapeHtml(graphNodeSemanticLabel(node))}</strong>
+    <small>${escapeHtml(graphNodeTopicSummary(node))}</small>
+    <small>${degree} relations · ${evidenceLinks} evidence paths</small>
   `;
 }
 
@@ -4685,10 +4692,13 @@ function showGraphExplorerNodeTooltip(element, clientX, clientY) {
   if (!node) return;
   const edges = (graph.edges || []).filter((edge) => edge.source === nodeKey || edge.target === nodeKey);
   const evidenceCount = edges.filter((edge) => /(evidence|source|support|derive|cite|provenance)/i.test(String(edge.relation_type || edge.edge_type || ""))).length;
+  const governanceEdges = edges.filter((edge) => String(edge.relation_type || edge.edge_type || "").includes("candidate"));
+  const readiness = graphNodeActorReadiness(node, evidenceCount, governanceEdges, edges);
   showGraphExplorerTooltip(`
     <span>${escapeHtml(labelizeGraph(node.node_type || "node"))}</span>
-    <strong>${escapeHtml(node.title || node.node_key)}</strong>
-    <small>${escapeHtml(node.review_state || "unknown")} · ${edges.length} relations · ${evidenceCount} evidence paths</small>
+    <strong>${escapeHtml(graphNodeSemanticLabel(node))}</strong>
+    <p>${escapeHtml(graphNodeTopicSummary(node))}</p>
+    <small>${readiness.score}% ready · ${edges.length} relations · ${evidenceCount} evidence paths</small>
   `, clientX, clientY);
 }
 
@@ -4720,7 +4730,7 @@ function showGraphExplorerTooltip(markup, clientX, clientY) {
 function positionGraphExplorerTooltip(clientX, clientY) {
   const tooltip = $("#graphExplorerTooltip");
   if (!tooltip || tooltip.hidden) return;
-  const width = Math.min(320, tooltip.offsetWidth || 280);
+  const width = Math.min(390, tooltip.offsetWidth || 320);
   const height = tooltip.offsetHeight || 90;
   tooltip.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, clientX + 16))}px`;
   tooltip.style.top = `${Math.max(12, Math.min(window.innerHeight - height - 12, clientY + 16))}px`;
@@ -5515,7 +5525,8 @@ function renderGraphSvgNode(node, pos, edges, activePath = null, topology = {}) 
         visible: true,
       }
     : labelPolicy;
-  const label = truncateGraphLabel(node.title || node.node_key, effectiveLabelPolicy.maxLength);
+  const semanticLabel = graphNodeSemanticLabel(node);
+  const label = truncateGraphLabel(semanticLabel, effectiveLabelPolicy.maxLength);
   const labelWidth = Math.max(68, Math.min(210, label.length * 6.2 + 22));
   const labelY = radius + (graphExplorerV2Enabled ? 12 : 15);
   const labelMarkup = effectiveLabelPolicy.visible
@@ -5527,12 +5538,12 @@ function renderGraphSvgNode(node, pos, edges, activePath = null, topology = {}) 
     `
     : "";
   return `
-    <g class="graph-svg-node layer-${safeGraphClass(graphNodePresentationLayer(node))} ${safeGraphClass(node.node_type || "node")} ${safeGraphClass(node.review_state || "unknown")}${selected}${active}" data-graph-node="${escapeHtml(node.node_key)}" data-graph-presentation-layer="${escapeHtml(graphNodePresentationLayer(node))}" tabindex="0" role="button" aria-label="${escapeHtml(`${node.title || node.node_key}, ${node.review_state || "unknown"}, ${degree} relations`)}" transform="translate(${pos.x} ${pos.y})">
+    <g class="graph-svg-node layer-${safeGraphClass(graphNodePresentationLayer(node))} ${safeGraphClass(node.node_type || "node")} ${safeGraphClass(node.review_state || "unknown")}${selected}${active}" data-graph-node="${escapeHtml(node.node_key)}" data-graph-presentation-layer="${escapeHtml(graphNodePresentationLayer(node))}" tabindex="0" role="button" aria-label="${escapeHtml(`${semanticLabel}, ${degree} relations`)}" transform="translate(${pos.x} ${pos.y})">
       ${graphExplorerV2Enabled ? `<circle class="graph-node-hit-target" r="${Math.max(16, Math.min(18, radius + 7))}"></circle>` : ""}
       <circle r="${radius}"></circle>
       <text class="graph-node-glyph" y="4">${escapeHtml(graphNodeInitial(node))}</text>
       ${labelMarkup}
-      <title>${escapeHtml(node.title || node.node_key)} · ${escapeHtml(node.review_state || "unknown")} · ${degree} links</title>
+      <title>${escapeHtml(semanticLabel)} · ${degree} relations · ${escapeHtml(graphNodeTopicSummary(node))}</title>
     </g>
   `;
 }
@@ -5772,6 +5783,7 @@ function graphPositions(nodes, width, height) {
 
 async function openGraphNode(nodeKey) {
   state.selectedGraphNodeKey = nodeKey;
+  state.graphDetailOpen = true;
   renderGraphCockpit();
   if (staticPagesMode) {
     state.okfGraphNodeDetail = buildStaticGraphNodeDetail(nodeKey);
@@ -5823,10 +5835,89 @@ async function refreshGraphEdgeReviews(force = false) {
   return state.graphEdgeReviews;
 }
 
+function renderGraphEndUserNodeDetail(detail = {}) {
+  const node = detail.node || {};
+  const graph = state.okfGraph || {};
+  const graphNodes = graph.nodes || [];
+  const graphEdges = graph.edges || [];
+  const directEdges = detail.edges || graphEdges.filter((edge) => edge.source === node.node_key || edge.target === node.node_key);
+  const nodeMap = new Map(graphNodes.map((item) => [item.node_key, item]));
+  (detail.neighbors || []).forEach((item) => nodeMap.set(item.node_key, item));
+  const evidenceLinks = directEdges.filter((edge) => /(evidence|source|support|derive|cite|provenance)/i.test(String(edge.relation_type || edge.edge_type || "")));
+  const evidenceCount = Math.max((detail.evidence || []).length, evidenceLinks.length);
+  const governanceEdges = directEdges.filter((edge) => String(edge.relation_type || edge.edge_type || "").includes("candidate"));
+  const readiness = graphNodeActorReadiness(node, evidenceCount, governanceEdges, directEdges);
+  const evidence = (detail.evidence || []).slice(0, 8).map((item) => `
+    <li class="graph-evidence-item"><span>${escapeHtml(graphNodeSemanticLabel(item))}</span></li>
+  `).join("");
+  const relations = directEdges.slice(0, 12).map((edge) => {
+    const outgoing = edge.source === node.node_key;
+    const otherKey = outgoing ? edge.target : edge.source;
+    const other = nodeMap.get(otherKey) || { node_key: otherKey };
+    const relation = labelizeGraph(edge.relation_type || edge.edge_type || "related");
+    return `
+      <li class="graph-edge-line">
+        <span>${escapeHtml(relation)} ${outgoing ? "to" : "from"} ${escapeHtml(graphNodeSemanticLabel(other))}</span>
+        <small>${escapeHtml(graphRelationMeaning(edge, node, other))}</small>
+      </li>
+    `;
+  }).join("");
+  const neighbors = (detail.neighbors || []).slice(0, 12).map((item) => {
+    const relationCount = graphEdges.filter((edge) => (
+      (edge.source === node.node_key && edge.target === item.node_key)
+      || (edge.target === node.node_key && edge.source === item.node_key)
+    )).length;
+    return `
+      <li>
+        <button class="graph-neighbor-button" type="button" data-graph-node="${escapeHtml(item.node_key)}">
+          <span>${escapeHtml(graphNodeSemanticLabel(item))}</span>
+          <small>${escapeHtml(graphNodeTopicSummary(item))} · ${relationCount} relation${relationCount === 1 ? "" : "s"}</small>
+        </button>
+      </li>
+    `;
+  }).join("");
+  $("#graphNodeDetail").innerHTML = `
+    <div class="graph-detail-card graph-detail-knowledge">
+      <div class="graph-detail-hero">
+        <span class="badge">${escapeHtml(labelizeGraph(node.node_type || "knowledge"))}</span>
+        <h4>${escapeHtml(graphNodeSemanticLabel(node))}</h4>
+        <p>${escapeHtml(graphNodeTopicSummary(node))}</p>
+      </div>
+      <section class="graph-knowledge-readiness ${safeGraphClass(readiness.className)}" aria-label="Knowledge readiness ${readiness.score} percent">
+        <div><span>Knowledge readiness</span><strong>${escapeHtml(String(readiness.score))}%</strong></div>
+        <div class="graph-knowledge-readiness-track"><span style="width:${Math.max(0, Math.min(100, Number(readiness.score || 0)))}%"></span></div>
+        <p>${escapeHtml(readiness.detail)}</p>
+      </section>
+      <div class="graph-detail-health" aria-label="Knowledge connections">
+        <strong>${directEdges.length}<span>relations</span></strong>
+        <strong>${evidenceCount}<span>sources</span></strong>
+        <strong>${(detail.neighbors || []).length}<span>related concepts</span></strong>
+      </div>
+      <section class="graph-detail-section">
+        <div class="graph-detail-section-head"><h5>Sources</h5><span>${evidenceCount}</span></div>
+        <ul class="graph-evidence-list">${evidence || '<li class="graph-evidence-item"><span>No direct source linked.</span></li>'}</ul>
+      </section>
+      <section class="graph-detail-section">
+        <div class="graph-detail-section-head"><h5>How this knowledge connects</h5><span>${directEdges.length}</span></div>
+        <ul class="graph-relation-list">${relations || "<li>No direct relationships.</li>"}</ul>
+      </section>
+      <section class="graph-detail-section">
+        <div class="graph-detail-section-head"><h5>Related knowledge</h5><span>${(detail.neighbors || []).length}</span></div>
+        <ul class="graph-neighbor-list">${neighbors || "<li>No directly related knowledge.</li>"}</ul>
+      </section>
+    </div>
+  `;
+  $("#graphQualityActions").innerHTML = "";
+}
+
 function renderGraphNodeDetail() {
   const detail = state.okfGraphNodeDetail;
   if (!detail?.node) {
-    $("#graphNodeDetail").innerHTML = "Select a node to inspect evidence, neighbors, and governance state.";
+    $("#graphNodeDetail").innerHTML = "Select a node to inspect its meaning, sources, and related knowledge.";
+    return;
+  }
+  if (graphExplorerV2Enabled) {
+    renderGraphEndUserNodeDetail(detail);
     return;
   }
   const node = detail.node;
@@ -7822,6 +7913,41 @@ function renderGraphSourceDeepLinks(node = {}) {
 
 function graphNodeTitle(node, fallback = "node") {
   return node?.title || node?.node_key || fallback;
+}
+
+function graphNodeTopicSummary(node = {}) {
+  const metadata = node.metadata || {};
+  const source = node.summary || node.description || node.objective || node.knowledge_concept
+    || metadata.summary || metadata.description || metadata.objective || metadata.topic || node.cluster || metadata.cluster || "";
+  const text = String(source).replace(/\s+/g, " ").trim();
+  if (!text) return "No knowledge summary available.";
+  const firstSentence = text.match(/^.*?(?:[.!?](?:\s|$)|$)/)?.[0] || text;
+  return truncateGraphLabel(firstSentence, 180);
+}
+
+function graphNodeSemanticLabel(node = {}) {
+  const metadata = node.metadata || {};
+  const explicit = node.objective || node.knowledge_concept || node.topic
+    || metadata.objective || metadata.knowledge_concept || metadata.topic || metadata.subject;
+  if (explicit) return truncateGraphLabel(explicit, 96);
+  const title = String(node.title || "").trim();
+  const syntheticTitle = /^(?:MEIDS|CODEX|AZ)[-_ ]|\b(?:E2E|UAT|SMOKE|SYNTHETIC|TEST)\b|\d{10,}/i.test(title);
+  if (syntheticTitle) {
+    const topic = graphNodeTopicSummary(node);
+    if (topic !== "No knowledge summary available.") return truncateGraphLabel(topic, 96);
+  }
+  const cleanedTitle = title
+    .replace(/^(?:(?:MEIDS|CODEX|AZ)[-_ ])?(?:(?:E2E|UAT|NATIVE|SMOKE|SYNTHETIC|TEST|PROD)[-_ ])+/i, "")
+    .replace(/\b\d{10,}\b/g, "")
+    .replace(/\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b/gi, "")
+    .replace(/[-_]{2,}/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (cleanedTitle && !/^(?:retention|learning|gateway|auth)$/i.test(cleanedTitle)) return cleanedTitle;
+  const summary = graphNodeTopicSummary(node);
+  return summary !== "No knowledge summary available."
+    ? truncateGraphLabel(summary, 96)
+    : title || labelizeGraph(node.node_type || "Knowledge");
 }
 
 function graphClusterCare(nodes = []) {
@@ -16987,6 +17113,25 @@ function nativeActorChatMessages() {
   return state.nativeActorChatMessages;
 }
 
+function actorChatReadableText(value, fallback = "The Actor Twin returned no answer.") {
+  if (value && typeof value === "object") {
+    const nested = value.answer || value.summary || value.message || value.text || value.output?.answer || value.output?.summary;
+    return actorChatReadableText(nested, fallback);
+  }
+  let text = String(value || "").replace(/\r\n/g, "\n").trim();
+  if (!text) return fallback;
+  text = text.replace(/```(?:json)?\s*([\s\S]*?)```/gi, (block, body) => (
+    /"?(?:trace|trace_chain|adapter|provider|runtime|budget_ms|agent_id)"?\s*:/i.test(body) ? "" : block
+  ));
+  if (/^\s*\{[\s\S]*?"(?:trace|trace_chain|adapter|provider|runtime|budget_ms|agent_id)"\s*:/i.test(text)) return fallback;
+  const technicalObject = text.search(/\s*\{\s*\n?\s*"(?:trace|trace_chain|adapter|provider|runtime|budget_ms|agent_id)"\s*:/i);
+  if (technicalObject >= 0) text = text.slice(0, technicalObject);
+  const technicalTail = text.search(/\n\s*(?:trace|trace_chain|adapter|provider|runtime|budget_ms|agent_id)\s*[:=]/i);
+  if (technicalTail >= 0) text = text.slice(0, technicalTail);
+  text = text.replace(/\n{3,}/g, "\n\n").trim();
+  return text || fallback;
+}
+
 function renderNativeActorChat() {
   const mount = $("#n8nChatMount");
   if (!mount) return;
@@ -17050,7 +17195,7 @@ async function submitNativeActorChat(event) {
     } else {
       nativeActorChatMessages().push({
         role: "assistant",
-        text: output.answer || output.summary || "The Actor Twin returned no answer.",
+        text: actorChatReadableText(output.answer || output.summary),
         evidence: output.evidence || [],
       });
     }
@@ -17089,7 +17234,9 @@ function renderActorBackgroundWork() {
   }
   target.innerHTML = jobs.slice(0, 3).map((job) => {
     const finished = ["completed", "failed", "cancelled"].includes(job.status);
-    const summary = finished ? (job.summary || job.error || "Background work finished.") : "Long-running work continues while you use the chat.";
+    const summary = finished
+      ? actorChatReadableText(job.summary || job.result || job.error, "Background work finished.")
+      : "Long-running work continues while you use the chat.";
     return `
       <details class="actor-background-job" ${finished ? "" : "open"}>
         <summary>
@@ -17097,7 +17244,6 @@ function renderActorBackgroundWork() {
           <strong>${escapeHtml((job.request || "Background work").slice(0, 120))}</strong>
         </summary>
         <p>${escapeHtml(summary)}</p>
-        ${job.status === "completed" && job.result ? `<pre>${escapeHtml(typeof job.result === "string" ? job.result : JSON.stringify(job.result, null, 2))}</pre>` : ""}
         ${job.status === "queued" ? `<button class="secondary small" type="button" data-chat-action="cancel-background-work" data-job-id="${escapeHtml(job.job_id || "")}">Cancel queued work</button>` : ""}
       </details>
     `;

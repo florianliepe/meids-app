@@ -718,10 +718,16 @@
               <div class="graph-canvas-wrap">
                 <div id="graphCanvas" class="graph-canvas"></div>
               </div>
-              <aside class="graph-detail-panel">
-                <h3>Node detail</h3>
+              <aside class="graph-detail-panel" aria-label="Knowledge detail" aria-live="polite">
+                <div class="graph-detail-panel-head">
+                  <div>
+                    <span>Selected knowledge</span>
+                    <h3>Knowledge detail</h3>
+                  </div>
+                  <button class="secondary icon-button" type="button" data-graph-detail-close title="Close detail" aria-label="Close knowledge detail">&times;</button>
+                </div>
                 <div id="graphNodeDetail" class="graph-node-detail">
-                  Select a node to inspect evidence, neighbors, and governance state.
+                  Select a node to inspect its meaning, sources, and related knowledge.
                 </div>
                 <div id="graphQualityActions" class="graph-quality-actions"></div>
               </aside>
