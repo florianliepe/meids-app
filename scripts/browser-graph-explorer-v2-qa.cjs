@@ -88,6 +88,7 @@ async function inspectExplorer(page) {
       visibleLabelCount: visibleLabels.length,
       maxEdgeWidth: Math.max(0, ...edges.map((edge) => Number.parseFloat(getComputedStyle(edge).strokeWidth || "0"))),
       layers: [...new Set(nodes.map((node) => node.dataset.graphPresentationLayer).filter(Boolean))],
+      nativeTitleCount: nodes.filter((node) => node.querySelector("title")).length,
     };
   });
   if (visualContract.maxDotRadius > 14.1) failures.push(`node dots are too large: radius ${visualContract.maxDotRadius}px`);
@@ -95,6 +96,7 @@ async function inspectExplorer(page) {
   if (visualContract.visibleLabelCount > Math.max(3, Math.ceil(visualContract.nodeCount * 0.2))) failures.push(`too many labels are visible at rest: ${visualContract.visibleLabelCount}/${visualContract.nodeCount}`);
   if (visualContract.maxEdgeWidth > 1.7) failures.push(`resting graph edges are too thick: ${visualContract.maxEdgeWidth}px`);
   if (!visualContract.layers.includes("trusted") || visualContract.layers.length < 2) failures.push(`presentation-layer styling is incomplete: ${visualContract.layers.join(", ")}`);
+  if (visualContract.nativeTitleCount) failures.push(`native SVG tooltips compete with the compact overlay: ${visualContract.nativeTitleCount}`);
 
   const node = page.locator("#graphCanvas .graph-svg-node:visible").first();
   await node.focus();
@@ -128,6 +130,8 @@ async function inspectExplorer(page) {
       hasKnowledgeSummary: Boolean(detail?.querySelector(".graph-detail-hero p")),
       hasGovernanceAction: Boolean(detail?.querySelector("[data-graph-edge-action], [data-graph-proposal-action]")),
       closeVisible: Boolean(panel?.querySelector("[data-graph-detail-close]")),
+      connectionGroupCount: detail?.querySelectorAll(".graph-connection-group").length || 0,
+      legacyConnectionNarratives: detail?.querySelectorAll(".graph-edge-line").length || 0,
     };
   });
   const detailMinimumWidth = page.viewportSize().width <= 720 ? page.viewportSize().width - 64 : Math.min(600, page.viewportSize().width - 64);
@@ -138,6 +142,8 @@ async function inspectExplorer(page) {
   if (!detailContract.hasKnowledgeSummary) failures.push("knowledge detail does not show an end-user summary");
   if (detailContract.hasGovernanceAction) failures.push("knowledge detail exposes governance actions");
   if (!detailContract.closeVisible) failures.push("knowledge detail has no explicit close control");
+  if (!detailContract.connectionGroupCount) failures.push("knowledge detail has no grouped connection overview");
+  if (detailContract.legacyConnectionNarratives) failures.push("knowledge detail still repeats relation narratives per edge");
   await page.locator("[data-graph-detail-close]").click();
   if (await page.locator("#graph.graph-has-selection").count()) failures.push("detail close control did not clear selection");
 
@@ -184,6 +190,17 @@ async function inspectExplorer(page) {
   if (!await page.locator("#graphExplorerTooltip:not([hidden])").count()) failures.push("hover tooltip is not visible after its delay");
   const tooltipText = await page.locator("#graphExplorerTooltip:not([hidden])").textContent().catch(() => "");
   if (!/\b\d{1,3}% ready\b/i.test(tooltipText || "")) failures.push("hover tooltip does not show compact readiness");
+  const hoverOverlap = await page.evaluate(() => {
+    const node = document.querySelector("#graphCanvas .graph-svg-node.is-emphasized");
+    const tooltip = document.querySelector("#graphExplorerTooltip:not([hidden])");
+    if (!node || !tooltip) return -1;
+    const a = node.getBoundingClientRect();
+    const b = tooltip.getBoundingClientRect();
+    const width = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+    const height = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+    return Math.round(width * height);
+  });
+  if (hoverOverlap > 0) failures.push(`hover tooltip overlaps the focused graph node: ${hoverOverlap}px2`);
   const hoverLabelVisible = await hoverNode.evaluate((element) => Number.parseFloat(getComputedStyle(element.querySelector(".graph-svg-label")).opacity || "0") > 0.8);
   if (!hoverLabelVisible) failures.push("hover does not reveal the focused node label");
 
@@ -277,6 +294,12 @@ async function run() {
       const result = await inspectExplorer(page);
       const screenshotPath = path.join(outDir, `graph-explorer-v2-${qaCase.name}.png`);
       await restoreStaticGraph(page);
+      const hoverScreenshotPath = path.join(outDir, `graph-explorer-v2-${qaCase.name}-hover.png`);
+      await page.locator("#graphCanvas .graph-svg-node:visible").first().hover();
+      await page.waitForTimeout(220);
+      await page.evaluate(() => scrollTo(0, 0));
+      await page.screenshot({ path: hoverScreenshotPath, fullPage: false });
+      await page.locator("#graphCanvas").evaluate((element) => element.dispatchEvent(new MouseEvent("mouseleave")));
       const detailNode = page.locator("#graphCanvas .graph-svg-node:visible").first();
       await detailNode.focus();
       await page.keyboard.press("Enter");
@@ -291,7 +314,8 @@ async function run() {
       await page.screenshot({ path: screenshotPath, fullPage: false });
       const screenshot = path.relative(process.cwd(), screenshotPath).replaceAll("\\", "/");
       const detailScreenshot = path.relative(process.cwd(), detailScreenshotPath).replaceAll("\\", "/");
-      results.push({ ...qaCase, ...result, screenshot, detailScreenshot });
+      const hoverScreenshot = path.relative(process.cwd(), hoverScreenshotPath).replaceAll("\\", "/");
+      results.push({ ...qaCase, ...result, screenshot, detailScreenshot, hoverScreenshot });
       await context.close();
     }
 

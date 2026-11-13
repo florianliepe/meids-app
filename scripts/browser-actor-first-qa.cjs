@@ -114,6 +114,9 @@ async function run() {
           reviewQueueSelect: visible("#dashboardQueueSelect"),
           reviewLaneSelect: visible("#dashboardLaneSelect"),
           visibleReviewLanes: Array.from(document.querySelectorAll("#dashboard .dashboard-section")).filter((node) => !node.hidden && getComputedStyle(node).display !== "none").length,
+          reviewCardCount: document.querySelectorAll("#dashboard .dashboard-section:not([hidden]) .activity-row").length,
+          reviewMinCardHeight: Math.min(...Array.from(document.querySelectorAll("#dashboard .dashboard-section:not([hidden]) .activity-row")).map((node) => Math.round(node.getBoundingClientRect().height)), Infinity),
+          reviewListDisplay: getComputedStyle(document.querySelector("#dashboard .dashboard-section:not([hidden]) .activity-list") || document.body).display,
           graphSvgHeight: rect("#graph .graph-topology-svg")?.height || 0,
         };
       }, item.view);
@@ -124,6 +127,7 @@ async function run() {
       if (item.view === "voice" && (metrics.voiceHero || !metrics.voiceStatusVisible || !metrics.voiceStatusText)) failures.push("Voice Capture lacks a compact readable status");
       if (item.view === "ingest" && (metrics.ingestHero || metrics.ingestContract || metrics.ingestCards !== 4)) failures.push("Source Upload is not reduced to four intake lanes");
       if (item.view === "dashboard" && (!metrics.reviewConceptActive || !metrics.reviewQueueSelect || !metrics.reviewLaneSelect || metrics.visibleReviewLanes !== 1)) failures.push("Review is not reduced to one selectable queue lane");
+      if (item.view === "dashboard" && metrics.reviewCardCount && (metrics.reviewMinCardHeight < 100 || metrics.reviewListDisplay !== "flex")) failures.push(`Review cards are visually collapsed: ${metrics.reviewMinCardHeight}px, display=${metrics.reviewListDisplay}`);
       if (item.view === "twins" && (!metrics.setupPanel || metrics.setupOpen || metrics.advancedTwinOpen)) failures.push("Twin setup is not a visible collapsed disclosure");
       if (item.view === "skills" && metrics.skillApproval) failures.push("Skill approval remains in the daily skill view");
       if (item.view === "graph" && (metrics.graphCanvasHeight < 500 || metrics.graphSvgHeight < metrics.graphCanvasHeight * 0.72)) failures.push(`graph does not fill its initial canvas: ${metrics.graphSvgHeight}/${metrics.graphCanvasHeight}`);
@@ -164,10 +168,17 @@ async function run() {
           const reconnected = placeActorChatControls(mount) && mount.querySelectorAll("#actorChatControls").length === 1;
           const readableAnswer = actorChatReadableText('A concise grounded answer.\n{\n  "trace": { "adapter": "azure_native" }\n}');
           const traceOnly = actorChatReadableText('{"trace":{"adapter":"azure_native"}}', "No readable answer.");
-          return { ...initial, nested, reconnected, readableAnswer, traceOnly };
+          state.actorBackgroundJobs = [
+            { job_id: "done", status: "completed", request: "Old finished task", summary: "Finished" },
+            { job_id: "active", status: "processing", request: "Current task" },
+          ];
+          renderActorBackgroundWork();
+          const backgroundText = document.querySelector("#actorBackgroundWork")?.textContent || "";
+          return { ...initial, nested, reconnected, readableAnswer, traceOnly, backgroundText };
         });
         if (!composer.docked || !composer.talkBeforeSend || composer.headerVisible || !composer.nested.docked || composer.nested.count !== 1 || composer.nested.mutationCount !== 0 || !composer.reconnected) failures.push("Actor Twin controls are not stable beside Send across nested DOM and reconnect");
         if (composer.readableAnswer !== "A concise grounded answer." || composer.traceOnly !== "No readable answer.") failures.push("Actor Twin exposes technical trace content instead of a readable answer");
+        if (/Ready|Old finished task|Finished/.test(composer.backgroundText) || !/Current task/.test(composer.backgroundText)) failures.push(`Actor Twin exposes non-actionable completed work: ${composer.backgroundText}`);
       }
       if (item.view === "concepts") {
         const row = page.locator(".knowledge-increment").first();
@@ -192,6 +203,17 @@ async function run() {
         const laneTransitions = await page.evaluate(() => {
           const queue = document.querySelector("#dashboardQueueSelect");
           const lane = document.querySelector("#dashboardLaneSelect");
+          const initialList = document.querySelector("#dashboard .dashboard-section:not([hidden]) .activity-list");
+          const template = initialList?.querySelector(".activity-row");
+          if (initialList && template) {
+            for (let index = initialList.children.length; index < 20; index += 1) initialList.append(template.cloneNode(true));
+          }
+          const cardHeights = Array.from(initialList?.querySelectorAll(".activity-row") || []).map((node) => Math.round(node.getBoundingClientRect().height));
+          const cardLayout = {
+            count: cardHeights.length,
+            minHeight: Math.min(...cardHeights, Infinity),
+            scrolls: Boolean(initialList && initialList.scrollHeight > initialList.clientHeight),
+          };
           const results = [];
           for (const option of Array.from(queue?.options || [])) {
             queue.value = option.value;
@@ -207,9 +229,10 @@ async function run() {
           state.dashboardLaneKey = "dashAgentTraceHistory";
           renderDashboardFilter();
           openTraceReviewQueue();
-          return { results, target: state.dashboardLaneKey, latestVisible: !document.querySelector("#dashLatestTraces")?.hidden };
+          return { results, target: state.dashboardLaneKey, latestVisible: !document.querySelector("#dashLatestTraces")?.hidden, cardLayout };
         });
         if (laneTransitions.results.some((count) => count !== 1) || laneTransitions.target !== "dashLatestTraces" || !laneTransitions.latestVisible) failures.push(`Review queue or targeted lane navigation is unstable: ${JSON.stringify(laneTransitions)}`);
+        if (laneTransitions.cardLayout.count && (laneTransitions.cardLayout.minHeight < 100 || !laneTransitions.cardLayout.scrolls)) failures.push(`Review stress layout collapsed: ${JSON.stringify(laneTransitions.cardLayout)}`);
       }
       if (item.view === "twins") {
         await page.locator("#twins .setup-panel > summary").click();

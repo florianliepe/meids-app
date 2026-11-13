@@ -4659,6 +4659,7 @@ function applyGraphNeighborhoodHighlight(nodeKey = "") {
   edgeElements.forEach((element) => element.classList.remove("is-muted", "is-connected"));
   edgeLabelElements.forEach((element) => element.classList.remove("is-muted", "is-connected"));
   svg.classList.toggle("has-graph-emphasis", Boolean(nodeKey));
+  svg.classList.remove("dense-neighborhood");
   if (!nodeKey) return;
   const neighborKeys = new Set([nodeKey]);
   const connectedEdgeKeys = new Set();
@@ -4673,6 +4674,7 @@ function applyGraphNeighborhoodHighlight(nodeKey = "") {
       edge.classList.add("is-muted");
     }
   });
+  svg.classList.toggle("dense-neighborhood", neighborKeys.size > 7);
   nodeElements.forEach((node) => {
     const key = node.dataset.graphNode || "";
     if (key === nodeKey) node.classList.add("is-emphasized");
@@ -4730,10 +4732,17 @@ function showGraphExplorerTooltip(markup, clientX, clientY) {
 function positionGraphExplorerTooltip(clientX, clientY) {
   const tooltip = $("#graphExplorerTooltip");
   if (!tooltip || tooltip.hidden) return;
-  const width = Math.min(390, tooltip.offsetWidth || 320);
+  const width = Math.min(320, tooltip.offsetWidth || 300);
   const height = tooltip.offsetHeight || 90;
-  tooltip.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, clientX + 16))}px`;
-  tooltip.style.top = `${Math.max(12, Math.min(window.innerHeight - height - 12, clientY + 16))}px`;
+  const canvas = $("#graphCanvas")?.getBoundingClientRect();
+  if (!canvas) return;
+  const gap = 16;
+  const placeRight = clientX < canvas.left + canvas.width / 2;
+  const placeBelow = clientY < canvas.top + canvas.height / 2;
+  const left = placeRight ? canvas.right - width - gap : canvas.left + gap;
+  const top = placeBelow ? canvas.bottom - height - gap : canvas.top + gap;
+  tooltip.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, left))}px`;
+  tooltip.style.top = `${Math.max(12, Math.min(window.innerHeight - height - 12, top))}px`;
 }
 
 function hideGraphExplorerTooltip() {
@@ -5543,7 +5552,7 @@ function renderGraphSvgNode(node, pos, edges, activePath = null, topology = {}) 
       <circle r="${radius}"></circle>
       <text class="graph-node-glyph" y="4">${escapeHtml(graphNodeInitial(node))}</text>
       ${labelMarkup}
-      <title>${escapeHtml(semanticLabel)} · ${degree} relations · ${escapeHtml(graphNodeTopicSummary(node))}</title>
+      ${graphExplorerV2Enabled ? "" : `<title>${escapeHtml(semanticLabel)} · ${degree} relations · ${escapeHtml(graphNodeTopicSummary(node))}</title>`}
     </g>
   `;
 }
@@ -5835,6 +5844,39 @@ async function refreshGraphEdgeReviews(force = false) {
   return state.graphEdgeReviews;
 }
 
+function graphConnectionPurpose(relation = "related") {
+  const purposes = {
+    similar_to: "Nearby knowledge with overlapping meaning. Use it to compare context or continue exploring the topic.",
+    related_to: "Knowledge that adds adjacent context to this topic.",
+    derived_from: "Source paths that show where this knowledge came from.",
+    supported_by: "Evidence paths that strengthen this knowledge.",
+    validates: "Knowledge that confirms or strengthens this concept.",
+    validated_by: "Knowledge that confirms or strengthens this concept.",
+    member_of_cluster: "Concepts grouped under the same topic or objective.",
+    uses_context: "Context the twin can draw on when answering about this topic.",
+    related_by_profile: "Knowledge connected through the same person or profile context.",
+    duplicate_candidate: "Concepts with strongly overlapping content.",
+    contradiction_candidate: "Concepts that present a different or conflicting view.",
+  };
+  return purposes[relation] || "Directly connected knowledge that adds context to this topic.";
+}
+
+function graphConnectionGroups(node, edges = [], nodeMap = new Map()) {
+  const groups = new Map();
+  edges.forEach((edge) => {
+    const relation = String(edge.relation_type || edge.edge_type || "related");
+    const outgoing = edge.source === node.node_key;
+    const otherKey = outgoing ? edge.target : edge.source;
+    const other = nodeMap.get(otherKey) || { node_key: otherKey };
+    if (!groups.has(relation)) groups.set(relation, { relation, entries: [] });
+    groups.get(relation).entries.push({ other, outgoing });
+  });
+  return [...groups.values()].sort((a, b) => (
+    b.entries.length - a.entries.length
+    || labelizeGraph(a.relation).localeCompare(labelizeGraph(b.relation))
+  ));
+}
+
 function renderGraphEndUserNodeDetail(detail = {}) {
   const node = detail.node || {};
   const graph = state.okfGraph || {};
@@ -5850,29 +5892,23 @@ function renderGraphEndUserNodeDetail(detail = {}) {
   const evidence = (detail.evidence || []).slice(0, 8).map((item) => `
     <li class="graph-evidence-item"><span>${escapeHtml(graphNodeSemanticLabel(item))}</span></li>
   `).join("");
-  const relations = directEdges.slice(0, 12).map((edge) => {
-    const outgoing = edge.source === node.node_key;
-    const otherKey = outgoing ? edge.target : edge.source;
-    const other = nodeMap.get(otherKey) || { node_key: otherKey };
-    const relation = labelizeGraph(edge.relation_type || edge.edge_type || "related");
+  const connectionGroups = graphConnectionGroups(node, directEdges, nodeMap);
+  const connections = connectionGroups.slice(0, 6).map((group) => {
+    const relation = labelizeGraph(group.relation);
+    const targets = group.entries.slice(0, 5).map(({ other, outgoing }) => `
+      <button class="graph-connection-target" type="button" data-graph-node="${escapeHtml(other.node_key)}">
+        <span>${escapeHtml(graphNodeSemanticLabel(other))}</span>
+        <small>${outgoing ? "from this knowledge" : "into this knowledge"}</small>
+      </button>
+    `).join("");
     return `
-      <li class="graph-edge-line">
-        <span>${escapeHtml(relation)} ${outgoing ? "to" : "from"} ${escapeHtml(graphNodeSemanticLabel(other))}</span>
-        <small>${escapeHtml(graphRelationMeaning(edge, node, other))}</small>
-      </li>
-    `;
-  }).join("");
-  const neighbors = (detail.neighbors || []).slice(0, 12).map((item) => {
-    const relationCount = graphEdges.filter((edge) => (
-      (edge.source === node.node_key && edge.target === item.node_key)
-      || (edge.target === node.node_key && edge.source === item.node_key)
-    )).length;
-    return `
-      <li>
-        <button class="graph-neighbor-button" type="button" data-graph-node="${escapeHtml(item.node_key)}">
-          <span>${escapeHtml(graphNodeSemanticLabel(item))}</span>
-          <small>${escapeHtml(graphNodeTopicSummary(item))} · ${relationCount} relation${relationCount === 1 ? "" : "s"}</small>
-        </button>
+      <li class="graph-connection-group">
+        <div class="graph-connection-group-head">
+          <strong>${escapeHtml(relation)}</strong>
+          <span>${group.entries.length}</span>
+        </div>
+        <p>${escapeHtml(graphConnectionPurpose(group.relation))}</p>
+        <div class="graph-connection-targets">${targets}</div>
       </li>
     `;
   }).join("");
@@ -5898,12 +5934,9 @@ function renderGraphEndUserNodeDetail(detail = {}) {
         <ul class="graph-evidence-list">${evidence || '<li class="graph-evidence-item"><span>No direct source linked.</span></li>'}</ul>
       </section>
       <section class="graph-detail-section">
-        <div class="graph-detail-section-head"><h5>How this knowledge connects</h5><span>${directEdges.length}</span></div>
-        <ul class="graph-relation-list">${relations || "<li>No direct relationships.</li>"}</ul>
-      </section>
-      <section class="graph-detail-section">
-        <div class="graph-detail-section-head"><h5>Related knowledge</h5><span>${(detail.neighbors || []).length}</span></div>
-        <ul class="graph-neighbor-list">${neighbors || "<li>No directly related knowledge.</li>"}</ul>
+        <div class="graph-detail-section-head"><h5>Connection overview</h5><span>${connectionGroups.length} types</span></div>
+        <p class="graph-connection-intro">Relationships are grouped by meaning. Select a connected concept to continue exploring.</p>
+        <ul class="graph-relation-list">${connections || "<li>No direct relationships.</li>"}</ul>
       </section>
     </div>
   `;
@@ -17199,7 +17232,7 @@ async function submitNativeActorChat(event) {
         evidence: output.evidence || [],
       });
     }
-    if (status) status.textContent = "Ready.";
+    if (status) status.textContent = "Talk or type a message.";
   } catch (error) {
     if (Number(error.status || 0) === 401 || blockedN8nAuthContext(error.details || error.message)) {
       await recoverN8nAuthContext();
@@ -17226,7 +17259,9 @@ function actorBackgroundStatusLabel(status) {
 function renderActorBackgroundWork() {
   const target = $("#actorBackgroundWork");
   if (!target) return;
-  const jobs = state.actorBackgroundJobs || [];
+  const jobs = (state.actorBackgroundJobs || []).filter((job) => (
+    ["queued", "processing", "failed"].includes(String(job.status || "queued"))
+  ));
   target.hidden = jobs.length === 0;
   if (!jobs.length) {
     target.innerHTML = "";
@@ -17304,7 +17339,19 @@ async function refreshActorBackgroundWork() {
       || scopeKey !== actorBackgroundScopeKey()
       || currentWorkspaceView() !== "chat"
     ) return;
-    state.actorBackgroundJobs = Array.isArray(result.jobs) ? result.jobs : [];
+    const previousActiveJobIds = new Set((state.actorBackgroundJobs || [])
+      .filter((job) => ["queued", "processing"].includes(job.status))
+      .map((job) => job.job_id));
+    const nextJobs = Array.isArray(result.jobs) ? result.jobs : [];
+    const completed = nextJobs.filter((job) => job.status === "completed" && previousActiveJobIds.has(job.job_id));
+    completed.forEach((job) => {
+      nativeActorChatMessages().push({
+        role: "assistant",
+        text: actorChatReadableText(job.summary || job.result, "The background task finished."),
+      });
+    });
+    state.actorBackgroundJobs = nextJobs;
+    if (completed.length) renderNativeActorChat();
     renderActorBackgroundWork();
   } catch (error) {
     if (requestId === state.actorBackgroundRequestId && scopeKey === actorBackgroundScopeKey()) {
