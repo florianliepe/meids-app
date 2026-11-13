@@ -4,13 +4,12 @@ const path = require("node:path");
 const { signKnowledgeAccessToken } = require("../backend/knowledgeAccess");
 
 const root = path.resolve(__dirname, "..");
-const runtime = JSON.parse(fs.readFileSync(path.join(root, "frontend/assets/agent-runtime-config.json"), "utf8"));
-const actorUrl = String(runtime.n8nActorTwinWebhookUrl || runtime.n8nAgentWebhooks?.actor_twin || "").trim();
+const outputPath = path.join(root, "docs", "uat", "azure-native-background-work-uat.json");
 const backendUrl = String(process.env.MEIDS_BACKEND_BASE_URL || "https://meids-prod-backend-1853a19b.azurewebsites.net").replace(/\/+$/, "");
 const userId = String(process.env.MEIDS_UAT_USER_ID || "").trim();
 const twinId = String(process.env.MEIDS_UAT_TWIN_ID || "").trim();
 const tenantId = String(process.env.MEIDS_UAT_TENANT_ID || "eraneos").trim();
-if (!actorUrl || !userId || !twinId) throw new Error("Actor URL and MEIDS_UAT_USER_ID/MEIDS_UAT_TWIN_ID are required.");
+if (!userId || !twinId) throw new Error("MEIDS_UAT_USER_ID and MEIDS_UAT_TWIN_ID are required.");
 
 const token = signKnowledgeAccessToken({
   tenant_id: tenantId, user_id: userId, active_twin_id: twinId, allowed_twin_ids: [twinId],
@@ -38,14 +37,21 @@ async function request(url, options = {}) {
 }
 
 (async () => {
-  const ack = await request(actorUrl, {
+  const ack = await request(`${backendUrl}/api/agents/work`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "sendMessage", sessionId: runId, chatInput: query, metadata }),
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      twin_id: twinId,
+      message: query,
+      session_id: runId,
+      idempotency_key: runId,
+      knowledge_access_token: token,
+      metadata,
+    }),
     timeout: 30_000,
   });
   if (!ack.response.ok) throw new Error(`Actor acknowledgement failed ${ack.response.status}: ${ack.raw.slice(0, 600)}`);
-  const jobId = String(ack.body?.job_id || ack.body?.output?.match?.(/agent-work-[a-f0-9]{32}/i)?.[0] || ack.raw.match(/agent-work-[a-f0-9]{32}/i)?.[0] || "");
+  const jobId = String(ack.body?.job_id || "");
   if (!jobId) throw new Error(`Actor response did not include a durable background job ID: ${ack.raw.slice(0, 800)}`);
   if (ack.duration_ms > 10_000) throw new Error(`Background acknowledgement exceeded 10 seconds: ${ack.duration_ms}ms.`);
 
@@ -70,9 +76,14 @@ async function request(url, options = {}) {
   });
   if (blocked.response.status !== 409) throw new Error(`Side-effect request must return 409, received ${blocked.response.status}.`);
 
-  console.log(JSON.stringify({
+  const artifact = {
+    schema_version: "1.0.0",
+    generated_at: new Date().toISOString(),
     status: "passed", contract: "meids.agent-work.v1", run_id: runId, job_id: jobId,
     acknowledgement_ms: ack.duration_ms, final_status: job.status, attempts: job.attempts,
+    runtime_provider: job.runtime_provider || ack.body?.runtime_provider || "",
     side_effect_guard_http_status: blocked.response.status,
-  }, null, 2));
+  };
+  fs.writeFileSync(outputPath, `${JSON.stringify(artifact, null, 2)}\n`);
+  console.log(JSON.stringify({ ...artifact, output: path.relative(root, outputPath).replaceAll("\\", "/") }, null, 2));
 })().catch((error) => { console.error(error.stack || error.message); process.exit(1); });

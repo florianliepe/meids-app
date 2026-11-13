@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
-  "generated_at": "2026-11-13T08:11:15.273Z",
-  "run_id": "azure_native_nightly_20261113T081059",
+  "generated_at": "2026-11-13T08:47:35.842Z",
+  "run_id": "azure_native_nightly_20261113T084717",
   "runtime": "azure_native",
   "policy": "Synthetic no-write probes. Operational traces and a dry-run job may be recorded; no knowledge, Learning increment, approval, publication, activation, or external effect is created.",
   "summary": {
@@ -33,18 +33,18 @@
       "id": "actor_direct",
       "status": "completed",
       "http_status": 200,
-      "duration_ms": 1458,
+      "duration_ms": 1452,
       "runtime": "azure_native",
       "route": "answer_direct",
-      "request_id": "azure_native_nightly_20261113T081059_actor_direct",
-      "trace_id": "trace_mwep6e3l_0100ad57",
+      "request_id": "azure_native_nightly_20261113T084717_actor_direct",
+      "trace_id": "trace_mweqh2js_9bcff58a",
       "provider": "azure_openai",
       "model": "meids-gpt-4-1-mini",
       "role_executions": [
         {
           "agent": "actor_twin",
           "mode": "direct",
-          "duration_ms": 1287
+          "duration_ms": 1255
         }
       ],
       "expected_roles": [
@@ -58,23 +58,23 @@
       "id": "knowledge_retrieval",
       "status": "completed",
       "http_status": 200,
-      "duration_ms": 3147,
+      "duration_ms": 2995,
       "runtime": "azure_native",
       "route": "retrieve_knowledge",
-      "request_id": "azure_native_nightly_20261113T081059_knowledge_retrieval",
-      "trace_id": "trace_mwep6gj4_d36d9f04",
+      "request_id": "azure_native_nightly_20261113T084717_knowledge_retrieval",
+      "trace_id": "trace_mweqh4v5_98d6dca6",
       "provider": "azure_openai",
       "model": "meids-gpt-4-1-mini",
       "role_executions": [
         {
           "agent": "knowledge_fabric_agent",
           "mode": "retrieve_and_answer",
-          "duration_ms": 997
+          "duration_ms": 1029
         },
         {
           "agent": "critical_faculty",
           "mode": "conditional_review",
-          "duration_ms": 1202
+          "duration_ms": 1181
         }
       ],
       "expected_roles": [
@@ -88,23 +88,23 @@
       "id": "conditional_critical_faculty",
       "status": "completed",
       "http_status": 200,
-      "duration_ms": 2165,
+      "duration_ms": 2482,
       "runtime": "azure_native",
       "route": "execute_work_sync",
-      "request_id": "azure_native_nightly_20261113T081059_conditional_critical_faculty",
-      "trace_id": "trace_mwep6i78_c0647c35",
+      "request_id": "azure_native_nightly_20261113T084717_conditional_critical_faculty",
+      "trace_id": "trace_mweqh6s3_1c67eef7",
       "provider": "azure_openai",
       "model": "meids-gpt-4-1-mini",
       "role_executions": [
         {
           "agent": "agentic_butler",
           "mode": "single_task_bypass",
-          "duration_ms": 941
+          "duration_ms": 1242
         },
         {
           "agent": "critical_faculty",
           "mode": "conditional_review",
-          "duration_ms": 1167
+          "duration_ms": 1184
         }
       ],
       "expected_roles": [
@@ -118,30 +118,30 @@
       "id": "butler_skill_task_chain",
       "status": "completed",
       "http_status": 200,
-      "duration_ms": 3772,
+      "duration_ms": 3714,
       "runtime": "azure_native",
       "route": "execute_work_sync",
-      "request_id": "azure_native_nightly_20261113T081059_butler_skill_task_chain",
-      "trace_id": "trace_mwep6l3z_5c4b587c",
+      "request_id": "azure_native_nightly_20261113T084717_butler_skill_task_chain",
+      "trace_id": "trace_mweqh9nd_f8d99be8",
       "provider": "azure_openai",
       "model": "meids-gpt-4-1-mini",
       "role_executions": [
         {
           "agent": "skill_orchestrator",
           "mode": "plan",
-          "duration_ms": 1243,
+          "duration_ms": 1677,
           "task_count": 1
         },
         {
           "agent": "task_agent",
           "mode": "execute",
           "task_index": 0,
-          "duration_ms": 1418
+          "duration_ms": 1000
         },
         {
           "agent": "agentic_butler",
           "mode": "synthesize",
-          "duration_ms": 1053
+          "duration_ms": 985
         }
       ],
       "expected_roles": [
@@ -157,10 +157,10 @@
       "id": "learning_agent",
       "status": "completed",
       "http_status": 202,
-      "duration_ms": 5159,
+      "duration_ms": 7720,
       "runtime": "azure_native",
-      "trace_id": "azure_native_nightly_20261113T081059_learning",
-      "job_id": "7bf92334-d97d-41bc-baf7-68660dc80300",
+      "trace_id": "azure_native_nightly_20261113T084717_learning",
+      "job_id": "4c94eb7e-7013-4fba-ab3c-029028e1dc03",
       "job_status": "completed",
       "attempts": 1,
       "role_executions": [

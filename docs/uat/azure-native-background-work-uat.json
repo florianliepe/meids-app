@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-11-13T08:50:35.393Z",
+  "status": "passed",
+  "contract": "meids.agent-work.v1",
+  "run_id": "background_uat_mweqkyzx",
+  "job_id": "agent-work-2fcf16d681d47833759a2f07cf2ae61b",
+  "acknowledgement_ms": 213,
+  "final_status": "completed",
+  "attempts": 1,
+  "runtime_provider": "azure_native",
+  "side_effect_guard_http_status": 409
+}

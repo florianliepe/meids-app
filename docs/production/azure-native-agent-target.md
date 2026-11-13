@@ -98,7 +98,7 @@ flowchart LR
 
 ## Current rollout state
 
-- PRs #56-#110 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter, hardened the Azure-native Nightly verdict, added authoritative Learning dry-run domain proof, fenced reclaimed worker attempts, stopped uncertain lease redispatch, bounded Azure OpenAI/Search retry handling and pinned each queued job to its enqueue-time runtime provider. The current backend revision is merge commit `d8af7d08e323017fb09b8b36789ce24650d8ff2a`, deployed by run `43390765630`. The matching Azure Static Web Apps revision was deployed by run `43390765408`.
+- PRs #56-#112 moved Actor, Butler, Skill, Task, Critical Faculty, Learning, approvals, voice preparation and legacy aliases behind the Azure-native adapter, hardened the Azure-native Nightly verdict, added authoritative Learning dry-run domain proof, fenced reclaimed worker attempts, stopped uncertain lease redispatch, bounded Azure OpenAI/Search retry handling and pinned each queued job to its enqueue-time runtime provider in PostgreSQL. The current backend revision is merge commit `c784c8f889299c04600aa369b9206e65fbc19b2c`, deployed by run `43393546593`. The matching Azure Static Web Apps revision was deployed by run `43393546548`.
 - The browser talks only to authenticated App Service routes; direct n8n URLs are empty in production runtime configuration.
 - Direct-answer shadow and primary canaries passed from the real App Service web process. A 20-request soak returned 20/20 expected answers with p50 814 ms, p90 1,044 ms and max 1,402 ms.
 - Missing and forged knowledge tokens both return `401 blocked_auth_context`.
