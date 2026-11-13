@@ -25,7 +25,7 @@ const checks = [
   [script.includes('runtime_boundary_healthy'), "Azure-native fallback-off drift gate"],
   [script.includes('browser_endpoint_contract_clean'), "browser endpoint boundary gate"],
   [script.includes('valid_until'), "evidence expiry"],
-  [script.includes('2026-11-13T09:04:54.654Z'), "explicit post-rollback Azure-native observation start"],
+  [script.includes('2026-11-13T09:23:26.551Z'), "explicit post-rollback Azure-native observation start"],
   [script.includes("n8n_calls=countif"), "n8n target dependency count"],
   [script.includes("data_l contains"), "dependency data alias inspection"],
   [script.includes("boundary:"), "public-safe evidence boundary"],

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 const fs = require("node:fs");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const { signKnowledgeAccessToken } = require("../backend/knowledgeAccess");
-const { ROUTE_SLOS } = require("../backend/agentSloPolicy");
+const { ROUTE_AVAILABILITY_POLICY, ROUTE_AVAILABILITY_POLICY_SHA256, ROUTE_SLOS } = require("../backend/agentSloPolicy");
 const { appendWindow, summarizeRoute, summarizeWindows } = require("./lib/azure-native-route-soak.cjs");
 
 const root = path.resolve(__dirname, "..");
@@ -14,7 +15,7 @@ const userId = String(process.env.MEIDS_UAT_USER_ID || "").trim();
 const twinId = String(process.env.MEIDS_UAT_TWIN_ID || "").trim();
 const samples = Math.max(1, Math.min(Number(process.env.MEIDS_SOAK_SAMPLES || 10), 100));
 const capacityCohort = String(process.env.MEIDS_SOAK_CAPACITY_COHORT || "unspecified").trim() || "unspecified";
-const runId = `azure_route_soak_${new Date().toISOString().replace(/[-:.]/g, "").slice(0, 15)}`;
+const runId = `azure_route_soak_${new Date().toISOString().replace(/\D/g, "")}_${crypto.randomUUID().slice(0, 8)}`;
 if (!userId || !twinId) throw new Error("MEIDS_UAT_USER_ID and MEIDS_UAT_TWIN_ID are required.");
 
 const token = signKnowledgeAccessToken({
@@ -148,10 +149,12 @@ async function runLearning(index) {
   const targets = { ...ROUTE_SLOS, detached_learning: { p90_warning_ms: 60_000, p90_critical_ms: 120_000 } };
   const summaries = Object.keys(targets).filter((route) => routeDefinitions.some((item) => item.id === route) || ["execute_work_async_ack", "detached_learning"].includes(route))
     .map((route) => summarizeRoute(route, results, targets[route]));
+  const completedAt = new Date().toISOString();
   const artifact = {
     schema_version: "1.0.0", contract: "meids.azure-native-route-soak.v1", generated_at: generatedAt, run_id: runId,
     candidate: { backend: baseUrl, backend_revision: String(buildInfo.commit || "unknown"), runtime: "azure_native", slo_contract: "meids.agent-slo.v1", capacity_cohort: capacityCohort },
-    window: { mode: "serial_warm", samples_per_route: samples, target_samples_per_route: 100, route_count: summaries.length },
+    availability_policy: { ...ROUTE_AVAILABILITY_POLICY, config_sha256: ROUTE_AVAILABILITY_POLICY_SHA256 },
+    window: { mode: "serial_warm", start_at: generatedAt, completed_at: completedAt, samples_per_route: samples, target_samples_per_route: 100, route_count: summaries.length },
     summary: { status: summaries.every((item) => item.status === "passed") ? "passed" : "failed", routes_passed: summaries.filter((item) => item.status === "passed").length, routes_total: summaries.length },
     routes: summaries,
     results,
@@ -161,7 +164,9 @@ async function runLearning(index) {
   let windows = Array.isArray(existingHistory.windows) ? existingHistory.windows : [];
   windows = appendWindow(windows, previousArtifact);
   windows = appendWindow(windows, artifact);
-  const aggregate = summarizeWindows(windows, targets);
+  const aggregate = summarizeWindows(windows, targets, {
+    availabilityPolicy: { ...ROUTE_AVAILABILITY_POLICY, config_sha256: ROUTE_AVAILABILITY_POLICY_SHA256 },
+  });
   const historyArtifact = {
     schema_version: "1.0.0",
     contract: "meids.azure-native-route-soak-history.v1",
