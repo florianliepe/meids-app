@@ -32,4 +32,3 @@ Keep Actor Twin, Review and Graph focused on the end user's immediate task witho
 - Click detail keeps exactly one readiness percentage and no governance actions.
 - Connections are grouped by relationship meaning and remain keyboard selectable.
 - Desktop/mobile, light/dark, keyboard, reduced-motion and Graph V1 rollback tests pass.
-
