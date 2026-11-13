@@ -116,6 +116,15 @@ async function inspectExplorer(page) {
     const panel = document.querySelector(".graph-detail-panel");
     const detail = document.querySelector("#graphNodeDetail");
     const text = detail?.textContent || "";
+    const connectionTargets = detail ? [...detail.querySelectorAll(".graph-connection-target")] : [];
+    const targetRects = connectionTargets.map((item) => item.getBoundingClientRect());
+    const overlappingTargets = targetRects.filter((rect, index) => targetRects.some((other, otherIndex) => (
+      otherIndex !== index
+      && rect.left < other.right
+      && rect.right > other.left
+      && rect.top < other.bottom
+      && rect.bottom > other.top
+    ))).length;
     return {
       panelWidth: Math.round(panel?.getBoundingClientRect().width || 0),
       panelClientWidth: panel?.clientWidth || 0,
@@ -131,6 +140,9 @@ async function inspectExplorer(page) {
       hasGovernanceAction: Boolean(detail?.querySelector("[data-graph-edge-action], [data-graph-proposal-action]")),
       closeVisible: Boolean(panel?.querySelector("[data-graph-detail-close]")),
       connectionGroupCount: detail?.querySelectorAll(".graph-connection-group").length || 0,
+      connectionTargetCount: connectionTargets.length,
+      connectionTargetOverflow: connectionTargets.filter((item) => item.scrollWidth > item.clientWidth + 2).length,
+      overlappingTargets,
       legacyConnectionNarratives: detail?.querySelectorAll(".graph-edge-line").length || 0,
     };
   });
@@ -143,6 +155,9 @@ async function inspectExplorer(page) {
   if (detailContract.hasGovernanceAction) failures.push("knowledge detail exposes governance actions");
   if (!detailContract.closeVisible) failures.push("knowledge detail has no explicit close control");
   if (!detailContract.connectionGroupCount) failures.push("knowledge detail has no grouped connection overview");
+  if (!detailContract.connectionTargetCount) failures.push("knowledge detail has no selectable connected concepts");
+  if (detailContract.connectionTargetOverflow) failures.push(`knowledge detail connection targets overflow: ${detailContract.connectionTargetOverflow}`);
+  if (detailContract.overlappingTargets) failures.push(`knowledge detail connection targets overlap: ${detailContract.overlappingTargets}`);
   if (detailContract.legacyConnectionNarratives) failures.push("knowledge detail still repeats relation narratives per edge");
   await page.locator("[data-graph-detail-close]").click();
   if (await page.locator("#graph.graph-has-selection").count()) failures.push("detail close control did not clear selection");
