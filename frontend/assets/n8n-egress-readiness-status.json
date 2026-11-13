@@ -1,22 +1,22 @@
 {
   "schema_version": "1.0.0",
   "contract": "meids.n8n-egress-readiness.v1",
-  "generated_at": "2026-11-13T10:11:35.142Z",
-  "valid_until": "2026-11-13T12:11:35.142Z",
+  "generated_at": "2026-11-13T11:00:19.552Z",
+  "valid_until": "2026-11-13T13:00:19.552Z",
   "status": "observation_in_progress",
   "evidence_issues": [],
   "required_observation_hours": 168,
-  "observed_coverage_hours": 0.8,
+  "observed_coverage_hours": 1.6,
   "observation_started_at": "2026-11-13T09:23:26.551Z",
   "coverage": {
     "query_status": "complete",
     "start": "2026-11-13T09:23:28.929Z",
-    "end": "2026-11-13T10:11:08.704Z",
+    "end": "2026-11-13T10:59:43.937Z",
     "query_offset": "30d",
     "start_delay_hours": 0,
     "ingestion_lag_hours": 0.01,
     "observed_hour_buckets": 2,
-    "required_hour_buckets": 1,
+    "required_hour_buckets": 2,
     "role_instances": 1,
     "configured_workers": 1,
     "sampled_dependencies": 0
@@ -30,11 +30,11 @@
   },
   "sensor_positive_control": {
     "healthy": true,
-    "total_dependencies": 13317,
-    "http_dependencies": 57,
+    "total_dependencies": 16338,
+    "http_dependencies": 58,
     "unknown_http_dependencies": 0,
-    "postgres_calls": 13260,
-    "azure_search_calls": 56
+    "postgres_calls": 16280,
+    "azure_search_calls": 57
   },
   "n8n_workflow_activity_sensor": {
     "checked": true,
