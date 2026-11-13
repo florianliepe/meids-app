@@ -42,4 +42,3 @@ Make Actor Twin, Review, and Graph understandable and usable for end users witho
 - Hover response remained at or below 1 ms in the tested fixture; the 100/500/1,000-node benchmark passes.
 - Actor-first browser matrix passes 16 desktop/mobile views and Graph V1 rollback.
 - Evidence: `docs/visual-qa/frontend-hardening-20261113/`.
-
