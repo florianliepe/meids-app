@@ -107,6 +107,25 @@ async function run() {
   assert.deepEqual(unavailable.trace.role_executions.map((item) => item.status), ["unavailable"]);
   assert.equal(calls.length, modelCallsBeforeUnavailable, "Retrieval exhaustion must not start Actor, Butler, or Critical Faculty model work");
 
+  const originalDateNow = Date.now;
+  const deadlineAdapter = createAzureNativeAgentAdapter({
+    async retrieveKnowledge() {
+      const exhaustedAt = originalDateNow() + 20_000;
+      Date.now = () => exhaustedAt;
+      return { results: [{ value: [{ id: "late", title: "Late evidence", content: "Synthetic", review_state: "approved" }] }] };
+    },
+  });
+  const modelCallsBeforeDeadline = calls.length;
+  try {
+    await assert.rejects(
+      () => deadlineAdapter.execute(portableRequest({ request_id: "retrieve-deadline", chatInput: "Show reviewed evidence about my role." })),
+      (error) => error.code === "azure_agent_budget_exhausted" && error.noRetry === true,
+    );
+  } finally {
+    Date.now = originalDateNow;
+  }
+  assert.equal(calls.length, modelCallsBeforeDeadline, "A successful retrieval must not reset the route budget or start a late model call");
+
   const retrieveWorkStart = calls.length;
   const retrieveWork = await adapter.execute(portableRequest({
     request_id: "retrieve-work",

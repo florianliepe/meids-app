@@ -105,6 +105,22 @@ test("cancellation during retry wait prevents a late second Search call", async 
   });
 });
 
+test("an already-aborted retrieval signal prevents the first Search dispatch", async () => {
+  let calls = 0;
+  const controller = new AbortController();
+  controller.abort();
+  await withSearchStub((request, response) => {
+    calls += 1;
+    response.end(JSON.stringify({ value: [] }));
+  }, async (endpoint) => {
+    await assert.rejects(
+      () => searchVectorKnowledge({ query: "synthetic", twin_id: "florian", organization_id: "eraneos" }, config(endpoint, { retrievalSignal: controller.signal })),
+      (error) => error.code === "azure_search_cancelled" && error.noRetry === true,
+    );
+    assert.equal(calls, 0);
+  });
+});
+
 test("authorized empty Search is completed and distinct from dependency failure", async () => {
   let calls = 0;
   await withSearchStub((request, response) => {

@@ -25,6 +25,8 @@
     {
       "route": "answer_direct",
       "sample_size": 45,
+      "latency_sample_size": 45,
+      "latency_population": "all_observed_results",
       "sample_maturity": "provisional",
       "counts": {
         "completed": 45,
@@ -47,6 +49,8 @@
     {
       "route": "retrieve_knowledge",
       "sample_size": 45,
+      "latency_sample_size": 45,
+      "latency_population": "all_observed_results",
       "sample_maturity": "provisional",
       "counts": {
         "completed": 45,
@@ -69,6 +73,8 @@
     {
       "route": "execute_work_sync",
       "sample_size": 45,
+      "latency_sample_size": 45,
+      "latency_population": "all_observed_results",
       "sample_maturity": "provisional",
       "counts": {
         "completed": 45,
@@ -91,6 +97,8 @@
     {
       "route": "execute_work_async_ack",
       "sample_size": 45,
+      "latency_sample_size": 45,
+      "latency_population": "all_observed_results",
       "sample_maturity": "provisional",
       "counts": {
         "completed": 45,
@@ -113,6 +121,8 @@
     {
       "route": "detached_learning",
       "sample_size": 45,
+      "latency_sample_size": 45,
+      "latency_population": "all_observed_results",
       "sample_maturity": "provisional",
       "counts": {
         "completed": 45,
