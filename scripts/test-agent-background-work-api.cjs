@@ -11,13 +11,21 @@ const mapping = {
   group_ids: [],
 };
 
-function harness({ existingLedger = false, statusRows = [], cancellationRow = null } = {}) {
+function harness({ existingLedger = false, statusRows = [], cancellationRow = null, existingRuntimeProvider = "" } = {}) {
   const calls = [];
   const client = {
     async query(sql, params = []) {
       calls.push({ sql: String(sql), params });
       if (String(sql).includes("INSERT INTO runtime.background_job")) {
-        return { rowCount: 1, rows: [{ job_id: params[0], status: "pending", created_at: new Date().toISOString() }] };
+        return {
+          rowCount: 1,
+          rows: [{
+            job_id: params[0],
+            status: "pending",
+            runtime_provider: existingRuntimeProvider || params[6],
+            created_at: new Date().toISOString(),
+          }],
+        };
       }
       if (String(sql).includes("SELECT 1 FROM audit.event")) return { rowCount: existingLedger ? 1 : 0, rows: existingLedger ? [{ exists: 1 }] : [] };
       if (String(sql).includes("SELECT resource_id, action, details")) return { rowCount: statusRows.length, rows: statusRows };
@@ -61,8 +69,9 @@ test("background work accepts a token-authenticated no-write request with a dura
   assert.match(responses[0].body.job_id, /^agent-work-/);
   const insert = calls.find((call) => call.sql.includes("INSERT INTO runtime.background_job"));
   assert.equal(insert.params[4], "agent_work");
-  assert.equal(JSON.parse(insert.params[6]).runtime_provider, "n8n");
-  assert.equal(insert.params[8], 3);
+  assert.equal(insert.params[6], "n8n");
+  assert.equal(JSON.parse(insert.params[7]).runtime_provider, "n8n");
+  assert.equal(insert.params[9], 3);
   assert.ok(calls.some((call) => call.sql.includes("INSERT INTO audit.event")));
 });
 
@@ -71,6 +80,13 @@ test("background work idempotency does not duplicate the visible ledger", async 
   const req = { method: "POST", body: { twin_id: "twin-a", message: "Compare three options, then prepare a no-write brief.", knowledge_access_token: "signed-token", idempotency_key: "stable-key" } };
   await api(req, {}, new URL("https://example.test/api/agents/work"));
   assert.equal(calls.filter((call) => call.sql.includes("INSERT INTO audit.event")).length, 0);
+});
+
+test("an idempotency conflict reports the originally persisted provider", async () => {
+  const { api, responses } = harness({ existingLedger: true, existingRuntimeProvider: "azure_native" });
+  const req = { method: "POST", body: { twin_id: "twin-a", message: "Compare three options, then prepare a no-write brief.", knowledge_access_token: "signed-token", idempotency_key: "stable-key" } };
+  await api(req, {}, new URL("https://example.test/api/agents/work"));
+  assert.equal(responses[0].body.runtime_provider, "azure_native");
 });
 
 test("background work rejects external side effects before enqueue", async () => {
@@ -160,6 +176,7 @@ test("worker re-enters Actor Twin once with a trusted non-recursive no-write ove
     attempts: 1,
     max_attempts: 3,
     leased_by: "worker-a",
+    runtime_provider: "azure_native",
     payload: {
       mapping,
       runtime_provider: "azure_native",
@@ -222,6 +239,7 @@ test("Azure-native Learning runs detached and stages only review-needed output",
     attempts: 1,
     max_attempts: 3,
     leased_by: "worker-learning",
+    runtime_provider: "azure_native",
     payload: {
       mapping,
       runtime_provider: "azure_native",
@@ -281,6 +299,7 @@ test("Azure-native Learning dry run executes the proposal without staging knowle
     attempts: 1,
     max_attempts: 3,
     leased_by: "worker-learning-dry",
+    runtime_provider: "azure_native",
     payload: {
       mapping,
       runtime_provider: "azure_native",
@@ -339,6 +358,7 @@ test("worker does not report an n8n timeout fallback as completed or retry it au
     job_id: "agent-work-timeout-test", job_type: "agent_work",
     tenant_id: mapping.tenant_id, actor_user_id: mapping.user_id, twin_id: mapping.active_twin_id,
     attempts: 1, max_attempts: 3, leased_by: "worker-timeout",
+    runtime_provider: "n8n",
     payload: {
       mapping,
       queued: { twin_id: "twin-a", request: "Prepare the brief.", critical_faculty: false },

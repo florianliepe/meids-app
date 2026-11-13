@@ -14,14 +14,18 @@ function workerId() {
 async function enqueueRuntimeJob(client, job) {
   const jobId = clean(job.job_id || crypto.randomUUID(), 128);
   const idempotencyKey = clean(job.idempotency_key || jobId, 256);
+  const runtimeProvider = clean(job.runtime_provider, 32);
+  if (!["n8n", "azure_native"].includes(runtimeProvider)) {
+    throw new Error(`A valid runtime_provider is required for ${jobId}.`);
+  }
   const result = await client.query(
     `INSERT INTO runtime.background_job (
        job_id, tenant_id, actor_user_id, twin_id, job_type, idempotency_key,
-       payload, binary_payload, max_attempts
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)
+       runtime_provider, payload, binary_payload, max_attempts
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10)
      ON CONFLICT (idempotency_key) DO UPDATE
        SET idempotency_key = EXCLUDED.idempotency_key
-     RETURNING job_id, status, created_at`,
+     RETURNING job_id, status, runtime_provider, created_at`,
     [
       jobId,
       clean(job.tenant_id, 256),
@@ -29,6 +33,7 @@ async function enqueueRuntimeJob(client, job) {
       clean(job.twin_id, 128),
       clean(job.job_type, 100),
       idempotencyKey,
+      runtimeProvider,
       JSON.stringify(job.payload || {}),
       job.binary_payload || null,
       Math.max(1, Math.min(Number(job.max_attempts || DEFAULT_MAX_ATTEMPTS), 12)),

@@ -79,6 +79,7 @@ flowchart LR
 8. The browser receives no n8n worker URL in native mode. Authentication, retrieval, progress, cancellation and result reads go through App Service routes.
 9. A Learning `dry_run` succeeds only when owner/twin-scoped PostgreSQL fingerprints for Learning, Knowledge, Graph and domain outbox state are identical before and after proposal generation. Operational job and trace persistence is outside this domain fingerprint.
 10. Every new background Butler, Skill and Learning job persists an immutable `runtime_provider` at enqueue. A later global rollback affects only new work; queued or processing work cannot cross providers or use fallback.
+11. PostgreSQL is the provider-pin authority. Idempotent duplicates return the original row's provider, ordinary updates cannot change it, and a legacy nonterminal job without a valid pin is reconciled to `dead_letter` rather than dispatched.
 
 ## Azure production resources
 
