@@ -10,7 +10,7 @@ const appService = process.env.MEIDS_AZURE_APP_SERVICE || "meids-prod-backend-18
 const appInsightsAppId = process.env.MEIDS_APP_INSIGHTS_APP_ID || "b6d06202-72f1-4208-adb5-91f0a26f9eb0";
 const minimumHours = Math.max(1, Number(process.env.MEIDS_N8N_EGRESS_MIN_HOURS || 168));
 const queryOffset = process.env.MEIDS_N8N_EGRESS_QUERY_OFFSET || "30d";
-const observationStartedAt = process.env.MEIDS_N8N_EGRESS_OBSERVATION_STARTED_AT || "2026-11-13T09:04:54.654Z";
+const observationStartedAt = process.env.MEIDS_N8N_EGRESS_OBSERVATION_STARTED_AT || "2026-11-13T09:23:26.551Z";
 const n8nWorkflowName = /(actor twin|knowledge fabric|knowledge retrieval interviewer|agentic butler|skill orchestrator|task agent|critical faculty|learning agent|voice answer|graph curator|queue background work|me\.?ids)/i;
 const expectedWorkflowIds = new Set([
   "6zW7jA7bIIcbmIO3", "7Ci86PxXipwvYpKv", "8ER9laJuKS6UrQJF", "dUkrCHpkLmqmFc7I", "eKI3qM7nyCNn9r1q",

@@ -1,8 +1,25 @@
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const { classifyAgentInteraction } = require("../backend/agentRoutingPolicy");
-const { SLO_VERSION, WORKFLOW_SLOS, ROUTE_SLOS, QUEUE_SLOS, evaluateWorkflowSlo } = require("../backend/agentSloPolicy");
+const { SLO_VERSION, ROUTE_AVAILABILITY_POLICY, ROUTE_AVAILABILITY_POLICY_SHA256, ROUTE_AVAILABILITY_MIN_SUCCESS_RATE, WORKFLOW_SLOS, ROUTE_SLOS, QUEUE_SLOS, evaluateWorkflowSlo } = require("../backend/agentSloPolicy");
 
 assert.equal(SLO_VERSION, "meids.agent-slo.v1");
+assert.equal(ROUTE_AVAILABILITY_MIN_SUCCESS_RATE, 0.99);
+assert.deepEqual(ROUTE_AVAILABILITY_POLICY, {
+  contract: "meids.agent-route-availability.v1",
+  minimum_success_rate: 0.99,
+  effective_at: "2026-11-14T00:00:00.000Z",
+  time_basis: "window.start_at",
+  eligibility_boundary: "start_at_gte_effective_at",
+  minimum_windows_per_route: 3,
+  target_samples_per_route: 100,
+  functional_success: "status_completed",
+  denominator: "all_eligible_results_per_route",
+  rounding: "none",
+  required_routes: ["answer_direct", "retrieve_knowledge", "execute_work_sync", "execute_work_async_ack", "detached_learning"],
+});
+assert.match(ROUTE_AVAILABILITY_POLICY_SHA256, /^[a-f0-9]{64}$/);
+assert.equal(ROUTE_AVAILABILITY_POLICY_SHA256, crypto.createHash("sha256").update(JSON.stringify(ROUTE_AVAILABILITY_POLICY)).digest("hex"));
 assert.equal(classifyAgentInteraction({ message: "Hello" }).budgets.response_ms, 8_000);
 assert.equal(classifyAgentInteraction({ message: "Show reviewed evidence about my profile" }).budgets.response_ms, 12_000);
 assert.equal(classifyAgentInteraction({ message: "Draft a concise note" }).budgets.response_ms, 20_000);
@@ -22,4 +39,4 @@ assert.equal(evaluateWorkflowSlo("actor_twin", { sample_size: 10, p50_ms: "", p9
 assert.equal(evaluateWorkflowSlo("actor_twin", { sample_size: 10, p50_ms: 100, p90_ms: 99 }).status, "incomplete_metrics");
 assert.equal(evaluateWorkflowSlo("actor_twin", { sample_size: "10", p50_ms: 10, p90_ms: 20 }).status, "incomplete_metrics");
 
-console.log(JSON.stringify({ status: "passed", contract: SLO_VERSION, route_slos: ROUTE_SLOS, queue_slos: QUEUE_SLOS }, null, 2));
+console.log(JSON.stringify({ status: "passed", contract: SLO_VERSION, route_availability_minimum_success_rate: ROUTE_AVAILABILITY_MIN_SUCCESS_RATE, route_slos: ROUTE_SLOS, queue_slos: QUEUE_SLOS }, null, 2));

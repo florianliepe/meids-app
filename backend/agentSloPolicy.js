@@ -1,4 +1,27 @@
+const crypto = require("node:crypto");
+
 const SLO_VERSION = "meids.agent-slo.v1";
+const ROUTE_AVAILABILITY_POLICY = Object.freeze({
+  contract: "meids.agent-route-availability.v1",
+  minimum_success_rate: 0.99,
+  effective_at: "2026-11-14T00:00:00.000Z",
+  time_basis: "window.start_at",
+  eligibility_boundary: "start_at_gte_effective_at",
+  minimum_windows_per_route: 3,
+  target_samples_per_route: 100,
+  functional_success: "status_completed",
+  denominator: "all_eligible_results_per_route",
+  rounding: "none",
+  required_routes: Object.freeze([
+    "answer_direct",
+    "retrieve_knowledge",
+    "execute_work_sync",
+    "execute_work_async_ack",
+    "detached_learning",
+  ]),
+});
+const ROUTE_AVAILABILITY_POLICY_SHA256 = crypto.createHash("sha256").update(JSON.stringify(ROUTE_AVAILABILITY_POLICY)).digest("hex");
+const ROUTE_AVAILABILITY_MIN_SUCCESS_RATE = ROUTE_AVAILABILITY_POLICY.minimum_success_rate;
 
 const WORKFLOW_SLOS = Object.freeze({
   actor_twin: { p50_warning_ms: 20_000, p90_warning_ms: 90_000, p90_critical_ms: 120_000, minimum_samples: 10 },
@@ -47,4 +70,13 @@ function evaluateWorkflowSlo(agent, metrics = {}) {
   return { status: critical ? "critical" : warnings.length ? "warning" : "met", target, warnings };
 }
 
-module.exports = { SLO_VERSION, WORKFLOW_SLOS, ROUTE_SLOS, QUEUE_SLOS, evaluateWorkflowSlo };
+module.exports = {
+  SLO_VERSION,
+  ROUTE_AVAILABILITY_POLICY,
+  ROUTE_AVAILABILITY_POLICY_SHA256,
+  ROUTE_AVAILABILITY_MIN_SUCCESS_RATE,
+  WORKFLOW_SLOS,
+  ROUTE_SLOS,
+  QUEUE_SLOS,
+  evaluateWorkflowSlo,
+};

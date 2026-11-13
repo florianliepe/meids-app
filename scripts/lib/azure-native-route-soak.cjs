@@ -17,6 +17,7 @@ function windowRecord(artifact = {}) {
     run_id: artifact.run_id,
     generated_at: artifact.generated_at,
     candidate: artifact.candidate,
+    availability_policy: artifact.availability_policy,
     window: artifact.window,
     summary: artifact.summary,
     routes: artifact.routes,
@@ -88,9 +89,16 @@ function appendWindow(existingWindows = [], artifact = {}) {
 }
 
 function summarizeWindows(windows, targets, options = {}) {
-  const minimumWindows = Number(options.minimumWindows || 3);
-  const targetSamples = Number(options.targetSamples || 100);
-  const availabilityMinimumSuccessRate = Number(options.availabilityMinimumSuccessRate);
+  const availabilityPolicy = options.availabilityPolicy || null;
+  const minimumWindows = Number(availabilityPolicy?.minimum_windows_per_route || options.minimumWindows || 3);
+  const targetSamples = Number(availabilityPolicy?.target_samples_per_route || options.targetSamples || 100);
+  const availabilityMinimumSuccessRate = Number(availabilityPolicy?.minimum_success_rate);
+  const availabilityEffectiveAt = Date.parse(String(availabilityPolicy?.effective_at || ""));
+  const availabilityPolicyHash = String(availabilityPolicy?.config_sha256 || "");
+  const requiredRoutes = Array.isArray(availabilityPolicy?.required_routes) ? availabilityPolicy.required_routes : [];
+  const targetRoutes = Object.keys(targets);
+  const routeScopeMatches = !requiredRoutes.length
+    || (requiredRoutes.length === targetRoutes.length && requiredRoutes.every((route) => targetRoutes.includes(route)));
   const uniqueWindows = [];
   const conflictingRunIds = new Set();
   for (const window of Array.isArray(windows) ? windows : []) {
@@ -100,37 +108,78 @@ function summarizeWindows(windows, targets, options = {}) {
     else if (comparableWindow(existing) !== comparableWindow(window)) conflictingRunIds.add(window.run_id);
     if (window.integrity?.status === "conflict") conflictingRunIds.add(window.run_id);
   }
-  const results = uniqueWindows.flatMap((item) => Array.isArray(item.results) ? item.results : []);
+  const excludedWindows = uniqueWindows.flatMap((window) => {
+    const reasons = [];
+    if (window.integrity?.status === "conflict") reasons.push("conflicting_run_id");
+    if (!window?.candidate?.capacity_cohort || window.candidate.capacity_cohort === "unspecified") reasons.push("unmarked_capacity_cohort");
+    return reasons.length ? [{ run_id: window.run_id, reasons }] : [];
+  });
+  const excludedIds = new Set(excludedWindows.map((item) => item.run_id));
+  const eligibleWindows = uniqueWindows.filter((window) => !excludedIds.has(window.run_id));
+  const results = eligibleWindows.flatMap((item) => Array.isArray(item.results) ? item.results : []);
   const routes = Object.entries(targets).map(([route, target]) => summarizeRoute(route, results, target, {
     minimumSamples: targetSamples,
     targetSamples,
   }));
-  const capacityCohortsMarked = uniqueWindows.every((window) => window?.candidate?.capacity_cohort && window.candidate.capacity_cohort !== "unspecified");
-  const samplingPassed = uniqueWindows.length >= minimumWindows
-    && capacityCohortsMarked
-    && conflictingRunIds.size === 0
+  const samplingPassed = eligibleWindows.length >= minimumWindows
     && routes.every((route) => route.sample_size >= targetSamples);
   const availabilityPolicyDefined = Number.isFinite(availabilityMinimumSuccessRate)
     && availabilityMinimumSuccessRate > 0
-    && availabilityMinimumSuccessRate <= 1;
-  const availabilityPassed = availabilityPolicyDefined
-    && routes.every((route) => route.success_rate >= availabilityMinimumSuccessRate);
+    && availabilityMinimumSuccessRate <= 1
+    && Number.isFinite(availabilityEffectiveAt)
+    && /^[a-f0-9]{64}$/.test(availabilityPolicyHash)
+    && routeScopeMatches;
+  const availabilityExcludedWindows = [];
+  const availabilityWindows = availabilityPolicyDefined ? eligibleWindows.filter((window) => {
+    const reasons = [];
+    const startAt = Date.parse(String(window?.window?.start_at || ""));
+    if (!Number.isFinite(startAt)) reasons.push("missing_or_invalid_window_start_at");
+    else if (startAt < availabilityEffectiveAt) reasons.push("pre_policy_window");
+    if (String(window?.availability_policy?.contract || "") !== String(availabilityPolicy.contract || "")) reasons.push("policy_contract_mismatch");
+    if (String(window?.availability_policy?.config_sha256 || "") !== availabilityPolicyHash) reasons.push("policy_hash_mismatch");
+    if (reasons.length) availabilityExcludedWindows.push({ run_id: window.run_id, reasons });
+    return reasons.length === 0;
+  }) : [];
+  const availabilityResults = availabilityWindows.flatMap((item) => Array.isArray(item.results) ? item.results : []);
+  const availabilityRoutes = Object.entries(targets).map(([route, target]) => {
+    const summary = summarizeRoute(route, availabilityResults, target, { minimumSamples: targetSamples, targetSamples });
+    const routeWindowCount = availabilityWindows.filter((window) => Array.isArray(window.results)
+      && window.results.some((result) => result.route_id === route)).length;
+    const exactSuccessRate = summary.sample_size ? summary.counts.completed / summary.sample_size : 0;
+    const mature = routeWindowCount >= minimumWindows && summary.sample_size >= targetSamples;
+    return {
+      ...summary,
+      availability_window_count: routeWindowCount,
+      availability_success_rate_exact: exactSuccessRate,
+      availability_status: !mature ? "not_evaluated" : exactSuccessRate >= availabilityMinimumSuccessRate ? "passed" : "failed",
+    };
+  });
+  const availabilityMature = availabilityPolicyDefined
+    && availabilityWindows.length >= minimumWindows
+    && availabilityRoutes.every((route) => route.availability_window_count >= minimumWindows && route.sample_size >= targetSamples);
+  const availabilityPassed = availabilityMature
+    && availabilityRoutes.every((route) => route.availability_success_rate_exact >= availabilityMinimumSuccessRate);
   const issues = [];
-  if (uniqueWindows.length < minimumWindows) issues.push("insufficient_windows");
-  if (!capacityCohortsMarked) issues.push("unmarked_capacity_cohort");
-  if (conflictingRunIds.size) issues.push("conflicting_run_id");
+  if (eligibleWindows.length < minimumWindows) issues.push("insufficient_windows");
   if (routes.some((route) => route.sample_size < targetSamples)) issues.push("insufficient_route_samples");
   if (!availabilityPolicyDefined) issues.push("availability_policy_not_defined");
+  else if (!availabilityMature) issues.push("availability_observation_incomplete");
   else if (!availabilityPassed) issues.push("availability_target_not_met");
   return {
     status: samplingPassed && availabilityPassed ? "passed" : "observation_in_progress",
     sampling_status: samplingPassed ? "passed" : "observation_in_progress",
-    availability_status: availabilityPolicyDefined ? (availabilityPassed ? "passed" : "failed") : "policy_not_defined",
+    availability_status: !availabilityPolicyDefined ? "policy_not_defined" : !availabilityMature ? "not_evaluated" : availabilityPassed ? "passed" : "failed",
+    availability_policy: availabilityPolicyDefined ? availabilityPolicy : null,
     availability_minimum_success_rate: availabilityPolicyDefined ? availabilityMinimumSuccessRate : null,
-    window_count: uniqueWindows.length,
+    availability_window_count: availabilityWindows.length,
+    availability_excluded_windows: availabilityExcludedWindows,
+    availability_routes: availabilityRoutes,
+    window_count: eligibleWindows.length,
+    observed_window_count: uniqueWindows.length,
     minimum_windows: minimumWindows,
     target_samples_per_route: targetSamples,
     conflicting_run_ids: [...conflictingRunIds].sort(),
+    excluded_windows: excludedWindows,
     routes,
     issues,
   };
