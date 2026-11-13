@@ -180,6 +180,9 @@ jobs:
       - name: Validate Admin Cockpit
         run: npm run check:admin-cockpit
 
+      - name: Validate retirement window evidence and display
+        run: npm run check:n8n-egress
+
       - name: Validate graph contracts
         run: |
           node scripts/validate-graph-explorer-v2.cjs

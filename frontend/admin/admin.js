@@ -29,6 +29,20 @@
     showToast.timer = window.setTimeout(() => { toast.hidden = true; }, 4200);
   }
 
+  function egressTimeline(egress) {
+    if (!egress) return "";
+    const stamp = (value) => {
+      const ms = typeof value === "string" ? Date.parse(value) : NaN;
+      return Number.isFinite(ms) ? new Date(ms).toISOString().replace("T", " ").replace("Z", " UTC") : "Unavailable";
+    };
+    const start = Date.parse(egress.observation_started_at);
+    const hours = egress.required_observation_hours;
+    const end = start + hours * 3600000;
+    const earliest = Number.isFinite(start) && Number.isFinite(hours) && hours > 0 && Number.isFinite(end)
+      ? stamp(new Date(end).toISOString()) : "Unavailable";
+    return `Current window start: ${stamp(egress.observation_started_at)}\nTelemetry through: ${stamp(egress.coverage?.end)}\nSnapshot published: ${stamp(egress.generated_at)}\nEarliest possible window completion: ${earliest}\nEarlier windows are not added. Hours reflect the published measurement, not a live counter. Complete telemetry and all other retirement gates are still required.`;
+  }
+
   function hasAdminAccess(session) {
     const roles = new Set((session?.roles || []).map((role) => String(role).toLowerCase()));
     return Boolean(session?.permissions?.can_access_admin_cockpit || roles.has("admin") || roles.has("owner"));
@@ -166,6 +180,7 @@
             ? "Dependency or n8n workflow telemetry is incomplete; retirement remains blocked."
             : `${observed} of ${required} required hours observed; no n8n calls so far, but the retirement gate remains open.`;
     $("#n8nEgressStatus").textContent = egressCopy;
+    $("#n8nEgressTimeline").textContent = egressTimeline(egress);
 
     const backlog = Array.isArray(nightly?.nightly_test_backlog) ? nightly.nightly_test_backlog : [];
     $("#nightlyBacklog").innerHTML = backlog.length
