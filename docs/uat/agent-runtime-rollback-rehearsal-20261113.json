@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0.0",
+  "contract": "meids.agent-runtime-rollback.v1",
+  "generated_at": "2026-11-13T08:15:00.000Z",
+  "status": "isolated_contract_passed",
+  "cases": [
+    {
+      "name": "new work follows active runtime",
+      "status": "passed",
+      "evidence": "n8n, azure_native, and hybrid route selection are deterministic."
+    },
+    {
+      "name": "queued work remains provider-bound",
+      "status": "passed",
+      "evidence": "Background and Skill jobs persist runtime_provider at enqueue and pass it unchanged to execution."
+    },
+    {
+      "name": "detached Learning remains Azure-native",
+      "status": "passed",
+      "evidence": "Learning jobs persist azure_native and reject a conflicting provider without retry."
+    },
+    {
+      "name": "pinned Azure work cannot fall back to n8n",
+      "status": "passed",
+      "evidence": "The adapter disables cross-provider fallback whenever runtimeProvider is pinned."
+    },
+    {
+      "name": "unknown completion remains terminal",
+      "status": "passed",
+      "evidence": "Existing lease-expiry and attempt-fencing tests prevent redispatch or stale completion."
+    }
+  ],
+  "test_commands": [
+    "node --test scripts/test-agent-runtime-selection.cjs",
+    "npm run check:backend",
+    "npm run check:agents"
+  ],
+  "remaining_live_gate": "After deployment, perform one controlled runtime switch for new synthetic no-write work while proving already queued, processing, unknown, and terminal job IDs retain their provider and are not replayed.",
+  "boundary": "Synthetic no-write rehearsal. No production runtime flag or production data was changed."
+}

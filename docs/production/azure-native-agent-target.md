@@ -1,6 +1,6 @@
 # Me.IDs Azure-native agent target
 
-Last updated: 2026-11-12
+Last updated: 2026-11-13
 
 ## Current production interaction
 
@@ -15,7 +15,7 @@ flowchart LR
   AZ --> A[Actor response]
   AZ --> K[Knowledge Fabric retrieval]
   AZ --> B[Agentic Butler]
-  AZ --> Q[(PostgreSQL job queue)]
+  AZ --> Q[(PostgreSQL job queue<br/>immutable runtime_provider)]
   Q --> S[Skill Orchestrator]
   S --> T[1-2 Task Agents]
   T --> B
@@ -45,7 +45,7 @@ flowchart LR
   G -->|direct| A[Actor response]
   G -->|retrieve| K[Knowledge retrieval]
   G -->|single bounded task| B[Butler worker]
-  G -->|multi-step| Q[(PostgreSQL job queue)]
+  G -->|multi-step + provider pin| Q[(PostgreSQL job queue)]
   Q --> B
   B -->|multi-step only| S[Skill Orchestrator]
   S --> T[1-2 Task Agents]
@@ -78,6 +78,7 @@ flowchart LR
 7. Unknown completion is never retried automatically. Cancellation is allowed only before a worker lease is acquired. Every claimed PostgreSQL job uses its incremented `attempts` value as a fencing generation. An expired `processing` lease becomes terminal `unknown_completion` with reconciliation required; it is never automatically reclaimed or redispatched. A late completion or failure cannot overwrite that terminal state.
 8. The browser receives no n8n worker URL in native mode. Authentication, retrieval, progress, cancellation and result reads go through App Service routes.
 9. A Learning `dry_run` succeeds only when owner/twin-scoped PostgreSQL fingerprints for Learning, Knowledge, Graph and domain outbox state are identical before and after proposal generation. Operational job and trace persistence is outside this domain fingerprint.
+10. Every new background Butler, Skill and Learning job persists an immutable `runtime_provider` at enqueue. A later global rollback affects only new work; queued or processing work cannot cross providers or use fallback.
 
 ## Azure production resources
 
@@ -135,5 +136,6 @@ flowchart LR
 - Route canaries passed in this order: direct, retrieval, synchronous work, background work, conditional critique, approval resume, voice preparation and detached Learning.
 - The Nightly harness now targets authenticated App Service routes and correlates fresh Azure-native root traces, provider/model metadata, role executions and an owner-scoped Learning job. Its Learning probe generates a real proposal in `dry_run` mode and requires matching authoritative PostgreSQL before/after fingerprints rather than trusting `not_persisted` alone. Production passed this proof with 12 entities and identical non-empty digests. Historical n8n execution evidence remains rollback/audit evidence only.
 - Production Nightly evidence now passes all five scenarios and all seven Azure-native roles. The signed-token App Service exclusions are limited to the four application-authorized runtime routes and remain fail-closed in the backend.
-- Open before physical n8n removal: complete two-principal/guest RLS, run a measured rollback rehearsal, finish the active 168-hour zero-n8n observation window, and satisfy audit retention. The observation gate checks App Service HTTP dependencies and all active Me.IDs n8n workflow executions; it cannot pass from missing logs alone.
+- The isolated rollback contract now passes: new work follows the active provider, queued work retains its enqueue-time provider, pinned Azure work cannot fall back to n8n, and uncertain completion remains terminal. A measured post-deploy runtime switch is still required before physical retirement.
+- Open before physical n8n removal: complete two-principal/guest RLS, run the measured post-deploy rollback switch, finish the active 168-hour zero-n8n observation window, and satisfy audit retention. The observation gate checks App Service HTTP dependencies and all active Me.IDs n8n workflow executions; it cannot pass from missing logs alone.
 - After those gates, remove n8n webhook settings, API credentials, workflow administration UI and retained workflow assets in one separately approved retirement release.

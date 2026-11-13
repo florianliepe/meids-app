@@ -57,9 +57,11 @@ test("background work accepts a token-authenticated no-write request with a dura
   assert.equal(responses[0].status, 202);
   assert.equal(responses[0].body.contract, "meids.agent-work.v1");
   assert.equal(responses[0].body.status, "queued");
+  assert.equal(responses[0].body.runtime_provider, "n8n");
   assert.match(responses[0].body.job_id, /^agent-work-/);
   const insert = calls.find((call) => call.sql.includes("INSERT INTO runtime.background_job"));
   assert.equal(insert.params[4], "agent_work");
+  assert.equal(JSON.parse(insert.params[6]).runtime_provider, "n8n");
   assert.equal(insert.params[8], 3);
   assert.ok(calls.some((call) => call.sql.includes("INSERT INTO audit.event")));
 });
@@ -160,6 +162,7 @@ test("worker re-enters Actor Twin once with a trusted non-recursive no-write ove
     leased_by: "worker-a",
     payload: {
       mapping,
+      runtime_provider: "azure_native",
       queued: { twin_id: "twin-a", request: "Prepare the brief.", critical_faculty: false },
       request: { chatInput: "Prepare the brief.", metadata: { identity: { activeTwinId: "twin-a" }, authorization: {} } },
     },
@@ -183,8 +186,8 @@ test("worker re-enters Actor Twin once with a trusted non-recursive no-write ove
     async requireKnowledgeRequestMapping() { return mapping; },
     async readBody() { return {}; }, async readMultipartForm() { throw new Error("not used"); },
     jsonResponse() {}, async stageKnowledge() {}, async promoteKnowledge() {}, async rejectKnowledge() {},
-    async proxyToN8n(agent, request) {
-      proxyCalls.push({ agent, request });
+    async executeAgent(agent, request, options) {
+      proxyCalls.push({ agent, request, options });
       return {
         status: "completed",
         output: { answer: "finished" },
@@ -201,6 +204,7 @@ test("worker re-enters Actor Twin once with a trusted non-recursive no-write ove
   assert.equal(proxyCalls[0].request.metadata.routingContractOverride.route, "execute_work_sync");
   assert.equal(proxyCalls[0].request.metadata.side_effect_policy, "no_external_side_effects");
   assert.equal(proxyCalls[0].request.metadata.authorization.knowledgeAccessToken, "fresh-worker-token");
+  assert.equal(proxyCalls[0].options.runtimeProvider, "azure_native");
   const completedLedger = databaseCalls.find((call) => call.sql.includes("UPDATE audit.event")
     && String(call.params[2]) === "agent.work.completed");
   const completed = JSON.parse(completedLedger.params[3]);
@@ -220,6 +224,7 @@ test("Azure-native Learning runs detached and stages only review-needed output",
     leased_by: "worker-learning",
     payload: {
       mapping,
+      runtime_provider: "azure_native",
       learning: {
         request_id: "request-learning",
         trace_id: "trace-learning",
@@ -278,6 +283,7 @@ test("Azure-native Learning dry run executes the proposal without staging knowle
     leased_by: "worker-learning-dry",
     payload: {
       mapping,
+      runtime_provider: "azure_native",
       learning: {
         request_id: "request-learning-dry",
         trace_id: "trace-learning-dry",
