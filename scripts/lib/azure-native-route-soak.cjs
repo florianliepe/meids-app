@@ -4,6 +4,33 @@ function percentile(values, percentileValue) {
   return sorted[Math.max(0, Math.ceil((percentileValue / 100) * sorted.length) - 1)];
 }
 
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function windowRecord(artifact = {}) {
+  return {
+    run_id: artifact.run_id,
+    generated_at: artifact.generated_at,
+    candidate: artifact.candidate,
+    window: artifact.window,
+    summary: artifact.summary,
+    routes: artifact.routes,
+    results: artifact.results,
+    ...(artifact.integrity ? { integrity: artifact.integrity } : {}),
+  };
+}
+
+function comparableWindow(window = {}) {
+  const record = windowRecord(window);
+  delete record.integrity;
+  return stableStringify(record);
+}
+
 function summarizeRoute(route, results, target, options = {}) {
   const minimumSamples = Number(options.minimumSamples || 10);
   const targetSamples = Number(options.targetSamples || 100);
@@ -29,6 +56,8 @@ function summarizeRoute(route, results, target, options = {}) {
   return {
     route,
     sample_size: expected.length,
+    latency_sample_size: completeDurations ? durations.length : 0,
+    latency_population: "all_observed_results",
     sample_maturity: expected.length >= targetSamples ? "target" : expected.length >= minimumSamples ? "provisional" : "insufficient",
     counts,
     success_rate: expected.length ? Number((counts.completed / expected.length).toFixed(4)) : 0,
@@ -43,16 +72,18 @@ function summarizeRoute(route, results, target, options = {}) {
 
 function appendWindow(existingWindows = [], artifact = {}) {
   const windows = [...existingWindows];
-  if (!artifact?.run_id || windows.some((item) => item.run_id === artifact.run_id)) return windows;
-  windows.push({
-    run_id: artifact.run_id,
-    generated_at: artifact.generated_at,
-    candidate: artifact.candidate,
-    window: artifact.window,
-    summary: artifact.summary,
-    routes: artifact.routes,
-    results: artifact.results,
-  });
+  if (!artifact?.run_id) return windows;
+  const existingIndex = windows.findIndex((item) => item.run_id === artifact.run_id);
+  if (existingIndex >= 0) {
+    if (comparableWindow(windows[existingIndex]) !== comparableWindow(artifact)) {
+      windows[existingIndex] = {
+        ...windows[existingIndex],
+        integrity: { status: "conflict", issue: "conflicting_run_id" },
+      };
+    }
+    return windows;
+  }
+  windows.push(windowRecord(artifact));
   return windows.sort((a, b) => String(a.generated_at).localeCompare(String(b.generated_at)));
 }
 
@@ -61,8 +92,13 @@ function summarizeWindows(windows, targets, options = {}) {
   const targetSamples = Number(options.targetSamples || 100);
   const availabilityMinimumSuccessRate = Number(options.availabilityMinimumSuccessRate);
   const uniqueWindows = [];
+  const conflictingRunIds = new Set();
   for (const window of Array.isArray(windows) ? windows : []) {
-    if (window?.run_id && !uniqueWindows.some((item) => item.run_id === window.run_id)) uniqueWindows.push(window);
+    if (!window?.run_id) continue;
+    const existing = uniqueWindows.find((item) => item.run_id === window.run_id);
+    if (!existing) uniqueWindows.push(window);
+    else if (comparableWindow(existing) !== comparableWindow(window)) conflictingRunIds.add(window.run_id);
+    if (window.integrity?.status === "conflict") conflictingRunIds.add(window.run_id);
   }
   const results = uniqueWindows.flatMap((item) => Array.isArray(item.results) ? item.results : []);
   const routes = Object.entries(targets).map(([route, target]) => summarizeRoute(route, results, target, {
@@ -72,6 +108,7 @@ function summarizeWindows(windows, targets, options = {}) {
   const capacityCohortsMarked = uniqueWindows.every((window) => window?.candidate?.capacity_cohort && window.candidate.capacity_cohort !== "unspecified");
   const samplingPassed = uniqueWindows.length >= minimumWindows
     && capacityCohortsMarked
+    && conflictingRunIds.size === 0
     && routes.every((route) => route.sample_size >= targetSamples);
   const availabilityPolicyDefined = Number.isFinite(availabilityMinimumSuccessRate)
     && availabilityMinimumSuccessRate > 0
@@ -81,6 +118,7 @@ function summarizeWindows(windows, targets, options = {}) {
   const issues = [];
   if (uniqueWindows.length < minimumWindows) issues.push("insufficient_windows");
   if (!capacityCohortsMarked) issues.push("unmarked_capacity_cohort");
+  if (conflictingRunIds.size) issues.push("conflicting_run_id");
   if (routes.some((route) => route.sample_size < targetSamples)) issues.push("insufficient_route_samples");
   if (!availabilityPolicyDefined) issues.push("availability_policy_not_defined");
   else if (!availabilityPassed) issues.push("availability_target_not_met");
@@ -92,6 +130,7 @@ function summarizeWindows(windows, targets, options = {}) {
     window_count: uniqueWindows.length,
     minimum_windows: minimumWindows,
     target_samples_per_route: targetSamples,
+    conflicting_run_ids: [...conflictingRunIds].sort(),
     routes,
     issues,
   };

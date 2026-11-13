@@ -16,6 +16,8 @@ test("failures remain in the denominator and duration percentile", () => {
   results.push({ route_id: "direct", status: "timeout", duration_ms: 250 });
   const summary = summarizeRoute("direct", results, target);
   assert.equal(summary.sample_size, 10);
+  assert.equal(summary.latency_sample_size, 10);
+  assert.equal(summary.latency_population, "all_observed_results");
   assert.equal(summary.counts.completed, 9);
   assert.equal(summary.counts.timeout, 1);
   assert.equal(summary.success_rate, 0.9);
@@ -80,6 +82,44 @@ test("window history is deduplicated and keeps failed results in the aggregate",
   assert.equal(aggregate.routes[0].counts.timeout, 1);
   assert.equal(aggregate.availability_status, "policy_not_defined");
   assert.ok(aggregate.routes[0].issues.includes("non_success_result"));
+});
+
+test("conflicting duplicate run ids fail closed without replacing original samples", () => {
+  const candidate = { capacity_cohort: "50rpm-50ktpm", backend_revision: "abc123" };
+  const original = {
+    run_id: "window-1",
+    generated_at: "2026-11-12T20:00:00Z",
+    candidate,
+    results: [
+      { route_id: "direct", status: "failed", duration_ms: 250 },
+      { route_id: "retrieval", status: "completed", duration_ms: 80 },
+    ],
+  };
+  const exactDuplicate = JSON.parse(JSON.stringify(original));
+  const conflicting = {
+    ...JSON.parse(JSON.stringify(original)),
+    candidate: { ...candidate, backend_revision: "def456" },
+    results: [
+      { route_id: "direct", status: "completed", duration_ms: 50 },
+      { route_id: "retrieval", status: "completed", duration_ms: 70 },
+    ],
+  };
+  let windows = appendWindow([], original);
+  windows = appendWindow(windows, exactDuplicate);
+  assert.equal(windows.length, 1);
+  assert.equal(windows[0].integrity, undefined);
+  windows = appendWindow(windows, conflicting);
+  assert.equal(windows.length, 1);
+  assert.equal(windows[0].integrity.status, "conflict");
+  assert.equal(windows[0].results[0].status, "failed", "Conflicting success must not replace the original failed sample");
+
+  const aggregate = summarizeWindows(windows, { direct: target, retrieval: target }, { minimumWindows: 1, targetSamples: 1, availabilityMinimumSuccessRate: 0.5 });
+  assert.equal(aggregate.status, "observation_in_progress");
+  assert.equal(aggregate.sampling_status, "observation_in_progress");
+  assert.deepEqual(aggregate.conflicting_run_ids, ["window-1"]);
+  assert.ok(aggregate.issues.includes("conflicting_run_id"));
+  assert.equal(aggregate.routes.find((route) => route.route === "direct").counts.failed, 1);
+  assert.equal(aggregate.routes.find((route) => route.route === "retrieval").sample_size, 1, "Distinct routes within one run must remain separate samples");
 });
 
 test("an unmarked capacity cohort can never satisfy maturity", () => {
