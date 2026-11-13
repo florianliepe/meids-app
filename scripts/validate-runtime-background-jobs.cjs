@@ -7,6 +7,7 @@ const workspaceApi = fs.readFileSync(path.join(root, "backend", "workspaceApi.js
 const server = fs.readFileSync(path.join(root, "backend", "server.js"), "utf8");
 const migration = fs.readFileSync(path.join(root, "backend", "migrations", "017_runtime_background_jobs.sql"), "utf8");
 const cancellationMigration = fs.readFileSync(path.join(root, "backend", "migrations", "020_runtime_background_job_cancellation.sql"), "utf8");
+const providerPinMigration = fs.readFileSync(path.join(root, "backend", "migrations", "022_runtime_provider_pin.sql"), "utf8");
 
 function requireText(source, text, message) {
   if (!source.includes(text)) throw new Error(message || `Missing ${text}`);
@@ -49,6 +50,13 @@ for (const required of [
 for (const required of ["cancelled", "agent.work.cancelled", "background_job_status_check"]) {
   requireText(cancellationMigration, required, `Runtime cancellation migration is missing ${required}.`);
 }
+
+for (const required of [
+  "runtime_provider text",
+  "runtime_provider IN ('n8n', 'azure_native')",
+  "runtime_provider_missing_before_pin_migration",
+  "background_job_runtime_provider_immutable",
+]) requireText(providerPinMigration, required, `Runtime provider pin migration is missing ${required}.`);
 
 for (const required of [
   "MEIDS_RUNTIME_JOB_WORKER_ENABLED",

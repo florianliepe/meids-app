@@ -33,8 +33,10 @@ test("background work persists and consumes the immutable provider pin", () => {
   const workspace = fs.readFileSync(path.join(root, "backend", "workspaceApi.js"), "utf8");
   const server = fs.readFileSync(path.join(root, "backend", "server.js"), "utf8");
   assert.match(workspace, /payload: \{ mapping, request: queuedRequest, queued, runtime_provider: runtimeProvider \}/);
+  assert.match(workspace, /runtime_provider: runtimeProvider,/);
   assert.match(workspace, /runtimeProviderForJob\(job, "execute_work_sync"\)/);
   assert.match(workspace, /executeAgent\("actor_twin", request, \{[\s\S]{0,120}runtimeProvider,/);
   assert.match(server, /payload: \{ mapping, learning: safePayload, runtime_provider: "azure_native" \}/);
+  assert.match(server, /job_type: "learning_post_turn",[\s\S]{0,100}runtime_provider: "azure_native"/);
   assert.match(server, /if \(pinnedProvider[\s\S]{0,180}MEIDS_AGENT_AZURE_FALLBACK_TO_N8N/);
 });

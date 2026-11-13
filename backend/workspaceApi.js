@@ -704,8 +704,7 @@ function createWorkspaceApi(deps) {
   }
 
   function runtimeProviderForJob(job, route) {
-    const legacyProvider = route === "post_turn_learning" ? "azure_native" : agentRuntimeProvider(route);
-    return assertRuntimeProvider(job.payload?.runtime_provider || legacyProvider);
+    return assertRuntimeProvider(job.runtime_provider);
   }
 
   async function persistSkillRunResult(pool, mapping, runId, action, details) {
@@ -1624,6 +1623,7 @@ function createWorkspaceApi(deps) {
         actor_user_id: mapping.user_id,
         twin_id: skill.twin_id,
         job_type: "skill_execution",
+        runtime_provider: runtimeProvider,
         payload: { mapping, request: queuedRequest, queued, runtime_provider: runtimeProvider },
       });
     });
@@ -1681,6 +1681,7 @@ function createWorkspaceApi(deps) {
         actor_user_id: mapping.user_id,
         twin_id: twinId,
         job_type: "agent_work",
+        runtime_provider: runtimeProvider,
         payload: { mapping, request: queuedRequest, queued, runtime_provider: runtimeProvider },
         max_attempts: 3,
       });
@@ -1694,7 +1695,12 @@ function createWorkspaceApi(deps) {
       }
       return insertedJob;
     });
-    jsonResponse(res, 202, { ...queued, job_id: inserted.job_id, status: inserted.status === "pending" ? "queued" : inserted.status });
+    jsonResponse(res, 202, {
+      ...queued,
+      job_id: inserted.job_id,
+      status: inserted.status === "pending" ? "queued" : inserted.status,
+      runtime_provider: assertRuntimeProvider(inserted.runtime_provider),
+    });
   }
 
   async function agentWorkStatus(req, res, url) {
@@ -1879,6 +1885,7 @@ function createWorkspaceApi(deps) {
         actor_user_id: mapping.user_id,
         twin_id: twinId,
         job_type: "voice_transcription",
+        runtime_provider: "azure_native",
         payload: { mapping, queued },
         binary_payload: file.buffer,
       });

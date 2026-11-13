@@ -2134,6 +2134,7 @@ async function enqueueAzureNativeLearning(payload) {
     actor_user_id: userId,
     twin_id: twinId,
     job_type: "learning_post_turn",
+    runtime_provider: "azure_native",
     idempotency_key: `learning:${tenantId}:${twinId}:${traceId}`,
     max_attempts: 3,
     payload: { mapping, learning: safePayload, runtime_provider: "azure_native" },
