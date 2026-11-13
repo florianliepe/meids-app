@@ -29,7 +29,7 @@ SET status = 'dead_letter',
     binary_payload = NULL,
     updated_at = now()
 WHERE status IN ('pending', 'failed', 'processing')
-  AND NOT (payload ->> 'runtime_provider' IN ('n8n', 'azure_native'));
+  AND coalesce(payload ->> 'runtime_provider', '') NOT IN ('n8n', 'azure_native');
 
 ALTER TABLE runtime.background_job
   ALTER COLUMN runtime_provider SET NOT NULL;
