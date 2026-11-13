@@ -35827,11 +35827,111 @@ body.actor-first-ui.graph-explorer-v2 #graph.graph-has-selection .graph-detail-p
 }
 
 .actor-first-ui #dashboard .dashboard-section.review-lane-active .activity-list {
+  align-content: start;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   height: clamp(420px, calc(100vh - 365px), 780px);
   max-height: none;
   overflow-y: auto;
   overscroll-behavior: contain;
+  padding: 2px 4px 12px 0;
   scrollbar-gutter: stable;
+}
+
+.actor-first-ui #dashboard .dashboard-section.review-lane-active .activity-row {
+  flex: 0 0 auto;
+  min-height: 138px;
+}
+
+.actor-first-ui #dashboard .dashboard-section.review-lane-active .queue-review-cue {
+  min-height: 38px;
+}
+
+body.graph-explorer-v2 .graph-topology-svg.dense-neighborhood .graph-svg-node.is-neighbor .graph-svg-label,
+body.graph-explorer-v2 .graph-topology-svg.dense-neighborhood .graph-svg-node.is-neighbor .graph-svg-label-wrap rect {
+  opacity: 0;
+}
+
+.graph-explorer-tooltip {
+  max-width: min(320px, calc(100vw - 24px));
+}
+
+.graph-connection-intro {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: -2px 0 0;
+}
+
+.graph-connection-group {
+  background: var(--surface-quiet);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+}
+
+.graph-connection-group-head {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.graph-connection-group-head strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.graph-connection-group-head span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.graph-connection-group > p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.42;
+  margin: 0;
+}
+
+.graph-connection-targets {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.graph-connection-target {
+  align-items: start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  display: grid;
+  gap: 2px;
+  min-height: 48px;
+  padding: 8px 9px;
+  text-align: left;
+}
+
+.graph-connection-target:hover,
+.graph-connection-target:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.graph-connection-target span {
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.graph-connection-target small {
+  color: var(--muted);
+  font-size: 0.68rem;
 }
 
 body.actor-first-ui.graph-explorer-v2 .graph-topology-shell {
@@ -35896,6 +35996,14 @@ body.actor-first-ui.graph-explorer-v2 .graph-topology-svg {
   }
 
   .actor-first-ui #dashboard .dashboard-filterbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .actor-first-ui #dashboard .dashboard-section.review-lane-active .activity-row {
+    min-height: 126px;
+  }
+
+  .graph-connection-targets {
     grid-template-columns: minmax(0, 1fr);
   }
 }

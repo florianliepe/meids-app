@@ -33,6 +33,9 @@ const checks = [
   [html.includes("data-graph-detail-close") && html.includes("Knowledge detail"), "large detail overlay close control is missing"],
   [styles.includes("width: min(680px, 68vw)"), "selected knowledge detail is still too narrow"],
   [app.includes("${readiness.score}% ready") && styles.includes(".graph-explorer-tooltip p"), "hover/focus summary does not expose readiness and meaning"],
+  [app.includes('graphExplorerV2Enabled ? "" : `<title>'), "Graph V2 must suppress the competing native SVG tooltip"],
+  [app.includes("graphConnectionGroups") && app.includes("Connection overview"), "end-user connection overview is not grouped by relationship meaning"],
+  [styles.includes("dense-neighborhood") && styles.includes("graph-connection-targets"), "dense hover labels or grouped connection styling is missing"],
   [!app.match(/renderGraphEndUserNodeDetail[\s\S]*?data-graph-edge-action[\s\S]*?function renderGraphNodeDetail/), "end-user graph detail must not contain governance actions"],
 ];
 
