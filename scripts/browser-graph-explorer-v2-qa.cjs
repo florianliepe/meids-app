@@ -42,8 +42,11 @@ function startServer() {
         response.end("not found");
         return;
       }
+      const body = path.basename(filePath) === "runtime-config.js"
+        ? String(data).replace("graphExplorerV2: false", "graphExplorerV2: true")
+        : data;
       response.writeHead(200, { "Content-Type": contentType(filePath) });
-      response.end(data);
+      response.end(body);
     });
   });
   return new Promise((resolve) => server.listen(port, host, () => resolve(server)));
@@ -104,9 +107,39 @@ async function inspectExplorer(page) {
   if (!await page.locator("#graphExplorerTooltip:not([hidden])").count()) failures.push("focus does not reveal the graph tooltip");
 
   await page.keyboard.press("Enter");
-  await page.waitForTimeout(80);
+  await page.locator("#graphNodeDetail .graph-knowledge-readiness").waitFor({ state: "visible", timeout: 2000 }).catch(() => {});
   if (!await page.locator("#graph.graph-has-selection").count()) failures.push("Enter does not persist node selection");
   if (!await page.locator("#graphNodeDetail:visible").count()) failures.push("persistent selection drawer is not visible");
+  const detailContract = await page.evaluate(() => {
+    const panel = document.querySelector(".graph-detail-panel");
+    const detail = document.querySelector("#graphNodeDetail");
+    const text = detail?.textContent || "";
+    return {
+      panelWidth: Math.round(panel?.getBoundingClientRect().width || 0),
+      panelClientWidth: panel?.clientWidth || 0,
+      panelScrollWidth: panel?.scrollWidth || 0,
+      overflowers: panel ? [...panel.querySelectorAll("*")]
+        .filter((item) => item.scrollWidth > item.clientWidth + 2)
+        .slice(0, 5)
+        .map((item) => `${item.tagName.toLowerCase()}.${item.className || ""}:${item.scrollWidth}/${item.clientWidth}`) : [],
+      position: panel ? getComputedStyle(panel).position : "",
+      text: text.trim().slice(0, 240),
+      readinessCount: (text.match(/\d{1,3}%/g) || []).length,
+      hasKnowledgeSummary: Boolean(detail?.querySelector(".graph-detail-hero p")),
+      hasGovernanceAction: Boolean(detail?.querySelector("[data-graph-edge-action], [data-graph-proposal-action]")),
+      closeVisible: Boolean(panel?.querySelector("[data-graph-detail-close]")),
+    };
+  });
+  const detailMinimumWidth = page.viewportSize().width <= 720 ? page.viewportSize().width - 64 : Math.min(600, page.viewportSize().width - 64);
+  if (detailContract.panelWidth < detailMinimumWidth) failures.push(`knowledge detail is too narrow: ${detailContract.panelWidth}px`);
+  if (page.viewportSize().width <= 720 && detailContract.position !== "fixed") failures.push(`mobile knowledge detail is not a visible overlay: ${detailContract.position}`);
+  if (detailContract.panelScrollWidth > detailContract.panelClientWidth + 2) failures.push(`knowledge detail has horizontal overflow: ${detailContract.panelScrollWidth}/${detailContract.panelClientWidth} ${detailContract.overflowers.join(", ")}`);
+  if (detailContract.readinessCount !== 1) failures.push(`knowledge detail must show exactly one readiness percentage: ${detailContract.readinessCount} (${detailContract.text})`);
+  if (!detailContract.hasKnowledgeSummary) failures.push("knowledge detail does not show an end-user summary");
+  if (detailContract.hasGovernanceAction) failures.push("knowledge detail exposes governance actions");
+  if (!detailContract.closeVisible) failures.push("knowledge detail has no explicit close control");
+  await page.locator("[data-graph-detail-close]").click();
+  if (await page.locator("#graph.graph-has-selection").count()) failures.push("detail close control did not clear selection");
 
   await page.locator('[data-graph-depth="1"]').click();
   if (await pressed('[data-graph-depth="1"]') !== "true") failures.push("1-hop local graph control did not activate");
@@ -129,6 +162,10 @@ async function inspectExplorer(page) {
   if (await page.locator('[data-graph-explorer-action="advanced"]').getAttribute("aria-expanded") !== "false") failures.push("Advanced controls did not close");
   if (await page.locator(".graph-command-surface:visible").count()) failures.push("legacy graph controls remain visible after Advanced closes");
 
+  const escapeNode = page.locator("#graphCanvas .graph-svg-node:visible").first();
+  await escapeNode.focus();
+  await page.keyboard.press("Enter");
+  await page.locator("#graphNodeDetail .graph-knowledge-readiness").waitFor({ state: "visible", timeout: 2000 }).catch(() => {});
   await page.keyboard.press("Escape");
   await page.waitForTimeout(80);
   if (await page.locator("#graph.graph-has-selection").count()) failures.push("Escape did not clear selection");
@@ -145,6 +182,8 @@ async function inspectExplorer(page) {
   if (!await page.locator("#graphCanvas .graph-svg-node.is-muted").count()) failures.push("hover does not dim unrelated nodes");
   if (!await page.locator("#graphCanvas .graph-svg-edge.is-connected").count()) failures.push("hover does not highlight connecting edges");
   if (!await page.locator("#graphExplorerTooltip:not([hidden])").count()) failures.push("hover tooltip is not visible after its delay");
+  const tooltipText = await page.locator("#graphExplorerTooltip:not([hidden])").textContent().catch(() => "");
+  if (!/\b\d{1,3}% ready\b/i.test(tooltipText || "")) failures.push("hover tooltip does not show compact readiness");
   const hoverLabelVisible = await hoverNode.evaluate((element) => Number.parseFloat(getComputedStyle(element.querySelector(".graph-svg-label")).opacity || "0") > 0.8);
   if (!hoverLabelVisible) failures.push("hover does not reveal the focused node label");
 
@@ -237,12 +276,22 @@ async function run() {
       await restoreStaticGraph(page);
       const result = await inspectExplorer(page);
       const screenshotPath = path.join(outDir, `graph-explorer-v2-${qaCase.name}.png`);
+      await restoreStaticGraph(page);
+      const detailNode = page.locator("#graphCanvas .graph-svg-node:visible").first();
+      await detailNode.focus();
+      await page.keyboard.press("Enter");
+      await page.locator("#graphNodeDetail .graph-knowledge-readiness").waitFor({ state: "visible", timeout: 2000 });
+      const detailScreenshotPath = path.join(outDir, `graph-explorer-v2-${qaCase.name}-detail.png`);
+      await page.evaluate(() => scrollTo(0, 0));
+      await page.screenshot({ path: detailScreenshotPath, fullPage: false });
+      await page.keyboard.press("Escape");
       await page.locator("#graphCanvas").evaluate((element) => element.dispatchEvent(new MouseEvent("mouseleave")));
       await page.evaluate(() => scrollTo(0, 0));
       await page.waitForTimeout(220);
       await page.screenshot({ path: screenshotPath, fullPage: false });
       const screenshot = path.relative(process.cwd(), screenshotPath).replaceAll("\\", "/");
-      results.push({ ...qaCase, ...result, screenshot });
+      const detailScreenshot = path.relative(process.cwd(), detailScreenshotPath).replaceAll("\\", "/");
+      results.push({ ...qaCase, ...result, screenshot, detailScreenshot });
       await context.close();
     }
 

@@ -6522,8 +6522,136 @@ body.graph-explorer-v2 #graph.graph-has-selection .graph-detail-panel {
   position: absolute;
   right: 0;
   top: 0;
-  width: min(370px, 42vw);
+  width: min(680px, 68vw);
   z-index: 7;
+}
+
+.graph-detail-panel-head {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+}
+
+.graph-detail-panel-head > div {
+  display: grid;
+  gap: 2px;
+}
+
+.graph-detail-panel-head span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.graph-detail-panel-head h3 {
+  margin: 0;
+}
+
+.graph-detail-panel-head .icon-button {
+  font-size: 22px;
+  min-height: 38px;
+  min-width: 38px;
+  padding: 4px;
+}
+
+.graph-detail-knowledge {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.graph-detail-knowledge > *,
+.graph-detail-knowledge li,
+.graph-detail-knowledge button {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.graph-node-detail,
+.graph-detail-knowledge,
+.graph-detail-knowledge .graph-detail-section,
+.graph-detail-knowledge ul {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+.graph-detail-knowledge .graph-edge-line span,
+.graph-detail-knowledge .graph-edge-line small,
+.graph-detail-knowledge .graph-neighbor-button span,
+.graph-detail-knowledge .graph-neighbor-button small {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.graph-detail-knowledge .graph-detail-hero h4 {
+  font-size: clamp(21px, 2vw, 28px);
+  line-height: 1.18;
+}
+
+.graph-detail-knowledge .graph-detail-hero p {
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.graph-knowledge-readiness {
+  background: var(--surface-quiet);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 9px;
+  padding: 14px;
+}
+
+.graph-knowledge-readiness > div:first-child {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+}
+
+.graph-knowledge-readiness > div:first-child span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.graph-knowledge-readiness > div:first-child strong {
+  color: var(--ink);
+  font-size: 28px;
+}
+
+.graph-knowledge-readiness-track {
+  background: var(--surface);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.graph-knowledge-readiness-track span {
+  background: var(--accent);
+  display: block;
+  height: 100%;
+}
+
+.graph-knowledge-readiness.caution .graph-knowledge-readiness-track span {
+  background: var(--warn);
+}
+
+.graph-knowledge-readiness.blocked .graph-knowledge-readiness-track span {
+  background: var(--danger);
+}
+
+.graph-knowledge-readiness p {
+  color: var(--muted);
+  margin: 0;
 }
 
 body.graph-explorer-v2 .graph-canvas-wrap {
@@ -14138,7 +14266,7 @@ body.graph-explorer-v2 .graph-svg-node:focus-visible circle:not(.graph-node-hit-
   box-shadow: 0 12px 32px rgba(25, 30, 26, 0.18);
   display: grid;
   gap: 3px;
-  max-width: 320px;
+  max-width: min(390px, calc(100vw - 24px));
   padding: 10px 12px;
   pointer-events: none;
   position: fixed;
@@ -14158,6 +14286,13 @@ body.graph-explorer-v2 .graph-svg-node:focus-visible circle:not(.graph-node-hit-
 .graph-explorer-tooltip strong {
   color: var(--ink);
   font-size: 13px;
+}
+
+.graph-explorer-tooltip p {
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.42;
+  margin: 2px 0;
 }
 
 .graph-edge-why-label {
@@ -35128,7 +35263,7 @@ body.graph-explorer-v2 #graph.graph-has-selection .graph-detail-panel {
   position: absolute;
   right: 0;
   top: 0;
-  width: min(370px, 42vw);
+  width: min(680px, 68vw);
   z-index: 7;
 }
 
@@ -35463,7 +35598,7 @@ body.actor-first-ui.graph-explorer-v2 .graph-canvas-wrap {
 }
 
 body.actor-first-ui.graph-explorer-v2 #graph.graph-has-selection .graph-detail-panel {
-  width: min(340px, 38vw);
+  width: min(680px, 68vw);
 }
 
 @media (max-width: 980px) {
@@ -35475,6 +35610,20 @@ body.actor-first-ui.graph-explorer-v2 #graph.graph-has-selection .graph-detail-p
 }
 
 @media (max-width: 720px) {
+  body.actor-first-ui.graph-explorer-v2 #graph.graph-has-selection .graph-detail-panel {
+    bottom: 12px;
+    box-sizing: border-box !important;
+    left: 12px;
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100dvh - 24px);
+    overflow-x: hidden;
+    position: fixed;
+    right: 12px;
+    top: 12px;
+    width: calc(100vw - 24px) !important;
+    z-index: 30;
+  }
+
   .actor-first-ui .topbar {
     align-items: flex-start;
   }
@@ -35675,6 +35824,14 @@ body.actor-first-ui.graph-explorer-v2 #graph.graph-has-selection .graph-detail-p
 .actor-first-ui #dashboard .dashboard-section.review-lane-active {
   min-height: min(720px, calc(100vh - 250px));
   width: 100%;
+}
+
+.actor-first-ui #dashboard .dashboard-section.review-lane-active .activity-list {
+  height: clamp(420px, calc(100vh - 365px), 780px);
+  max-height: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 body.actor-first-ui.graph-explorer-v2 .graph-topology-shell {
