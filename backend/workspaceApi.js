@@ -5,6 +5,7 @@ const {
   safeSegment,
   putPrivateArtifact,
   readPrivateArtifact,
+  readPrivateArtifactScanStatus,
   deletePrivateArtifact,
 } = require("./artifactStorage");
 const { enqueueRuntimeJob, cancelQueuedRuntimeJob, processRuntimeJobBatch } = require("./runtimeJobs");
@@ -1076,11 +1077,30 @@ function createWorkspaceApi(deps) {
       review_state: REVIEW_TO_UI[row.review_state] || row.review_state,
       visibility_scope: row.visibility_scope,
       metadata: row.metadata || {},
+      malware_scan_status: row.metadata?.malware_scan_status || "unknown",
       reviewed_by: row.reviewed_by || "",
       reviewed_at: row.reviewed_at || null,
       created_at: row.created_at,
       recall_url: `/api/artifacts/content?id=${encodeURIComponent(String(row.artifact_id))}`,
     };
+  }
+
+  async function requireCleanArtifactScan(blobUri) {
+    const scan = await readPrivateArtifactScanStatus(blobUri);
+    if (scan.status === "No threats found") return scan;
+    if (scan.status === "Malicious") {
+      throw httpError(423, "This source is quarantined because malware was detected.");
+    }
+    throw httpError(423, "This source remains quarantined until malware scanning completes successfully.");
+  }
+
+  async function requireConceptArtifactsClean(pool, mapping, conceptId) {
+    const result = await withContext(pool, mapping, (client) => client.query(
+      `SELECT blob_uri FROM knowledge.source_artifact
+       WHERE tenant_id = $1 AND concept_id::text = $2 AND review_state <> 'rejected'`,
+      [mapping.tenant_id, conceptId],
+    ));
+    for (const row of result.rows) await requireCleanArtifactScan(row.blob_uri);
   }
 
   function artifactBlobPath(mapping, twinId, artifactId, filename) {
@@ -1203,7 +1223,7 @@ function createWorkspaceApi(deps) {
         size_bytes: file.buffer.length,
         sha256: checksum,
         artifact_kind: "source_document",
-        metadata: { extension, captured_at: capturedAt, consent_scope: "authorized_upload", sensitivity: "internal" },
+        metadata: { extension, captured_at: capturedAt, consent_scope: "authorized_upload", sensitivity: "internal", malware_scan_status: "scan_pending" },
       });
     } catch (error) {
       await markArtifactPersistenceFailure(pool, mapping, staged.concept_id, error);
@@ -1281,7 +1301,7 @@ function createWorkspaceApi(deps) {
         size_bytes: file.buffer.length,
         sha256: checksum,
         artifact_kind: "source_visual",
-        metadata: { description, captured_at: capturedAt, consent_scope: "authorized_upload", sensitivity: "internal" },
+        metadata: { description, captured_at: capturedAt, consent_scope: "authorized_upload", sensitivity: "internal", malware_scan_status: "scan_pending" },
       });
     } catch (error) {
       await markArtifactPersistenceFailure(pool, mapping, staged.concept_id, error);
@@ -1322,6 +1342,7 @@ function createWorkspaceApi(deps) {
     const artifact = result.rows[0];
     const privileged = artifact.owner_user_id === mapping.user_id || ["owner", "editor", "reviewer"].includes(artifact.access_role);
     if (artifact.review_state !== "approved" && !privileged) throw httpError(403, "This source artifact is still awaiting review.");
+    await requireCleanArtifactScan(artifact.blob_uri);
     const buffer = await readPrivateArtifact(artifact.blob_uri);
     res.writeHead(200, {
       "Content-Type": artifact.media_type || "application/octet-stream",
@@ -1340,10 +1361,26 @@ function createWorkspaceApi(deps) {
     const artifactId = clean(body.artifact_id, 128);
     const reviewState = body.review_state === "approved" ? "approved" : body.review_state === "rejected" ? "rejected" : "";
     if (!reviewState) throw httpError(400, "review_state must be approved or rejected.");
+    if (reviewState === "approved") {
+      const candidate = await withContext(pool, mapping, (client) => client.query(
+        `SELECT artifact.blob_uri
+         FROM knowledge.source_artifact artifact
+         JOIN twin.user_twin_access access
+           ON access.tenant_id = artifact.tenant_id AND access.twin_id = artifact.twin_id
+          AND access.user_id = $2 AND access.access_role IN ('owner','reviewer')
+         WHERE artifact.tenant_id = $1 AND artifact.artifact_id::text = $3`,
+        [mapping.tenant_id, mapping.user_id, artifactId],
+      ));
+      if (!candidate.rowCount) throw httpError(404, "Artifact not found or review access is missing.");
+      await requireCleanArtifactScan(candidate.rows[0].blob_uri);
+    }
     const result = await withContext(pool, mapping, async (client) => {
       const updated = await client.query(
         `UPDATE knowledge.source_artifact artifact SET
-           review_state = $4, reviewed_by = $2, reviewed_at = now(), updated_at = now()
+           review_state = $4, reviewed_by = $2, reviewed_at = now(), updated_at = now(),
+           metadata = CASE WHEN $4 = 'approved'
+             THEN jsonb_set(COALESCE(artifact.metadata, '{}'::jsonb), '{malware_scan_status}', '"no_threats_found"'::jsonb, true)
+             ELSE artifact.metadata END
          FROM twin.user_twin_access access
          WHERE artifact.tenant_id = $1 AND artifact.artifact_id::text = $3
            AND access.tenant_id = artifact.tenant_id AND access.twin_id = artifact.twin_id
@@ -1362,7 +1399,10 @@ function createWorkspaceApi(deps) {
     await withContext(pool, mapping, async (client) => {
       const updated = await client.query(
         `UPDATE knowledge.source_artifact SET
-           review_state = $4, reviewed_by = $2, reviewed_at = now(), updated_at = now()
+           review_state = $4, reviewed_by = $2, reviewed_at = now(), updated_at = now(),
+           metadata = CASE WHEN $4 = 'approved'
+             THEN jsonb_set(COALESCE(metadata, '{}'::jsonb), '{malware_scan_status}', '"no_threats_found"'::jsonb, true)
+             ELSE metadata END
          WHERE tenant_id = $1 AND concept_id::text = $3 AND review_state <> $4
          RETURNING artifact_id`,
         [mapping.tenant_id, mapping.user_id, conceptId, reviewState],
@@ -1416,6 +1456,7 @@ function createWorkspaceApi(deps) {
     if (!found.rowCount) throw httpError(404, "Concept not found.");
     const target = REVIEW_FROM_UI[String(body.review_state || body.decision || "").toLowerCase()];
     if (target === "approved") {
+      await requireConceptArtifactsClean(pool, mapping, conceptId);
       const result = await promoteKnowledge(pool, mapping, { concept_id: conceptId, revision: found.rows[0].current_revision, rationale: clean(body.note || body.rationale, 5_000) });
       await cascadeArtifactReview(pool, mapping, conceptId, "approved", body.note || body.rationale);
       jsonResponse(res, 200, { ...result, review_state: "approved" });

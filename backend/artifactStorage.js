@@ -1,5 +1,6 @@
 const STORAGE_RESOURCE = "https://storage.azure.com/";
 const STORAGE_API_VERSION = "2023-11-03";
+const { XMLParser } = require("fast-xml-parser");
 
 let storageToken = { value: "", expiresAt: 0 };
 const knownContainers = new Set();
@@ -124,6 +125,33 @@ async function readPrivateArtifact(uri) {
   return Buffer.from(await response.arrayBuffer());
 }
 
+async function readPrivateArtifactScanStatus(uri) {
+  const normalized = clean(uri);
+  const account = storageAccount();
+  if (!normalized.startsWith(`https://${account}.blob.core.windows.net/`)) {
+    throw new Error("Artifact URI is outside the configured private storage account.");
+  }
+  const url = new URL(normalized);
+  url.searchParams.set("comp", "tags");
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${await accessToken()}`,
+      "x-ms-version": STORAGE_API_VERSION,
+      "x-ms-date": new Date().toUTCString(),
+    },
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok) throw new Error((await response.text()) || `Blob scan tag lookup returned ${response.status}`);
+  const parsed = new XMLParser().parse(await response.text());
+  const rawTags = parsed?.Tags?.TagSet?.Tag;
+  const tags = (Array.isArray(rawTags) ? rawTags : rawTags ? [rawTags] : [])
+    .reduce((result, tag) => ({ ...result, [clean(tag?.Key, 256)]: clean(tag?.Value, 1_000) }), {});
+  return {
+    status: tags["Malware scanning scan result"] || "Pending",
+    scanned_at: tags["Malware scanning scan time"] || "",
+  };
+}
+
 async function deletePrivateArtifact(uri) {
   const normalized = clean(uri);
   const account = storageAccount();
@@ -149,5 +177,6 @@ module.exports = {
   ensurePrivateContainer,
   putPrivateArtifact,
   readPrivateArtifact,
+  readPrivateArtifactScanStatus,
   deletePrivateArtifact,
 };
