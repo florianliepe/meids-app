@@ -182,7 +182,7 @@ use controlled promises and timers without production requests or mutations.
 ## Current production release
 
 - Backend pull requests: #56-#103; current revision `e6e1b7b3c6da68fb31e0f28e7ba8112fc564655a`; deployment run `43315387390` passed. A controlled App Service restart then confirmed the same build and the native Retrieval path.
-- Frontend revision: `ae8c7da648174d8b029a1b78297e95e186ca2fb8`; Azure Static Web Apps run `43387420808` passed after publishing the hardened route-soak JSON evidence. Native Actor chat remains enabled and public metadata identifies the Azure-native backend router.
+- Frontend revision: read the authoritative no-cache `/build-info.json` probe on the Azure Static Web App. Qualifying documentation and public-evidence changes intentionally republish the frontend, so a fixed SHA in this document would become stale when this document is merged. Native Actor chat remains enabled; the last runtime-code change is PR #103, while later evidence-only builds preserve that runtime behavior.
 - Test/evidence main revision: PR #105 merged as `ae8c7da648174d8b029a1b78297e95e186ca2fb8`. It changes only the test harness, route-soak evidence semantics and documentation; the Static Web App republished its public JSON evidence, while no backend runtime deployment was required.
 - Migrations through 021 are applied. Migration 021 used a short-lived Entra PostgreSQL administrator token from the VNet-integrated App Service context; no credential was persisted and `MEIDS_AUTO_MIGRATE=false` remains set.
 - The browser uses the native authenticated backend composer and publishes no n8n endpoint. Production execution is Azure-native for all classified routes and canonical agent aliases; n8n fallback and shadow are disabled.
