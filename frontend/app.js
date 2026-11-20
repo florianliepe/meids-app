@@ -16939,13 +16939,27 @@ function n8nChatSessionId() {
   return sessionId;
 }
 
-function nativeActorConversationId() {
+function nativeActorChatScope() {
   const tenantId = state.authSession?.tenant?.id || "anonymous";
   const userId = state.authSession?.user?.id || "anonymous";
   const twinId = state.activeTwin || "unscoped";
+  return {
+    tenantId,
+    userId,
+    twinId,
+    key: [tenantId, userId, twinId].join(":"),
+  };
+}
+
+function nativeActorChatScopeKey() {
+  return nativeActorChatScope().key;
+}
+
+function nativeActorConversationId(scope = nativeActorChatScope()) {
+  const { tenantId, userId, twinId } = scope;
   const storageKey = `meids:azure-native-conversation:v1:${tenantId}:${userId}:${twinId}`;
-  let conversationId = window.localStorage.getItem(storageKey);
-  if (!conversationId) {
+  let conversationId = String(window.localStorage.getItem(storageKey) || "").trim();
+  if (!/^azchat_v1_[A-Za-z0-9][A-Za-z0-9._:-]{7,191}$/.test(conversationId)) {
     const randomId = globalThis.crypto?.randomUUID?.()
       || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
     conversationId = `azchat_v1_${randomId}`;
@@ -17157,9 +17171,14 @@ async function ensureN8nChat() {
   }
 }
 
-function nativeActorChatMessages() {
-  if (!Array.isArray(state.nativeActorChatMessages)) state.nativeActorChatMessages = [];
-  return state.nativeActorChatMessages;
+function nativeActorChatMessages(scopeKey = nativeActorChatScopeKey()) {
+  if (!state.nativeActorChatMessagesByScope || typeof state.nativeActorChatMessagesByScope !== "object") {
+    state.nativeActorChatMessagesByScope = {};
+  }
+  if (!Array.isArray(state.nativeActorChatMessagesByScope[scopeKey])) {
+    state.nativeActorChatMessagesByScope[scopeKey] = [];
+  }
+  return state.nativeActorChatMessagesByScope[scopeKey];
 }
 
 function actorChatReadableText(value, fallback = "The Actor Twin returned no answer.") {
@@ -17216,8 +17235,12 @@ async function submitNativeActorChat(event) {
   const button = form.querySelector("button[type='submit']");
   const message = input?.value.trim() || "";
   if (!message || !state.activeTwin || state.nativeActorChatSubmitting) return;
+  const requestScope = nativeActorChatScope();
+  const requestScopeKey = requestScope.key;
+  const requestMessages = nativeActorChatMessages(requestScopeKey);
+  const conversationId = nativeActorConversationId(requestScope);
   state.nativeActorChatSubmitting = true;
-  nativeActorChatMessages().push({ role: "user", text: message });
+  requestMessages.push({ role: "user", text: message });
   input.value = "";
   input.disabled = true;
   button.disabled = true;
@@ -17227,31 +17250,44 @@ async function submitNativeActorChat(event) {
   let restoreDraft = false;
   try {
     await ensureFreshKnowledgeAccessContext();
+    if (requestScopeKey !== nativeActorChatScopeKey()) {
+      const scopeError = new Error("The active twin changed before the message was sent. Send it again in the intended twin.");
+      scopeError.code = "actor_scope_changed";
+      throw scopeError;
+    }
+    const authorizationHeaders = knowledgeAccessHeaders();
     const requestId = `chat_${globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`}`;
     const result = await apiRequestJson("/api/agents/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...knowledgeAccessHeaders() },
+      headers: { "Content-Type": "application/json", ...authorizationHeaders },
       body: JSON.stringify({
-        twin_id: state.activeTwin,
+        twin_id: requestScope.twinId,
         message,
-        conversation_id: nativeActorConversationId(),
+        conversation_id: conversationId,
         request_id: requestId,
       }),
     });
     const response = result.response || result;
     const output = response.output || {};
     if (response.status === "queued" || output.enqueue_required) {
+      if (requestScopeKey !== nativeActorChatScopeKey()) {
+        const scopeError = new Error("The active twin changed before background work was queued. Send the task again in the intended twin.");
+        scopeError.code = "actor_scope_changed";
+        throw scopeError;
+      }
       const queued = await apiRequestJson("/api/agents/work", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...knowledgeAccessHeaders() },
-          body: JSON.stringify({ twin_id: state.activeTwin, message, session_id: nativeActorConversationId() }),
+        headers: { "Content-Type": "application/json", ...authorizationHeaders },
+        body: JSON.stringify({ twin_id: requestScope.twinId, message, session_id: conversationId }),
       });
-      nativeActorChatMessages().push({ role: "assistant", text: "I started this as background work. You can keep using the chat while it runs." });
-      state.actorBackgroundJobs = [queued, ...(state.actorBackgroundJobs || []).filter((job) => job.job_id !== queued.job_id)];
-      renderActorBackgroundWork();
-      scheduleActorBackgroundWorkPolling();
+      requestMessages.push({ role: "assistant", text: "I started this as background work. You can keep using the chat while it runs." });
+      if (requestScopeKey === nativeActorChatScopeKey()) {
+        state.actorBackgroundJobs = [queued, ...(state.actorBackgroundJobs || []).filter((job) => job.job_id !== queued.job_id)];
+        renderActorBackgroundWork();
+        scheduleActorBackgroundWorkPolling();
+      }
     } else {
-      nativeActorChatMessages().push({
+      requestMessages.push({
         role: "assistant",
         text: actorChatReadableText(output.answer || output.summary),
         evidence: output.evidence || [],
@@ -17261,17 +17297,19 @@ async function submitNativeActorChat(event) {
   } catch (error) {
     if (Number(error.status || 0) === 401 || blockedN8nAuthContext(error.details || error.message)) {
       await recoverN8nAuthContext();
-      nativeActorChatMessages().push({ role: "assistant", text: "Your session was renewed. Your message was not replayed; please send it again." });
+      requestMessages.push({ role: "assistant", text: "Your session was renewed. Your message was not replayed; please send it again." });
       restoreDraft = true;
+    } else if (error.code === "actor_scope_changed") {
+      requestMessages.push({ role: "assistant", text: error.message });
     } else {
-      nativeActorChatMessages().push({ role: "assistant", text: `I could not complete that request. ${compactError(error.message)}` });
+      requestMessages.push({ role: "assistant", text: `I could not complete that request. ${compactError(error.message)}` });
       if (status) status.textContent = "Request failed. Try again or narrow the request.";
     }
   } finally {
     state.nativeActorChatSubmitting = false;
     renderNativeActorChat();
     const nextInput = $("#nativeActorChatInput");
-    if (restoreDraft && nextInput) nextInput.value = message;
+    if (restoreDraft && requestScopeKey === nativeActorChatScopeKey() && nextInput) nextInput.value = message;
     nextInput?.focus();
   }
 }
