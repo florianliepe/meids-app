@@ -37,7 +37,10 @@ assert.equal(directButlerAlias.routing_contract.gates.skill_orchestrator, false)
 async function run() {
   const serverSource = fs.readFileSync(path.join(__dirname, "..", "backend", "server.js"), "utf8");
   assert.match(serverSource, /action:\s*"sendMessage"/);
-  assert.match(serverSource, /sessionId:\s*String\(body\.session_id \|\| body\.sessionId \|\| requestId\)/);
+  assert.match(serverSource, /const conversationId = String\(body\.conversation_id \|\| body\.session_id \|\| body\.sessionId \|\| requestId\)/);
+  assert.match(serverSource, /sessionId:\s*conversationId/);
+  assert.match(serverSource, /conversation_namespace:\s*"azure-native:v1"/);
+  assert.match(serverSource, /legacy_n8n_memory_imported:\s*false/);
   assert.match(serverSource, /knowledgeAccessToken,\s*\n\s*knowledgeScope:\s*"active_twin"/);
   assert.match(serverSource, /job_type:\s*"learning_post_turn"/);
   assert.match(serverSource, /idempotency_key:\s*`learning:/);

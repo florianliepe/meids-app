@@ -1355,6 +1355,7 @@ async function handleNativeAgentChat(req, res) {
     throw error;
   }
   const requestId = body.request_id || makeId("chat");
+  const conversationId = String(body.conversation_id || body.session_id || body.sessionId || requestId).trim().slice(0, 256);
   const knowledgeAccessToken = issueKnowledgeAccessTokenForMapping(mapping, twinId);
   const envelope = {
     envelope_version: "0.1.0",
@@ -1363,18 +1364,25 @@ async function handleNativeAgentChat(req, res) {
     agent_id: "actor_twin",
     intent: "answer_question",
     action: "sendMessage",
-    sessionId: String(body.session_id || body.sessionId || requestId).trim().slice(0, 256),
+    sessionId: conversationId,
     principal: { tenant_id: mapping.tenant_id, user_id: mapping.user_id, roles: mapping.roles || [] },
     input: { message },
     chatInput: message,
     context: {
       active_twin_id: twinId,
+      conversation_id: conversationId,
+      conversation_namespace: "azure-native:v1",
       allowed_twin_ids: mapping.allowed_twin_ids || [],
       trace_chain_id: body.trace_chain_id || "",
     },
     metadata: {
       source: "meids_native_actor_chat",
       interfaceContract: "meids.actor_twin.embedded_chat.v1",
+      conversation: {
+        id: conversationId,
+        namespace: "azure-native:v1",
+        legacy_n8n_memory_imported: false,
+      },
       identity: { tenantId: mapping.tenant_id, userId: mapping.user_id, activeTwinId: twinId },
       authorization: {
         contract: "meids.knowledge-access.v1",

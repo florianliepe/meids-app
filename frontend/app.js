@@ -249,6 +249,7 @@
   voiceAnswerEnabled: false,
   n8nChatLoaded: false,
   n8nChatLoading: false,
+  nativeActorChatSubmitting: false,
   n8nContextReloadTimer: null,
   n8nAuthRefreshTimer: null,
   actorBackgroundJobs: [],
@@ -16938,6 +16939,21 @@ function n8nChatSessionId() {
   return sessionId;
 }
 
+function nativeActorConversationId() {
+  const tenantId = state.authSession?.tenant?.id || "anonymous";
+  const userId = state.authSession?.user?.id || "anonymous";
+  const twinId = state.activeTwin || "unscoped";
+  const storageKey = `meids:azure-native-conversation:v1:${tenantId}:${userId}:${twinId}`;
+  let conversationId = window.localStorage.getItem(storageKey);
+  if (!conversationId) {
+    const randomId = globalThis.crypto?.randomUUID?.()
+      || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+    conversationId = `azchat_v1_${randomId}`;
+    window.localStorage.setItem(storageKey, conversationId);
+  }
+  return conversationId;
+}
+
 function renderN8nInteractionContext() {
   const target = $("#n8nInteractionContext");
   if (!target) return;
@@ -17182,8 +17198,8 @@ function renderNativeActorChat() {
     </div>
     <form class="native-chat-composer" id="nativeActorChatForm">
       <label class="sr-only" for="nativeActorChatInput">Message</label>
-      <textarea id="nativeActorChatInput" data-test-id="chat-input" rows="1" placeholder="Ask the Actor Twin..." required></textarea>
-      <button class="primary icon-button" data-test-id="chat-input-send-button" type="submit" title="Send" aria-label="Send message">&#10148;</button>
+      <textarea id="nativeActorChatInput" data-test-id="chat-input" rows="1" placeholder="Ask the Actor Twin..." required ${state.nativeActorChatSubmitting ? "disabled" : ""}></textarea>
+      <button class="primary icon-button" data-test-id="chat-input-send-button" type="submit" title="Send" aria-label="Send message" ${state.nativeActorChatSubmitting ? "disabled" : ""}>&#10148;</button>
     </form>`;
   mount.querySelector("#nativeActorChatForm")?.addEventListener("submit", submitNativeActorChat);
   requestAnimationFrame(() => {
@@ -17199,7 +17215,8 @@ async function submitNativeActorChat(event) {
   const input = form.querySelector("textarea");
   const button = form.querySelector("button[type='submit']");
   const message = input?.value.trim() || "";
-  if (!message || !state.activeTwin) return;
+  if (!message || !state.activeTwin || state.nativeActorChatSubmitting) return;
+  state.nativeActorChatSubmitting = true;
   nativeActorChatMessages().push({ role: "user", text: message });
   input.value = "";
   input.disabled = true;
@@ -17207,11 +17224,19 @@ async function submitNativeActorChat(event) {
   renderNativeActorChat();
   const status = $("#actorCaptureStatus");
   if (status) status.textContent = "Actor Twin is working...";
+  let restoreDraft = false;
   try {
-    const result = await postJson("/api/agents/chat", {
-      twin_id: state.activeTwin,
-      message,
-      session_id: n8nChatSessionId(),
+    await ensureFreshKnowledgeAccessContext();
+    const requestId = `chat_${globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`}`;
+    const result = await apiRequestJson("/api/agents/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...knowledgeAccessHeaders() },
+      body: JSON.stringify({
+        twin_id: state.activeTwin,
+        message,
+        conversation_id: nativeActorConversationId(),
+        request_id: requestId,
+      }),
     });
     const response = result.response || result;
     const output = response.output || {};
@@ -17219,7 +17244,7 @@ async function submitNativeActorChat(event) {
       const queued = await apiRequestJson("/api/agents/work", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...knowledgeAccessHeaders() },
-        body: JSON.stringify({ twin_id: state.activeTwin, message, session_id: n8nChatSessionId() }),
+          body: JSON.stringify({ twin_id: state.activeTwin, message, session_id: nativeActorConversationId() }),
       });
       nativeActorChatMessages().push({ role: "assistant", text: "I started this as background work. You can keep using the chat while it runs." });
       state.actorBackgroundJobs = [queued, ...(state.actorBackgroundJobs || []).filter((job) => job.job_id !== queued.job_id)];
@@ -17237,13 +17262,17 @@ async function submitNativeActorChat(event) {
     if (Number(error.status || 0) === 401 || blockedN8nAuthContext(error.details || error.message)) {
       await recoverN8nAuthContext();
       nativeActorChatMessages().push({ role: "assistant", text: "Your session was renewed. Your message was not replayed; please send it again." });
+      restoreDraft = true;
     } else {
       nativeActorChatMessages().push({ role: "assistant", text: `I could not complete that request. ${compactError(error.message)}` });
       if (status) status.textContent = "Request failed. Try again or narrow the request.";
     }
   } finally {
+    state.nativeActorChatSubmitting = false;
     renderNativeActorChat();
-    $("#nativeActorChatInput")?.focus();
+    const nextInput = $("#nativeActorChatInput");
+    if (restoreDraft && nextInput) nextInput.value = message;
+    nextInput?.focus();
   }
 }
 
@@ -17307,6 +17336,24 @@ async function cancelActorBackgroundWork(jobId, button) {
 function knowledgeAccessHeaders(session = state.authSession) {
   const token = String(session?.knowledge_access_token || "").trim();
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function knowledgeAccessContextNeedsRefresh(session = state.authSession, minValidityMs = 60_000) {
+  const token = String(session?.knowledge_access_token || "").trim();
+  const expiresAt = Date.parse(session?.knowledge_access_expires_at || "");
+  return !token || !Number.isFinite(expiresAt) || expiresAt - Date.now() <= minValidityMs;
+}
+
+async function ensureFreshKnowledgeAccessContext() {
+  if (!knowledgeAccessContextNeedsRefresh()) return state.authSession;
+  await refreshN8nChatAuthorizationContext({ reconnect: false, reason: "native_chat_preflight" });
+  if (knowledgeAccessContextNeedsRefresh(state.authSession, 5_000)) {
+    const error = new Error("Actor Twin authorization could not be renewed. Sign in again before sending the request.");
+    error.status = 401;
+    error.code = "blocked_auth_context";
+    throw error;
+  }
+  return state.authSession;
 }
 
 function actorBackgroundScopeKey() {
