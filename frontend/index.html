@@ -1213,11 +1213,11 @@
         <section id="skills" class="view">
           <article class="section-lead panel" hidden>
             <div>
-              <span class="badge">Agentic Butler</span>
-              <h2>Design work behaviors, then let the Actor steer.</h2>
-              <p>Butler proposes, Actor steers, human ratifies. Skills stay sandboxed until approved.</p>
+              <span class="badge">Skill registry</span>
+              <h2>Review the capabilities available to your Actor Twin.</h2>
+              <p>Create new capabilities in Actor Twin chat. Here you can inspect, revise, approve, or retire their governed definitions.</p>
             </div>
-            <button class="secondary small" type="button" data-cockpit-action="openChat">Run from chat</button>
+            <button class="secondary small" type="button" data-cockpit-action="openChat">Open Actor Twin</button>
           </article>
           <div class="cockpit-view-rail" aria-label="Skill cockpit views">
             <button type="button" data-cockpit-action="openTwins">Design</button>
@@ -1227,56 +1227,63 @@
             <button type="button" data-cockpit-action="openActivity" hidden>Traces</button>
             <button type="button" data-cockpit-action="openProductionCockpit" hidden>Production</button>
           </div>
-          <section class="skill-command-surface panel" aria-label="Skill lifecycle shortcuts" hidden>
+          <section class="skill-command-surface panel" aria-label="Skill creation guidance">
             <div>
-              <span class="badge">Skill lifecycle</span>
-              <h2>Turn repeated work into approved agentic behavior.</h2>
-              <p>Shape the behavior, approve the boundaries, test with source exports, then refine from run evidence.</p>
+              <span class="badge">Actor-led creation</span>
+              <h2>Describe the capability in chat.</h2>
+              <p>The Actor Twin asks the Agentic Butler to define the SkillSpec and bounded task agents. New and changed versions remain inactive until approved.</p>
             </div>
             <div class="skill-command-actions">
-              <button class="secondary small" type="button" data-cockpit-action="focusSkillShape">Shape</button>
-              <button class="secondary small" type="button" data-cockpit-action="focusSkillApproval">Approve</button>
-              <button class="secondary small" type="button" data-cockpit-action="focusSkillRun">Test</button>
-              <button class="secondary small" type="button" data-cockpit-action="focusSkillImprove">Refine</button>
+              <button class="secondary small" type="button" data-cockpit-action="openChat">Define with Actor Twin</button>
             </div>
           </section>
-          <div id="skillsCockpit" class="skills-cockpit" hidden></div>
-          <div class="grid two skill-authoring-grid">
-            <article class="panel workflow-panel workflow-shape">
-              <h2>Shape Skill</h2>
-              <p>Create a human-shaped SkillSpec. Generated skills remain unapproved until a human approves them.</p>
-              <label for="skillNameHint">Name hint</label>
-              <input id="skillNameHint" type="text" placeholder="draft-client-update" />
-              <label for="skillDescriptionInput">Skill description</label>
-              <textarea id="skillDescriptionInput" rows="8" placeholder="Describe the agentic behavior, triggers, outputs, boundaries, and examples..."></textarea>
-              <div class="button-row tight">
-                <button id="elicitSkillBtn" class="secondary">Create SkillSpec</button>
-                <button id="decomposeSkillBtn" class="secondary" disabled>Decompose selected</button>
-              </div>
-            </article>
+          <div id="skillsCockpit" class="skills-cockpit"></div>
+          <div class="grid two skill-registry-grid">
             <article class="panel workflow-panel workflow-catalog">
               <div class="toolbar">
-                <h2>Skill Catalog</h2>
+                <h2>Available skills</h2>
                 <select id="skillStatusFilter" class="compact-select" aria-label="Skill status filter">
                   <option value="all">All skills</option>
                   <option value="approved">Approved</option>
                   <option value="pending_approval">Pending approval</option>
                   <option value="draft">Draft</option>
                   <option value="rejected">Rejected</option>
-                  <option value="deprecated">Deprecated</option>
+                  <option value="archived">Retired</option>
                 </select>
               </div>
               <div id="skillCatalog" class="activity-list"></div>
             </article>
+            <article class="panel workflow-panel workflow-approve">
+              <h2>Selected skill</h2>
+              <div id="skillDetail" class="activity-list"></div>
+            </article>
           </div>
           <div class="grid two skill-detail-grid">
             <article class="panel workflow-panel workflow-approve">
-              <h2>Skill Detail</h2>
-              <div id="skillDetail" class="activity-list"></div>
+              <h2>Revise definition</h2>
+              <p>Saving creates a new pending version. The currently approved version remains the runtime boundary until review.</p>
+              <label for="skillEditName">Name</label>
+              <input id="skillEditName" type="text" disabled />
+              <label for="skillEditDescription">Purpose</label>
+              <textarea id="skillEditDescription" rows="4" disabled></textarea>
+              <label for="skillEditTaskAgentName">Task agent</label>
+              <input id="skillEditTaskAgentName" type="text" disabled />
+              <label for="skillEditTools">Allowed tools</label>
+              <input id="skillEditTools" type="text" placeholder="Comma-separated tool identifiers" disabled />
+              <label for="skillEditInstruction">System instruction</label>
+              <textarea id="skillEditInstruction" rows="6" disabled></textarea>
+              <label for="skillEditBoundary">Execution boundary</label>
+              <textarea id="skillEditBoundary" rows="3" disabled></textarea>
+              <label for="skillEditReason">Change reason</label>
+              <textarea id="skillEditReason" rows="2" placeholder="Why is this revision needed?" disabled></textarea>
+              <div class="button-row tight">
+                <button id="updateSkillBtn" class="secondary" disabled>Save pending version</button>
+                <button id="retireSkillBtn" class="danger" disabled>Retire skill</button>
+              </div>
             </article>
             <article class="panel workflow-panel workflow-approve">
-              <h2>Approval Gate</h2>
-              <p id="skillApprovalReadiness" class="empty">Select a decomposed skill to approve or reject.</p>
+              <h2>Governance</h2>
+              <p id="skillApprovalReadiness" class="empty">Select a skill to inspect its approval state.</p>
               <label for="skillApprovalRationale">Rationale</label>
               <textarea id="skillApprovalRationale" rows="4" placeholder="Why approve or reject this skill version?"></textarea>
               <div class="button-row tight">
@@ -1285,74 +1292,7 @@
               </div>
             </article>
           </div>
-          <details class="panel workflow-panel workflow-run cockpit-disclosure">
-            <summary>Run approved skill</summary>
-            <h2>Run Approved Skill</h2>
-            <p id="skillRunReadiness" class="empty">Select an approved skill to run it.</p>
-            <div id="skillRunRouting" class="skill-routing-panel"></div>
-            <label for="skillRunRequest">Manual request</label>
-            <textarea id="skillRunRequest" rows="3" placeholder="Plan my day and prepare the next alignment meeting..."></textarea>
-            <div class="grid two">
-              <div>
-                <label for="skillRunEmail">Exported email text</label>
-                <textarea id="skillRunEmail" rows="7" placeholder="Paste relevant email threads or exports..."></textarea>
-              </div>
-              <div>
-                <label for="skillRunCalendar">Exported calendar text</label>
-                <textarea id="skillRunCalendar" rows="7" placeholder="Paste calendar blockers, meetings, attendees, deadlines..."></textarea>
-              </div>
-              <div>
-                <label for="skillRunTeams">Exported Teams text</label>
-                <textarea id="skillRunTeams" rows="7" placeholder="Paste Teams messages or channel updates..."></textarea>
-              </div>
-              <div>
-                <label for="skillRunKnowledge">Optional knowledge context</label>
-                <textarea id="skillRunKnowledge" rows="7" placeholder="Paste project notes, prior documents, KPIs, decision logs..."></textarea>
-              </div>
-            </div>
-            <div class="button-row tight">
-              <button id="runSkillBtn" class="secondary" disabled>Run selected skill</button>
-            </div>
-          </details>
-          <details class="panel skill-history-panel workflow-panel workflow-improve cockpit-disclosure">
-            <summary>Run history and review</summary>
-            <div class="toolbar">
-              <h2>Skill Run History</h2>
-              <div class="toolbar-actions">
-                <span id="skillRunsUpdatedAt" class="updated-stamp">Not refreshed yet</span>
-                <button id="refreshSkillRunsBtn" class="secondary small" type="button">Refresh runs</button>
-              </div>
-            </div>
-            <div class="run-compare-controls">
-              <select id="runQualityFilter" class="compact-select">
-                <option value="all">All source quality</option>
-                <option value="high">Strong source context</option>
-                <option value="medium">Partial source context</option>
-                <option value="low">Manual-only context</option>
-              </select>
-              <select id="compareRunA" class="compact-select">
-                <option value="">Compare run A</option>
-              </select>
-              <select id="compareRunB" class="compact-select">
-                <option value="">Compare run B</option>
-              </select>
-              <button id="compareRunsBtn" class="secondary small" type="button">Compare</button>
-            </div>
-            <div id="skillRunCompare" class="run-compare"></div>
-            <div id="skillRunHistory" class="activity-list"></div>
-          </details>
-          <details class="panel workflow-panel workflow-improve cockpit-disclosure">
-            <summary>Refinement proposals</summary>
-            <div class="toolbar">
-              <h2>Refinement Proposals</h2>
-              <div class="toolbar-actions">
-                <span id="skillRefinementsUpdatedAt" class="updated-stamp">Not refreshed yet</span>
-                <button id="refreshSkillRefinementsBtn" class="secondary small" type="button">Refresh proposals</button>
-              </div>
-            </div>
-            <div id="skillRefinements" class="activity-list"></div>
-          </details>
-          <pre id="skillResult" class="output">No skill action yet.</pre>
+          <pre id="skillResult" class="output compact-output">Select a skill to inspect or update it.</pre>
         </section>
 
         <section id="activity" class="view">

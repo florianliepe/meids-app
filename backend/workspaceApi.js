@@ -584,6 +584,7 @@ function qualityAssessment(body) {
 
 function skillRecord(row) {
   const storedSpec = row.spec || {};
+  const lifecycle = storedSpec.lifecycle || {};
   return {
     skill_id: row.skill_id,
     name: row.name,
@@ -593,12 +594,40 @@ function skillRecord(row) {
     version: row.version,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    lifecycle_state: row.status === "archived" ? "retired" : (lifecycle.state || row.status),
+    retired_at: lifecycle.retired_at || "",
+    retirement_reason: lifecycle.retirement_reason || "",
+    pending_update: storedSpec.pending_revision ? {
+      version: storedSpec.pending_revision.version || "",
+      name: storedSpec.pending_revision.name || row.name,
+      description: storedSpec.pending_revision.description || row.description,
+      change_reason: storedSpec.pending_revision.change_reason || "",
+      proposed_at: storedSpec.pending_revision.proposed_at || "",
+    } : null,
     spec: {
       ...storedSpec,
       name: storedSpec.name || row.name,
       description: storedSpec.description || row.description,
       risk_class: storedSpec.risk_class || row.risk_class,
     },
+  };
+}
+
+function nextSkillVersion(value = "0.1.0") {
+  const match = String(value || "").match(/^(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) return "0.1.1";
+  return `${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
+}
+
+function skillRevisionSnapshot(row, reason = "") {
+  return {
+    version: row.version || "0.1.0",
+    status: row.status || "pending_approval",
+    name: row.name || "",
+    description: row.description || "",
+    spec: row.spec || {},
+    reason: clean(reason, 2_000),
+    captured_at: new Date().toISOString(),
   };
 }
 
@@ -613,8 +642,9 @@ function skillDetailRecord(row) {
       status: skill.status,
       actor_agent: { persona_ref: row.twin_id },
       orchestrator: {
-        mode: "skill_orchestrator",
+        mode: skill.spec.orchestrator?.mode || "skill_orchestrator",
         model: "Azure-native agent runtime",
+        runtime_adapter: "existing_executor_contract",
         max_steps: skill.spec.max_steps || 8,
         actor_checkpoints: skill.spec.actor_checkpoints || ["before_external_side_effect", "before_irreversible_action"],
       },
@@ -1499,9 +1529,12 @@ function createWorkspaceApi(deps) {
   async function skills(req, res, url) {
     const { mapping, pool } = await context(req);
     const twinId = assertTwin(mapping, url.searchParams.get("twin") || mapping.active_twin_id);
+    const includeRetired = url.searchParams.get("include_retired") === "true";
     const result = await withContext(pool, mapping, (client) => client.query(
-      "SELECT * FROM agent.skill_spec WHERE tenant_id = $1 AND twin_id = $2 AND status <> 'archived' ORDER BY updated_at DESC",
-      [mapping.tenant_id, twinId],
+      `SELECT * FROM agent.skill_spec
+       WHERE tenant_id = $1 AND twin_id = $2 AND ($3::boolean OR status <> 'archived')
+       ORDER BY updated_at DESC`,
+      [mapping.tenant_id, twinId, includeRetired],
     ));
     jsonResponse(res, 200, { skills: result.rows.map(skillRecord) });
   }
@@ -1534,6 +1567,7 @@ function createWorkspaceApi(deps) {
       ],
       approval_policy: "never_auto_approve_generated_skills",
       execution_hierarchy: "Actor Twin -> Agentic Butler -> Skill Orchestrator -> Task Agent",
+      origin: { channel: "legacy_compatibility_adapter", created_by: "human_form" },
     };
     const result = await withContext(pool, mapping, async (client) => {
       const inserted = await client.query(
@@ -1547,6 +1581,204 @@ function createWorkspaceApi(deps) {
     jsonResponse(res, 201, { status: "pending_approval", skill: skillRecord(result), lint: { valid: true, errors: [] } });
   }
 
+  async function skillPropose(req, res) {
+    const body = await readBody(req);
+    const { mapping, pool } = await context(req, body);
+    const twinId = assertTwin(mapping, body.twin || body.twin_id);
+    const proposal = body.proposal && typeof body.proposal === "object" ? body.proposal : {};
+    const description = clean(proposal.description || body.description || body.skill_idea, 30_000);
+    if (!description) throw httpError(400, "Skill proposal description is required.");
+    const name = clean(proposal.name || body.name_hint || description.split(/[.\n]/)[0] || "New skill", 160);
+    const sourceRequestId = clean(body.source_request_id || body.request_id, 160) || crypto.randomUUID();
+    const taskAgents = Array.isArray(proposal.task_agents) ? proposal.task_agents.slice(0, 12) : [];
+    const normalizedTaskAgents = (taskAgents.length ? taskAgents : [{
+      name: `${slug(name) || "skill"}-task-agent`,
+      purpose: description,
+      tools: [],
+      system_instruction: `Complete only the approved ${name} task within the supplied tenant, user, and twin scope.`,
+    }]).map((agent, index) => ({
+      name: clean(agent.name || `${slug(name) || "skill"}-task-agent-${index + 1}`, 160),
+      purpose: clean(agent.purpose || agent.description || description, 2_000),
+      tools: Array.isArray(agent.tools) ? agent.tools.map((tool) => clean(tool, 120)).filter(Boolean).slice(0, 20) : [],
+      system_instruction: clean(agent.system_instruction || agent.instructions || `Complete only the approved ${name} task.`, 12_000),
+      boundary: clean(agent.boundary || "No external side effect or capability change without explicit human approval.", 2_000),
+    }));
+    const spec = {
+      name,
+      description,
+      trigger_examples: Array.isArray(proposal.trigger_examples) ? proposal.trigger_examples.slice(0, 20) : [],
+      exclusion_examples: Array.isArray(proposal.exclusion_examples) ? proposal.exclusion_examples.slice(0, 20) : [],
+      inputs: proposal.inputs || {},
+      outputs: proposal.outputs || {},
+      task_agents: normalizedTaskAgents,
+      approval_policy: "never_auto_approve_generated_skills",
+      execution_hierarchy: "Actor Twin -> Agentic Butler -> approved Task Agent",
+      orchestrator: {
+        owner: "agentic_butler",
+        mode: normalizedTaskAgents.length === 1 ? "direct_task_agent" : "bounded_manager",
+        max_steps: Math.max(1, Math.min(Number(proposal.max_steps) || 8, 12)),
+      },
+      origin: {
+        channel: "actor_twin_agentic_butler",
+        source_request_id: sourceRequestId,
+        created_by: mapping.user_id,
+      },
+      lifecycle: { state: "pending_approval" },
+    };
+    const result = await withContext(pool, mapping, async (client) => {
+      const existing = await client.query(
+        "SELECT * FROM agent.skill_spec WHERE tenant_id = $1 AND twin_id = $2 AND (name = $3 OR spec->'origin'->>'source_request_id' = $4) ORDER BY updated_at DESC LIMIT 1",
+        [mapping.tenant_id, twinId, name, sourceRequestId],
+      );
+      if (existing.rowCount) return { row: existing.rows[0], created: false };
+      const skillId = `${slug(name) || "skill"}-${crypto.createHash("sha256").update(sourceRequestId).digest("hex").slice(0, 8)}`;
+      const inserted = await client.query(
+        `INSERT INTO agent.skill_spec (skill_id, tenant_id, owner_user_id, twin_id, name, description, status, spec)
+         VALUES ($1, $2, $3, $4, $5, $6, 'pending_approval', $7::jsonb)
+         ON CONFLICT (tenant_id, twin_id, name) DO NOTHING RETURNING *`,
+        [skillId, mapping.tenant_id, mapping.user_id, twinId, name, description, JSON.stringify(spec)],
+      );
+      if (!inserted.rowCount) {
+        const concurrent = await client.query(
+          "SELECT * FROM agent.skill_spec WHERE tenant_id = $1 AND twin_id = $2 AND name = $3 LIMIT 1",
+          [mapping.tenant_id, twinId, name],
+        );
+        return { row: concurrent.rows[0], created: false };
+      }
+      await audit(client, mapping, "skill.proposed_by_butler", "agent.skill_spec", skillId, {
+        twin_id: twinId,
+        source_request_id: sourceRequestId,
+        approval_required: true,
+      });
+      return { row: inserted.rows[0], created: true };
+    });
+    jsonResponse(res, result.created ? 201 : 200, {
+      status: result.created ? "pending_approval" : "existing_proposal",
+      created: result.created,
+      skill: skillRecord(result.row),
+      approval: { required: true, gate: "skill_spec_approval" },
+      lint: { valid: true, errors: [] },
+    });
+  }
+
+  async function skillUpdate(req, res) {
+    const body = await readBody(req);
+    const { mapping, pool } = await context(req, body);
+    const skillId = clean(body.skill_id, 128);
+    const reason = clean(body.change_reason || body.rationale, 2_000);
+    if (!skillId) throw httpError(400, "Skill ID is required.");
+    if (!reason) throw httpError(400, "A change reason is required.");
+    const result = await withContext(pool, mapping, async (client) => {
+      const current = await client.query("SELECT * FROM agent.skill_spec WHERE tenant_id = $1 AND skill_id = $2", [mapping.tenant_id, skillId]);
+      if (!current.rowCount) throw httpError(404, "Skill not found.");
+      const row = current.rows[0];
+      if (row.status === "archived") throw httpError(409, "Retired skills cannot be changed. Create a new proposal instead.");
+      const currentSpec = row.spec || {};
+      const history = Array.isArray(currentSpec.revision_history) ? currentSpec.revision_history.slice(-24) : [];
+      const taskAgent = body.task_agent && typeof body.task_agent === "object" ? body.task_agent : null;
+      const taskAgents = taskAgent ? [{
+        ...(Array.isArray(currentSpec.task_agents) ? currentSpec.task_agents[0] : {}),
+        name: clean(taskAgent.name || currentSpec.task_agents?.[0]?.name || `${slug(row.name)}-task-agent`, 160),
+        purpose: clean(taskAgent.purpose || body.description || row.description, 2_000),
+        tools: Array.isArray(taskAgent.tools) ? taskAgent.tools.map((tool) => clean(tool, 120)).filter(Boolean).slice(0, 20) : (currentSpec.task_agents?.[0]?.tools || []),
+        system_instruction: clean(taskAgent.system_instruction || currentSpec.task_agents?.[0]?.system_instruction, 12_000),
+        boundary: clean(taskAgent.boundary || currentSpec.task_agents?.[0]?.boundary || "No external side effect without human approval.", 2_000),
+      }] : currentSpec.task_agents;
+      const proposedSpec = {
+        ...currentSpec,
+        ...(body.spec_patch && typeof body.spec_patch === "object" ? body.spec_patch : {}),
+        name: clean(body.name || row.name, 160),
+        description: clean(body.description || row.description, 30_000),
+        task_agents: taskAgents,
+        pending_revision: undefined,
+        lifecycle: { ...(currentSpec.lifecycle || {}), state: "pending_approval", last_change_reason: reason },
+      };
+      const proposedVersion = nextSkillVersion(row.version);
+      const preservesApprovedRuntime = row.status === "approved";
+      const spec = preservesApprovedRuntime ? {
+        ...currentSpec,
+        revision_history: [...history, skillRevisionSnapshot(row, reason)],
+        pending_revision: {
+          version: proposedVersion,
+          name: proposedSpec.name,
+          description: proposedSpec.description,
+          spec: proposedSpec,
+          change_reason: reason,
+          proposed_at: new Date().toISOString(),
+          proposed_by: mapping.user_id,
+        },
+      } : {
+        ...proposedSpec,
+        revision_history: [...history, skillRevisionSnapshot(row, reason)],
+      };
+      const updated = await client.query(
+        `UPDATE agent.skill_spec SET name = $3, description = $4, status = $5, version = $6,
+           spec = $7::jsonb, updated_at = now()
+         WHERE tenant_id = $1 AND skill_id = $2 RETURNING *`,
+        [
+          mapping.tenant_id,
+          skillId,
+          preservesApprovedRuntime ? row.name : proposedSpec.name,
+          preservesApprovedRuntime ? row.description : proposedSpec.description,
+          preservesApprovedRuntime ? "approved" : "pending_approval",
+          preservesApprovedRuntime ? row.version : proposedVersion,
+          JSON.stringify(spec),
+        ],
+      );
+      await audit(client, mapping, "skill.update.proposed", "agent.skill_spec", skillId, {
+        previous_version: row.version,
+        version: proposedVersion,
+        previous_status: row.status,
+        status: preservesApprovedRuntime ? "approved_with_pending_revision" : "pending_approval",
+        reason,
+      });
+      return updated.rows[0];
+    });
+    jsonResponse(res, 200, {
+      status: "pending_approval",
+      active_version: result.version,
+      pending_version: result.spec?.pending_revision?.version || result.version,
+      skill: skillRecord(result),
+      approval: { required: true, gate: "skill_spec_approval" },
+    });
+  }
+
+  async function skillRetire(req, res) {
+    const body = await readBody(req);
+    const { mapping, pool } = await context(req, body);
+    const skillId = clean(body.skill_id, 128);
+    const reason = clean(body.rationale || body.reason, 2_000);
+    if (!skillId) throw httpError(400, "Skill ID is required.");
+    if (!reason) throw httpError(400, "A retirement reason is required.");
+    const result = await withContext(pool, mapping, async (client) => {
+      const current = await client.query("SELECT * FROM agent.skill_spec WHERE tenant_id = $1 AND skill_id = $2", [mapping.tenant_id, skillId]);
+      if (!current.rowCount) throw httpError(404, "Skill not found.");
+      const row = current.rows[0];
+      if (row.status === "archived") return row;
+      const currentSpec = row.spec || {};
+      const history = Array.isArray(currentSpec.revision_history) ? currentSpec.revision_history.slice(-24) : [];
+      const spec = {
+        ...currentSpec,
+        revision_history: [...history, skillRevisionSnapshot(row, reason)],
+        lifecycle: {
+          ...(currentSpec.lifecycle || {}),
+          state: "retired",
+          previous_status: row.status,
+          retired_at: new Date().toISOString(),
+          retired_by: mapping.user_id,
+          retirement_reason: reason,
+        },
+      };
+      const updated = await client.query(
+        "UPDATE agent.skill_spec SET status = 'archived', spec = $3::jsonb, updated_at = now() WHERE tenant_id = $1 AND skill_id = $2 RETURNING *",
+        [mapping.tenant_id, skillId, JSON.stringify(spec)],
+      );
+      await audit(client, mapping, "skill.retired", "agent.skill_spec", skillId, { previous_status: row.status, reason });
+      return updated.rows[0];
+    });
+    jsonResponse(res, 200, { status: "retired", skill: skillRecord(result), reversible: true });
+  }
+
   async function skillMutate(req, res, action) {
     const body = await readBody(req);
     const { mapping, pool } = await context(req, body);
@@ -1556,14 +1788,50 @@ function createWorkspaceApi(deps) {
       if (!current.rowCount) throw httpError(404, "Skill not found.");
       let status = current.rows[0].status;
       let spec = current.rows[0].spec || {};
+      let name = current.rows[0].name;
+      let description = current.rows[0].description;
+      let version = current.rows[0].version;
       if (action === "decompose") {
         spec = { ...spec, task_agents: [{ name: `${slug(current.rows[0].name)}-task-agent`, purpose: current.rows[0].description, tools: [], boundary: "Execute only the approved SkillSpec through Skill Orchestrator." }] };
       } else if (action === "approval") {
-        status = body.decision === "approve" ? "approved" : "rejected";
-      } else if (action === "archive") status = "archived";
+        const pending = spec.pending_revision && typeof spec.pending_revision === "object" ? spec.pending_revision : null;
+        if (pending) {
+          if (body.decision === "approve") {
+            name = clean(pending.name || name, 160);
+            description = clean(pending.description || description, 30_000);
+            version = clean(pending.version || nextSkillVersion(version), 30);
+            spec = {
+              ...(pending.spec || spec),
+              revision_history: spec.revision_history || [],
+              lifecycle: { ...(pending.spec?.lifecycle || spec.lifecycle || {}), state: "approved", approved_at: new Date().toISOString() },
+            };
+            delete spec.pending_revision;
+            status = "approved";
+          } else {
+            spec = { ...spec, lifecycle: { ...(spec.lifecycle || {}), state: status } };
+            delete spec.pending_revision;
+          }
+        } else {
+          status = body.decision === "approve" ? "approved" : "rejected";
+        }
+      } else if (action === "archive") {
+        status = "archived";
+        spec = {
+          ...spec,
+          lifecycle: {
+            ...(spec.lifecycle || {}),
+            state: "retired",
+            previous_status: current.rows[0].status,
+            retired_at: new Date().toISOString(),
+            retired_by: mapping.user_id,
+            retirement_reason: clean(body.rationale || "Retired through compatibility archive endpoint.", 2_000),
+          },
+        };
+      }
       const updated = await client.query(
-        "UPDATE agent.skill_spec SET status = $3, spec = $4::jsonb, updated_at = now() WHERE tenant_id = $1 AND skill_id = $2 RETURNING *",
-        [mapping.tenant_id, skillId, status, JSON.stringify(spec)],
+        `UPDATE agent.skill_spec SET status = $3, name = $4, description = $5, version = $6,
+           spec = $7::jsonb, updated_at = now() WHERE tenant_id = $1 AND skill_id = $2 RETURNING *`,
+        [mapping.tenant_id, skillId, status, name, description, version, JSON.stringify(spec)],
       );
       await audit(client, mapping, `skill.${action}`, "agent.skill_spec", skillId, { status, decision: body.decision || "" });
       return updated.rows[0];
@@ -2463,6 +2731,9 @@ function createWorkspaceApi(deps) {
     else if (route === "DELETE /api/concepts") await conceptArchive(req, res);
     else if (route === "GET /api/skills") await skills(req, res, url);
     else if (route === "GET /api/skills/detail") await skillDetail(req, res, url);
+    else if (route === "POST /api/skills/propose") await skillPropose(req, res);
+    else if (route === "POST /api/skills/update") await skillUpdate(req, res);
+    else if (route === "POST /api/skills/retire") await skillRetire(req, res);
     else if (route === "POST /api/skills/elicit") await skillElicit(req, res);
     else if (route === "POST /api/skills/decompose") await skillMutate(req, res, "decompose");
     else if (route === "POST /api/skills/approval") await skillMutate(req, res, "approval");
