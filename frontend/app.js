@@ -851,7 +851,7 @@ async function refreshViewData(viewId) {
       safeRefreshVoiceTranscriptHandoffs,
     ],
     twins: [safeRefreshTwins, safeRefreshPersonaDrafts],
-    skills: [safeRefreshSkills, safeRefreshSkillRuns, safeRefreshSkillRefinements, safeRefreshSkillTelemetry],
+    skills: [safeRefreshSkills],
     concepts: [refreshConcepts],
     dashboard: [refreshConcepts, safeRefreshReviewDashboard],
     graph: [safeRefreshGraph],
@@ -13705,15 +13705,17 @@ async function saveTwinPicturePosition() {
 }
 
 function bindSkills() {
-  $("#elicitSkillBtn").addEventListener("click", elicitSkill);
-  $("#decomposeSkillBtn").addEventListener("click", decomposeSelectedSkill);
-  $("#approveSkillBtn").addEventListener("click", () => approveSelectedSkill("approve"));
-  $("#rejectSkillBtn").addEventListener("click", () => approveSelectedSkill("reject"));
-  $("#runSkillBtn").addEventListener("click", runSelectedSkill);
-  $("#refreshSkillRunsBtn").addEventListener("click", safeRefreshSkillRuns);
-  $("#refreshSkillRefinementsBtn").addEventListener("click", safeRefreshSkillRefinements);
-  $("#compareRunsBtn").addEventListener("click", renderSelectedRunComparison);
-  $("#runQualityFilter").addEventListener("change", (event) => {
+  $("#elicitSkillBtn")?.addEventListener("click", elicitSkill);
+  $("#decomposeSkillBtn")?.addEventListener("click", decomposeSelectedSkill);
+  $("#approveSkillBtn")?.addEventListener("click", () => approveSelectedSkill("approve"));
+  $("#rejectSkillBtn")?.addEventListener("click", () => approveSelectedSkill("reject"));
+  $("#updateSkillBtn")?.addEventListener("click", updateSelectedSkill);
+  $("#retireSkillBtn")?.addEventListener("click", retireSelectedSkill);
+  $("#runSkillBtn")?.addEventListener("click", runSelectedSkill);
+  $("#refreshSkillRunsBtn")?.addEventListener("click", safeRefreshSkillRuns);
+  $("#refreshSkillRefinementsBtn")?.addEventListener("click", safeRefreshSkillRefinements);
+  $("#compareRunsBtn")?.addEventListener("click", renderSelectedRunComparison);
+  $("#runQualityFilter")?.addEventListener("change", (event) => {
     state.skillRunQualityFilter = event.target.value;
     renderSkillRunHistory();
   });
@@ -14564,7 +14566,7 @@ function dashboardReviewCue(kind, item = {}) {
 
 async function refreshSkills() {
   setSkillCatalogLoading();
-  const result = await getJson("/api/skills");
+  const result = await getJson("/api/skills?include_retired=true");
   state.skills = result.skills || [];
   renderSkillCatalog();
   renderSkillsCockpit();
@@ -16504,7 +16506,7 @@ async function loadSelectedAgentInstruction() {
 function renderSkillCatalog() {
   const target = $("#skillCatalog");
   if (!state.skills.length) {
-    target.innerHTML = renderEmptyState("No skills shaped yet.", "Shape first skill", "openSkills");
+    target.innerHTML = renderEmptyState("No skills available yet.", "Define one with Actor Twin", "openChat");
     renderSkillsCockpit();
     return;
   }
@@ -16520,9 +16522,10 @@ function renderSkillCatalog() {
         <article class="skill-tile ${dashboardPriorityClass("skill", skill.status)} ${skill.skill_id === state.selectedSkillId ? "selected" : ""}">
           <div class="skill-tile-main">
             <div class="skill-tile-meta">
-              <span class="queue-kind">${escapeHtml(skill.status || "skill")}</span>
+              <span class="queue-kind">${escapeHtml(skill.lifecycle_state || skill.status || "skill")}</span>
               <span>${escapeHtml(skill.risk_class || "risk n/a")}</span>
               <span>v${escapeHtml(skill.version || "-")}</span>
+              ${skill.pending_update ? `<span>v${escapeHtml(skill.pending_update.version || "next")} pending</span>` : ""}
             </div>
             <h3>${escapeHtml(skill.name)}</h3>
             <p>${escapeHtml(skill.description || "")}</p>
@@ -16530,9 +16533,6 @@ function renderSkillCatalog() {
           </div>
           <div class="skill-tile-actions">
             <button class="secondary small skill-select" type="button" data-id="${escapeHtml(skill.skill_id)}">Select</button>
-            ${["rejected", "deprecated"].includes(skill.status)
-              ? `<button class="danger small skill-archive" type="button" data-id="${escapeHtml(skill.skill_id)}">Archive</button>`
-              : ""}
           </div>
         </article>
       `,
@@ -16540,9 +16540,6 @@ function renderSkillCatalog() {
     .join("");
   target.querySelectorAll(".skill-select").forEach((button) => {
     button.addEventListener("click", () => selectSkill(button.dataset.id));
-  });
-  target.querySelectorAll(".skill-archive").forEach((button) => {
-    button.addEventListener("click", () => archiveSkill(button.dataset.id));
   });
 }
 
@@ -16556,107 +16553,54 @@ function renderSkillsCockpit() {
   }, {});
   const approved = statusCounts.approved || 0;
   const pending = statusCounts.pending_approval || 0;
-  const activeRuns = state.skillRuns.length;
-  const correctiveRuns = state.skillRuns.filter((run) => ["needs_rework", "wrong_priority", "missing_context", "rejected"].includes(run.review_state)).length;
   const selected = state.skills.find((skill) => skill.skill_id === state.selectedSkillId);
-  const drafts = (statusCounts.draft || 0) + (statusCounts.elicited || 0) + (statusCounts.decomposed || 0);
-  const latestRun = state.skillRuns[0] || null;
-  const pendingRefinements = state.skillRefinements.filter((item) => item.status === "pending_approval").length;
-  const lifecycle = [
-    {
-      id: "shape",
-      number: "01",
-      title: "Shape",
-      action: "focusSkillShape",
-      metric: drafts,
-      state: drafts ? "attention" : "ready",
-      detail: "Capture triggers, inputs, outputs, boundaries, examples, and quality criteria.",
-      hint: "Creates a SkillSpec; never approves automatically.",
-    },
-    {
-      id: "approve",
-      number: "02",
-      title: "Approve",
-      action: "focusSkillApproval",
-      metric: pending,
-      state: pending ? "attention" : "ready",
-      detail: "Review generated agent configs, risk class, tool boundaries, and package lint.",
-      hint: selected ? `Selected: ${selected.status || "unknown"}` : "Select a skill to inspect the gate.",
-    },
-    {
-      id: "test",
-      number: "03",
-      title: "Test",
-      action: "focusSkillRun",
-      metric: activeRuns,
-      state: approved ? "ready" : "blocked",
-      detail: "Run approved skills with exported source context and Actor Twin steering.",
-      hint: latestRun ? `Latest run: ${latestRun.review_state || latestRun.status || "unreviewed"}` : "Run history starts after first execution.",
-    },
-    {
-      id: "refine",
-      number: "04",
-      title: "Refine",
-      action: "focusSkillImprove",
-      metric: pendingRefinements || correctiveRuns,
-      state: pendingRefinements || correctiveRuns ? "attention" : "ready",
-      detail: "Use run reviews and critique evidence to propose bounded version changes.",
-      hint: `${pendingRefinements} proposal${pendingRefinements === 1 ? "" : "s"} pending review.`,
-    },
-  ];
+  const retired = statusCounts.archived || 0;
   target.innerHTML = `
     <article class="cockpit-overview skills-overview">
       <div class="skill-cockpit-hero">
         <div>
-          <span class="badge">Skill Cockpit</span>
-          <h2>${escapeHtml(selected?.name || "Shape, approve, test, and refine skills")}</h2>
-          <p>${escapeHtml(selected?.description || "Skills are reusable agentic behaviors. Human approval keeps generated versions out of active runtime until reviewed.")}</p>
+          <span class="badge">Skill registry</span>
+          <h2>${escapeHtml(selected?.name || "Available Actor Twin capabilities")}</h2>
+          <p>${escapeHtml(selected?.description || "The Actor Twin and Agentic Butler define new skills in chat. This view manages their approved, pending, and retired versions.")}</p>
         </div>
-        <button class="secondary small" type="button" data-cockpit-action="openChat">Run from workspace</button>
-      </div>
-      <div class="skill-lifecycle-board" aria-label="Skill lifecycle">
-        ${lifecycle.map((stage) => `
-          <button class="skill-lifecycle-card ${escapeHtml(stage.state)} ${escapeHtml(stage.id)}" type="button" data-cockpit-action="${escapeHtml(stage.action)}">
-            <span>${escapeHtml(stage.number)} · ${escapeHtml(stage.title)}</span>
-            <strong>${escapeHtml(stage.metric)}</strong>
-            <p>${escapeHtml(stage.detail)}</p>
-            <small>${escapeHtml(stage.hint)}</small>
-          </button>
-        `).join("")}
+        <button class="secondary small" type="button" data-cockpit-action="openChat">Define in Actor Twin</button>
       </div>
       <div class="cockpit-overview-grid skill-cockpit-kpis">
         <span class="${approved ? "ready" : ""}"><strong>${escapeHtml(approved)}</strong> approved</span>
         <span class="${pending ? "attention" : ""}"><strong>${escapeHtml(pending)}</strong> pending approval</span>
-        <span><strong>${escapeHtml(activeRuns)}</strong> runs</span>
-        <span class="${correctiveRuns ? "attention" : "ready"}"><strong>${escapeHtml(correctiveRuns)}</strong> need refinement</span>
+        <span><strong>${escapeHtml(statusCounts.rejected || 0)}</strong> rejected</span>
+        <span><strong>${escapeHtml(retired)}</strong> retired</span>
       </div>
     </article>
   `;
 }
 
-async function archiveSkill(skillId) {
+async function retireSkill(skillId, suppliedReason = "") {
   if (!skillId) return;
-  const confirmed = await requestDecision({
-    eyebrow: "Skill archive",
-    title: "Archive this skill?",
-    body: "Rejected or deprecated skill versions leave the active catalog but remain available in local files and logs.",
-    confirmLabel: "Archive skill",
+  const reason = suppliedReason || await requestDecision({
+    eyebrow: "Governed retirement",
+    title: "Retire this skill?",
+    body: "The skill becomes unavailable for new runs but its versions, traces, and audit evidence remain available.",
+    confirmLabel: "Retire skill",
+    input: true,
+    inputLabel: "Retirement reason",
+    inputPlaceholder: "Why should this capability no longer be used?",
     danger: true,
   });
-  if (!confirmed) return;
+  if (!reason) return;
   try {
-    await postJson("/api/skills/archive", {
+    await postJson("/api/skills/retire", {
       skill_id: skillId,
-      rationale: "Archived from Skills UI cleanup action.",
+      rationale: reason,
       actor: "local-user",
     });
     await safeRefreshSkills();
     await safeRefreshReviewDashboard();
-    setOutputStatus("#skillResult", "success", "Skill archived", skillId);
-    showToast("Skill archived", skillId, "success");
+    setOutputStatus("#skillResult", "success", "Skill retired", skillId);
+    showToast("Skill retired", skillId, "success");
   } catch (error) {
-    setOutputStatus("#skillResult", "error", "Archive failed", error.message);
-    showToast("Archive failed", error.message, "error");
+    setOutputStatus("#skillResult", "error", "Retirement failed", error.message);
+    showToast("Retirement failed", error.message, "error");
   }
 }
 
@@ -18936,6 +18880,38 @@ async function routeAgenticButlerSkillCreationFromChat(query, route = null, chai
   return postAgentContractEnvelope("agentic_butler", envelope, fallbackAgenticButlerSkillCreationResponse);
 }
 
+async function persistButlerSkillProposal(query, result = {}) {
+  const response = result.response || result;
+  if (["failed", "error"].includes(response.status)) return null;
+  const output = response.output && typeof response.output === "object" ? response.output : {};
+  const creation = output.skill_creation && typeof output.skill_creation === "object" ? output.skill_creation : {};
+  const proposal = creation.skill_spec || output.skill_spec || output.proposal || {};
+  const requestId = response.request_id || result.request?.request_id || creation.source_request_id || `skill_${Date.now().toString(36)}`;
+  if (isStaticFrontendSession()) {
+    const local = createStaticSkillDraft(query, proposal.name || "");
+    return { status: "pending_approval", created: true, skill: local.skill, storage: "local_compatibility" };
+  }
+  const registry = await postJson("/api/skills/propose", {
+    twin: state.activeTwin,
+    source_request_id: requestId,
+    skill_idea: query,
+    proposal: {
+      name: proposal.name || creation.name || "",
+      description: proposal.description || creation.description || query,
+      trigger_examples: proposal.trigger_examples || [],
+      exclusion_examples: proposal.exclusion_examples || [],
+      inputs: proposal.inputs || {},
+      outputs: proposal.outputs || {},
+      task_agents: proposal.task_agents || creation.task_agents || [],
+      max_steps: proposal.max_steps || 8,
+    },
+    actor: "actor_twin_via_agentic_butler",
+  });
+  result.skill_registry = registry;
+  await safeRefreshSkills();
+  return registry;
+}
+
 async function routeKnowledgeFabricFromChat(query, route = null, chainContext = {}) {
   const sourceContext = chatSourceContext();
   const title = query.slice(0, 80) || "Chat source context";
@@ -18997,7 +18973,7 @@ async function runActorTwinRuntimeInteraction(query, fallbackRoute = null) {
   }
   const delegate = actorResult.response?.output?.delegate_result;
   if (delegate && typeof delegate === "object") {
-    return attachAgentRuntimeChain({
+    const delegatedResult = attachAgentRuntimeChain({
       ...actorResult,
       response: {
         ...(actorResult.response || {}),
@@ -19014,6 +18990,8 @@ async function runActorTwinRuntimeInteraction(query, fallbackRoute = null) {
       handoffStatus: delegate.status || "delegated_in_actor_workflow",
       chainContext,
     });
+    if (route.decision === "create_skill") await persistButlerSkillProposal(query, delegatedResult);
+    return delegatedResult;
   }
   persistAgentTrace(attachAgentRuntimeChain(actorResult, {
     actorResult,
@@ -19037,6 +19015,7 @@ async function runActorTwinRuntimeInteraction(query, fallbackRoute = null) {
       actor_request_id: actorRequestId,
       handoff_status: "route_decided",
     });
+    await persistButlerSkillProposal(query, targetResult);
   } else if (route.target_agent === "agentic_butler") {
     targetResult = await routeAgenticButlerFromChat(query, route, {
       ...chainContext,
@@ -21899,50 +21878,58 @@ function renderSkillDetail(detail) {
   const config = detail.config || {};
   const lint = detail.lint || {};
   const status = config.status || state.skills.find((skill) => skill.skill_id === detail.skill_id)?.status || "elicited";
+  const taskAgent = Array.isArray(spec.task_agents) ? spec.task_agents[0] || {} : {};
+  const editSpec = spec.pending_revision?.spec || spec;
+  const editTaskAgent = Array.isArray(editSpec.task_agents) ? editSpec.task_agents[0] || {} : {};
+  const retired = status === "archived";
   $("#skillDetail").innerHTML = `
     <article class="activity-row queue-card skill-detail-card ${dashboardPriorityClass("skill", status)}">
       <div class="queue-card-head">
-        <span class="queue-kind">${escapeHtml(status)}</span>
-        ${renderQueueMeta([`risk ${spec.risk_class || "-"}`, lint.valid ? "lint valid" : "lint attention"])}
+        <span class="queue-kind">${escapeHtml(retired ? "retired" : status)}</span>
+        ${renderQueueMeta([`v${detail.version || "-"}`, `risk ${spec.risk_class || "-"}`, lint.valid ? "lint valid" : "lint attention"])}
       </div>
       <h3>${escapeHtml(spec.name || detail.skill_id)}</h3>
       <p>${escapeHtml(spec.description || "")}</p>
       <dl>
         ${detailRow("Skill ID", detail.skill_id)}
-        ${detailRow("Folder", detail.folder)}
-        ${detailRow("Triggers", (spec.triggers || []).join(", "))}
-        ${detailRow("Human required", spec.decision_boundaries?.requires_human?.join(", ") || "-")}
+        ${detailRow("Origin", spec.origin?.channel || "existing registry")}
+        ${detailRow("Task agent", taskAgent.name || "-")}
+        ${detailRow("Allowed tools", (taskAgent.tools || []).join(", ") || "none")}
+        ${detailRow("Boundary", taskAgent.boundary || "Human approval required for external side effects.")}
+        ${retired ? detailRow("Retirement reason", detail.retirement_reason || spec.lifecycle?.retirement_reason || "-") : ""}
       </dl>
     </article>
-    <article class="activity-row queue-card review">
-      <div class="queue-card-head">
-        <span class="queue-kind">Elicitation</span>
-        ${renderQueueMeta([`${(spec.elicitation_questions || []).length} question${(spec.elicitation_questions || []).length === 1 ? "" : "s"}`])}
-      </div>
-      <h3>Elicitation Questions</h3>
-      ${(spec.elicitation_questions || []).map((item) => `<p>- ${escapeHtml(item)}</p>`).join("") || '<p class="empty">No questions stored.</p>'}
-    </article>
     ${renderSkillAgentGraph(config)}
-    <article class="activity-row queue-card ${lint.valid ? "ready" : "needs-action"}">
-      <div class="queue-card-head">
-        <span class="queue-kind">Package lint</span>
-        ${renderQueueMeta([lint.valid ? "valid" : "needs attention"])}
-      </div>
-      <h3>Lint</h3>
-      ${lint.valid ? '<p>Skill package is valid.</p>' : (lint.errors || []).map((item) => `<p>- ${escapeHtml(item)}</p>`).join("")}
-    </article>
   `;
-  $("#decomposeSkillBtn").disabled = !["elicited", "decomposed", "pending_approval"].includes(status);
-  const canApprove = status === "pending_approval";
+  const editableFields = [
+    ["#skillEditName", editSpec.name || detail.name || ""],
+    ["#skillEditDescription", editSpec.description || detail.description || ""],
+    ["#skillEditTaskAgentName", editTaskAgent.name || ""],
+    ["#skillEditTools", (editTaskAgent.tools || []).join(", ")],
+    ["#skillEditInstruction", editTaskAgent.system_instruction || ""],
+    ["#skillEditBoundary", editTaskAgent.boundary || ""],
+    ["#skillEditReason", ""],
+  ];
+  editableFields.forEach(([selector, value]) => {
+    const field = $(selector);
+    if (!field) return;
+    field.value = value;
+    field.disabled = retired;
+  });
+  if ($("#updateSkillBtn")) $("#updateSkillBtn").disabled = retired;
+  if ($("#retireSkillBtn")) $("#retireSkillBtn").disabled = retired;
+  if ($("#decomposeSkillBtn")) $("#decomposeSkillBtn").disabled = !["elicited", "decomposed", "pending_approval"].includes(status);
+  const canApprove = status === "pending_approval" || Boolean(detail.pending_update);
   $("#approveSkillBtn").disabled = !canApprove;
   $("#rejectSkillBtn").disabled = !canApprove;
-  $("#runSkillBtn").disabled = status !== "approved";
+  if ($("#runSkillBtn")) $("#runSkillBtn").disabled = status !== "approved";
   $("#skillApprovalReadiness").textContent = canApprove
-    ? "This skill is pending approval. Human approval is required before active use."
-    : `Selected skill status: ${status}`;
-  $("#skillRunReadiness").textContent = status === "approved"
-    ? "This skill is approved. Paste exported source text and run it."
-    : `Selected skill status: ${status}. Approval is required before running.`;
+    ? detail.pending_update
+      ? `Version ${detail.pending_update.version || "next"} is pending approval. Version ${detail.version || "current"} remains active until then.`
+      : "This skill is pending approval. Human approval is required before active use."
+    : retired
+      ? "This skill is retired and unavailable to the Actor Twin. Its history remains auditable."
+      : `Selected skill status: ${status}`;
 }
 
 function renderSkillAgentGraph(config) {
@@ -21958,9 +21945,9 @@ function renderSkillAgentGraph(config) {
       </div>
       <div class="agent-graph-flow" aria-label="Skill agent graph">
         <div class="agent-node orchestrator">
-          <span>Orchestrator</span>
-          <strong>${escapeHtml(orchestrator.mode || "manager")}</strong>
-          <small>${escapeHtml(orchestrator.model || "model n/a")} · max ${escapeHtml(orchestrator.max_steps || "-")} steps</small>
+          <span>Agentic Butler</span>
+          <strong>${escapeHtml(orchestrator.mode || "bounded manager")}</strong>
+          <small>max ${escapeHtml(orchestrator.max_steps || "-")} steps</small>
         </div>
         <div class="agent-node actor">
           <span>Actor Twin</span>
@@ -21979,6 +21966,48 @@ function renderSkillAgentGraph(config) {
       </div>
     </article>
   `;
+}
+
+async function updateSelectedSkill() {
+  if (!state.selectedSkillId) return;
+  const reason = $("#skillEditReason")?.value.trim() || "";
+  if (!reason) {
+    showToast("Change reason required", "Explain why this skill definition should change.", "error");
+    $("#skillEditReason")?.focus();
+    return;
+  }
+  const payload = {
+    skill_id: state.selectedSkillId,
+    name: $("#skillEditName")?.value.trim() || "",
+    description: $("#skillEditDescription")?.value.trim() || "",
+    change_reason: reason,
+    task_agent: {
+      name: $("#skillEditTaskAgentName")?.value.trim() || "",
+      tools: String($("#skillEditTools")?.value || "").split(",").map((item) => item.trim()).filter(Boolean),
+      system_instruction: $("#skillEditInstruction")?.value.trim() || "",
+      boundary: $("#skillEditBoundary")?.value.trim() || "",
+    },
+    actor: "local-user",
+  };
+  try {
+    setOutputStatus("#skillResult", "loading", "Saving pending version", state.selectedSkillId);
+    const result = await postJson("/api/skills/update", payload);
+    await safeRefreshSkills();
+    await safeRefreshReviewDashboard();
+    await selectSkill(state.selectedSkillId);
+    setOutputStatus("#skillResult", "success", "Pending version saved", `v${result.pending_version || result.skill?.pending_update?.version || "-"} requires approval.`);
+    showToast("Skill revision staged", "The new version remains inactive until approval.", "success");
+  } catch (error) {
+    setOutputStatus("#skillResult", "error", "Skill update failed", error.message);
+    showToast("Skill update failed", error.message, "error");
+  }
+}
+
+async function retireSelectedSkill() {
+  if (!state.selectedSkillId) return;
+  await retireSkill(state.selectedSkillId);
+  state.selectedSkillId = null;
+  $("#skillDetail").innerHTML = renderEmptyState("Select a skill to inspect it.");
 }
 
 async function elicitSkill() {
