@@ -21,7 +21,6 @@
   voiceConceptCommitInProgress: false,
   voiceTranscriptHandoffs: [],
   voiceTranscriptHandoffDetail: null,
-  personaDrafts: [],
   deepHealth: null,
   okfArchitecture: null,
   okfArchitectureArtifact: null,
@@ -850,7 +849,7 @@ async function refreshViewData(viewId) {
       safeRefreshVoiceConceptReadinessGates,
       safeRefreshVoiceTranscriptHandoffs,
     ],
-    twins: [safeRefreshTwins, safeRefreshPersonaDrafts],
+    twins: [safeRefreshTwins],
     skills: [safeRefreshSkills],
     concepts: [refreshConcepts],
     dashboard: [refreshConcepts, safeRefreshReviewDashboard],
@@ -9619,8 +9618,6 @@ function bindQuality() {
       $("#qualityPanelGrid")?.scrollIntoView({ block: "start", behavior: "smooth" });
     });
   });
-  $("#runPersonaModelerBtn").addEventListener("click", runPersonaModeler);
-  $("#runPersonaQualityBtn").addEventListener("click", runPersonaQuality);
   $("#runGuardrailsBtn").addEventListener("click", runGuardrails);
   $("#runInterrogationQaBtn").addEventListener("click", runInterrogationQa);
   $("#refreshSkillTelemetryBtn").addEventListener("click", refreshSkillTelemetry);
@@ -9684,8 +9681,6 @@ function bindQuality() {
   $("#loadAgentInstructionBtn").addEventListener("click", loadSelectedAgentInstruction);
   $("#agentInstructionSelect").addEventListener("change", loadSelectedAgentInstruction);
   $("#saveGuardrailPolicyBtn").addEventListener("click", saveGuardrailPolicy);
-  $("#loadPersonaDraftBtn").addEventListener("click", loadPersonaDraft);
-  $("#promotePersonaDraftBtn").addEventListener("click", promotePersonaDraft);
   const initialQualityGroup = new URLSearchParams(window.location.search).get("quality") || "persona";
   setQualityGroup(initialQualityGroup);
 }
@@ -26082,32 +26077,6 @@ function renderTraceCockpitSummary(result = {}, traces = [], total = 0, unavaila
   `;
 }
 
-async function refreshPersonaDrafts() {
-  const result = await getJson(`/api/persona/drafts?twin=${encodeURIComponent(state.activeTwin)}`);
-  state.personaDrafts = result.drafts || [];
-  const select = $("#personaDraftSelect");
-  if (!state.personaDrafts.length) {
-    select.innerHTML = '<option value="">No drafts yet</option>';
-    return;
-  }
-  select.innerHTML = state.personaDrafts
-    .map((draft) => {
-      const sourceCount = draft.source_count === undefined ? "?" : draft.source_count;
-      const label = `${draft.timestamp || draft.title || "Persona draft"} - ${sourceCount} sources`;
-      return `<option value="${escapeHtml(draft.path)}">${escapeHtml(label)}</option>`;
-    })
-    .join("");
-}
-
-async function safeRefreshPersonaDrafts() {
-  try {
-    await refreshPersonaDrafts();
-  } catch (error) {
-    $("#personaDraftSelect").innerHTML = '<option value="">Draft endpoint unavailable</option>';
-    console.warn("Persona draft refresh failed", error);
-  }
-}
-
 async function refreshVectorIndexStatus() {
   const result = await getJson(`/api/vector-index/status?twin=${encodeURIComponent(state.activeTwin)}`);
   state.vectorIndex = result;
@@ -35061,84 +35030,6 @@ async function deleteEvidence(path) {
   }
 }
 
-async function runPersonaModeler() {
-  $("#qualityResult").textContent = "Running Persona Modeler...";
-  try {
-    const result = await postJson("/api/agents/persona-modeler/run", { twin: state.activeTwin });
-    $("#qualityResult").textContent = formatPersonaModelerResult(result);
-    await safeRefreshActivity();
-    await safeRefreshPersonaDrafts();
-    showToast("Persona draft created", state.activeTwin, "success");
-  } catch (error) {
-    $("#qualityResult").textContent = `Persona Modeler failed: ${error.message}`;
-    showToast("Persona Modeler failed", error.message, "error");
-  }
-}
-
-async function loadPersonaDraft() {
-  const path = $("#personaDraftSelect").value;
-  if (!path) {
-    $("#qualityResult").textContent = "No persona draft selected. Run Persona Modeler first.";
-    return;
-  }
-  $("#qualityResult").textContent = "Loading persona draft comparison...";
-  try {
-    const result = await postJson("/api/persona/draft", { path });
-    $("#qualityResult").textContent = formatPersonaDraftComparison(result);
-    showToast("Persona draft loaded", path, "success");
-  } catch (error) {
-    $("#qualityResult").textContent = `Persona draft review failed: ${error.message}`;
-    showToast("Persona draft review failed", error.message, "error");
-  }
-}
-
-async function promotePersonaDraft() {
-  const draftPath = $("#personaDraftSelect").value;
-  const sections = $$(".persona-section:checked").map((input) => input.value);
-  if (!draftPath) {
-    $("#qualityResult").textContent = "No persona draft selected. Run Persona Modeler first.";
-    return;
-  }
-  if (!sections.length) {
-    $("#qualityResult").textContent = "Select at least one persona section to promote.";
-    return;
-  }
-  const confirmed = await requestDecision({
-    eyebrow: "Persona promotion",
-    title: `Promote ${sections.length} selected section(s)?`,
-    body: "Selected draft sections will be merged into the canonical persona. A backup is created before the persona file is updated.",
-    confirmLabel: "Promote sections",
-  });
-  if (!confirmed) return;
-  $("#qualityResult").textContent = "Promoting selected persona draft sections...";
-  try {
-    const result = await postJson("/api/persona/promote", {
-      twin: state.activeTwin,
-      draft_path: draftPath,
-      sections,
-      actor: "local-user",
-    });
-    $("#qualityResult").textContent = formatPersonaPromotionResult(result);
-    await safeRefreshActivity();
-    await safeRefreshPersonaDrafts();
-    showToast("Persona promoted", `${sections.length} section${sections.length === 1 ? "" : "s"} merged`, "success");
-  } catch (error) {
-    $("#qualityResult").textContent = `Persona promotion failed: ${error.message}`;
-    showToast("Persona promotion failed", error.message, "error");
-  }
-}
-
-async function runPersonaQuality() {
-  $("#qualityResult").textContent = "Running Persona Quality Loop...";
-  try {
-    const result = await postJson("/api/agents/persona-quality/run", { twin: state.activeTwin });
-    $("#qualityResult").textContent = formatPersonaQualityResult(result);
-    await safeRefreshActivity();
-  } catch (error) {
-    $("#qualityResult").textContent = `Persona Quality Loop failed: ${error.message}`;
-  }
-}
-
 async function runGuardrails() {
   $("#qualityResult").textContent = "Running Guardrails Enforcer...";
   try {
@@ -35216,26 +35107,6 @@ async function saveGuardrailPolicy() {
   }
 }
 
-function formatPersonaModelerResult(result) {
-  const model = result.model || {};
-  return [
-    `Persona draft stored: ${result.draft?.path || "not stored"}`,
-    `Sources analyzed: ${model.source_count || 0}`,
-    "",
-    "Tone markers:",
-    ...asLines(model.tone_markers),
-    "",
-    "Decision heuristics:",
-    ...asLines(model.decision_heuristics),
-    "",
-    "Expertise signals:",
-    ...asLines(model.expertise_signals),
-    "",
-    "Risk boundaries:",
-    ...asLines(model.risk_boundaries),
-  ].join("\n");
-}
-
 function formatGuardrailsResult(result) {
   const report = result.report || {};
   const findings = Array.isArray(report.findings) ? report.findings : [];
@@ -35252,35 +35123,6 @@ function formatGuardrailsResult(result) {
       findings.map((finding) => `- [${finding.severity}] ${finding.title}\n  ${finding.path}\n  ${finding.detail}`),
     )
     .join("\n");
-}
-
-function formatPersonaQualityResult(result) {
-  const report = result.report || {};
-  const gaps = Array.isArray(report.gaps) ? report.gaps : [];
-  const actions = Array.isArray(report.next_actions) ? report.next_actions : [];
-  const reviewCounts = report.review_counts || {};
-  const typeCounts = report.concept_type_counts || {};
-  return [
-    `Persona quality report stored: ${result.artifact?.path || "not stored"}`,
-    `Status: ${report.status || "unknown"}`,
-    `Score: ${report.score || 0}`,
-    `Sources analyzed: ${report.source_count || 0}`,
-    `Canonical section score: ${report.canonical_section_score || 0}`,
-    `Review maturity score: ${report.review_maturity_score || 0}`,
-    `Source diversity score: ${report.source_diversity_score || 0}`,
-    "",
-    "Review states:",
-    ...objectLines(reviewCounts),
-    "",
-    "Concept mix:",
-    ...objectLines(typeCounts),
-    "",
-    "Gaps:",
-    ...(gaps.length ? gaps.map((gap) => `- [${gap.severity}] ${gap.title}\n  ${gap.detail}`) : ["- none"]),
-    "",
-    "Next actions:",
-    ...asLines(actions),
-  ].join("\n");
 }
 
 function formatInterrogationQaResult(result) {
@@ -35433,50 +35275,6 @@ function formatTraceExportResult(result) {
     `Content hash: ${result.content_hash || "-"}`,
     "",
     "Use this Markdown file for technical/product MVP review.",
-  ].join("\n");
-}
-
-function formatPersonaDraftComparison(result) {
-  const draft = result.draft || {};
-  const canonical = result.canonical || {};
-  return [
-    `Draft: ${draft.title || draft.path || "persona draft"}`,
-    `Timestamp: ${draft.timestamp || "-"}`,
-    `Sources analyzed: ${draft.source_count || 0}`,
-    "",
-    "Canonical tone:",
-    ...asLines(canonical.tone),
-    "Draft tone markers:",
-    ...asLines(draft.tone_markers),
-    "",
-    "Canonical signature moves:",
-    ...asLines(canonical.signature_moves),
-    "Draft decision heuristics:",
-    ...asLines(draft.decision_heuristics),
-    "",
-    "Canonical expertise:",
-    ...asLines(canonical.domains_of_expertise),
-    "Draft expertise signals:",
-    ...asLines(draft.expertise_signals),
-    "",
-    "Canonical boundaries:",
-    ...asLines(canonical.hard_boundaries),
-    "Draft risk boundaries:",
-    ...asLines(draft.risk_boundaries),
-    "",
-    "Select one or more sections, then use Promote selected to update the canonical persona.",
-  ].join("\n");
-}
-
-function formatPersonaPromotionResult(result) {
-  const promotion = result.result || {};
-  return [
-    "Persona updated.",
-    `Applied sections: ${(promotion.applied_sections || promotion.sections || []).join(", ") || "-"}`,
-    `Persona path: ${promotion.persona_path || promotion.path || "-"}`,
-    `Backup path: ${promotion.backup_path || promotion.backup || "-"}`,
-    "",
-    "The CRUD log now contains a persona promotion entry.",
   ].join("\n");
 }
 

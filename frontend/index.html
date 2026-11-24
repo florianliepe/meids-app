@@ -1453,11 +1453,6 @@
                 <p class="empty">Checking agent runtime boundary...</p>
               </div>
             </article>
-            <article class="panel quality-agent-panel" data-quality-group="persona">
-              <h2>Persona Modeler</h2>
-              <p>Extract communication style, decision tempo, risk posture, and recurring heuristics.</p>
-              <button id="runPersonaModelerBtn" class="secondary">Run agent</button>
-            </article>
             <article class="panel quality-agent-panel" data-quality-group="governance">
               <h2>Guardrails Enforcer</h2>
               <p>Check consent, sensitivity, unsupported claims, and unsafe extrapolation before use.</p>
@@ -1473,27 +1468,6 @@
                 <option value="off">off</option>
               </select>
               <button id="saveGuardrailPolicyBtn" class="secondary">Save policy</button>
-            </article>
-            <article class="panel quality-agent-panel" data-quality-group="persona">
-              <h2>Persona Draft Review</h2>
-              <p>Compare a generated draft with the canonical persona and promote selected sections.</p>
-              <label for="personaDraftSelect">Draft</label>
-              <select id="personaDraftSelect"></select>
-              <div class="button-row tight">
-                <button id="loadPersonaDraftBtn" class="secondary">Load</button>
-                <button id="promotePersonaDraftBtn" class="secondary">Promote selected</button>
-              </div>
-              <div class="check-list">
-                <label><input type="checkbox" class="persona-section" value="tone_markers" /> Tone</label>
-                <label><input type="checkbox" class="persona-section" value="decision_heuristics" /> Signature moves</label>
-                <label><input type="checkbox" class="persona-section" value="expertise_signals" /> Expertise</label>
-                <label><input type="checkbox" class="persona-section" value="risk_boundaries" /> Boundaries</label>
-              </div>
-            </article>
-            <article class="panel quality-agent-panel" data-quality-group="persona">
-              <h2>Persona Quality Loop</h2>
-              <p>Score persona coverage, concept review maturity, and next promotion actions.</p>
-              <button id="runPersonaQualityBtn" class="secondary">Run quality loop</button>
             </article>
             <article class="panel quality-agent-panel" data-quality-group="governance">
               <h2>Interrogation QA</h2>

@@ -18,7 +18,7 @@
     "check:entra-onboarding": "node --check frontend/api.js && node --check frontend/app.js && node --check backend/server.js && node scripts/validate-entra-group-onboarding.cjs",
     "check:admin-cockpit": "node --check frontend/admin/admin.js && node --check backend/server.js && node scripts/validate-admin-cockpit-contract.cjs",
     "check:graph-explorer": "node --check frontend/app.js && node scripts/validate-graph-explorer-v2.cjs",
-    "check:frontend-actor-first": "node --check frontend/app.js && node scripts/validate-actor-first-frontend.cjs",
+    "check:frontend-actor-first": "node --check frontend/app.js && node scripts/validate-actor-first-frontend.cjs && node scripts/validate-no-legacy-persona-draft-calls.cjs",
     "uat:frontend-actor-first": "node scripts/browser-actor-first-qa.cjs frontend docs/visual-qa/actor-first-20261103",
     "qa:skill-registry": "node scripts/browser-skill-registry-qa.cjs frontend",
     "check:uat-hardening": "node --check frontend/app.js && node --check backend/workspaceApi.js && node --check backend/server.js && node scripts/validate-uat-intake-review-hardening.cjs",
